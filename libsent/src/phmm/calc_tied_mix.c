@@ -21,7 +21,7 @@
  * value will be returned.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -32,6 +32,7 @@
  */
 
 #include <sent/stddefs.h>
+#include <sent/speech.h>
 #include <sent/htk_hmm.h>
 #include <sent/htk_param.h>
 #include <sent/hmm.h>
@@ -47,7 +48,8 @@ boolean
 calc_tied_mix_init(HMMWork *wrk)
 {
   wrk->mixture_cache = NULL;
-  wrk->tmix_allocframenum = -1;
+  wrk->tmix_allocframenum = 0;
+  wrk->mroot = NULL;
   wrk->tmix_last_id = (int *)mymalloc(sizeof(int) * wrk->OP_hmminfo->maxmixturenum);
   return TRUE;
 }
@@ -62,31 +64,10 @@ calc_tied_mix_init(HMMWork *wrk)
 boolean
 calc_tied_mix_prepare(HMMWork *wrk, int framenum)
 {
-  int bid, t, size;
+  int bid, t;
 
-  /* (re)-allocate */
-  if (wrk->tmix_allocframenum < framenum) {
-    if (wrk->mixture_cache != NULL) {
-      for(t=0;t<wrk->tmix_allocframenum;t++) {
-	free(wrk->mixture_cache[t][0]);
-	free(wrk->mixture_cache[t]);
-      }
-      free(wrk->mixture_cache);
-    }
-    size = wrk->OP_gprune_num * wrk->OP_hmminfo->codebooknum;
-  
-    wrk->mixture_cache = (MIXCACHE ***)mymalloc(sizeof(MIXCACHE **) * framenum);
-    for(t=0;t<framenum;t++) {
-      wrk->mixture_cache[t] = (MIXCACHE **)mymalloc(sizeof(MIXCACHE *) * wrk->OP_hmminfo->codebooknum);
-      wrk->mixture_cache[t][0] = (MIXCACHE *)mymalloc(sizeof(MIXCACHE) * size);
-      for(bid=1;bid<wrk->OP_hmminfo->codebooknum;bid++) {
-	wrk->mixture_cache[t][bid] = &(wrk->mixture_cache[t][0][wrk->OP_gprune_num * bid]);
-      }
-    }
-    wrk->tmix_allocframenum = framenum;
-  }
   /* clear */
-  for(t=0;t<framenum;t++) {
+  for(t=0;t<wrk->tmix_allocframenum;t++) {
     for(bid=0;bid<wrk->OP_hmminfo->codebooknum;bid++) {
       wrk->mixture_cache[t][bid][0].score = LOG_ZERO;
     }
@@ -96,20 +77,56 @@ calc_tied_mix_prepare(HMMWork *wrk, int framenum)
 }
 
 /** 
+ * Expand the cache to time axis if needed.
+ * 
+ * @param reqframe [in] required frame length
+ */
+static void
+calc_tied_mix_extend(HMMWork *wrk, int reqframe)
+{
+  int newnum;
+  int bid, t, size;
+  
+  /* if enough length are already allocated, return immediately */
+  if (reqframe < wrk->tmix_allocframenum) return;
+
+  /* allocate per certain period */
+  newnum = reqframe + 1;
+  if (newnum < wrk->tmix_allocframenum + OUTPROB_CACHE_PERIOD)
+    newnum = wrk->tmix_allocframenum + OUTPROB_CACHE_PERIOD;
+
+  if (wrk->mixture_cache == NULL) {
+    wrk->mixture_cache = (MIXCACHE ***)mymalloc(sizeof(MIXCACHE **) * newnum);
+  } else {
+    wrk->mixture_cache = (MIXCACHE ***)myrealloc(wrk->mixture_cache, sizeof(MIXCACHE **) * newnum);
+  }
+
+  size = wrk->OP_gprune_num * wrk->OP_hmminfo->codebooknum;
+
+  for(t = wrk->tmix_allocframenum; t < newnum; t++) {
+    wrk->mixture_cache[t] = (MIXCACHE **)mybmalloc2(sizeof(MIXCACHE *) * wrk->OP_hmminfo->codebooknum, &(wrk->mroot));
+    wrk->mixture_cache[t][0] = (MIXCACHE *)mybmalloc2(sizeof(MIXCACHE) * size, &(wrk->mroot));
+    for(bid=1;bid<wrk->OP_hmminfo->codebooknum;bid++) {
+      wrk->mixture_cache[t][bid] = &(wrk->mixture_cache[t][0][wrk->OP_gprune_num * bid]);
+    }
+    /* clear the new part */
+    for(bid=0;bid<wrk->OP_hmminfo->codebooknum;bid++) {
+      wrk->mixture_cache[t][bid][0].score = LOG_ZERO;
+    }
+  }
+
+  wrk->tmix_allocframenum = newnum;
+}
+
+/** 
  * Free work area for tied-mixture calculation.
  * 
  */
 void
 calc_tied_mix_free(HMMWork *wrk)
 {
-  int t;
-  if (wrk->mixture_cache != NULL) {
-    for(t=0;t<wrk->tmix_allocframenum;t++) {
-      free(wrk->mixture_cache[t][0]);
-      free(wrk->mixture_cache[t]);
-    }
-    free(wrk->mixture_cache);
-  }
+  if (wrk->mroot != NULL) mybfree2(&(wrk->mroot));
+  if (wrk->mixture_cache != NULL) free(wrk->mixture_cache);
   free(wrk->tmix_last_id);
 }
 
@@ -146,6 +163,8 @@ calc_tied_mix(HMMWork *wrk)
   }
 #endif
 
+  /* extend cache if needed */
+  calc_tied_mix_extend(wrk, wrk->OP_time);
   ttcache = wrk->mixture_cache[wrk->OP_time][book->id];
   if (ttcache[0].score != LOG_ZERO) { /* already calced */
     /* calculate using cache and weight */

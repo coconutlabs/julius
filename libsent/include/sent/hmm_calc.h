@@ -12,7 +12,7 @@
  *
  * </JA>
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  *
  */
 /*
@@ -110,6 +110,7 @@ typedef struct __hmmwork__{
 
   /* mixture level cache for tied-mixture model */
   MIXCACHE ***mixture_cache; ///< Codebook cache: [time][book_id][0..computed_mixture_num]
+  BMALLOC_BASE *mroot;	///< Root alloc pointer to state outprob cache
 
   /* work area for tied-mixture computation */
   int *tmix_last_id;		///< List of computed mixture id on the previous input frame

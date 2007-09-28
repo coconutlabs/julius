@@ -1,0 +1,285 @@
+2007-09-27  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* mkbingram/mkbingram.c (main): fixed error on "-nrl" in mkbingram.
+
+	* libsent/src/ngram/ngram_compact_context.c
+	(ngram_compact_context): fixed bug of not shrinking the memory
+	area after context compaction on bingram loading.
+
+	* libjulius/src/wchmm.c and others: modify around A_CELL on each
+	state in WCHMM_INFO to save memory.  Now A_CELL is holded at
+	(1) wchmm->self_a[node], (2) wchmm->next_a[node], and (3)
+	wchmm->ac[node] (block linked list).  It saves memory on 20k-word
+	dictation from 64MB to 60MB, and 200K-word recognition from 250MB
+	to 150MB.
+
+	* libjulius/src/wchmm.c: the initial node allocation amount
+	was changed from a fixed value MAXWCNSTEP to the half
+	of total number of states in dictionary.  This comes from an emprical
+	experience that the size of tree lexicon often becomes around half
+	of non-tree (linear) lexicon.
+
+	* libsent/src/voca/voca_util.c: modified to refer winfo->total*num
+	instead of computing them directly.
+
+	* libsent/src/voca/voca_load_htkdict.c,voca_load_wordlist.c:
+	merge voca_set_*() to single function voca_set_stat(), and
+	newly add lines to calculate and store totalstatenum,
+	totalmodelnum and totaltransnum.
+	
+	* libsent/include/sent/vocabulary.h: add totalstatenum, totalmodelnum
+	and totaltransnum to WORD_INFO.
+
+	* libjulius/src/wchmm.c, beam.c, libjulius/include/julius/wchmm.h: 
+	eliminate unused ststart[] and use startnode / start2wid (DFA) at
+	non-multipath mode to save memory.
+
+	* libjulius/src/wchmm.c: update memory size check function.
+
+2007-09-26  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libjulius/src/realtime-1stpass.c (RealTimeResume): fixed tiny compile
+	error when --enable-sp-segment specified.
+
+	* ALL: modified version string from 4.0 to 4.0RC1.
+
+	* libsent/configure.in: VERSION -> LIBSENT_VERSION
+
+	* support/modrev.sh: update for VERSION string changes.
+
+	* libjulius/src/beam.c (expand_tlist): made "token space expanded"
+	to appear only with "-debug" option.
+
+2007-09-25  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libsent/src/voca/voca_load_htkdict.c (voca_load_htkdict_line): 
+	* libsent/src/voca/voca_load_wordlist.c (voca_load_wordlist_line):
+	* libsent/include/sent/vocabulary.h:
+	Fixed segfault when -forcedict is specified.
+
+2007-09-25  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	RELEASED: julius-4.0RC1-070925.tar.gz
+
+2007-09-22  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libjulius/src/jfunc.c (j_recog_new): fixed wrong free for
+	adin->speech.
+
+	* libjulius/src/graphout.c (wordgraph_check_and_add_leftword):
+	debug message fixes.
+
+	* libjulius/src/adin-cut.c (adin_thread_process): shorten input wait
+	period from 100msec to 50msec.
+
+	* libjulius/include/julius/common.h: added user-defined hook to recog.
+
+2007-09-22  Akinobu Lee  <ri@JALE>
+
+	* libsent/include/sent/stddefs.h: fix sleep() on MinGW.
+
+2007-09-21  Akinobu Lee  <ri@JALE>
+
+	* libjulius/src/m_adin.c (adin_setup_all): argument modified.
+
+	* ALL: new functions for multi-model recognition:
+	j_recognize_stream_multi(),
+	j_adin_init_multi(),j_adin_init_user_multi().
+
+	* libjulius/src/jfunc.c (j_adin_init): ad-in thread creation
+	has moved to here from adin_initialize() of m_adin.c.
+
+	* libjulius/src/callback.c (callback_multi_exec): added for
+	multiple instance recognition.
+
+	* julius/main.c: added multi-model recognition.  Define MULTI at
+	top of main.c to enable. (STILL IN ALPHA STAGE)
+
+	* ALL: for multi: adin_go() callbacks now should have argument in
+	"Recog **recoglist, int recognum" instead of "Recog *recog".  Also
+	callback_exec() are swapped by callback_multi_exec().
+
+	* libjulius/include/julius/common.h: changed recog.adin to recog->adin.
+	malloc within j_recog_new();
+
+	* libjulius/include/julius/common.h: Recog now holds sequencial list 
+	of registered callbacks.
+
+	* libsent/src/util/mybmalloc.c (mybmalloc_set_param): made private,
+	will be called only from mybmalloc2().
+
+	* libjulius/src/callback.c (callback_delete): add function to delete
+	a callback.  Now callback_add() and callback_add_adin() returns
+	a unique ID for each callback, which should be used for deletion by
+	callback_delete().  The ID will kept unique throughout the process.
+
+2007-09-20  Akinobu Lee  <ri@JALE>
+
+	* libsent/include/sent/util.h: mybmalloc_get_pagesize() and
+	  mybmalloc_get_blocksize() is not used currently, so eliminated.
+
+	* libjulius/src/jfunc.c (j_init): eliminated.  The
+	  mybmalloc_set_param() will be called at initial call of
+	  mybmalloc2().
+
+	* julius/: add support for data argument registration in their setup
+	  functions.
+
+	* libjulius/src/callback.c, libjulius/include/julius/callback.h,
+	  common.h and etc.: now hold callback functions in recog instance
+	  instead of global to allow different callback in each instance.
+
+2007-09-19  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libjulius/src/realtime-1stpass.c (RealTimeMFCC etc.): make MFCC
+	computation part as independent function and make it replacable
+	by switching function pointer recog->calc_vector.
+
+2007-09-18  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libsent/src/anlz/param_malloc.c (param_alloc): diable "Debug:
+	param_malloc: parvec extend to ..." message.
+
+	* libjulius/src/m_chkparam.c (j_jconf_finalize): Fixed wrong warning.
+
+2007-09-14  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libjulius/src/m_jconf.c (expand_env): add function to expand
+	environment variables in jconf.
+
+2007-09-13  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* julius/output_stdout.c: fixed stdout to fit for sp-segment +
+	progout + mic input.
+
+	* libjulius/src/realtime-1stpass.c (RealTimeResume): BUGFIX to fix
+	segfault on short pause segmentation.
+
+2007-09-12  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libsent/src/voca/voca_load_wordlist.c (voca_load_wordlist_line): 
+	make wordlist to allow quotation by "" for string definition.
+
+	* libsent/src/voca/voca_load_wordlist.c (voca_load_wordlist_line): 
+	FIXED BUG of 1 phone word handling with no context phone.
+
+	* julius/main.c: change check_spec() to jconf_finalize().
+
+	* julius/record.c: disable dir access check on win32.
+
+	* libjulius/include/julius/callback.h: delete unused
+	CALLBACK_APPLICATION_CLOSE.
+
+	* libjulius/src/beam.c: set current frame to d->current_frame_num
+	to be able to know the current frame in INTERIM callbacks.
+	
+
+2007-09-06  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	* libsent/src/hmminfo/rdhmmdef.c, libsent/src/hmminfo/read_binhmm.c:
+	hmminfo->multipath should show the current switch of multipath
+	handling on decoding, and will be altered by a user option.
+	To keep the requirement by the model itself, the multipath flag
+	required by the model itself is now stored to
+	"hmminfo->need_multipath" and separated from hmminfo->multipath.
+
+	* libjulius/src/m_fusion.c: set hmminfo->multipath from
+	hmminfo->need_multipath and user-specified switch ("-multipath")
+	if any, just after init_phmm().
+
+2007-09-05  Akinobu Lee  <ri@sp.nitech.ac.jp>
+
+	MULTIPATH_VERSION elimination has done!
+
+	* libjulius/src/m_info.c: add info for multipath handling at search
+	parameter section.
+
+	* libjulius/src/beam.c (get_back_trellis_proceed): unloop for speed
+	on outprob calculation.
+
+	* libjulius/include/julius/wchmm.h: struct WCHMM_WORK defined.
+
+	* libjulius/include/julius/wchmm.h: some work area in wchmm.c are
+	moved to WCHMM_WORK.
+
+2007-09-03  Akinobu Lee  <ri@JALE>
+
+	MULTIPATH_VERSION elimination is still in PROGRESS...
+
+	* libsent/include/sent/htk_hmm.h: hmminfo->multipath is the new
+	indicator showing multipath requirement
+
+	* libsent/src/hmminfo/chk_hmm_restriction.c: re-written and new
+	functions added to determine whether the HMM model needs multipath
+	handling on decoding or not.
+
+	* adintool, adinrec, mkss: update for new option handling.
+
+	* julius/recogloop.c: make recognition loop func. as separate file.
+
+	* libjulius/*, julius/*: update for new option handling.
+
+	* libjulius/src/useropt.c: NEW for the new option handling.
+	* libjulius/include/julius/useropt.h: NEW for the new option handling.
+
+	* libjulius/configure.in: erased --enable-multipath.
+	
+	* libjulius/configure.in: add "JULIUS_" to product/version defs.
+
+	* libjulius/include/julius/commin.h: force_multipath <-> "-multipath"
+
+	* libjulius/src/beam.c: re-arrange the big function
+	"get_backtrellis_proceed()" into smaller parts: propagate_token(),
+	beam_intra_word(), beam_inter_word(), save_trellis(), and
+	beam_inter_word_factoring().
+
+	* libjulius/src/graphout.c: changed graph word merge overwriting rule
+	to rely on amavg instead of gscore_head.
+
+	* libjulius/src/search_bestfirst_main.c: FIXED BUG of invalid
+	gscore_head values on word graph generation, when with standard
+	setup.
+
+	* libsent/src/util/mystrtok.c: FIXED small bug.
+
+	* libsent/src/wav2mfcc/mfcc-code.c: Fixed bug to allow WMP
+	initialization only around SS for mkss.
+	
+
+2007-08-30  Akinobu Lee  <ri@JALE>
+
+	* all: make clean 時に exe を消すよう Makefile.in 修正
+
+	* julius/Makefile.in: ファイル名変更
+
+	* generate-ngram: random  Win32 対応
+
+	* libjulius: User LM 対応。-userlm + j_regist_user_lm_func()
+	  userlm 時は N-gram 無しで辞書だけでも起動可能
+
+	* libjulius: LM_NGRAM -> LM_PROB, LM_NGRAM は lmvar に。
+	  さらに LM_NGRAM_USER 新設。factoring_sub.c, ngram_decode.c に注意
+
+	* libjulius: オプション指定→lmtype, lmvar 判別を m_chkparam.c に移動
+
+	* libjulius: check_specs() -> j_jconf_check_specs()
+
+	* libjulius: DFA と wordlist のファイル名リスト格納先を分離, multigram
+	  系関数で lmvar 引数に追加して区別する。（lmvar 識別後は lmvar で
+	  動作判別） lm.gramlist_root -> lm.wordlist_root
+
+	* libjulius: graph forward-backward で forward_score, backward_score
+	  をグラフごとに別途格納
+	
+	* libjulius: グラフ生成でマージ時に同じ単語だったら LM スコアの高いほう
+	  を残すように改良
+
+	* libjulius: j_jconf_check_specs() 呼び出しを j_model_load_all() から
+	  削除。メインで j_create_instance_from_jconf() を使わない場合は
+	  j_model_load_all() の前に必ず呼び出す必要あり。
+
+	* libjulius: システム情報の出力を多少調整。
+
+	* libsent/ngram: 読み込み時メッセージを調整。
+
+	* libsent/mkss: 動くよう修正

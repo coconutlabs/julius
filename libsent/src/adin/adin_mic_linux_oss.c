@@ -50,7 +50,7 @@
  * environment variable AUDIODEV.
  * </EN>
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -331,6 +331,14 @@ adin_mic_standby(int sfreq, void *dummy)
 boolean
 adin_mic_begin()
 {
+  char buf[4];
+  /* Read 1 sample (and ignore it) to tell the audio device start recording.
+     (If you knows better way, teach me...) */
+  if (stereo_rec) {
+    read(audio_fd, buf, 4);
+  } else {
+    read(audio_fd, buf, 2);
+  }
   return(TRUE);
 }
 

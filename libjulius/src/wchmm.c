@@ -30,7 +30,7 @@
  * "tree lexicon". 
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -2000,9 +2000,19 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
   jlog("STAT: --- estimated size of word lexicon ---\n");
   jlog("STAT: wchmm: %d words, %d nodes\n", wchmm->winfo->num, wchmm->n);
   jlog("STAT: %9d bytes: wchmm->state[node] (exclude ac, sc)\n", sizeof(WCHMM_STATE) * wchmm->n);
-  jlog("STAT: %9d bytes: wchmm->self_a[node]\n", sizeof(LOGPROB) * wchmm->n);
-  jlog("STAT: %9d bytes: wchmm->next_a[node]\n", sizeof(LOGPROB) * wchmm->n);
-  jlog("STAT: %9d bytes: wchmm->ac[node]\n", sizeof(A_CELL2 *) * wchmm->n);
+  {
+    int count1 = 0;
+    int count2 = 0;
+    int count3 = 0;
+    for(i=0;i<wchmm->n;i++) {
+      if (wchmm->self_a[i] != LOG_ZERO) count1++;
+      if (wchmm->next_a[i] != LOG_ZERO) count2++;
+      if (wchmm->ac[i] != NULL) count3++;
+    }
+    jlog("STAT: %9d bytes: wchmm->self_a[node] (%4.1f%% filled)\n", sizeof(LOGPROB) * wchmm->n, 100.0 * count1 / (float)wchmm->n);
+    jlog("STAT: %9d bytes: wchmm->next_a[node] (%4.1f%% filled)\n", sizeof(LOGPROB) * wchmm->n, 100.0 * count2 / (float)wchmm->n);
+    jlog("STAT: %9d bytes: wchmm->ac[node] (%4.1f%% used)\n", sizeof(A_CELL2 *) * wchmm->n, 100.0 * count3 / (float)wchmm->n);
+  }
   jlog("STAT: %9d bytes: wchmm->stend[node]\n", sizeof(WORD_ID) * wchmm->n);
   {
     int w,count;

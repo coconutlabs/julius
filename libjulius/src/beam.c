@@ -46,7 +46,7 @@
  * Julian makes a per-category tree lexicon.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -125,7 +125,26 @@ generate_lattice(int frame, Recog *recog)
       new->lefttime = ta->begintime;
       new->righttime = ta->endtime;
       new->fscore_head = ta->backscore;
-      new->lscore = ta->lscore;
+      new->fscore_tail = 0.0;
+      new->gscore_head = 0.0;
+      new->gscore_tail = 0.0;
+      new->lscore_tmp = ta->lscore;
+#ifdef CM_SEARCH
+      new->cmscore = 0.0;
+#endif
+      new->forward_score = new->backward_score = 0.0;
+      new->headphone = winfo->wseq[ta->wid][0];
+      new->tailphone = winfo->wseq[ta->wid][winfo->wlen[ta->wid]-1];
+
+      new->leftwordmaxnum = FANOUTSTEP;
+      new->leftword = (WordGraph **)mymalloc(sizeof(WordGraph *) * new->leftwordmaxnum);
+      new->left_lscore = (LOGPROB *)mymalloc(sizeof(LOGPROB) * new->leftwordmaxnum);
+      new->leftwordnum = 0;
+      new->rightwordmaxnum = FANOUTSTEP;
+      new->rightword = (WordGraph **)mymalloc(sizeof(WordGraph *) * new->rightwordmaxnum);
+      new->right_lscore = (LOGPROB *)mymalloc(sizeof(LOGPROB) * new->rightwordmaxnum);
+      new->rightwordnum = 0;
+
       l = ta->backscore;
       if (ta->last_tre->wid != WORD_INVALID) {
 	l -= ta->last_tre->backscore;
@@ -133,11 +152,40 @@ generate_lattice(int frame, Recog *recog)
       l -= ta->lscore;
       new->amavg = l / (float)(ta->endtime - ta->begintime + 1);
 
+#ifdef GRAPHOUT_DYNAMIC
+      new->purged = FALSE;
+#endif
+      new->saved = FALSE;
+      new->graph_cm = 0.0;
+      new->mark = FALSE;
+
       new->next = recog->result.wg1;
       recog->result.wg1 = new;
 
       /* recursive call */
       generate_lattice(ta->last_tre->endtime, recog);
+    }
+  }
+}
+
+void
+link_lattice_by_time(WordGraph *root)
+{
+  WordGraph *wg;
+  WordGraph *wtmp;
+  int lefttime, righttime;
+  
+  for(wg=root;wg;wg=wg->next) {
+    
+    for(wtmp=root;wtmp;wtmp=wtmp->next) {
+      if (wg->righttime + 1 == wtmp->lefttime) {
+	wordgraph_check_and_add_leftword(wtmp, wg, wtmp->lscore_tmp);
+	wordgraph_check_and_add_rightword(wg, wtmp, wtmp->lscore_tmp);
+      }
+      if (wtmp->righttime + 1 == wg->lefttime) {
+	wordgraph_check_and_add_leftword(wg, wtmp, wg->lscore_tmp);
+	wordgraph_check_and_add_rightword(wtmp, wg, wg->lscore_tmp);
+      }
     }
   }
 }
@@ -426,8 +474,12 @@ print_1pass_result(int framelen, Recog *recog)
   /* 単語トレリスから，ラティスを生成する */
   /* generate word graph from the word trellis */
   recog->result.wg1 = NULL;
+  recog->peseqlen = backtrellis->framelen;
   generate_lattice(last_time, recog);
+  link_lattice_by_time(recog->result.wg1);
   recog->result.wg1_num = wordgraph_sort_and_annotate_id(&(recog->result.wg1), recog);
+  /* compute graph CM by forward-backward processing */
+  graph_forward_backward(recog->result.wg1, recog);
   callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
   wordgraph_clean(&(recog->result.wg1));
 #endif
@@ -2908,7 +2960,7 @@ get_back_trellis_end(HTK_Param *param, Recog *recog)
     for (j = d->n_start; j <= d->n_end; j++) {
       tk = &(d->tlist[d->tl][d->tindex[d->tl][j]]);
       if (wchmm->stend[tk->node] != WORD_INVALID) {
-	save_trellis(recog->backtrellis, wchmm, tk, param->samplenum, FALSE);
+	save_trellis(recog->backtrellis, wchmm, tk, param->samplenum, TRUE);
       }
     }
 

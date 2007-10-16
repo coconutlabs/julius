@@ -11,7 +11,7 @@
  * @brief  Output recoginition result to standard output
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -53,6 +53,13 @@ myprintf(char *fmt, ...)
 #else
 #define myprintf printf
 #endif
+
+
+/**
+ * Assumed tty width for graph view output
+ * 
+ */
+#define TEXTWIDTH 70
 
 
 /**********************************************************************/
@@ -512,19 +519,42 @@ result_pass1_graph(Recog *recog, void *dummy)
 {
   WordGraph *wg;
   WORD_INFO *winfo;
-  winfo = recog->model->winfo;
   int n;
-  
+  int tw1, tw2, i;
+
+#ifdef CALLBACK_DEBUG
+  printf("<RESULT_GRAPH_PASS1>\n");
+#endif
+
+  winfo = recog->model->winfo;
+
+
   printf("--- begin wordgraph data pass1 ---\n");
 
-  n = 0;
+  /* debug: output all graph word info */
+  wordgraph_dump(stdout, recog->result.wg1, winfo);
+
   for(wg=recog->result.wg1;wg;wg=wg->next) {
-    myprintf("%d: [%d..%d] wid=%d name=\"%s\" lname=\"%s\" score=%f",
-	     n, wg->lefttime, wg->righttime, wg->wid, winfo->woutput[wg->wid], winfo->wname[wg->wid], wg->fscore_head);
-    printf(" lscore=%f", wg->lscore);
-    printf(" AMavg=%f\n", wg->amavg);
-    n++;
+    tw1 = (TEXTWIDTH * wg->lefttime) / recog->peseqlen;
+    tw2 = (TEXTWIDTH * wg->righttime) / recog->peseqlen;
+    printf("%4d:", wg->id);
+    for(i=0;i<tw1;i++) printf(" ");
+    myprintf(" %s\n", winfo->woutput[wg->wid]);
+    printf("%4d:", wg->lefttime);
+    for(i=0;i<tw1;i++) printf(" ");
+    printf("|");
+    for(i=tw1+1;i<tw2;i++) printf("-");
+    printf("|\n");
   }
+/* 
+ *   for(wg=recog->result.wg1;wg;wg=wg->next) {
+ *     myprintf("%d: [%d..%d] wid=%d name=\"%s\" lname=\"%s\" score=%f",
+ *		n, wg->lefttime, wg->righttime, wg->wid, winfo->woutput[wg->wid], winfo->wname[wg->wid], wg->fscore_head);
+ *     printf(" lscore=%f", wg->lscore);
+ *     printf(" AMavg=%f\n", wg->amavg);
+ *     n++;
+ *   }
+ */
   printf("--- end wordgraph data pass1 ---\n");
 }
 #endif

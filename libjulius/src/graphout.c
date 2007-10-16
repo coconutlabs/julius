@@ -11,7 +11,7 @@
  * @brief  Output results in word graph format.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -2275,6 +2275,7 @@ graph_forward_backward(WordGraph *root, Recog *recog)
   sum1 = LOG_ZERO;
   for(i=0;i<count;i++) {
     wg = wlist[i];
+    printf("aaa %d %d\n", wg->righttime, recog->peseqlen);
     if (wg->righttime == recog->peseqlen - 1) {
       /* set initial score */
       wg->forward_score = 0.0;

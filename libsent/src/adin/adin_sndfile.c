@@ -60,7 +60,7 @@
  * @sa http://www.mega-nerd.com/libsndfile/
  * </EN>
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -119,68 +119,68 @@ static void
 print_format(SF_INFO *s)
 {
   switch(s->format & SF_FORMAT_TYPEMASK) {
-  case SF_FORMAT_WAV:    jlog("Stat: adin_sndfile: input format = Microsoft WAV"); break;
-  case SF_FORMAT_AIFF:   jlog("Stat: adin_sndfile: input format = Apple/SGI AIFF"); break;
-  case SF_FORMAT_AU:     jlog("Stat: adin_sndfile: input format = Sun/NeXT AU"); break;
+  case SF_FORMAT_WAV:    jlog("Stat: adin_sndfile: input format = Microsoft WAV\n"); break;
+  case SF_FORMAT_AIFF:   jlog("Stat: adin_sndfile: input format = Apple/SGI AIFF\n"); break;
+  case SF_FORMAT_AU:     jlog("Stat: adin_sndfile: input format = Sun/NeXT AU\n"); break;
 #ifndef HAVE_LIBSNDFILE_VER1
-  case SF_FORMAT_AULE:   jlog("Stat: adin_sndfile: input format = DEC AU"); break;
+  case SF_FORMAT_AULE:   jlog("Stat: adin_sndfile: input format = DEC AU\n"); break;
 #endif
-  case SF_FORMAT_RAW:    jlog("Stat: adin_sndfile: input format = RAW"); break;
-  case SF_FORMAT_PAF:    jlog("Stat: adin_sndfile: input format = Ensoniq PARIS"); break;
-  case SF_FORMAT_SVX:    jlog("Stat: adin_sndfile: input format = Amiga IFF / SVX8 / SV16"); break;
-  case SF_FORMAT_NIST:   jlog("Stat: adin_sndfile: input format = Sphere NIST"); break;
+  case SF_FORMAT_RAW:    jlog("Stat: adin_sndfile: input format = RAW\n"); break;
+  case SF_FORMAT_PAF:    jlog("Stat: adin_sndfile: input format = Ensoniq PARIS\n"); break;
+  case SF_FORMAT_SVX:    jlog("Stat: adin_sndfile: input format = Amiga IFF / SVX8 / SV16\n"); break;
+  case SF_FORMAT_NIST:   jlog("Stat: adin_sndfile: input format = Sphere NIST\n"); break;
 #ifdef HAVE_LIBSNDFILE_VER1
-  case SF_FORMAT_VOC:	 jlog("Stat: adin_sndfile: input format = VOC file"); break;
-  case SF_FORMAT_IRCAM:  jlog("Stat: adin_sndfile: input format = Berkeley/IRCAM/CARL"); break;
-  case SF_FORMAT_W64:	 jlog("Stat: adin_sndfile: input format = Sonic Foundry's 64bit RIFF/WAV"); break;
-  case SF_FORMAT_MAT4:   jlog("Stat: adin_sndfile: input format = Matlab (tm) V4.2 / GNU Octave 2.0"); break;
-  case SF_FORMAT_MAT5:   jlog("Stat: adin_sndfile: input format = Matlab (tm) V5.0 / GNU Octave 2.1"); break;
+  case SF_FORMAT_VOC:	 jlog("Stat: adin_sndfile: input format = VOC file\n"); break;
+  case SF_FORMAT_IRCAM:  jlog("Stat: adin_sndfile: input format = Berkeley/IRCAM/CARL\n"); break;
+  case SF_FORMAT_W64:	 jlog("Stat: adin_sndfile: input format = Sonic Foundry's 64bit RIFF/WAV\n"); break;
+  case SF_FORMAT_MAT4:   jlog("Stat: adin_sndfile: input format = Matlab (tm) V4.2 / GNU Octave 2.0\n"); break;
+  case SF_FORMAT_MAT5:   jlog("Stat: adin_sndfile: input format = Matlab (tm) V5.0 / GNU Octave 2.1\n"); break;
 #endif
-  default: jlog("Stat: adin_sndfile: input format = UNKNOWN TYPE"); break;
+  default: jlog("Stat: adin_sndfile: input format = UNKNOWN TYPE\n"); break;
   }
   switch(s->format & SF_FORMAT_SUBMASK) {
 #ifdef HAVE_LIBSNDFILE_VER1
-  case SF_FORMAT_PCM_U8:    jlog("Stat: adin_sndfile: input type = Unsigned 8 bit PCM"); break;
-  case SF_FORMAT_PCM_S8:    jlog("Stat: adin_sndfile: input type = Signed 8 bit PCM"); break;
-  case SF_FORMAT_PCM_16:    jlog("Stat: adin_sndfile: input type = Signed 16 bit PCM"); break;
-  case SF_FORMAT_PCM_24:    jlog("Stat: adin_sndfile: input type = Signed 24 bit PCM"); break;
-  case SF_FORMAT_PCM_32:    jlog("Stat: adin_sndfile: input type = Signed 32 bit PCM"); break;
-  case SF_FORMAT_FLOAT:     jlog("Stat: adin_sndfile: input type = 32bit float"); break;
-  case SF_FORMAT_DOUBLE:    jlog("Stat: adin_sndfile: input type = 64bit float"); break;
-  case SF_FORMAT_ULAW:      jlog("Stat: adin_sndfile: input type = U-Law"); break;
-  case SF_FORMAT_ALAW:      jlog("Stat: adin_sndfile: input type = A-Law"); break;
-  case SF_FORMAT_IMA_ADPCM: jlog("Stat: adin_sndfile: input type = IMA ADPCM"); break;
-  case SF_FORMAT_MS_ADPCM:  jlog("Stat: adin_sndfile: input type = Microsoft ADPCM"); break;
-  case SF_FORMAT_GSM610:    jlog("Stat: adin_sndfile: input type = GSM 6.10, "); break;
-  case SF_FORMAT_G721_32:   jlog("Stat: adin_sndfile: input type = 32kbs G721 ADPCM"); break;
-  case SF_FORMAT_G723_24:   jlog("Stat: adin_sndfile: input type = 24kbs G723 ADPCM"); break;
-  case SF_FORMAT_G723_40:   jlog("Stat: adin_sndfile: input type = 40kbs G723 ADPCM"); break;
+  case SF_FORMAT_PCM_U8:    jlog("Stat: adin_sndfile: input type = Unsigned 8 bit PCM\n"); break;
+  case SF_FORMAT_PCM_S8:    jlog("Stat: adin_sndfile: input type = Signed 8 bit PCM\n"); break;
+  case SF_FORMAT_PCM_16:    jlog("Stat: adin_sndfile: input type = Signed 16 bit PCM\n"); break;
+  case SF_FORMAT_PCM_24:    jlog("Stat: adin_sndfile: input type = Signed 24 bit PCM\n"); break;
+  case SF_FORMAT_PCM_32:    jlog("Stat: adin_sndfile: input type = Signed 32 bit PCM\n"); break;
+  case SF_FORMAT_FLOAT:     jlog("Stat: adin_sndfile: input type = 32bit float\n"); break;
+  case SF_FORMAT_DOUBLE:    jlog("Stat: adin_sndfile: input type = 64bit float\n"); break;
+  case SF_FORMAT_ULAW:      jlog("Stat: adin_sndfile: input type = U-Law\n"); break;
+  case SF_FORMAT_ALAW:      jlog("Stat: adin_sndfile: input type = A-Law\n"); break;
+  case SF_FORMAT_IMA_ADPCM: jlog("Stat: adin_sndfile: input type = IMA ADPCM\n"); break;
+  case SF_FORMAT_MS_ADPCM:  jlog("Stat: adin_sndfile: input type = Microsoft ADPCM\n"); break;
+  case SF_FORMAT_GSM610:    jlog("Stat: adin_sndfile: input type = GSM 6.10, \n"); break;
+  case SF_FORMAT_G721_32:   jlog("Stat: adin_sndfile: input type = 32kbs G721 ADPCM\n"); break;
+  case SF_FORMAT_G723_24:   jlog("Stat: adin_sndfile: input type = 24kbs G723 ADPCM\n"); break;
+  case SF_FORMAT_G723_40:   jlog("Stat: adin_sndfile: input type = 40kbs G723 ADPCM\n"); break;
 #else
-  case SF_FORMAT_PCM:       jlog("Stat: adin_sndfile: input type = PCM"); break;
-  case SF_FORMAT_FLOAT:     jlog("Stat: adin_sndfile: input type = floats"); break;
-  case SF_FORMAT_ULAW:      jlog("Stat: adin_sndfile: input type = U-Law"); break;
-  case SF_FORMAT_ALAW:      jlog("Stat: adin_sndfile: input type = A-Law"); break;
-  case SF_FORMAT_IMA_ADPCM: jlog("Stat: adin_sndfile: input type = IMA ADPCM"); break;
-  case SF_FORMAT_MS_ADPCM:  jlog("Stat: adin_sndfile: input type = Microsoft ADPCM"); break;
-  case SF_FORMAT_PCM_BE:    jlog("Stat: adin_sndfile: input type = Big endian PCM"); break;
-  case SF_FORMAT_PCM_LE:    jlog("Stat: adin_sndfile: input type = Little endian PCM"); break;
-  case SF_FORMAT_PCM_S8:    jlog("Stat: adin_sndfile: input type = Signed 8 bit PCM"); break;
-  case SF_FORMAT_PCM_U8:    jlog("Stat: adin_sndfile: input type = Unsigned 8 bit PCM"); break;
-  case SF_FORMAT_SVX_FIB:   jlog("Stat: adin_sndfile: input type = SVX Fibonacci Delta"); break;
-  case SF_FORMAT_SVX_EXP:   jlog("Stat: adin_sndfile: input type = SVX Exponential Delta"); break;
-  case SF_FORMAT_GSM610:    jlog("Stat: adin_sndfile: input type = GSM 6.10, "); break;
-  case SF_FORMAT_G721_32:   jlog("Stat: adin_sndfile: input type = 32kbs G721 ADPCM"); break;
-  case SF_FORMAT_G723_24:   jlog("Stat: adin_sndfile: input type = 24kbs G723 ADPCM"); break;
+  case SF_FORMAT_PCM:       jlog("Stat: adin_sndfile: input type = PCM\n"); break;
+  case SF_FORMAT_FLOAT:     jlog("Stat: adin_sndfile: input type = floats\n"); break;
+  case SF_FORMAT_ULAW:      jlog("Stat: adin_sndfile: input type = U-Law\n"); break;
+  case SF_FORMAT_ALAW:      jlog("Stat: adin_sndfile: input type = A-Law\n"); break;
+  case SF_FORMAT_IMA_ADPCM: jlog("Stat: adin_sndfile: input type = IMA ADPCM\n"); break;
+  case SF_FORMAT_MS_ADPCM:  jlog("Stat: adin_sndfile: input type = Microsoft ADPCM\n"); break;
+  case SF_FORMAT_PCM_BE:    jlog("Stat: adin_sndfile: input type = Big endian PCM\n"); break;
+  case SF_FORMAT_PCM_LE:    jlog("Stat: adin_sndfile: input type = Little endian PCM\n"); break;
+  case SF_FORMAT_PCM_S8:    jlog("Stat: adin_sndfile: input type = Signed 8 bit PCM\n"); break;
+  case SF_FORMAT_PCM_U8:    jlog("Stat: adin_sndfile: input type = Unsigned 8 bit PCM\n"); break;
+  case SF_FORMAT_SVX_FIB:   jlog("Stat: adin_sndfile: input type = SVX Fibonacci Delta\n"); break;
+  case SF_FORMAT_SVX_EXP:   jlog("Stat: adin_sndfile: input type = SVX Exponential Delta\n"); break;
+  case SF_FORMAT_GSM610:    jlog("Stat: adin_sndfile: input type = GSM 6.10, \n"); break;
+  case SF_FORMAT_G721_32:   jlog("Stat: adin_sndfile: input type = 32kbs G721 ADPCM\n"); break;
+  case SF_FORMAT_G723_24:   jlog("Stat: adin_sndfile: input type = 24kbs G723 ADPCM\n"); break;
 #endif
-  default: jlog("Stat: adin_sndfile: input type = UNKNOWN SUBTYPE"); break;
+  default: jlog("Stat: adin_sndfile: input type = UNKNOWN SUBTYPE\n"); break;
   }
 
 #ifdef HAVE_LIBSNDFILE_VER1
   switch(s->format & SF_FORMAT_ENDMASK) {
-  case SF_ENDIAN_FILE:      jlog("Stat: adin_sndfile: endian = file native endian"); break;
-  case SF_ENDIAN_LITTLE:    jlog("Stat: adin_sndfile: endian = forced little endian"); break;
-  case SF_ENDIAN_BIG:       jlog("Stat: adin_sndfile: endian = forced big endian"); break;
-  case SF_ENDIAN_CPU:       jlog("Stat: adin_sndfile: endian = forced CPU native endian"); break;
+  case SF_ENDIAN_FILE:      jlog("Stat: adin_sndfile: endian = file native endian\n"); break;
+  case SF_ENDIAN_LITTLE:    jlog("Stat: adin_sndfile: endian = forced little endian\n"); break;
+  case SF_ENDIAN_BIG:       jlog("Stat: adin_sndfile: endian = forced big endian\n"); break;
+  case SF_ENDIAN_CPU:       jlog("Stat: adin_sndfile: endian = forced CPU native endian\n"); break;
   }
   jlog("Stat: adin_sndfile: %d Hz, %d channels\n", s->samplerate, s->channels);
 #else
@@ -230,7 +230,6 @@ adin_sndfile_standby(int freq, void *arg)
 boolean
 adin_sndfile_begin()
 {
-  char *speechfilename;
   boolean readp;
 
   /* ready to read next input */

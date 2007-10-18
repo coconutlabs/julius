@@ -11,7 +11,7 @@
  * @brief  Output results in word graph format.
  * </EN>
  * 
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -1117,6 +1117,7 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
       for(i=0;i<wg->rightwordnum;i++) {
 	if (wg->rightword[i]->mark == FALSE) {
 	  if (dst != i) {
+	    wg->rightword[dst] = wg->rightword[i];
 	    wg->right_lscore[dst] = wg->right_lscore[i];
 	  }
 	  dst++;

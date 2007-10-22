@@ -46,7 +46,7 @@
  * Julian makes a per-category tree lexicon.
  * </EN>
  * 
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -199,10 +199,10 @@ re_compute_lattice_lm(WordGraph *root, WCHMM_INFO *wchmm)
   
   for(wg=root;wg;wg=wg->next) {
     for(i=0;i<wg->leftwordnum;i++) {
-      wg->left_lscoire[i] = (*(wchmm->ngram->bigram_prob))(ngram, wchmm->winfo->wton[wg->leftword[i]], wchmm->winfo->wton[wg->wid]);
+      wg->left_lscoire[i] = (*(wchmm->ngram->bigram_prob))(ngram, wchmm->winfo->wton[wg->leftword[i]->wid], wchmm->winfo->wton[wg->wid]);
     }
     for(i=0;i<wg->rightwordnum;i++) {
-      wg->right_lscoire[i] = (*(wchmm->ngram->bigram_prob))(ngram, wchmm->winfo->wton[wg->wid], wchmm->winfo->wton[wg->rightword[i]]);
+      wg->right_lscoire[i] = (*(wchmm->ngram->bigram_prob))(ngram, wchmm->winfo->wton[wg->wid], wchmm->winfo->wton[wg->rightword[i]->wid]);
     }
   }
 

@@ -46,7 +46,7 @@
  * Julian makes a per-category tree lexicon.
  * </EN>
  * 
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -188,7 +188,24 @@ link_lattice_by_time(WordGraph *root)
       }
     }
   }
+
 }
+
+/* re-compute 2-gram prob for all link */
+void
+re_compute_lattice_lm(WordGraph *root, WCHMM_INFO *wchmm)
+{
+  int i;
+  
+  for(wg=root;wg;wg=wg->next) {
+    for(i=0;i<wg->leftwordnum;i++) {
+      wg->left_lscoire[i] = (*(wchmm->ngram->bigram_prob))(ngram, wchmm->winfo->wton[wg->leftword[i]], wchmm->winfo->wton[wg->wid]);
+    }
+    for(i=0;i<wg->rightwordnum;i++) {
+      wg->right_lscoire[i] = (*(wchmm->ngram->bigram_prob))(ngram, wchmm->winfo->wton[wg->wid], wchmm->winfo->wton[wg->rightword[i]]);
+    }
+  }
+
 #endif
 
 /** 
@@ -477,6 +494,7 @@ print_1pass_result(int framelen, Recog *recog)
   recog->peseqlen = backtrellis->framelen;
   generate_lattice(last_time, recog);
   link_lattice_by_time(recog->result.wg1);
+  if (recog->lmtype == LM_PROB) re_compute_lattice_lm(recog->result.wg1, recog->wchmm);
   recog->result.wg1_num = wordgraph_sort_and_annotate_id(&(recog->result.wg1), recog);
   /* compute graph CM by forward-backward processing */
   graph_forward_backward(recog->result.wg1, recog);

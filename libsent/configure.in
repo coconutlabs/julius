@@ -3,7 +3,7 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl  $Id: configure.in,v 1.1 2007/09/28 02:50:55 sumomo Exp $
+dnl  $Id: configure.in,v 1.2 2007/10/26 14:38:32 sumomo Exp $
 dnl
 
 dnl Process this file with autoconf to produce a configure script.
@@ -152,7 +152,10 @@ if test "$with_mictype" = auto; then
 	;;
   freebsd*)
 	# FreeBSD (snd driver)
-	AC_TRY_CPP([#include <machine/soundcard.h>],altype=freebsd)
+	AC_TRY_CPP([#include <sys/soundcard.h>],altype=freebsd)
+	if test "$altype" = no; then
+	    AC_TRY_CPP([#include <machine/soundcard.h>],altype=freebsd)
+	fi
 	;;
   darwin*)
         # MacOSX (CoreAudio)
@@ -289,6 +292,10 @@ case $altype in
 	aldesc="FreeBSD snd driver"
 	ADINOBJ=src/adin/adin_mic_freebsd.o
 	AC_DEFINE(USE_MIC)
+	AC_CHECK_HEADERS(sys/soundcard.h,,
+	    AC_CHECK_HEADERS(machine/soundcard.h,,
+	        AC_MSG_ERROR([neither sys/soundcard.h nor machine/soundcard.h exist])
+		))
 	SOUNDLIB=""
 	;;
     coreaudio)

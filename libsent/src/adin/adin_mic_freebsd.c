@@ -38,7 +38,7 @@
  * Tested on FreeBSD 3.2-RELEASE with snd driver.
  * </EN>
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -61,7 +61,11 @@
 #include <poll.h>
 
 /* sound header */
+#ifdef HAVE_SYS_SOUNDCARD_H
+#include <sys/soundcard.h>
+#elif HAVE_MACHINE_SOUNDCARD_H
 #include <machine/soundcard.h>
+#endif
 
 /// Default device name, can be overridden by AUDIODEV environment variable
 #define DEFAULT_DEVICE "/dev/dsp"
@@ -107,7 +111,7 @@ adin_mic_standby(int sfreq, void *arg)
   /* check whether soundcard can record 16bit data */
   /* and set fmt */
   if (ioctl(audio_fd, SNDCTL_DSP_GETFMTS, &fmt_can) == -1) {
-    jlog("Error: adin_freebsd: failed to get formats from audio device\n")
+    jlog("Error: adin_freebsd: failed to get formats from audio device\n");
     return(FALSE);
   }
 #ifdef WORDS_BIGENDIAN

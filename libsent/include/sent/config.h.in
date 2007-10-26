@@ -32,7 +32,7 @@
  * @sa configure.in
  * </JA>
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  *
  */
 
@@ -122,3 +122,9 @@
 
 /* Define if use sin/cos table for MFCC calculation  */
 #undef MFCC_SINCOS_TABLE
+
+/* Define if <sys/soundcard.h> found in FreeBSD */
+#undef HAVE_SYS_SOUNDCARD_H
+
+/* Define if <machine/soundcard.h> found in FreeBSD */
+#undef HAVE_MACHINE_SOUNDCARD_H

@@ -12,7 +12,7 @@
  * @brief  Read word list from a file for isolated word recognition mode
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -126,10 +126,8 @@ voca_load_wordlist(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *head
   }
   winfo->num = vnum;
 
-  if (ok_flag) {
-    /* compute maxwn */
-    voca_set_stats(winfo);
-  } else {
+  voca_set_stats(winfo);
+  if (!ok_flag) {
     if (winfo->errph_root != NULL) list_error(winfo);
   }
 

@@ -18,7 +18,7 @@
  * triphone will be done here.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -249,9 +249,8 @@ voca_load_htkdict(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ign
   winfo->num = vnum;
 
   /* compute maxwn */
-  if (ok_flag) {
-    voca_set_stats(winfo);
-  } else {
+  voca_set_stats(winfo);
+  if (!ok_flag) {
     if (winfo->errph_root != NULL) list_error(winfo);
   }
 
@@ -294,9 +293,8 @@ voca_load_htkdict_fd(int fd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ig
   winfo->num = vnum;
 
   /* compute maxwn */
-  if (ok_flag) {
-    voca_set_stats(winfo);
-  } else {
+  voca_set_stats(winfo);
+  if (!ok_flag) {
     if (winfo->errph_root != NULL) list_error(winfo);
   }
 
@@ -338,9 +336,8 @@ voca_load_htkdict_sd(int sd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ig
   winfo->num = vnum;
   
   /* compute maxwn */
-  if (ok_flag) {
-    voca_set_stats(winfo);
-  } else {
+  voca_set_stats(winfo);
+  if (!ok_flag) {
     if (winfo->errph_root != NULL) list_error(winfo);
   }
   
@@ -372,10 +369,8 @@ voca_append_htkdict(char *entry, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolea
   strcpy(buf, entry);		/* const buffer not allowed in voca_load_htkdict_line() */
   voca_load_htkdict_line(buf, &(winfo->num), 1, winfo, hmminfo, do_conv, &ok_flag);
 
-  if (ok_flag) {
-    /* re-compute maxwn */
-    voca_set_stats(winfo);
-  } else {
+  voca_set_stats(winfo);
+  if (!ok_flag) {
     if (winfo->errph_root != NULL) list_error(winfo);
   }
 

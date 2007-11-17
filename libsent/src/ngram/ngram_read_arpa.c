@@ -19,7 +19,7 @@
  *
  * @sa ngram2.h
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -29,7 +29,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.1 2007/09/28 02:50:56 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.2 2007/11/17 06:01:44 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -52,6 +52,7 @@ get_total_info(FILE *fp, int num[])
   char *p;
   int n;
   int maxn;
+  int entry_num;
 
   maxn = 0;
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
@@ -64,9 +65,15 @@ get_total_info(FILE *fp, int num[])
 	jlog("Error: you can expand the limit by setting MAX_N in \"sent/ngram.h\"\n");
 	return -1;
       }
-      if (maxn < n) maxn = n;
       p = strtok(NULL, "=");
-      num[n-1] = atoi(p);
+      entry_num = atoi(p);
+      /* ignore empty entry */
+      if (entry_num == 0) {
+	jlog("Warning: empty %d-gram, skipped\n", n);
+      } else {
+	num[n-1] = entry_num;
+	if (maxn < n) maxn = n;
+      }
     }
   }
 

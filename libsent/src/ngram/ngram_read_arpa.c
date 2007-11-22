@@ -19,7 +19,7 @@
  *
  * @sa ngram2.h
  * 
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -29,7 +29,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.2 2007/11/17 06:01:44 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.3 2007/11/22 02:54:23 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -600,8 +600,8 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 	}
       }
     }
-    /* disable ct_compaction flag for reading ARPA data */
-    for(i=1;i<n;i++) {
+    /* disable ct_compaction flag while reading ARPA data */
+    for(i=0;i<n;i++) {
       ndata->d[i].ct_compaction = FALSE;
     }
     

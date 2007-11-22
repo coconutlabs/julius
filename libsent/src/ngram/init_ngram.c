@@ -11,7 +11,7 @@
  * @brief  Load N-gram file into memory and setup with word dictionary
  * </EN>
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -68,7 +68,7 @@ init_ngram_arpa(NGRAM_INFO *ndata, char *ngram_file, int dir)
   ndata->root = NULL;
   ndata->dir = dir;
 
-  jlog("Stat: init_ngram: reading in ARPA n-gram from %s as %s n-gram\n", ngram_file, (ndata->dir == DIR_LR) ? "forward" : "backward");
+  jlog("Stat: init_ngram: reading in ARPA %s n-gram from %s\n", (ndata->dir == DIR_LR) ? "forward" : "backward", ngram_file);
   /* read RL n-gram */
   if ((fp = fopen_readfile(ngram_file)) == NULL) {
     jlog("Error: init_ngram: failed to open \"%s\"\n", ngram_file);

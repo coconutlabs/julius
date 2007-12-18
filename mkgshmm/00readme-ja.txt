@@ -38,8 +38,8 @@ SEE ALSO
        julius(1)
 
 BUGS
-       バグ報告・問い合わせ・コメントなどは
-       julius-info at lists.sourceforge.jp までお願いします．
+       バグ報告・問い合わせ・コメント な ど は  julius-info  at  lists.source-
+       forge.jp までお願いします．
 
 VERSION
        This version is provided as part of Julius-3.5.1.

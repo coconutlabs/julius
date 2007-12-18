@@ -28,12 +28,12 @@ done
 
 echo julius/julius.man
 ./support/makeman.sh julius/julius.man
-mv julius/julius.man.txt julius/00readme-julius.txt
-mv julius/julius.man.txt.ja julius/00readme-julius-ja.txt
+mv julius/julius.man.txt julius/00readme.txt
+mv julius/julius.man.txt.ja julius/00readme-ja.txt
 
-echo julius/julian.man
-./support/makeman.sh julius/julian.man
-mv julius/julian.man.txt julius/00readme-julian.txt
-mv julius/julian.man.txt.ja julius/00readme-julian-ja.txt
+echo libjulius/jconf.man
+./support/makeman.sh libjulius/jconf.man
+mv libjulius/jconf.man.txt libjulius/00readme-jconf.txt
+mv libjulius/jconf.man.txt.ja libjulius/00readme-jconf-ja.txt
 
 echo Finished.

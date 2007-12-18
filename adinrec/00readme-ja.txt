@@ -52,9 +52,6 @@ BUGS
        バグ報告・問い合わせ・コメントなどは julius@lavender.ics.nitech.ac.jpま
        でお願いします．
 
-VERSION
-       This version was distributed with Julius-3.5.
-
 COPYRIGHT
        Copyright (c)   1991-2006 京都大学 河原研究室
        Copyright (c)   2000-2005 奈良先端科学技術大学院大学 鹿野研究室

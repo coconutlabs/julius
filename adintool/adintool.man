@@ -87,6 +87,12 @@ and
 .Ip "\-out stdout"
 Output to standard tty output in RAW, 16bit signed (big endian).
 .SH OPTIONS
+.Ip "\-server host[,host...]"
+Server(s) to connect with "-out adinnet".  With multiple server, port
+number for each host should be specified by comma-separated
+list. (default: 5530)
+.Ip "\-port num[,host...]"
+Port number to connect with "-out adinnet".  Should be correspond with "-server"
 .Ip "\-nosegment"
 Re-direct whole input speech data to output device, without speech
 detection and segmentation.  With this option, the output filename
@@ -95,6 +101,8 @@ does not have its four-digit ID appended.
 Record only the first speech segment.
 .Ip "\-freq threshold"
 Sampling frequency (Hz, default=16000)
+.Ip "\-48"
+Record in 48kHz, and down sampling to 16kHz.
 .Ip "\-lv threslevel"
 Level threshold (0-32767, default=2000)
 .Ip "\-zc zerocrossnum"
@@ -111,6 +119,16 @@ Disable skipping of invalid zero samples (default: enabled)
 Enable zero mean subtraction to remove DC offset.
 .Ip "\-raw"
 Output in RAW (no header) 16bit, big engian format (default: WAV)
+.Ip "\-autopause"
+Automatically pause at each input end.
+.Ip "\-loosesync"
+When connecting to multiple servers, avoid strict synchronization
+for server-side pause and resume command.
+.Ip "\-rewind msec"
+By default, adintool will ignore speech input while being paused by 
+server-side command.  This may be a problem if an input begins while
+paused and then adintool resumes before the input ends.  This option
+will send the last msec inputs before resuming.
 .SH "EXAMPLE"
 Record microphone input only for the speech-detected part in
 "data.0000.wav", "data.0001.wav", ...:
@@ -161,11 +179,11 @@ running on other host:
 .SH "SEE ALSO"
 julius(1), adinrec(1)
 .SH COPYRIGHT
-Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
 .br
-Copyright (c) 2001-2005 Shikano Lab., Nara Institute of Science and Technology
+Copyright (c) 2001-2007 Shikano Lab., Nara Institute of Science and Technology
 .br
-Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 .SH AUTHORS
 LEE Akinobu (Nagoya Institute of Technology, Japan)
 .br

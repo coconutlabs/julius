@@ -39,9 +39,6 @@ USAGE
 SEE ALSO
        julius(1)
 
-VERSION
-       This version is provided as part of Julius-3.5.1.
-
 COPYRIGHT
        Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
        Copyright (c) 2002-2005 Shikano Lab., Nara  Institute  of  Science  and

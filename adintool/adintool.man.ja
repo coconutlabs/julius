@@ -88,6 +88,12 @@ adinnet クライアントとなって，ネットワーク経由で adinnet サーバへ音声
 標準出力へ出力する．形式は RAW, 16bit signed (big endian) である．
 .PP
 .SH OPTIONS
+.Ip "\-server host[,host...]"
+"-out adinnet" で送信するサーバのホスト名を指定する．コンマ区切りで
+複数のサーバを指定可能．
+.Ip "\-port num[,host...]"
+"-out adinnet" で送信するサーバのポート番号．複数サーバ使用時は
+コンマ区切りで "-server"に対応させて全ての番号を指定すること． (default: 5530)
 .Ip "\-nosegment"
 入力音声に対して音声区間の検出を行わず，そのまま出力へリダイレクトする．
 ファイル出力の場合，ファイル名の末尾に4桁のIDは付与されなくなる．
@@ -95,6 +101,8 @@ adinnet クライアントとなって，ネットワーク経由で adinnet サーバへ音声
 入力開始後，一番最初の１音声区間のみを送信後，終了する．
 .Ip "\-freq threshold"
 サンプリング周波数．単位は Hz (default: 16000)
+.Ip "\-48"
+48kHzサンプリング後，16kHzにダウンサンプリングする．
 .Ip "\-lv threslevel"
 波形の振幅レベルのしきい値 (0 - 32767)．(default: 2000)．
 .Ip "\-zc zerocrossnum"
@@ -113,6 +121,17 @@ DC成分除去を行う．
 .Ip "\-raw"
 ファイル出力形式を RAW, 16bit signed (big endian) にする．
 デフォルトは WAV 形式である．
+.Ip "\-autopause"
+入力終了ごとに自動的に pause 状態に入る．
+.Ip "\-loosesync"
+複数サーバ接続時，複数サーバからの pause や resume コマンドに対して
+厳密な同期を行わないようにする．
+.Ip "\-rewind msec"
+通常，adintool は pause 中の入力を無視する．このため，pause中に入力が開始
+され，その入力が終了する前にサーバコマンドにより resume したときに
+極端に短い音声フラグメントが検出されることとなる．このオプションを
+指定することで，resume時に音声入力中の場合，入力を resume 時点から
+指定した長さだけ遡って送信する．
 .SH "EXAMPLE"
 マイクからの音声入力を，発話ごとに "data.0000.wav" から順に記録する：
 .PP

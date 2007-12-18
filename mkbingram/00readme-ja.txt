@@ -3,41 +3,48 @@ MKBINGRAM(1)                                                      MKBINGRAM(1)
 
 
 NAME
-       mkbingram - make binary N-gram from two arpa LMs
+       mkbingram - make binary N-gram from arpa N-gram file
 
 SYNOPSIS
-       mkbingram 2gram.arpa rev3gram.arpa bingram
+       mkbingram -nlr forward_ngram.arpa -nrl backward_ngram.arpa bingram
 
 DESCRIPTION
-       mkbingram  は，Julius で使用する言語モデルであるARPA形式の 2-gram と 逆
-       向き3-gram を １つのバイナリファイル に結合・変換するツールです．これを
-       使用することで， Juliusの起動を大幅に高速化することができます．
+       mkbingram は，ARPA形式の前向き/後向き N-gram をバイナリ形式のファイルに
+       結合・変換するツールです．これを使用することで，Juliusの起動を大幅に 高
+       速化することができます．
 
-       な お2gram と逆無き 3-gram は，同一のコーパスから同一の条件（カットオフ
-       値，バックオフ計算方法等）で学習されてあり，同一の語彙を持っている必 要
-       があります．
+       Rev.4.0   からは4-gram以上のN-gramも扱えるようになりました．上限値は 10
+       です．
+
+       前向きN-gramが "-nlr" で指定され，後向きN-gramが指定さ れ な い 場 合，
+       mkbingram は 前向きN-gramだけからバイナリN-gramを生成します．このバイナ
+       リN-gramを使うとき，Julius はその中の 2-gram を使って第1パスを行い，第2
+       パ スではその前向き確率から後向きの確率を，ベイズ則に従って算出しながら
+       認識を行います．
+
+       後向きN-gramが "-nrl" で指定され，前向きN-gramが指定さ れ な い 場 合，
+       mkbingramは後ろ向きN-gramだけからバイナリN-gramを生成します．このバイナ
+       リN-gramを使うとき，Julius はその中の後向き 2-gram からベイズ則に従って
+       算出しながら第1パスの認識を行い，第2パスでは後向き N-gramを使った認識を
+       行います．
+
+       両方が指定されたときは，前向きN-gram中の2-gramと後向きN-gramが統合さ れ
+       たバイナリN-gramが生成されます．Juliusではその前向き2-gramで第1パスを行
+       い，後向きN-gramで第2パスを行います．なお両 N-gram は同一のコーパスから
+       同 一の条件（カットオフ値，バックオフ計算方法等）で学習されてあり，同一
+       の語彙を持っている必要があります．
 
        mkbingram は gzip 圧縮された ARPA ファイルをそのまま読み込めます．
 
-       Julius のバージョン 3.5 以降に付属する mkbingram は，よりサイズの小さい
-       最適化されたバイナリN-gramを出力します．また，デフォルトのバイトオー ダ
-       も システムのバイトオーダを使用するようになりました（以前のバージョンは
-       big endian 固定）．
-
-       古いバージョンのバイナリN-gramも 3.5 以降の Julius で読み込めます．（そ
-       の 場合，読み込みながら新しいフォーマットへの最適化が行われます）あるい
-       は，新しい mkbingram -d で古いバイナリN-gramファイルを新しいフォー マッ
-       トに変換することもできます．
-
-       3.5 以降のJuliusに付属のmkbingramを使って変換したバイナリN-gramファイル
-       は， 3.4.2以前では読み込めませんのでご注意ください．
+       4.0以降のJuliusに付属のmkbingramを使って変換したバイナリN-gramファイ ル
+       は， 3.xでは読み込めませんのでご注意ください．
 
 OPTIONS
-       2gram.arpa
-              ARPA標準形式の単語 2-gram ファイル入力．
+       -nlr forward_ngram.arpa
+              ARPA標準形式の前向き単語 N-gram ファイル．
 
-       rev3gram.arpa
-              ARPA標準形式の逆向き単語 3-gram ファイル入力．
+       -nrl backward_ngram.arpa
+              ARPA標準形式の逆向き単語 N-gram ファイル．
 
        -d バイナリN-gram
               入力とするバイナリN-gramファイル（古いバイナリN-gramの再変換用）
@@ -48,7 +55,7 @@ OPTIONS
 EXAMPLE
        ARPA形式のN-gramをバイナリ形式に変換する：
 
-           % mkbingram ARPA_2gram ARPA_rev_3gram outfile
+           % mkbingram -nlr ARPA_2gram -nrl ARPA_rev_3gram outfile
 
        古いバイナリN-gramファイルを3.5以降の形式に変換する：
 
@@ -56,24 +63,21 @@ EXAMPLE
 
 
 USAGE
-       Julius   で言語モデル指定時に，元の ARPA 形式ファイルを "-nlr 2gramfile
-       -nrl rev3gramfile" とする代わりに mkbingram で変換したバイナリ形式 ファ
+       Julius で言語モデル指定時に，元の ARPA 形式ファイルを  "-nlr  2gramfile
+       -nrl  rev3gramfile" とする代わりに mkbingram で変換したバイナリ形式ファ
        イルを "-d bingramfile" と指定します．
 
 SEE ALSO
        julius(1)
 
 BUGS
-       バグ報告・問い合わせ・コメントなどは
-       julius-info at lists.sourceforge.jp までお願いします．
-
-VERSION
-       This version is provided as part of Julius-3.5.1.
+       バグ報告・問い合わせ・コメント な ど は  julius-info  at  lists.source-
+       forge.jp までお願いします．
 
 COPYRIGHT
-       Copyright (c) 1991-2006 京都大学 河原研究室
+       Copyright (c) 1991-2007 京都大学 河原研究室
        Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
-       Copyright (c) 2005-2006 名古屋工業大学 Julius開発チーム
+       Copyright (c) 2005-2007 名古屋工業大学 Julius開発チーム
 
 AUTHORS
        李 晃伸 (名古屋工業大学) が実装しました．

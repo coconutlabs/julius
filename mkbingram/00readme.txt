@@ -3,43 +3,56 @@ MKBINGRAM(1)                                                      MKBINGRAM(1)
 
 
 NAME
-       mkbingram - make binary N-gram from two arpa LMs
+       mkbingram - make binary N-gram from arpa N-gram file
 
 SYNOPSIS
-       mkbingram 2gram.arpa rev3gram.arpa bingram
+       mkbingram -nlr forward_ngram.arpa -nrl backward_ngram.arpa bingram
 
 DESCRIPTION
-       mkbingram  makes  a  binary N-gram file for Julius from word 2-gram and
-       reverse word 3-gram LMs in ARPA  standard  format.   Using  the  binary
-       file, the initial startup of Julius becomes much faster.
+       mkbingram  makes a binary N-gram file for Julius from forward (left-to-
+       right) word N-gram and/or backward (right-to-left) word N-gram  LMs  in
+       ARPA  standard  format.   Using the binary file, the initial startup of
+       Julius becomes much faster.
 
-       Note  that the word 2-gram and reverse word 3-gram should be trained in
-       the same corpus, same parameters (i.e. cut-off thresholds) and have the
-       same vocabulary.
+       From rev. 4.0, longer N-gram (N < 10) is supported.
+
+       When only a forward N-gram is specified by "-nlr" and  no  backward  N-
+       gram  is  specified,  mkbingram generates binary N-gram for recognition
+       with only the forward N-gram.  The 1st pass will use the  2-gram  entry
+       in  the  given N-gram, and The 2nd pass will use the given N-gram, with
+       converting forward probabilities to  backward  probabilities  by  Bayes
+       rule.
+
+       When  only  a  backward N-gram is specified by "-nrl" and no forward N-
+       gram is specified, mkbingram generates binary  N-gram  for  recognition
+       with  only  the  backward  N-gram.   The  1st pass will use the forward
+       2-gram probability computed from the backward 2-gram using Bayes  rule.
+       The 2nd pass fully use the given backward N-gram.
+
+       When  both  forward  and backward N-grams are specified, forward 2-gram
+       part and backward N-gram are  gathered  together  into  single  bingram
+       file,  to  use  the forward 2-gram for the 1st pass and backward N-gram
+       for the 2nd pass.  Note that both N-gram should be trained in the  same
+       corpus with same parameters (i.e. cut-off thresholds), with same vocab-
+       ulary.
 
        mkbingram can read gzipped ARPA file.
 
-       mkbingram  that  comes  with  Julius version 3.5 and later can generate
-       more size-optimized binary N-gram by using 24bit index instead of 32bit
-       and  2-gram  backoff data compression.  The byte order was also changed
-       from 3.5 to use the system's native order by default.
-
-       Although the old binary N-gram can be directly read by Julius, (in that
-       case  Julius  performs  on-line  conversion),  you can also update your
-       binary N-gram using mkbingram using -d option.
-
        Please note that binary N-gram file converted by mkbingram  of  version
-       3.5 and later cannot be read by Julius/Julian 3.4.2 and earlier.
+       4.0 and later cannot be read by Julius 3.x.
 
 OPTIONS
-       2gram.arpa
-              input word 2-gram file in ARPA standard format.
+       -nlr forward_ngram.arpa
+              Forward  (left-to-right)  word N-gram file in ARPA standard for-
+              mat.
 
-       rev3gram.arpa
-              input reverse word 3-gram in ARPA standard format.
+       -nrl backward_ngram.arpa
+              Backward (right-to-left) word N-gram file in ARPA standard  for-
+              mat.
 
        -d old_bingram
-              input binary N-gram file (for conversion from old format).
+              Read  in  an  old  binary N-gram file (for conversion to the new
+              format).
 
        bingram
               output binary N-gram file.
@@ -47,28 +60,21 @@ OPTIONS
 EXAMPLE
        Convert ARPA files to binary format:
 
-           % mkbingram ARPA_2gram ARPA_rev_3gram outfile
+           % mkbingram -nlr ARPA_2gram -nrl ARPA_rev_3gram outfile
 
        Convert old binary N-gram file to new format:
 
            % mkbingram -d old_bingram new_bingram
 
 
-USAGE
-       You can specify the generated binary N-gram file on Julius/Julian using
-       option "-d".
-
 SEE ALSO
        julius(1)
 
-VERSION
-       This version is provided as part of Julius-3.5.1.
-
 COPYRIGHT
-       Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+       Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
        Copyright (c) 2000-2005 Shikano Lab., Nara  Institute  of  Science  and
        Technology
-       Copyright  (c) 2005-2006 Julius project team, Nagoya Institute of Tech-
+       Copyright  (c) 2005-2007 Julius project team, Nagoya Institute of Tech-
        nology
 
 AUTHORS

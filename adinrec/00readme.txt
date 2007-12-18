@@ -43,9 +43,6 @@ SEE ALSO
        adintool(1),   julius(1),   sox(1),  wavplay(1),  wavrec(1),  aplay(1),
        arecord(1)
 
-VERSION
-       This version was distributed with Julius-3.5.
-
 COPYRIGHT
        Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
        Copyright (c) 2000-2005 Shikano Lab., Nara  Institute  of  Science  and

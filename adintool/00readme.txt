@@ -82,8 +82,17 @@ OUTPUT
               Output to standard tty output in RAW, 16bit signed (big endian).
 
 OPTIONS
+       -server host[,host...]
+              Server(s) to connect with "-out adinnet".  With multiple server,
+              port number for each host should be specified by comma-separated
+              list. (default: 5530)
+
+       -port num[,host...]
+              Port number to connect with "-out adinnet".   Should  be  corre-
+              spond with "-server"
+
        -nosegment
-              Re-direct whole input speech  data  to  output  device,  without
+              Re-direct  whole  input  speech  data  to output device, without
               speech detection and segmentation.  With this option, the output
               filename does not have its four-digit ID appended.
 
@@ -92,6 +101,8 @@ OPTIONS
 
        -freq threshold
               Sampling frequency (Hz, default=16000)
+
+       -48    Record in 48kHz, and down sampling to 16kHz.
 
        -lv threslevel
               Level threshold (0-32767, default=2000)
@@ -104,7 +115,7 @@ OPTIONS
               (default: 400)
 
        -tailmargin msec
-              Tail   margin   of  each  speech  segment  (unit:  milliseconds)
+              Tail  margin  of  each  speech  segment   (unit:   milliseconds)
               (default: 400)
 
        -nostrip
@@ -112,8 +123,22 @@ OPTIONS
 
        -zmean Enable zero mean subtraction to remove DC offset.
 
-       -raw   Output in RAW (no header) 16bit,  big  engian  format  (default:
+       -raw   Output  in  RAW  (no  header) 16bit, big engian format (default:
               WAV)
+
+       -autopause
+              Automatically pause at each input end.
+
+       -loosesync
+              When connecting to multiple servers, avoid  strict  synchroniza-
+              tion for server-side pause and resume command.
+
+       -rewind msec
+              By default, adintool will ignore speech input while being paused
+              by server-side command.  This may  be  a  problem  if  an  input
+              begins  while  paused and then adintool resumes before the input
+              ends.  This option will send the last msec inputs before  resum-
+              ing.
 
 EXAMPLE
        Record   microphone   input   only  for  the  speech-detected  part  in
@@ -162,14 +187,11 @@ EXAMPLE
 SEE ALSO
        julius(1), adinrec(1)
 
-VERSION
-       This version is provided as part of Julius-3.5.1.
-
 COPYRIGHT
-       Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
-       Copyright  (c)  2001-2005  Shikano  Lab., Nara Institute of Science and
+       Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+       Copyright  (c)  2001-2007  Shikano  Lab., Nara Institute of Science and
        Technology
-       Copyright (c) 2005-2006 Julius project team, Nagoya Institute of  Tech-
+       Copyright (c) 2005-2007 Julius project team, Nagoya Institute of  Tech-
        nology
 
 AUTHORS

@@ -11,7 +11,7 @@
 .TH JCONTROL 1 LOCAL
 .UC 6
 .SH NAME
-jcontrol - simple program to control Julius / Julian module via API
+jcontrol - simple program to control Julius module via API
 .SH SYNOPSIS
 .B jcontrol hostname [portnum]
 .SH DESCRIPTION
@@ -21,7 +21,7 @@ is a simple console program to control
 running on other host via network API.  It can send command to Julius,
 and receive messages from Julius.
 .PP
-When invoked, jcontrol tries to connect to Julius or Julian running in
+When invoked, jcontrol tries to connect to Julius running in
 "module mode" on specified hostname.  After connection established,
 jcontrol waits for user commands from standard input.
 .PP
@@ -51,37 +51,61 @@ just when recognition is running.  Specify one: "TERMINATE", "PAUSE", "WAIT"
 Return version number.
 .Ip "status"
 Return trigger status (active/sleep).
-.SH "GRAMMAR COMMANDS (Julian)"
-Below are Grammar-related command strings for Julian:
+.SH "COMMANDS (GRAMMAR)"
+Below are Grammar-related command strings:
 .Ip "changegram prefix"
 Change recognition grammar to "prefix.dfa" and "prefix.dict".
-All the current grammars used in Julian are deleted and replaced to
+All the current grammars used in Julius are deleted and replaced to
 the specifed grammar.
 .Ip "addgram prefix"
-tell Julian to use additional grammar "prefix.dfa" and "prefix.dict"
+tell Julius to use additional grammar "prefix.dfa" and "prefix.dict"
 for recognition.
 The specified grammars are added to the list of recognition grammars, 
 and then activated.
 .Ip "deletegram ID"
-tell Julian to delete grammar of the specified "ID". 
-The deleted grammar will be erased from Julian.
-The grammar "ID" is sent from Julian at each time grammar information
+tell Julius to delete grammar of the specified "ID". 
+The deleted grammar will be erased from Julius.
+The grammar "ID" is sent from Julius at each time grammar information
 has changed.
 .Ip "deactivategram ID"
-tell Julian to de-activate a grammar.  The specified grammar will become
+tell Julius to de-activate a grammar.  The specified grammar will become
 temporary OFF, and skipped from recognition process.  These de-activated
-grammars are kept in Julian, and can be activated by
+grammars are kept in Julius, and can be activated by
 "activategram" command.
 .Ip "activategram ID"
-tell Julian to activate previously de-activated grammar.
+tell Julius to activate previously de-activated grammar.
+.Ip "syncgram"
+tell Julius to update grammar status now.
+.SH "COMMANDS (PROCESS)"
+.Ip "listprocess"
+returns list of existing recognition process.
+.Ip "currentprocess name"
+switches the currently manipulating process to it.
+.Ip "shiftprocess"
+rotate the curenttly manipulating process.
+.Ip "addprocess jconffile"
+adds a set of LM process SR process to the running engine.  The jconf
+file should contain only one LM specification, and can be an
+accessible path at the server.  The new processes will have the name of
+the jconf file.
+.Ip "delprocess name"
+removes a SR process with specified name from
+engine.
+.Ip "activateprocess name"
+enables a SR process previously deactivated and turn it into live status.
+.Ip "deactivateprocess name"
+disables a specified SR process and turn it into dead status.
+.Ip "addword gram_id dictfile"
+Send words in the dictfile to engine and add them to the grammar
+specified by gram_id at current process.
 .SH "EXAMPLE"
-The dump messages from Julius / Julian are output to tty with prefix
+The dump messages from Julius are output to tty with prefix
 "> " appended to each line.
 .PP
 See related documents for more details.
 .PP
-(1) start Julius / Julian in module mode at host 'host'.
-    % julian -C xxx.jconf ... -input mic -module
+(1) start Julius in module mode at host 'host'.
+    % julius -C xxx.jconf ... -input mic -module
 .PP
 (2) (on other tty) start jcontrol, and start communication.
     % jcontrol host
@@ -101,15 +125,15 @@ See related documents for more details.
     ....
 
 .SH "SEE ALSO"
-julius(1), julian(1)
+julius(1)
 .SH VERSION
-This version is provided as part of Julius-3.5.1.
+This version is provided as part of Julius-4.0.
 .SH COPYRIGHT
-Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
+Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
 .br
 Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
 .br
-Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 .SH AUTHORS
 LEE Akinobu (Nagoya Institute of Technology, Japan)
 .br

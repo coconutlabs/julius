@@ -87,9 +87,18 @@ OUTPUT
 
 
 OPTIONS
+       -server host[,host...]
+              "-out adinnet" で送信するサーバのホスト名を指定する．コンマ区 切
+              りで複数のサーバを指定可能．
+
+       -port num[,host...]
+              "-out  adinnet" で送信するサーバのポート番号．複数サーバ使用時は
+              コンマ区切りで "-server"に対応させて全ての番号を指定する こ と．
+              (default: 5530)
+
        -nosegment
               入力音声に対して音声区間の検出を行わず，そのまま出力へリダイレク
-              ト する．ファイル出力の場合，ファイル名の末尾に4桁のIDは付与され
+              トする．ファイル出力の場合，ファイル名の末尾に4桁のIDは付与さ れ
               なくなる．
 
        -oneshot
@@ -97,6 +106,8 @@ OPTIONS
 
        -freq threshold
               サンプリング周波数．単位は Hz (default: 16000)
+
+       -48    48kHzサンプリング後，16kHzにダウンサンプリングする．
 
        -lv threslevel
               波形の振幅レベルのしきい値 (0 - 32767)．(default: 2000)．
@@ -111,13 +122,27 @@ OPTIONS
               音声区間終了部の直後のマージン．単位はミリ秒 (default: 400)
 
        -nostrip
-              無効な 0 サンプルの自動除去を行わないようにする．デフォルトは 自
+              無 効な 0 サンプルの自動除去を行わないようにする．デフォルトは自
               動除去を行う．
 
        -zmean DC成分除去を行う．
 
        -raw   ファイル出力形式を RAW, 16bit signed (big endian) にする．デフォ
               ルトは WAV 形式である．
+
+       -autopause
+              入力終了ごとに自動的に pause 状態に入る．
+
+       -loosesync
+              複 数サーバ接続時，複数サーバからの pause や resume コマンドに対
+              して厳密な同期を行わないようにする．
+
+       -rewind msec
+              通常，adintool は pause 中の入力を無視する．このため，pause中 に
+              入 力 が 開 始 さ れ，その入力が終了する前にサーバコマンドにより
+              resume したときに極端に短い音声フラグメントが検出されることと な
+              る．このオプションを指定することで，resume時に音声入力中の場合，
+              入力を resume 時点から指定した長さだけ遡って送信する．
 
 EXAMPLE
        マイクからの音声入力を，発話ごとに "data.0000.wav" から順に記録する：
@@ -162,11 +187,8 @@ SEE ALSO
        julius(1), adinrec(1)
 
 BUGS
-       バグ報告・問い合わせ・コメントなどは
-       julius-info at lists.sourceforge.jp までお願いします．
-
-VERSION
-       This version is provided as part of Julius-3.5.1.
+       バグ報告・問い合わせ・コメント な ど は  julius-info  at  lists.source-
+       forge.jp までお願いします．
 
 COPYRIGHT
        Copyright (c)   1991-2006 京都大学 河原研究室

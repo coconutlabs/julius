@@ -39,11 +39,8 @@ SEE ALSO
        julius(1)
 
 BUGS
-       バグ報告・問い合わせ・コメントなどは
-       julius-info at lists.sourceforge.jp までお願いします．
-
-VERSION
-       This version is provided as part of Julius-3.5.1.
+       バ グ 報 告・ 問 い 合わせ・コメントなどは julius-info at lists.source-
+       forge.jp までお願いします．
 
 COPYRIGHT
        Copyright (c) 2002-2006 京都大学 河原研究室

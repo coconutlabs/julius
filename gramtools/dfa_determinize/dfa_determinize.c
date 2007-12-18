@@ -1,11 +1,12 @@
 /**
  * @file   dfa_determinize.c
- * @author Akinobu Lee
- * @date   Wed Oct  4 17:42:16 2006
  * 
  * @brief  Determinize DFA for Julian grammar.
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Wed Oct  4 17:42:16 2006
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -200,7 +201,6 @@ determinize(DFA_INFO *dfa, FILE *fpout)
 {
   STATEQ *src, *stmp, *stest;
   STATEQ_ARC *sac;
-  int state;
   int i, t, tnum;
   DFA_ARC *ac;
   int *tlist;

@@ -1,7 +1,5 @@
 /**
  * @file   mfcc.h
- * @author Akinobu LEE
- * @date   Fri Feb 11 03:40:52 2005
  *
  * <JA>
  * @brief MFCC計算のための定義
@@ -26,7 +24,10 @@
  * @sa julius/wav2mfcc.c
  * @sa julius/realtime-1stpass.c
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 11 03:40:52 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 
@@ -42,6 +43,9 @@
 
 /// DEBUG: define if you want to enable debug messages for sin/cos table operation
 #undef MFCC_TABLE_DEBUG
+
+#define CPMAX 500		///< Maximum number of frames to store ceptral mean for realtime CMN update
+#define CPSTEP 5		///< allocate step of cmean list per sentence
 
 #include <sent/stddefs.h>
 #include <sent/htk_defs.h>
@@ -59,10 +63,12 @@
 #define DEF_ACCWIN      2	///< Default acceleration window size, corresponds to ACCWINDOW in HTK
 #define DEF_SILFLOOR    50.0	///< Default energy silence floor in dBs, corresponds to SILFLOOR in HTK
 #define DEF_ESCALE      1.0	///< Default scaling coefficient of log energy, corresponds to ESCALE in HTK
+
 #define DEF_SSALPHA     2.0	///< Default alpha coefficient for spectral subtraction
 #define DEF_SSFLOOR     0.5	///< Default flooring coefficient for spectral subtraction
 
-#define VALUE_VERSION 1	///< Integer version number of Value, for embedding
+/* version 2 ... ss_floor and ss_alpha removed */
+#define VALUE_VERSION 2	///< Integer version number of Value, for embedding
 
 /// mfcc configuration parameter values
 typedef struct {
@@ -81,8 +87,6 @@ typedef struct {
   int lopass;		///< Low frequency cut-off in fbank analysis, -1 if disabled, corresponds to LOFREQ in HTK
   int enormal;          ///< 1 if normalise raw energy, 0 if disabled, corresponds to ENORMALISE in HTK
   int raw_e;            ///< 1 if using raw energy, 0 if disabled, corresponds to RAWENERGY in HTK
-  float ss_alpha;	///< Alpha coefficient for spectral subtraction
-  float ss_floor;	///< Flooring coefficient for spectral subtraction
   int zmeanframe;	///< 1 if apply zero mean frame like ZMEANSOURCE in HTK
 
   /* items below does not need to be embedded, because they can be
@@ -149,16 +153,52 @@ typedef struct {
   int sintbl_wcep_len; ///< Length of above
 #endif /* MFCC_SINCOS_TABLE */
   float sqrt2var; ///< Work area that holds value of sqrt(2.0) / fbank_num
-  float *ssbuf;
-  int ssbuflen;
+  float *ssbuf;			///< Pointer to noise spectrum for SS
+  int ssbuflen;			///< length of @a ssbuf
+  float ss_floor;		///< flooring value for SS
+  float ss_alpha;		///< alpha scaling value for SS
 } MFCCWork;
 
+/**
+ * Structure to hold sentence sum of MFCC for realtime CMN
+ * 
+ */
+typedef struct {
+  float *mfcc_sum;		///< values of sum of MFCC parameters
+  int framenum;			///< summed number of frames
+} CMEAN;
+
+/**
+ * Work area for real-time CMN
+ * 
+ */
+typedef struct {
+  CMEAN *clist;		///< List of MFCC sum for previous inputs
+  int clist_max;		///< Allocated number of CMEAN in clist
+  int clist_num;		///< Currentlly filled CMEAN in clist
+  int dim;			///< Local workarea to store the number of MFCC dimension.
+  float cweight;		///< Weight of initial cepstral mean
+  float *cmean_init;	///< Initial cepstral mean for each input
+  boolean cmean_init_set;	///< TRUE if cmean_init was set
+  CMEAN now;		///< Work area to hold current cepstral mean
+} CMNWork;
+
+/**
+ * work area for energy normalization on real time input
+ * 
+ */
+typedef struct {
+  LOGPROB max_last;	///< Maximum energy value of last input
+  LOGPROB min_last;	///< Minimum floored energy value of last input
+  LOGPROB max;	///< Maximum energy value of current input
+} ENERGYWork;
+
 /**** mfcc-core.c ****/
-MFCCWork *WMP_work_new(Value para);
-void WMP_calc(MFCCWork *w, float *mfcc, Value para);
+MFCCWork *WMP_work_new(Value *para);
+void WMP_calc(MFCCWork *w, float *mfcc, Value *para);
 void WMP_free(MFCCWork *w);
 /* Get filterbank information */
-void InitFBank(MFCCWork *w, Value para);
+void InitFBank(MFCCWork *w, Value *para);
 void FreeFBank(FBankInfo *fb);
 /* Apply hamming window */
 void Hamming (float *wave, int framesize, MFCCWork *w);
@@ -169,27 +209,27 @@ float Mel(int k, float fres);
 /* Apply FFT */
 void FFT(float *xRe, float *xIm, int p, MFCCWork *w);
 /* Convert wave -> mel-frequency filterbank */
-void MakeFBank(float *wave, MFCCWork *w, Value para);
+void MakeFBank(float *wave, MFCCWork *w, Value *para);
 /* Apply the DCT to filterbank */ 
-void MakeMFCC(float *mfcc, Value para, MFCCWork *w);
+void MakeMFCC(float *mfcc, Value *para, MFCCWork *w);
 /* Calculate 0'th Cepstral parameter*/
-float CalcC0(MFCCWork *w, Value para);
+float CalcC0(MFCCWork *w, Value *para);
 /* Calculate Log Raw Energy */
 float CalcLogRawE(float *wave, int framesize);
 /* Zero Mean Souce by frame */
 void ZMeanFrame(float *wave, int framesize);
 /* Re-scale cepstral coefficients */
-void WeightCepstrum (float *mfcc, Value para, MFCCWork *w);
+void WeightCepstrum (float *mfcc, Value *para, MFCCWork *w);
 
 /**** wav2mfcc-buffer.c ****/
 /* Convert wave -> MFCC_E_D_(Z) (batch) */
-int Wav2MFCC(SP16 *wave, float **mfcc, Value para, int nSamples, MFCCWork *w);
+int Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w);
 /* Calculate delta coefficients (batch) */
-void Delta(float **c, int frame, Value para);
+void Delta(float **c, int frame, Value *para);
 /* Calculate acceleration coefficients (batch) */
-void Accel(float **c, int frame, Value para);
+void Accel(float **c, int frame, Value *para);
 /* Normalise log energy (batch) */
-void NormaliseLogE(float **c, int frame_num, Value para);
+void NormaliseLogE(float **c, int frame_num, Value *para);
 /* Cepstrum Mean Normalization (batch) */
 void CMN(float **mfcc, int frame_num, int dim);
 
@@ -199,20 +239,23 @@ void WMP_deltabuf_free(DeltaBuf *db);
 void WMP_deltabuf_prepare(DeltaBuf *db);
 boolean WMP_deltabuf_proceed(DeltaBuf *db, float *new_mfcc);
 boolean WMP_deltabuf_flush(DeltaBuf *db);
-void CMN_realtime_init(int dimension, float weight);
-void CMN_realtime_prepare();
-void CMN_realtime(float *mfcc, int dim);
-void CMN_realtime_update();
-boolean CMN_load_from_file(char *filename, int dim);
-boolean CMN_save_to_file(char *filename);
-void energy_max_init();
-void energy_max_prepare(Value *para);
-LOGPROB energy_max_normalize(LOGPROB f, Value *para);
+
+CMNWork *CMN_realtime_new(int dimension, float weight);
+void CMN_realtime_free(CMNWork *c);
+void CMN_realtime_prepare(CMNWork *c);
+void CMN_realtime(CMNWork *c, float *mfcc);
+void CMN_realtime_update(CMNWork *c);
+boolean CMN_load_from_file(CMNWork *c, char *filename);
+boolean CMN_save_to_file(CMNWork *c, char *filename);
+
+void energy_max_init(ENERGYWork *energy);
+void energy_max_prepare(ENERGYWork *energy, Value *para);
+LOGPROB energy_max_normalize(ENERGYWork *energy, LOGPROB f, Value *para);
 
 /**** ss.c ****/
 /* spectral subtraction */
 float *new_SS_load_from_file(char *filename, int *slen);
-float *new_SS_calculate(SP16 *wave, int wavelen, Value para, int *slen, MFCCWork *w);
+float *new_SS_calculate(SP16 *wave, int wavelen, int *slen, MFCCWork *w, Value *para);
 
 /**** para.c *****/
 void undef_para(Value *para);

@@ -1,7 +1,5 @@
 /**
  * @file   paramtypes.c
- * @author Akinobu LEE
- * @date   Tue Feb 15 00:06:26 2005
  *
  * <JA>
  * @brief  特徴パラメータ型の文字列表現とバイナリ表現の相互変換
@@ -16,13 +14,16 @@
  * between string (ex. "MFCC_E_D_Z") and internal binary format used in HTK.
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 15 00:06:26 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

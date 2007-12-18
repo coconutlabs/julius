@@ -1,7 +1,5 @@
 /**
  * @file   ngram_read_arpa.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 16:52:24 2005
  * 
  * <JA>
  * @brief  ARPA形式のN-gramファイルを読み込む
@@ -19,17 +17,20 @@
  *
  * @sa ngram2.h
  * 
- * $Revision: 1.3 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 16:52:24 2005
+ *
+ * $Revision: 1.4 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.3 2007/11/22 02:54:23 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.4 2007/12/18 08:45:54 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -44,7 +45,7 @@ static char pbuf[800];			///< Local buffer for error string
  * Set number of N-gram entries, for reading the first LR 2-gram.
  * 
  * @param fp [in] file pointer
- * @param ndata [out] N-gram data to set it.
+ * @param num [out] set the values to this buffer
  */
 static int
 get_total_info(FILE *fp, int num[])
@@ -505,6 +506,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
  * 
  * @param fp [in] file pointer
  * @param ndata [out] N-gram data to store the read data
+ * @param addition [in] TRUE if going to read additional 2-gram
  * 
  * @return TRUE on success, FALSE on failure.
  */

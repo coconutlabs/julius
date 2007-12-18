@@ -1,7 +1,5 @@
 /**
  * @file   adin_portaudio.c
- * @author Akinobu LEE
- * @date   Mon Feb 14 12:03:48 2005
  * 
  * <JA>
  * @brief  マイク入力 (portaudioライブラリ)
@@ -43,12 +41,15 @@
  * @sa http://www.portaudio.com/
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Mon Feb 14 12:03:48 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
  * Copyright (c) 2004-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -278,20 +279,12 @@ adin_mic_read(SP16 *buf, int sampnum)
     buffer_overflowed = FALSE;
   }
 
-  /* Since threaded detection in adin-cut() is not utilized in
-     portaudio i/o, this function should return immediately when
-     no new input is available in order not to block it */
-  if (current == processed) return 0;
-
-#if 0
-  /* waiting diabled */
   while (current == processed) {
 #ifdef DDEBUG
     printf("process  : current == processed: %d: wait\n", current);
 #endif
-    Pa_Sleep(MAX_FRAGMENT_MSEC); /* wait till some input comes */
+    Pa_Sleep(30); /* wait till some input comes */
   }
-#endif
 
   current_local = current;
 

@@ -1,372 +1,716 @@
 /**
  * @file   m_info.c
- * @author Akinobu Lee
- * @date   Thu May 12 14:14:01 2005
  * 
  * <JA>
- * @brief  起動時に認識システムの全情報を出力する．
+ * @brief  システム情報の出力
  * </JA>
  * 
  * <EN>
- * @brief  Output all information of recognition system to standard out.
+ * @brief  Output system informations.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Thu May 12 14:14:01 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include <julius/julius.h>
 
 /** 
- * <JA>
- * 読み込んだモデルファイル名を出力する．
- * 
- * </JA>
  * <EN>
- * Output all file names of the models.
- * 
+ * Output module overview in a global configuration variables to log.
  * </EN>
+ * <JA>
+ * 全体設定パラメータ内のモジュール構成の概要をログに出力する. 
+ * </JA>
+ * 
+ * @param jconf [in] global configuration variables
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-print_setting(Jconf *jconf)
+print_jconf_overview(Jconf *jconf)
 {
-#ifdef USE_NETAUDIO
-  char *p;
-#endif
+  JCONF_AM *amconf;
+  JCONF_LM *lmconf;
+  JCONF_SEARCH *sconf;
   GRAMLIST *g;
-  int n;
+  int i, n;
+
+  jlog("------------------------------------------------------------\n");
+  jlog("Configuration of Modules\n\n");
+  jlog(" Number of defined modules:");
+  i = 0; for(amconf=jconf->am_root;amconf;amconf=amconf->next) i++;
+  jlog(" AM=%d,", i);
+  i = 0; for(lmconf=jconf->lm_root;lmconf;lmconf=lmconf->next) i++;
+  jlog(" LM=%d,", i);
+  i = 0; for(sconf=jconf->search_root;sconf;sconf=sconf->next) i++;
+  jlog(" SR=%d\n", i);
   
-  jlog("    hmmfilename=%s\n",jconf->am.hmmfilename);
-  if (jconf->am.mapfilename != NULL) {
-    jlog("    hmmmapfilename=%s\n",jconf->am.mapfilename);
-  }
-
-  if (jconf->lmtype == LM_PROB) {
-    jlog("    vocabulary filename=%s\n",jconf->lm.dictfilename);
-    if (jconf->lm.ngram_filename != NULL) {
-      jlog("    n-gram  filename=%s (binary format)\n",jconf->lm.ngram_filename);
+  jlog("\n");
+  
+  jlog(" Acoustic Model (with input parameter spec.):\n");
+  for(amconf=jconf->am_root;amconf;amconf=amconf->next) {
+    if (amconf->name[0] != '\0') {
+      jlog(" - AM%02d \"%s\"\n", amconf->id, amconf->name);
     } else {
-      if (jconf->lm.ngram_filename_rl_arpa != NULL) {
-	jlog("    backward n-gram filename=%s\n",jconf->lm.ngram_filename_rl_arpa);
-	if (jconf->lm.ngram_filename_lr_arpa != NULL) {
-	  jlog("    forward 2-gram for pass1=%s\n",jconf->lm.ngram_filename_lr_arpa);
+      jlog(" - AM%02d\n", amconf->id);
+    }
+    jlog("\thmmfilename=%s\n",amconf->hmmfilename);
+    if (amconf->mapfilename != NULL) {
+      jlog("\thmmmapfilename=%s\n",amconf->mapfilename);
+    }
+    if (amconf->hmm_gs_filename != NULL) {
+      jlog("\thmmfile for Gaussian Selection: %s\n", amconf->hmm_gs_filename);
+    }
+  }
+  jlog("\n");
+  
+  jlog(" Language Model:\n");
+  for(lmconf=jconf->lm_root;lmconf;lmconf=lmconf->next) {
+    if (lmconf->name[0] != '\0') {
+      jlog(" - LM%02d \"%s\"\n", lmconf->id, lmconf->name);
+    } else {
+      jlog(" - LM%02d\n", lmconf->id);
+    }
+    if (lmconf->lmtype == LM_PROB) {
+      jlog("\tvocabulary filename=%s\n",lmconf->dictfilename);
+      if (lmconf->ngram_filename != NULL) {
+	jlog("\tn-gram  filename=%s (binary format)\n", lmconf->ngram_filename);
+      } else {
+	if (lmconf->ngram_filename_rl_arpa != NULL) {
+	  jlog("\tbackward n-gram filename=%s\n", lmconf->ngram_filename_rl_arpa);
+	  if (lmconf->ngram_filename_lr_arpa != NULL) {
+	    jlog("\tforward 2-gram for pass1=%s\n", lmconf->ngram_filename_lr_arpa);
+	  }
+	} else if (lmconf->ngram_filename_lr_arpa != NULL) {
+	  jlog("\tforward n-gram filename=%s\n", lmconf->ngram_filename_lr_arpa);
 	}
-      } else if (jconf->lm.ngram_filename_lr_arpa != NULL) {
-	jlog("    forward n-gram filename=%s\n",jconf->lm.ngram_filename_lr_arpa);
+      }
+    }
+    if (lmconf->lmtype == LM_DFA) {
+      switch(lmconf->lmvar) {
+      case LM_DFA_GRAMMAR:
+	n = 1;
+	for(g = lmconf->gramlist_root; g; g = g->next) {
+	  jlog("\tgrammar #%d:\n", n++);
+	  jlog("\t    dfa  = %s\n", g->dfafile);
+	  jlog("\t    dict = %s\n", g->dictfile);
+	}
+	break;
+      case LM_DFA_WORD:
+	n = 1;
+	for(g = lmconf->wordlist_root; g; g = g->next) {
+	  jlog("\twordlist #%d: %s\n", n++, g->dictfile);
+	}
+	break;
       }
     }
   }
-
-  if (jconf->lmtype == LM_DFA) {
-    switch(jconf->lmvar) {
-    case LM_DFA_GRAMMAR:
-      n = 1;
-      for(g = jconf->lm.gramlist_root; g; g = g->next) {
-	jlog("    grammar #%d:\n", n++);
-	jlog("        dfa  = %s\n", g->dfafile);
-	jlog("        dict = %s\n", g->dictfile);
-      }
-      break;
-    case LM_DFA_WORD:
-      n = 1;
-      for(g = jconf->lm.wordlist_root; g; g = g->next) {
-	jlog("    wordlist #%d: %s\n", n++, g->dictfile);
-      }
-      break;
+  jlog("\n");
+  jlog(" Recognizer:\n");
+  for(sconf=jconf->search_root; sconf; sconf=sconf->next) {
+    if (sconf->name[0] != '\0') {
+      jlog(" - SR%02d \"%s\"", sconf->id, sconf->name);
+    } else {
+      jlog(" - SR%02d", sconf->id);
     }
+    jlog(" (AM%02d, LM%02d)\n", sconf->amconf->id, sconf->lmconf->id);
   }
-
-  if (jconf->am.hmm_gs_filename != NULL) {
-    jlog("    hmmfile for Gaussian Selection: %s\n", jconf->am.hmm_gs_filename);
-  }
-  if (jconf->reject.gmm_filename != NULL) {
-    jlog("    GMM file for utterance verification: %s\n", jconf->reject.gmm_filename);
-  }
+  jlog("\n");
 }
+
+
 
 /** 
  * <JA>
- * 全てのシステム情報を出力する．
- * 
+ * エンジンインスタンスの全情報をログに出力する. 
  * </JA>
  * <EN>
- * Output full system information.
- * 
+ * Output all informations of an engine instance to log.
  * </EN>
+ *
+ * @param recog [in] engine instance
+ * 
+ * @callgraph
+ * @callergraph
  */
 void
-print_info(Recog *recog)
+print_engine_info(Recog *recog)
 {
-  Jconf *jconf;
-  Model *model;
   FILE *fp;
+  Jconf *jconf;
+  MFCCCalc *mfcc;
+  PROCESS_AM *am;
+  PROCESS_LM *lm;
+  RecogProcess *r;
 
+  jconf = recog->jconf;
+  
+  /* set output file pointer to fp */
   fp = jlog_get_fp();
   if (fp == NULL) return;
 
-
-  jconf = recog->jconf;
-  model = recog->model;
-
-  jlog("------------- System Info begin -------------\n");
+  jlog("----------------------- System Information begin ---------------------\n");
   j_put_header(fp);
-  if (verbose_flag) {
-    j_put_compile_defs(fp);
-    jlog("\n");
-    if (recog->lmtype == LM_PROB) {
-      switch(recog->lmvar) {
-      case LM_NGRAM:
-	jlog("Large Vocabulary Continuous Speech Recognition based on N-gram\n\n");
-	break;
-      case LM_NGRAM_USER:
-	jlog("Large Vocabulary Continuous Speech Recognition using user-supplied LC\n\n");
-	break;
-      }
-    } else if (recog->lmtype == LM_DFA) {
-      switch(recog->lmvar) {
-      case LM_DFA_GRAMMAR:
-	jlog("Continuous Speech Recognition Parser based on automaton grammar\n\n");
-	break;
-      case LM_DFA_WORD:
-	jlog("Continuous Speech Recognition Parser for Isolated Word Recognition\n\n");
-	break;
-      }
-    }
-  }
+  j_put_compile_defs(fp);
+  jlog("\n");
   
   /* print current argument setting to log */
-  jlog("Files:\n");
-  print_setting(jconf);
-  jlog("\n");
+  print_jconf_overview(jconf);
 
   /* for backward compatibility with scoring tool (IPA99)... :-( */
+#if 0
   if (jconf->input.speech_input == SP_RAWFILE) {
     jlog("Speech input source: file\n\n");
   } else if (jconf->input.speech_input == SP_MFCFILE) {
     jlog("Speech input source: MFCC parameter file (HTK format)\n\n");
   }
+#endif
 
   if (jconf->input.speech_input != SP_MFCFILE) {
 
-    put_para(fp, &jconf->analysis.para);
+    /* acoustic parameter conditions for this model */
+    jlog("------------------------------------------------------------\n");
+    jlog("Speech Analysis Module(s)\n\n");
+    
+    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
 
-    jlog("\t base setup from =");
-    if (jconf->analysis.para_htk.loaded == 1 || jconf->analysis.para_hmm.loaded == 1) {
-      if (jconf->analysis.para_hmm.loaded == 1) {
-	jlog(" binhmm-embedded");
-	if (jconf->analysis.para_htk.loaded == 1) {
-	  jlog(", then overridden by HTK Config and defaults");
+      jlog("[MFCC%02d]  for", mfcc->id);
+      for(am=recog->amlist;am;am=am->next) {
+	if (am->mfcc == mfcc) {
+	  jlog(" [AM%02d %s]", am->config->id, am->config->name);
+	}
+      }
+      if (recog->gmm != NULL) {
+	if (recog->gmmmfcc == mfcc) {
+	  jlog(" [GMM]");
+	}
+      }
+      jlog("\n\n");
+
+      put_para(fp, mfcc->para);
+
+      if (jconf->input.speech_input != SP_MFCFILE) {
+	jlog("    spectral subtraction = ");
+	if (mfcc->frontend.ssload_filename || mfcc->frontend.sscalc) {
+	  if (mfcc->frontend.sscalc) {
+	    jlog("use head silence of each input\n");
+	    jlog("\t     head sil length = %d msec\n", mfcc->frontend.sscalc_len);
+	  } else {			/* ssload_filename != NULL */
+	    jlog("use a constant value from file\n");
+	    jlog("         noise spectrum file = \"%s\"\n", mfcc->frontend.ssload_filename);
+	  }
+	  jlog("\t         alpha coef. = %f\n", mfcc->frontend.ss_alpha);
+	  jlog("\t      spectral floor = %f\n", mfcc->frontend.ss_floor);
+	} else {
+	  jlog("off\n");
+	}
+      }
+      jlog("     cepstral mean norm. = ");
+      if (mfcc->para->cmn) {
+	if (jconf->decodeopt.realtime_flag) {
+	  jlog("real-time MAP-CMN\n");
+	} else {
+	  jlog("sentence CMN\n");
 	}
       } else {
-	if (jconf->analysis.para_htk.loaded == 1) {
-	  jlog(" HTK Config (and HTK defaults)");
-	}
+	jlog("no\n");
       }
-    } else {
-      jlog(" Julius defaults");
-    }
-    jlog("\n");
-
-
-    jlog("    spectral subtraction = ");
-    if (jconf->frontend.ssload_filename || jconf->frontend.sscalc) {
-      if (jconf->frontend.sscalc) {
-	jlog("use head silence of each input\n");
-	jlog("\t head sil length = %d msec\n", jconf->frontend.sscalc_len);
-      } else {			/* ssload_filename != NULL */
-	jlog("use a constant value from file\n");
-	jlog("     noise spectrum file = \"%s\"\n", jconf->frontend.ssload_filename);
-      }
-      jlog("\t     alpha coef. = %f\n", jconf->analysis.para.ss_alpha);
-      jlog("\t  spectral floor = %f\n", jconf->analysis.para.ss_floor);
-    } else {
-      jlog("off\n");
-    }
-    jlog("\n");
-  }
-    
-  print_hmmdef_info(fp, model->hmminfo); jlog("\n");
-  if (jconf->am.hmm_gs_filename != NULL) {
-    jlog("GS ");
-    print_hmmdef_info(fp, model->hmm_gs); jlog("\n");
-  }
-  if (model->winfo != NULL) {
-    print_voca_info(fp, model->winfo); jlog("\n");
-  }
-  if (recog->wchmm != NULL) {
-    print_wchmm_info(recog->wchmm); jlog("\n");
-  }
-
-  if (recog->lmtype == LM_PROB) {
-    print_ngram_info(fp, model->ngram); jlog("\n");
-  } else if (recog->lmtype == LM_DFA && recog->lmvar == LM_DFA_GRAMMAR) {
-    if (model->dfa != NULL) {
-      print_dfa_info(fp, model->dfa); jlog("\n");
-      if (debug2_flag) print_dfa_cp(fp, model->dfa); jlog("\n");
-    }
-  }
-
-  if (recog->lmtype == LM_PROB) {
-    jlog("Inter-word N-gram cache: \n");
-    {
-      int num, len;
-#ifdef UNIGRAM_FACTORING
-      len = recog->wchmm->isolatenum;
-      jlog("\troot node to be cached = %d / %d (isolated only)\n",
-	       len, recog->wchmm->startnum);
-#else
-      len = recog->wchmm->startnum;
-      jlog("\troot node to be cached = %d (all)\n", len);
-#endif
-#ifdef HASH_CACHE_IW
-      num = (jconf->search.pass1.iw_cache_rate * ngram->max_word_num) / 100;
-      jlog("\tword ends to be cached = %d / %d\n", num, ngram->max_word_num);
-#else
-      num = model->ngram->max_word_num;
-      jlog("\tword ends to be cached = %d (all)\n", num);
-#endif
-      jlog("\t  max. allocation size = %dMB\n", num * len / 1000 * sizeof(LOGPROB) / 1000);
-    }
-  }
-
-  jlog("\nLikelihood weights and special words: \n");
-
-  if (recog->lmtype == LM_PROB) {
-    jlog("\t(-lmp)  pass1 LM weight = %2.1f  ins. penalty = %+2.1f\n", jconf->lm.lm_weight, jconf->lm.lm_penalty);
-    jlog("\t(-lmp2) pass2 LM weight = %2.1f  ins. penalty = %+2.1f\n", jconf->lm.lm_weight2, jconf->lm.lm_penalty2);
-    jlog("\t(-transp)trans. penalty = %+2.1f per word\n", jconf->lm.lm_penalty_trans);
-    jlog("\t(-silhead)head sil word = ");
-    put_voca(fp, model->winfo, model->winfo->head_silwid);
-    jlog("\t(-siltail)tail sil word = ");
-    put_voca(fp, model->winfo, model->winfo->tail_silwid);
-  } else if (recog->lmtype == LM_DFA && recog->lmvar == LM_DFA_GRAMMAR) {
-    jlog("\t(-penalty1) IW penalty1 = %+2.1f\n", jconf->lm.penalty1);
-    jlog("\t(-penalty2) IW penalty2 = %+2.1f\n", jconf->lm.penalty2);
-  }
-
-#ifdef CONFIDENCE_MEASURE
-#ifdef CM_MULTIPLE_ALPHA
-  jlog("\t(-cmalpha)CM alpha coef = from %f to %f by step of %f (%d outputs)\n", jconf->annotate.cm_alpha_bgn, jconf->annotate.cm_alpha_end, jconf->annotate.cm_alpha_step, jconf->annotate.cm_alpha_num);
-#else
-  jlog("\t(-cmalpha)CM alpha coef = %f\n", jconf->annotate.cm_alpha);
-#endif
-#ifdef CM_SEARCH_LIMIT
-  jlog("\t(-cmthres) CM cut thres = %f for hypo generation\n", jconf->annotate.cm_cut_thres);
-#endif
-#ifdef CM_SEARCH_LIMIT_POP
-  jlog("\t(-cmthres2)CM cut thres = %f for popped hypo\n", jconf->annotate.cm_cut_thres_pop);
-#endif
-#endif /* CONFIDENCE_MEASURE */
-  jlog("\t(-sp)shortpause HMM name= \"%s\" specified", jconf->am.spmodel_name);
-  if (model->hmminfo->sp != NULL) {
-    jlog(", \"%s\" applied", model->hmminfo->sp->name);
-    if (model->hmminfo->sp->is_pseudo) {
-      jlog(" (pseudo)");
-    } else {
-      jlog(" (physical)");
-    }
-  }
-  jlog("\n");
-
-  if (recog->lmtype == LM_DFA && recog->lmvar == LM_DFA_GRAMMAR) {
-    if (model->dfa != NULL) {
-      int i;
-      jlog("\t  found sp category IDs =");
-      for(i=0;i<model->dfa->term_num;i++) {
-	if (model->dfa->is_sp[i]) {
-	  jlog(" %d", i);
+      jlog("\t base setup from =");
+      if (mfcc->htk_loaded == 1 || mfcc->hmm_loaded == 1) {
+	if (mfcc->hmm_loaded == 1) {
+	  jlog(" binhmm-embedded");
+	  if (mfcc->htk_loaded == 1) {
+	    jlog(", then overridden by HTK Config and defaults");
+	  }
+	} else {
+	  if (mfcc->htk_loaded == 1) {
+	    jlog(" HTK Config (and HTK defaults)");
+	  }
 	}
+      } else {
+	jlog(" Julius defaults");
       }
       jlog("\n");
+
+      jlog("\n");
+
+      if (jconf->decodeopt.realtime_flag && mfcc->para->cmn) {
+	jlog(" MAP-CMN:\n");
+	jlog("      default cep. mean   = ");
+	if (mfcc->cmn.load_filename) {
+	  jlog("load from \"%s\"\n", mfcc->cmn.load_filename);
+	} else {
+	  jlog("not specified\n");
+	}
+	jlog("      initial mean weight = %6.2f\n", mfcc->cmn.map_weight);
+	if (mfcc->cmn.update) {
+	  jlog("      initial mean update = yes, from last inputs at each input\n");
+	} else {
+	  jlog("      initial mean update = no, use default as initial at each input\n");
+	}
+	if (mfcc->cmn.save_filename) {
+	  jlog("      save cep. mean to   = %s at end of each input\n", mfcc->cmn.save_filename);
+	}
+	jlog("\n");
+      }
+
     }
   }
 
-  if (model->hmminfo->multipath) {
-    if (jconf->lm.enable_iwsp) {
-      jlog("\t inter-word short pause = on (append \"%s\" for each word tail)\n", model->hmminfo->sp->name);
-      jlog("\t  sp transition penalty = %+2.1f\n", jconf->lm.iwsp_penalty);
-    }
-  }
 
-  if (recog->lmtype == LM_PROB) {
-    if (jconf->lm.enable_iwspword) {
-      jlog("\tIW-sp word added to dict= \"%s\"\n", jconf->lm.iwspentry);
-    }
-  }
-
-  if (recog->lmvar == LM_DFA_WORD) {
-    jlog("\nIsolated Word Recognition:\n");
-    jlog("    silence model names to add at word head / tail:  (-wsil)\n");
-    jlog("\tword head          = \"%s\"\n", jconf->lm.wordrecog_head_silence_model_name);
-    jlog("\tword tail          = \"%s\"\n", jconf->lm.wordrecog_tail_silence_model_name);
-    jlog("\ttheir context name = \"%s\"\n", (jconf->lm.wordrecog_silence_context_name[0] == '\0') ? "NULL (blank)" : jconf->lm.wordrecog_silence_context_name);
-#ifdef DETERMINE
-    jlog("    early word determination:  (-wed)\n");
-    jlog("\tscore threshold    = %f\n", jconf->search.pass1.determine_score_thres);
-    jlog("\tframe dur. thres   = %d\n", jconf->search.pass1.determine_duration_thres);
-#endif
-  }
-  
-  if (model->gmm != NULL) {
+  if (recog->gmm != NULL) {
+    jlog("------------------------------------------------------------\n");
+    jlog("GMM\n");
     jlog("\n");
-    jlog("Utterance verification by GMM\n");
-    jlog("           GMM defs file = %s\n", jconf->reject.gmm_filename);
+    jlog("     GMM definition file = %s\n", jconf->reject.gmm_filename);
     jlog("          GMM gprune num = %d\n", jconf->reject.gmm_gprune_num);
     if (jconf->reject.gmm_reject_cmn_string != NULL) {
       jlog("     GMM names to reject = %s\n", jconf->reject.gmm_reject_cmn_string);
     }
-    jlog("    GMM ");
-    print_hmmdef_info(fp, model->gmm);
+#ifdef GMM_VAD
+    jlog("\n GMM-based VAD\n\n");
+    jlog("       backstep on trigger = %d frames\n", jconf->detect.gmm_margin);
+#endif
+    jlog("\n GMM");
+    print_hmmdef_info(fp, recog->gmm);
+    jlog("\n");
   }
 
-  if (jconf->search.pass1.realtime_flag && jconf->analysis.para.cmn) {
+  jlog("------------------------------------------------------------\n");
+  jlog("Acoustic Model(s)\n");
+  jlog("\n");
+
+  for(am = recog->amlist; am; am = am->next) {
+    if (am->config->name[0] != '\0') {
+      jlog("[AM%02d \"%s\"]\n\n", am->config->id, am->config->name);
+    } else {
+      jlog("[AM%02d]\n\n", am->config->id);
+    }
+    print_hmmdef_info(fp, am->hmminfo);
     jlog("\n");
-    jlog("MAP-CMN on realtime input: \n");
-    if (jconf->frontend.cmnload_filename) {
-      if (recog->cmn_loaded) {
-	jlog("\t      initial CMN param = from \"%s\"\n", jconf->frontend.cmnload_filename);
+    if (am->config->hmm_gs_filename != NULL) {
+      jlog("GS ");
+      print_hmmdef_info(fp, am->hmm_gs);
+      jlog("\n");
+    }
+
+    jlog(" AM Parameters:\n");
+
+    jlog("        Gaussian pruning = ");
+    switch(am->config->gprune_method){
+    case GPRUNE_SEL_NONE: jlog("none (full computation)"); break;
+    case GPRUNE_SEL_BEAM: jlog("beam"); break;
+    case GPRUNE_SEL_HEURISTIC: jlog("heuristic"); break;
+    case GPRUNE_SEL_SAFE: jlog("safe"); break;
+    }
+    jlog("  (-gprune)\n");
+    if (am->config->gprune_method != GPRUNE_SEL_NONE) {
+      jlog("  top N mixtures to calc = %d / %d  (-tmix)\n", am->config->mixnum_thres, am->hmminfo->maxcodebooksize);
+    }
+    if (am->config->hmm_gs_filename != NULL) {
+      jlog("      GS state num thres = %d / %d selected  (-gsnum)\n", am->config->gs_statenum, am->hmm_gs->totalstatenum);
+    }
+    jlog("    short pause HMM name = \"%s\" specified", am->config->spmodel_name);
+    if (am->hmminfo->sp != NULL) {
+      jlog(", \"%s\" applied", am->hmminfo->sp->name);
+      if (am->hmminfo->sp->is_pseudo) {
+	jlog(" (pseudo)");
       } else {
-	jlog("\t      initial CMN param = from \"%s\" (failed, ignored)\n", jconf->frontend.cmnload_filename);
+	jlog(" (physical)");
+      }
+    }
+    jlog("  (-sp)\n");
+    jlog("  cross-word CD on pass1 = ");
+#ifdef PASS1_IWCD
+    jlog("handle by approx. ");
+    switch(am->hmminfo->cdset_method) {
+    case IWCD_AVG:
+      jlog("(use average prob. of same LC)\n");
+      break;
+    case IWCD_MAX:
+      jlog("(use max. prob. of same LC)\n");
+      break;
+    case IWCD_NBEST:
+      jlog("(use %d-best of same LC)\n", am->hmminfo->cdmax_num);
+      break;
+    }
+#else
+    jlog("disabled\n");
+#endif
+    
+    if (am->hmminfo->multipath) {
+      jlog("   sp transition penalty = %+2.1f\n", am->config->iwsp_penalty);
+    }
+
+    jlog("\n");
+  }
+
+  jlog("------------------------------------------------------------\n");
+  jlog("Language Model(s)\n");
+
+  for(lm = recog->lmlist; lm; lm = lm->next) {
+    jlog("\n");
+    if (lm->config->name[0] != '\0') {
+      jlog("[LM%02d \"%s\"]", lm->config->id, lm->config->name);
+    } else {
+      jlog("[LM%02d]", lm->config->id);
+    }
+    if (lm->lmtype == LM_PROB) {
+      if (lm->lmvar == LM_NGRAM) {
+	jlog(" type=n-gram\n\n");
+	if (lm->ngram) {
+	  print_ngram_info(fp, lm->ngram); jlog("\n");
+	}
+      } else if (lm->lmvar == LM_NGRAM_USER) {
+	if (lm->ngram) {
+	  jlog(" type=n-gram + user\n\n");
+	  print_ngram_info(fp, lm->ngram); jlog("\n");
+	} else {
+	  jlog(" type=user\n\n");
+	}
+      } else {
+	jlog(" type=UNKNOWN??\n\n");
+      }
+    } else if (lm->lmtype == LM_DFA) {
+      if (lm->lmvar == LM_DFA_GRAMMAR) {
+	jlog(" type=grammar\n\n");
+	if (lm->dfa) {
+	  print_dfa_info(fp, lm->dfa); jlog("\n");
+	  if (debug2_flag) {
+	    print_dfa_cp(fp, lm->dfa);
+	    jlog("\n");
+	  }
+	}
+      } else if (lm->lmvar == LM_DFA_WORD) {
+	jlog(" type=word\n\n");
+      } else {
+	jlog(" type=UNKNOWN??\n\n");
       }
     } else {
-      jlog("\t      initial CMN param = not specified\n");
+      jlog(" type=UNKNOWN??\n\n");
     }
-    jlog("\t    initial mean weight = %6.2f\n", jconf->frontend.cmn_map_weight);
-    if (jconf->frontend.cmn_update) {
-      jlog("\t       CMN param update = yes, update from last inputs\n");
-    } else {
-      jlog("\t       CMN param update = no, keep initial\n");
+    if (lm->winfo != NULL) {
+      print_voca_info(fp, lm->winfo); jlog("\n");
     }
-    if (jconf->frontend.cmnsave_filename) {
-      if (jconf->search.pass1.realtime_flag) {
-	jlog("\t      save CMN param to = %s\n", jconf->frontend.cmnsave_filename);
-      } else {
-	jlog("\t      save CMN param to = %s (not realtime CMN, ignored)\n", jconf->frontend.cmnsave_filename);
+
+    jlog(" Parameters:\n");
+
+    if (lm->lmtype == LM_DFA && lm->lmvar == LM_DFA_GRAMMAR) {
+      if (lm->dfa != NULL) {
+	int i;
+	jlog("   found sp category IDs =");
+	for(i=0;i<lm->dfa->term_num;i++) {
+	  if (lm->dfa->is_sp[i]) {
+	    jlog(" %d", i);
+	  }
+	}
+	jlog("\n");
       }
     }
+    
+    if (lm->lmtype == LM_PROB) {
+      if (lm->config->enable_iwspword) {
+	jlog("\tIW-sp word added to dict= \"%s\"\n", lm->config->iwspentry);
+      }
+    }
+
+    if (lm->lmtype == LM_PROB) {    
+      jlog("\t(-silhead)head sil word = ");
+      put_voca(fp, lm->winfo, lm->winfo->head_silwid);
+      jlog("\t(-siltail)tail sil word = ");
+      put_voca(fp, lm->winfo, lm->winfo->tail_silwid);
+    }
+
+    if (lm->lmvar == LM_DFA_WORD) {
+      jlog("     silence model names to add at word head / tail:  (-wsil)\n");
+      jlog("\tword head          = \"%s\"\n", lm->config->wordrecog_head_silence_model_name);
+      jlog("\tword tail          = \"%s\"\n", lm->config->wordrecog_tail_silence_model_name);
+      jlog("\ttheir context name = \"%s\"\n", (lm->config->wordrecog_silence_context_name[0] == '\0') ? "NULL (blank)" : lm->config->wordrecog_silence_context_name);
+      
+    }
+
   }
 
   jlog("\n");
-  jlog("Search parameters: \n");
+  jlog("------------------------------------------------------------\n");
+  jlog("Recognizer(s)\n\n");
 
-  jlog("\t      1st pass decoding = ");
-  if (jconf->search.pass1.force_realtime_flag) jlog("(forced) ");
-  if (jconf->search.pass1.realtime_flag) {
-    jlog("on-the-fly");
-    if (jconf->input.speech_input != SP_MFCFILE && jconf->analysis.para.cmn) jlog(" with MAP-CMN");
+  for(r = recog->process_list; r; r = r->next) {
+    jlog("[SR%02d", r->config->id);
+    if (r->config->name[0] != '\0') {
+      jlog(" \"%s\"", r->config->name);
+    }
+    jlog("]  ");
+    if (r->am->config->name[0] != '\0') {
+      jlog("AM%02d \"%s\"", r->am->config->id, r->am->config->name);
+    } else {
+      jlog("AM%02d", r->am->config->id);
+    }
+    jlog("  +  ");
+    if (r->lm->config->name[0] != '\0') {
+      jlog("LM%02d \"%s\"", r->lm->config->id, r->lm->config->name);
+    } else {
+      jlog("LM%02d", r->lm->config->id);
+    }
+    jlog("\n\n");
+
+    if (r->wchmm != NULL) {
+      print_wchmm_info(r->wchmm); jlog("\n");
+    }
+    if (r->lmtype == LM_PROB) {
+      jlog(" Inter-word N-gram cache: \n");
+      {
+	int num, len;
+#ifdef UNIGRAM_FACTORING
+	len = r->wchmm->isolatenum;
+	jlog("\troot node to be cached = %d / %d (isolated only)\n",
+	     len, r->wchmm->startnum);
+#else
+	len = r->wchmm->startnum;
+	jlog("\troot node to be cached = %d (all)\n", len);
+#endif
+#ifdef HASH_CACHE_IW
+	num = (r->config->pass1.iw_cache_rate * r->lm->ngram->max_word_num) / 100;
+	jlog("\tword ends to be cached = %d / %d\n", num, r->lm->ngram->max_word_num);
+#else
+	num = r->lm->ngram->max_word_num;
+	jlog("\tword ends to be cached = %d (all)\n", num);
+#endif
+	jlog("\t  max. allocation size = %dMB\n", num * len / 1000 * sizeof(LOGPROB) / 1000);
+      }
+    }
+
+    if (r->lmtype == LM_PROB) {
+      jlog("\t(-lmp)  pass1 LM weight = %2.1f  ins. penalty = %+2.1f\n", r->config->lmp.lm_weight, r->config->lmp.lm_penalty);
+      jlog("\t(-lmp2) pass2 LM weight = %2.1f  ins. penalty = %+2.1f\n", r->config->lmp.lm_weight2, r->config->lmp.lm_penalty2);
+      jlog("\t(-transp)trans. penalty = %+2.1f per word\n", r->config->lmp.lm_penalty_trans);
+    } else if (r->lmtype == LM_DFA && r->lmvar == LM_DFA_GRAMMAR) {
+      jlog("\t(-penalty1) IW penalty1 = %+2.1f\n", r->config->lmp.penalty1);
+      jlog("\t(-penalty2) IW penalty2 = %+2.1f\n", r->config->lmp.penalty2);
+    }
+
+
+#ifdef CONFIDENCE_MEASURE
+#ifdef CM_MULTIPLE_ALPHA
+    jlog("\t(-cmalpha)CM alpha coef = from %f to %f by step of %f (%d outputs)\n", r->config->annotate.cm_alpha_bgn, r->config->annotate.cm_alpha_end, r->config->annotate.cm_alpha_step, r->config->annotate.cm_alpha_num);
+#else
+    jlog("\t(-cmalpha)CM alpha coef = %f\n", r->config->annotate.cm_alpha);
+#endif
+#ifdef CM_SEARCH_LIMIT
+    jlog("\t(-cmthres) CM cut thres = %f for hypo generation\n", r->config->annotate.cm_cut_thres);
+#endif
+#ifdef CM_SEARCH_LIMIT_POP
+    jlog("\t(-cmthres2)CM cut thres = %f for popped hypo\n", r->config->annotate.cm_cut_thres_pop);
+#endif
+#endif /* CONFIDENCE_MEASURE */
     jlog("\n");
-  } else {
-    jlog("batch");
-    if (jconf->input.speech_input != SP_MFCFILE && jconf->analysis.para.cmn) jlog(" with sentence CMN");
+
+    if (r->am->hmminfo->multipath) {
+      if (r->lm->config->enable_iwsp) {
+	jlog("\t inter-word short pause = on (append \"%s\" for each word tail)\n", r->am->hmminfo->sp->name);
+	jlog("\t  sp transition penalty = %+2.1f\n", r->am->config->iwsp_penalty);
+      }
+    }
+
+    if (r->lmvar == LM_DFA_WORD) {
+#ifdef DETERMINE
+      jlog("    early word determination:  (-wed)\n");
+      jlog("\tscore threshold    = %f\n", r->config->pass1.determine_score_thres);
+      jlog("\tframe dur. thres   = %d\n", r->config->pass1.determine_duration_thres);
+#endif
+    }
+
+    jlog(" Search parameters: \n");
+    jlog("\t    multi-path handling = ");
+    if (r->am->hmminfo->multipath) {
+      jlog("yes, multi-path mode enabled\n");
+    } else {
+      jlog("no\n");
+    }
+    jlog("\t(-b) trellis beam width = %d", r->trellis_beam_width);
+    if (r->config->pass1.specified_trellis_beam_width == -1) {
+      jlog(" (-1 or not specified - guessed)\n");
+    } else if (r->config->pass1.specified_trellis_beam_width == 0) {
+      jlog(" (0 - full)\n");
+    } else {
+      jlog("\n");
+    }
+    jlog("\t(-n)search candidate num= %d\n", r->config->pass2.nbest);
+    jlog("\t(-s)  search stack size = %d\n", r->config->pass2.stack_size);
+    jlog("\t(-m)    search overflow = after %d hypothesis poped\n", r->config->pass2.hypo_overflow);
+    jlog("\t        2nd pass method = ");
+    if (r->config->graph.enabled) {
+#ifdef GRAPHOUT_DYNAMIC
+#ifdef GRAPHOUT_SEARCH
+      jlog("searching graph, generating dynamic graph\n");
+#else
+      jlog("searching sentence, generating dynamic graph\n");
+#endif /* GRAPHOUT_SEARCH */
+#else  /* ~GRAPHOUT_DYNAMIC */
+      jlog("searching sentence, generating static graph from N-best\n");
+#endif
+    } else {
+      jlog("searching sentence, generating N-best\n");
+    }
+    if (r->config->pass2.enveloped_bestfirst_width >= 0) {
+      jlog("\t(-b2)  pass2 beam width = %d\n", r->config->pass2.enveloped_bestfirst_width);
+    }
+    jlog("\t(-lookuprange)lookup range= %d  (tm-%d <= t <tm+%d)\n",r->config->pass2.lookup_range,r->config->pass2.lookup_range,r->config->pass2.lookup_range);
+#ifdef SCAN_BEAM
+    jlog("\t(-sb)2nd scan beamthres = %.1f (in logscore)\n", r->config->pass2.scan_beam_thres);
+#endif
+    jlog("\t(-n)        search till = %d candidates found\n", r->config->pass2.nbest);
+    jlog("\t(-output)    and output = %d candidates out of above\n", r->config->output.output_hypo_maxnum);
+
+    if (r->ccd_flag) {
+      jlog("\t IWCD handling:\n");
+#ifdef PASS1_IWCD
+      jlog("\t   1st pass: approximation ");
+      switch(r->am->hmminfo->cdset_method) {
+      case IWCD_AVG:
+	jlog("(use average prob. of same LC)\n");
+	break;
+      case IWCD_MAX:
+	jlog("(use max. prob. of same LC)\n");
+	break;
+      case IWCD_NBEST:
+	jlog("(use %d-best of same LC)\n", r->am->hmminfo->cdmax_num);
+	break;
+      }
+#else
+      jlog("\t   1st pass: ignored\n");
+#endif
+#ifdef PASS2_STRICT_IWCD
+      jlog("\t   2nd pass: strict (apply when expanding hypo. )\n");
+#else
+      jlog("\t   2nd pass: loose (apply when hypo. is popped and scanned)\n");
+#endif
+    }
+    if (r->lmtype == LM_PROB) {
+      jlog("\t factoring score: ");
+#ifdef UNIGRAM_FACTORING
+      jlog("1-gram prob. (statically assigned beforehand)\n");
+#else
+      jlog("2-gram prob. (dynamically computed while search)\n");
+#endif
+    }
+
+    if (r->config->annotate.align_result_word_flag) {
+      jlog("\t output word alignments\n");
+    }
+    if (r->config->annotate.align_result_phoneme_flag) {
+      jlog("\t output phoneme alignments\n");
+    }
+    if (r->config->annotate.align_result_state_flag) {
+      jlog("\t output state alignments\n");
+    }
+    if (r->lmtype == LM_DFA && r->lmvar == LM_DFA_GRAMMAR) {
+      if (r->config->pass2.looktrellis_flag) {
+	jlog("\t only words in backtrellis will be expanded in 2nd pass\n");
+      } else {
+	jlog("\t all possible words will be expanded in 2nd pass\n");
+      }
+    }
+    if (r->wchmm->category_tree) {
+      if (r->config->pass1.old_tree_function_flag) {
+	jlog("\t build_wchmm() used\n");
+      } else {
+	jlog("\t build_wchmm2() used\n");
+      }
+#ifdef PASS1_IWCD
+#ifdef USE_OLD_IWCD
+      jlog("\t full lcdset used\n");
+#else
+      jlog("\t lcdset limited by word-pair constraint\n");
+#endif
+#endif /* PASS1_IWCD */
+    }
+    if (r->config->output.progout_flag) {
+      jlog("\tprogressive output on 1st pass\n");
+    }
+    if (r->config->compute_only_1pass) {
+      jlog("\tCompute only 1-pass\n");
+    }
+    
+    if (r->config->graph.enabled) {
+      jlog("\n");
+      jlog("Graph-based output with graph-oriented search:\n");
+      jlog("\t(-lattice)      word lattice = %s\n", r->config->graph.lattice ? "yes" : "no");
+      jlog("\t(-confnet) confusion network = %s\n", r->config->graph.confnet ? "yes" : "no");
+      if (r->config->graph.lattice == TRUE) {
+	jlog("\t(-graphrange)         margin = %d frames", r->config->graph.graph_merge_neighbor_range);
+	if (r->config->graph.graph_merge_neighbor_range < 0) {
+	  jlog(" (all post-marging disabled)\n");
+	} else if (r->config->graph.graph_merge_neighbor_range == 0) {
+	  jlog(" (merge same word with the same boundary)\n");
+	} else {
+	  jlog(" (merge same words around this margin)\n");
+	}
+      }
+#ifdef GRAPHOUT_DEPTHCUT
+      jlog("\t(-graphcut)cutoff depth      = ");
+      if (r->config->graph.graphout_cut_depth < 0) {
+	jlog("disabled (-1)\n");
+      } else {
+	jlog("%d words\n",r->config->graph.graphout_cut_depth);
+      }
+#endif
+#ifdef GRAPHOUT_LIMIT_BOUNDARY_LOOP
+      jlog("\t(-graphboundloop)loopmax     = %d for boundary adjustment\n",r->config->graph.graphout_limit_boundary_loop_num);
+#endif
+#ifdef GRAPHOUT_SEARCH_DELAY_TERMINATION
+      jlog("\tInhibit graph search termination before 1st sentence found = ");
+      if (r->config->graph.graphout_search_delay) {
+	jlog("enabled\n");
+      } else {
+	jlog("disabled\n");
+      }
+#endif
+
+    }
+    
+    if (r->config->successive.enabled) {
+      jlog("\tshort pause segmentation = on\n");
+      jlog("\t      sp duration length = %d frames\n", r->config->successive.sp_frame_duration);
+#ifdef SPSEGMENT_NAIST
+      jlog("      backstep margin on trigger = %d frames\n", r->config->successive.sp_margin);
+      jlog("\t        delay on trigger = %d frames\n", r->config->successive.sp_delay);
+#endif
+      if (r->config->successive.pausemodelname) {
+	jlog("\t   pause models for seg. = %s\n",  r->config->successive.pausemodelname);
+      }
+    } else {
+      jlog("\tshort pause segmentation = off\n");
+    }
+    if (r->config->output.progout_flag) {
+      jlog("\t        progout interval = %d msec\n", r->config->output.progout_interval);
+    }
+
     jlog("\n");
   }
-  jlog("\t        1st pass method = ");
+
+  jlog("------------------------------------------------------------\n");
+  jlog("Decoding algorithm:\n\n");
+  jlog("\t1st pass input processing = ");
+  if (jconf->decodeopt.force_realtime_flag) jlog("(forced) ");
+  if (jconf->decodeopt.realtime_flag) {
+    jlog("real time, on-the-fly\n");
+  } else {
+    jlog("buffered, batch\n");
+  }
+  jlog("\t1st pass method = ");
 #ifdef WPAIR
 # ifdef WPAIR_KEEP_NLIMIT
   jlog("word-pair approx., keeping only N tokens ");
@@ -381,137 +725,8 @@ print_info(Recog *recog)
 #else
   jlog("generating indexed trellis\n");
 #endif
-
-  jlog("\t    multi-path handling = ");
-  if (recog->model->hmminfo->multipath) {
-    jlog("yes, multi-path mode enabled\n");
-  } else {
-    jlog("no\n");
-  }
-
-  jlog("\t(-b) trellis beam width = %d", recog->trellis_beam_width);
-  if (jconf->search.pass1.specified_trellis_beam_width == -1) {
-    jlog(" (-1 or not specified - guessed)\n");
-  } else if (jconf->search.pass1.specified_trellis_beam_width == 0) {
-    jlog(" (0 - full)\n");
-  } else {
-    jlog("\n");
-  }
-  jlog("\t(-n)search candidate num= %d\n", jconf->search.pass2.nbest);
-  jlog("\t(-s)  search stack size = %d\n", jconf->search.pass2.stack_size);
-  jlog("\t(-m)    search overflow = after %d hypothesis poped\n", jconf->search.pass2.hypo_overflow);
-  jlog("\t        2nd pass method = ");
-  if (jconf->graph.enabled) {
-#ifdef GRAPHOUT_DYNAMIC
-#ifdef GRAPHOUT_SEARCH
-    jlog("searching graph, generating dynamic graph\n");
-#else
-    jlog("searching sentence, generating dynamic graph\n");
-#endif /* GRAPHOUT_SEARCH */
-#else  /* ~GRAPHOUT_DYNAMIC */
-    jlog("searching sentence, generating static graph from N-best\n");
-#endif
-  } else {
-    jlog("searching sentence, generating N-best\n");
-  }
-  if (jconf->search.pass2.enveloped_bestfirst_width >= 0) {
-    jlog("\t(-b2)  pass2 beam width = %d\n", jconf->search.pass2.enveloped_bestfirst_width);
-  }
-  jlog("\t(-lookuprange)lookup range= %d  (tm-%d <= t <tm+%d)\n",jconf->search.pass2.lookup_range,jconf->search.pass2.lookup_range,jconf->search.pass2.lookup_range);
-#ifdef SCAN_BEAM
-  jlog("\t(-sb)2nd scan beamthres = %.1f (in logscore)\n",jconf->search.pass2.scan_beam_thres);
-#endif
-  jlog("\t(-gprune)Gauss. pruning = ");
-  switch(jconf->am.gprune_method){
-  case GPRUNE_SEL_NONE: jlog("none (full computation)\n"); break;
-  case GPRUNE_SEL_BEAM: jlog("beam\n"); break;
-  case GPRUNE_SEL_HEURISTIC: jlog("heuristic\n"); break;
-  case GPRUNE_SEL_SAFE: jlog("safe\n"); break;
-  }
-  if (jconf->am.gprune_method != GPRUNE_SEL_NONE) {
-    jlog("\t(-tmix)   mixture thres = %d / %d\n", jconf->am.mixnum_thres, model->hmminfo->maxcodebooksize);
-  }
-  if (jconf->am.hmm_gs_filename != NULL) {
-    jlog("\t(-gsnum)   GS state num = %d / %d selected\n", jconf->am.gs_statenum, model->hmm_gs->totalstatenum);
-  }
-
-  jlog("\t(-n)        search till = %d candidates found\n", jconf->search.pass2.nbest);
-  jlog("\t(-output)    and output = %d candidates out of above\n", jconf->output.output_hypo_maxnum);
-  if (jconf->am.ccd_flag) {
-    jlog("\t IWCD handling:\n");
-#ifdef PASS1_IWCD
-    jlog("\t   1st pass: approximation ");
-    switch(model->hmminfo->cdset_method) {
-    case IWCD_AVG:
-      jlog("(use average prob. of same LC)\n");
-      break;
-    case IWCD_MAX:
-      jlog("(use max. prob. of same LC)\n");
-      break;
-    case IWCD_NBEST:
-      jlog("(use %d-best of same LC)\n", model->hmminfo->cdmax_num);
-      break;
-    }
-#else
-    jlog("\t   1st pass: ignored\n");
-#endif
-#ifdef PASS2_STRICT_IWCD
-    jlog("\t   2nd pass: strict (apply when expanding hypo. )\n");
-#else
-    jlog("\t   2nd pass: loose (apply when hypo. is popped and scanned)\n");
-#endif
-  }
-  
-  if (recog->lmtype == LM_PROB) {
-    jlog("\t factoring score: ");
-#ifdef UNIGRAM_FACTORING
-    jlog("1-gram prob. (statically assigned beforehand)\n");
-#else
-    jlog("2-gram prob. (dynamically computed while search)\n");
-#endif
-  }
-
-  if (jconf->annotate.align_result_word_flag) {
-    jlog("\t output word alignments\n");
-  }
-  if (jconf->annotate.align_result_phoneme_flag) {
-    jlog("\t output phoneme alignments\n");
-  }
-  if (jconf->annotate.align_result_state_flag) {
-    jlog("\t output state alignments\n");
-  }
-
-  if (recog->lmtype == LM_DFA && recog->lmvar == LM_DFA_GRAMMAR) {
-    if (jconf->search.pass2.looktrellis_flag) {
-      jlog("\t only words in backtrellis will be expanded in 2nd pass\n");
-    } else {
-      jlog("\t all possible words will be expanded in 2nd pass\n");
-    }
-  }
-
-  if (recog->wchmm->category_tree) {
-    if (jconf->search.pass1.old_tree_function_flag) {
-      jlog("\t build_wchmm() used\n");
-    } else {
-      jlog("\t build_wchmm2() used\n");
-    }
-#ifdef PASS1_IWCD
-#ifdef USE_OLD_IWCD
-    jlog("\t full lcdset used\n");
-#else
-    jlog("\t lcdset limited by word-pair constraint\n");
-#endif
-#endif /* PASS1_IWCD */
-  }
-  if (jconf->output.progout_flag) jlog("\tprogressive output on 1st pass\n");
-  /* if (param_kind != NULL) {
-    jlog("Selectively use input parameter vector as: %s\n", param_kind);
-  } */
-  if (jconf->sw.compute_only_1pass) {
-    jlog("\tCompute only 1-pass\n");
-  }
 #ifdef CONFIDENCE_MEASURE
-  jlog("\t output word confidence measure ");
+  jlog("\toutput word confidence measure ");
 #ifdef CM_NBEST
   jlog("based on N-best candidates\n");
 #endif
@@ -520,44 +735,12 @@ print_info(Recog *recog)
 #endif
 #endif /* CONFIDENCE_MEASURE */
   
-  if (jconf->graph.enabled) {
-    jlog("\n");
-    jlog("Graph-based output with graph-oriented search:\n");
-    jlog("\t(-lattice)      word lattice = %s\n", jconf->graph.lattice ? "yes" : "no");
-    jlog("\t(-confnet) confusion network = %s\n", jconf->graph.confnet ? "yes" : "no");
-    if (jconf->graph.lattice == TRUE) {
-      jlog("\t(-graphrange)         margin = %d frames", jconf->graph.graph_merge_neighbor_range);
-      if (jconf->graph.graph_merge_neighbor_range < 0) {
-	jlog(" (all post-marging disabled)\n");
-      } else if (jconf->graph.graph_merge_neighbor_range == 0) {
-	jlog(" (merge same word with the same boundary)\n");
-      } else {
-	jlog(" (merge same words around this margin)\n");
-      }
-    }
-#ifdef GRAPHOUT_DEPTHCUT
-    jlog("\t(-graphcut)cutoff depth      = ");
-    if (jconf->graph.graphout_cut_depth < 0) {
-      jlog("disabled (-1)\n");
-    } else {
-      jlog("%d words\n",jconf->graph.graphout_cut_depth);
-    }
-#endif
-#ifdef GRAPHOUT_LIMIT_BOUNDARY_LOOP
-    jlog("\t(-graphboundloop)loopmax     = %d for boundary adjustment\n",jconf->graph.graphout_limit_boundary_loop_num);
-#endif
-#ifdef GRAPHOUT_SEARCH_DELAY_TERMINATION
-    jlog("\tInhibit graph search termination before 1st sentence found = ");
-    if (jconf->graph.graphout_search_delay) {
-      jlog("enabled\n");
-    } else {
-      jlog("disabled\n");
-    }
-#endif
-  }
-  
   jlog("\n");
-  jlog("System I/O configuration:\n");
+
+  jlog("------------------------------------------------------------\n");
+  jlog("FrontEnd:\n\n");
+
+  jlog(" Speech input:\n");
   jlog("\t    speech input source = ");
   if (jconf->input.speech_input == SP_RAWFILE) {
     jlog("speech file\n");
@@ -597,15 +780,15 @@ print_info(Recog *recog)
   if (jconf->input.speech_input != SP_MFCFILE) {
     if (jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_STDIN || jconf->input.speech_input == SP_ADINNET) {
       if (jconf->input.use_ds48to16) {
-	jlog("\t          sampling freq. = assume 48000Hz, then down to %dHz\n", jconf->analysis.para.smp_freq);
+	jlog("\t          sampling freq. = assume 48000Hz, then down to %dHz\n", jconf->input.sfreq);
       } else {
-	jlog("\t          sampling freq. = %d Hz required\n", jconf->analysis.para.smp_freq);
+	jlog("\t          sampling freq. = %d Hz required\n", jconf->input.sfreq);
       }
     } else {
       if (jconf->input.use_ds48to16) {
-	jlog("\t          sampling freq. = 48000Hz, then down to %d Hz\n", jconf->analysis.para.smp_freq);
+	jlog("\t          sampling freq. = 48000Hz, then down to %d Hz\n", jconf->input.sfreq);
       } else {
- 	jlog("\t          sampling freq. = %d Hz\n", jconf->analysis.para.smp_freq);
+ 	jlog("\t          sampling freq. = %d Hz\n", jconf->input.sfreq);
       }
     }
   }
@@ -621,7 +804,7 @@ print_info(Recog *recog)
     jlog("not supported (live input may be dropped)\n");
 #endif
   }
-  if (jconf->frontend.strip_zero_sample) {
+  if (jconf->preprocess.strip_zero_sample) {
     jlog("\t   zero frames stripping = on\n");
   } else {
     jlog("\t   zero frames stripping = off\n");
@@ -636,19 +819,16 @@ print_info(Recog *recog)
     } else {
       jlog("\t         silence cutting = off\n");
     }
-    if (jconf->frontend.use_zmean || jconf->analysis.para.zmeanframe) {
-      jlog("\t        remove DC offset = on");
-      if (jconf->analysis.para.zmeanframe) {
-	jlog(" (frame-wise)\n");
-      }
+
+    if (jconf->preprocess.use_zmean) {
+      jlog("\t    long-term DC removal = on");
       if (jconf->input.speech_input == SP_RAWFILE) {
 	jlog(" (will compute for each file)\n");
       } else {
-	jlog(" (will compute from first %.1f sec)\n",
-		 (float)ZMEANSAMPLES / (float)jconf->analysis.para.smp_freq);
+	jlog(" (will compute from first %.1f sec)\n", (float)ZMEANSAMPLES / (float)jconf->input.sfreq);
       }
     } else {
-      jlog("\t        remove DC offset = off\n");
+      jlog("\t    long-term DC removal = off\n");
     }
   }
   jlog("\t      reject short input = ");
@@ -657,39 +837,78 @@ print_info(Recog *recog)
   } else {
     jlog("off\n");
   }
-#ifdef SP_BREAK_CURRENT_FRAME
-  jlog("\tshort pause segmentation = on\n");
-  jlog("\t      sp duration length = %d frames\n", jconf->successive.sp_frame_duration);
-#else
-  jlog("\tshort pause segmentation = off\n");
+#ifdef POWER_REJECT
+  jlog("\t   power rejection thres = %f", jconf->reject.powerthres);
 #endif
-  if (jconf->output.progout_flag) {
-    jlog("\t        progout interval = %d msec\n", jconf->output.progout_interval);
-  }
+
   jlog("\n");
-  jlog("------------- System Info end -------------\n");
+
+  jlog("----------------------- System Information end -----------------------\n");
 
 #ifdef USE_MIC
-  if (jconf->search.pass1.realtime_flag) {
-    if (jconf->analysis.para.cmn) {
-      if (recog->cmn_loaded) {
-	jlog("\n");
-	jlog("initial CMN parameter loaded from file\n");
-      } else {
-	jlog("\n");
-	jlog("\t*************************************************************\n");
-	jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
-	jlog("\t*         no initial CMN parameter is available on startup. *\n");
-	jlog("\t*************************************************************\n");
+  if (jconf->decodeopt.realtime_flag) {
+    boolean flag;
+    flag = FALSE;
+    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+      if (mfcc->para->cmn && mfcc->cmn.loaded) {
+	flag = TRUE;
+	break;
       }
     }
-    if (jconf->analysis.para.energy && jconf->analysis.para.enormal) {
+    if (flag) {
+      jlog("\n");
+      jlog("initial CMN parameter loaded from file\nfor");
+      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+	if (mfcc->para->cmn && mfcc->cmn.loaded) {
+	  jlog(" MFCC%02d", mfcc->id);
+	}
+      }
+      jlog("\n");
+    }
+    flag = FALSE;
+    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+      if (mfcc->para->cmn && !mfcc->cmn.loaded) {
+	flag = TRUE;
+	break;
+      }
+    }
+    if (flag) {
+      jlog("\n");
+      jlog("\t*************************************************************\n");
+      jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
+      jlog("\t*         no initial CMN parameter is available on startup. *\n");
+      jlog("\t* for");
+      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+	if (mfcc->para->cmn && !mfcc->cmn.loaded) {
+	  jlog(" MFCC%02d", mfcc->id);
+	}
+      }
+      jlog("*\n");
+      jlog("\t*************************************************************\n");
+    }
+    flag = FALSE;
+    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+      if (mfcc->para->energy && mfcc->para->enormal) {
+	flag = TRUE;
+	break;
+      }
+    }
+    if (flag) {
       jlog("\t*************************************************************\n");
       jlog("\t* NOTICE: Energy normalization is activated on live input:  *\n");
       jlog("\t*         maximum energy of LAST INPUT will be used for it. *\n");
       jlog("\t*         So, the first input will not be recognized.       *\n");
+      jlog("\t* for");
+      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+	if (mfcc->para->energy && mfcc->para->enormal) {
+	  jlog(" MFCC%02d", mfcc->id);
+	}
+      }
+      jlog("*\n");
       jlog("\t*************************************************************\n");
     }
   }
 #endif
 }
+
+/* end of file */

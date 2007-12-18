@@ -1,14 +1,12 @@
 /**
  * @file   record.c
- * @author Akinobu Lee
- * @date   Tue Sep 06 14:13:54 2005
  * 
  * <JA>
- * @brief  認識した入力音声をファイルに保存する．
+ * @brief  認識した入力音声をファイルに保存する. 
  *
- * 入力された音声データを1つずつファイルに保存する．
- * ファイル名は録音時のタイムスタンプから "YYYY.MMDD.HHMMSS.wav" となる．
- * ファイル形式は Microsoft WAVE format, 16bit, PCM (無圧縮) である．
+ * 入力された音声データを1つずつファイルに保存する. 
+ * ファイル名は録音時のタイムスタンプから "YYYY.MMDD.HHMMSS.wav" となる. 
+ * ファイル形式は Microsoft WAVE format, 16bit, PCM (無圧縮) である. 
  *
  * 録音はいったんメモリに確保されずに、入力と平行してファイルに直接
  * 書き込まれる。最初は一時ファイルに記録され、録音終了後（＝第1パス
@@ -28,13 +26,16 @@
  * final filename descrived above.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Tue Sep 06 14:13:54 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -50,7 +51,7 @@ static FILE *recfile_fp;
 
 /** 
  * <JA>
- * システム時間からベースファイル名を作成する．
+ * システム時間からベースファイル名を作成する. 
  * 
  * @param t [out] 結果を格納する文字列バッファ
  * @param maxlen [in] @a t の最大長
@@ -76,8 +77,8 @@ timestring(char *t, int maxlen)
 
 /** 
  * <JA>
- * ベースファイル名から実際のパス名を作成する．ディレクトリは大域変数
- * record_dirname であらかじめ指定されている．
+ * ベースファイル名から実際のパス名を作成する. ディレクトリは大域変数
+ * record_dirname であらかじめ指定されている. 
  * 
  * @param buf [out] 結果のパス名を格納するバッファへのポインタ
  * @param buflen [in] @a buf の最大長
@@ -96,7 +97,8 @@ static void
 make_record_filename(char *buf, int buflen, char *basename, char *dirname)
 {
   if (dirname == NULL) {
-    fprintf(stderr, "no record directory specified??\n"); exit(-1);
+    fprintf(stderr, "no record directory specified??\n");
+    return;
   }
   snprintf(buf, buflen,
 #if defined(_WIN32) && !defined(__CYGWIN32__)
@@ -109,7 +111,7 @@ make_record_filename(char *buf, int buflen, char *basename, char *dirname)
 
 /** 
  * <JA>
- * 一時ファイル名を作成する．
+ * 一時ファイル名を作成する. 
  * 
  * @param buf [out] 結果のファイル名を格納するポインタ
  * @param buflen [in] @a buf の最大長
@@ -133,7 +135,7 @@ make_tmp_filename(char *buf, int buflen, char *dirname)
 
 /** 
  * <JA>
- * 録音のために一時ファイルをオープンする．
+ * 録音のために一時ファイルをオープンする. 
  * 
  * </JA>
  * <EN>
@@ -145,13 +147,15 @@ static void
 record_sample_open(Recog *recog, void *dummy)
 {
   if (recfile_fp != NULL) {
-    fprintf(stderr, "Error: record_sample_open: re-opened before closed!\n"); exit(-1);
+    fprintf(stderr, "Error: record_sample_open: re-opened before closed!\n"); 
+    return;
   }
 
   make_tmp_filename(rectmpfilename, MAXLINELEN, record_dirname);
-  if ((recfile_fp = wrwav_open(rectmpfilename, recog->jconf->analysis.para.smp_freq)) == NULL) {
+  if ((recfile_fp = wrwav_open(rectmpfilename, recog->jconf->input.sfreq)) == NULL) {
     perror("Error: record_sample_open");
-    fprintf(stderr, "failed to open \"%s\" (temporary record file)\n", rectmpfilename); exit(-1);
+    fprintf(stderr, "failed to open \"%s\" (temporary record file)\n", rectmpfilename);
+    return;
   }
 
   recordlen = 0;
@@ -159,7 +163,7 @@ record_sample_open(Recog *recog, void *dummy)
 
 /** 
  * <JA>
- * 入力音声断片をファイルに追加記録する．
+ * 入力音声断片をファイルに追加記録する. 
  * 
  * @param speech [in] 音声データのバッファ
  * @param samplenum [in] 音声データの長さ（サンプル数）
@@ -177,12 +181,14 @@ record_sample_write(Recog *recog, SP16 *speech, int samplenum, void *dummy)
   static char tstr[20];
 
   if (recfile_fp == NULL) {
-    fprintf(stderr, "Error: record_sample_write; file not opened yet, cannot write!\n"); exit(-1);
+    fprintf(stderr, "Error: record_sample_write; file not opened yet, cannot write!\n");
+    return;
   }
 
   if (wrwav_data(recfile_fp, speech, samplenum) == FALSE) {
     perror("Error: record_sample_write");
-    fprintf(stderr, "failed to write samples to \"%s\"\n", rectmpfilename); exit(-1);
+    fprintf(stderr, "failed to write samples to \"%s\"\n", rectmpfilename);
+    return;
   }
 
   /* make timestamp of system time when an input begins */
@@ -197,7 +203,7 @@ record_sample_write(Recog *recog, SP16 *speech, int samplenum, void *dummy)
 
 /** 
  * <JA>
- * 録音を終了する．録音用の一時ファイルをクローズし、本来の名前にrenameする。
+ * 録音を終了する. 録音用の一時ファイルをクローズし、本来の名前にrenameする。
  * 
  * </JA>
  * <EN>
@@ -230,10 +236,11 @@ record_sample_close(Recog *recog, void *dummy)
   /* now rename the temporary file to time-stamp filename */
   if (rename(rectmpfilename, recordfilename) < 0) {
     perror("Error: record_sample_close");
-    fprintf(stderr, "failed to move %s to %s\n", rectmpfilename, recordfilename); exit(-1);
+    fprintf(stderr, "failed to move %s to %s\n", rectmpfilename, recordfilename);
+    return;
   }
   if (verbose_flag) {
-    fprintf(stderr, "recorded to \"%s\" (%d bytes, %.2f sec.)\n", recordfilename, recordlen * sizeof(SP16), (float)recordlen / (float) recog->jconf->analysis.para.smp_freq);
+    fprintf(stderr, "recorded to \"%s\" (%d bytes, %.2f sec.)\n", recordfilename, recordlen * sizeof(SP16), (float)recordlen / (float) recog->jconf->input.sfreq);
   }
 }
 
@@ -254,7 +261,7 @@ opt_record(Jconf *jconf, char *arg[], int argnum)
 void
 record_add_option()
 {
-  j_add_option("-record", 1, "record input waveform to file in dir", opt_record);
+  j_add_option("-record", 1, 1, "record input waveform to file in dir", opt_record);
 }
 
 /************************************************************************/

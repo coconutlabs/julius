@@ -2,8 +2,6 @@
 
 /**
  * @file   libsent/include/sent/config.h
- * @author Akinobu LEE
- * @date   Thu Feb 10 17:48:32 2005
  *
  * <EN>
  * @brief  Environment configuration file
@@ -32,7 +30,10 @@
  * @sa configure.in
  * </JA>
  *
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 10 17:48:32 2005
+ *
+ * $Revision: 1.3 $
  *
  */
 

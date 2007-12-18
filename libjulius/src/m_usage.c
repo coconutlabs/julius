@@ -1,7 +1,5 @@
 /**
  * @file   m_usage.c
- * @author Akinobu Lee
- * @date   Fri May 13 15:04:34 2005
  * 
  * <JA>
  * @brief  ヘルプを表示する
@@ -11,13 +9,16 @@
  * @brief  Print help.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Fri May 13 15:04:34 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -25,13 +26,20 @@
 
 /** 
  * <JA>
- * バージョン情報，エンジン設定および詳細なオプションのヘルプを表示して終了
+ * ヘルプを表示する. 
  * 
  * </JA>
  * <EN>
- * Output version info, engine setting and detailed help for options, and exit.
+ * Output help document.
  * 
  * </EN>
+ *
+ * @param fp [in] file pointer to output help
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup engine
+ * 
  */
 void
 j_output_argument_help(FILE *fp)
@@ -64,14 +72,17 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-NA host:unit]     get audio from NetAudio server at host:unit\n");
 #endif
   fprintf(fp, "    [-adport portnum]   adinnet port number to listen         (%d)\n", jconf->input.adinnet_port);
-  fprintf(fp, "    [-smpFreq freq]     sample period in Hz                   (%ld)\n", jconf->analysis.para_default.smp_freq);
-  fprintf(fp, "    [-smpPeriod period] sample period in 100ns unit           (%ld)\n", jconf->analysis.para_default.smp_period);
+  fprintf(fp, "    [-smpFreq freq]     sample period in Hz                   (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(fp, "    [-smpPeriod period] sample period in 100ns unit           (%ld)\n", jconf->am_root->analysis.para_default.smp_period);
   fprintf(fp, "    [-48]               enable 48kHz sampling with internal down sampler (OFF)\n");
   fprintf(fp, "    [-zmean/-nozmean]   enable/disable DC offset removal      (OFF)\n");
   fprintf(fp, "    [-zmeanframe/-nozmeanframe] frame-wise DC removal like HTK(OFF)\n");
   fprintf(fp, "    [-nostrip]          disable stripping off zero samples\n");
   fprintf(fp, "    [-record dir]       record triggered speech data to dir\n");
   fprintf(fp, "    [-rejectshort msec] reject an input shorter than specified\n");
+#ifdef POWER_REJECT
+  fprintf(fp, "    [-powerthres value] rejection threshold of average power  (%.1f)\n", jconf->reject.powerthres);
+#endif
   
   fprintf(fp, "\n Speech Detection: (default: on=mic/net off=files)\n");
   /*fprintf(fp, "    [-pausesegment]     turn on (force) pause detection\n");*/
@@ -85,31 +96,35 @@ j_output_argument_help(FILE *fp)
 
   fprintf(fp, "\n Acoustic analysis:\n");
   fprintf(fp, "    [-htkconf file]     load parameters from the HTK Config file\n");
-  fprintf(fp, "    [-smpFreq freq]     sample period (Hz)                    (%ld)\n", jconf->analysis.para_default.smp_freq);
-  fprintf(fp, "    [-smpPeriod period] sample period (100ns)                 (%ld)\n", jconf->analysis.para_default.smp_period);
-  fprintf(fp, "    [-fsize sample]     window size (sample)                  (%d)\n", jconf->analysis.para_default.framesize);
-  fprintf(fp, "    [-fshift sample]    frame shift (sample)                  (%d)\n", jconf->analysis.para_default.frameshift);
-  fprintf(fp, "    [-preemph]          pre-emphasis coef.                    (%.2f)\n", jconf->analysis.para_default.preEmph);
-  fprintf(fp, "    [-fbank]            number of filterbank channels         (%d)\n", jconf->analysis.para_default.fbank_num);
-  fprintf(fp, "    [-ceplif]           cepstral liftering coef.              (%d)\n", jconf->analysis.para_default.lifter);
+  fprintf(fp, "    [-smpFreq freq]     sample period (Hz)                    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(fp, "    [-smpPeriod period] sample period (100ns)                 (%ld)\n", jconf->am_root->analysis.para_default.smp_period);
+  fprintf(fp, "    [-fsize sample]     window size (sample)                  (%d)\n", jconf->am_root->analysis.para_default.framesize);
+  fprintf(fp, "    [-fshift sample]    frame shift (sample)                  (%d)\n", jconf->am_root->analysis.para_default.frameshift);
+  fprintf(fp, "    [-preemph]          pre-emphasis coef.                    (%.2f)\n", jconf->am_root->analysis.para_default.preEmph);
+  fprintf(fp, "    [-fbank]            number of filterbank channels         (%d)\n", jconf->am_root->analysis.para_default.fbank_num);
+  fprintf(fp, "    [-ceplif]           cepstral liftering coef.              (%d)\n", jconf->am_root->analysis.para_default.lifter);
   fprintf(fp, "    [-rawe] [-norawe]   toggle using raw energy               (no)\n");
   fprintf(fp, "    [-enormal] [-noenormal] toggle normalizing log energy     (no)\n");
-  fprintf(fp, "    [-escale]           scaling log energy for enormal        (%.1f)\n", jconf->analysis.para_default.escale);
-  fprintf(fp, "    [-silfloor]         energy silence floor in dB            (%.1f)\n", jconf->analysis.para_default.silFloor);
-  fprintf(fp, "    [-delwin frame]     delta windows length (frame)          (%d)\n", jconf->analysis.para_default.delWin);
-  fprintf(fp, "    [-accwin frame]     accel windows length (frame)          (%d)\n", jconf->analysis.para_default.accWin);
-  fprintf(fp, "    [-hifreq freq]      freq. of upper band limit, off if <0  (%d)\n", jconf->analysis.para_default.hipass);
-  fprintf(fp, "    [-lofreq freq]      freq. of lower band limit, off if <0  (%d)\n", jconf->analysis.para_default.lopass);
+  fprintf(fp, "    [-escale]           scaling log energy for enormal        (%.1f)\n", jconf->am_root->analysis.para_default.escale);
+  fprintf(fp, "    [-silfloor]         energy silence floor in dB            (%.1f)\n", jconf->am_root->analysis.para_default.silFloor);
+  fprintf(fp, "    [-delwin frame]     delta windows length (frame)          (%d)\n", jconf->am_root->analysis.para_default.delWin);
+  fprintf(fp, "    [-accwin frame]     accel windows length (frame)          (%d)\n", jconf->am_root->analysis.para_default.accWin);
+  fprintf(fp, "    [-hifreq freq]      freq. of upper band limit, off if <0  (%d)\n", jconf->am_root->analysis.para_default.hipass);
+  fprintf(fp, "    [-lofreq freq]      freq. of lower band limit, off if <0  (%d)\n", jconf->am_root->analysis.para_default.lopass);
   fprintf(fp, "    [-sscalc]           do spectral subtraction (file input only)\n");
-  fprintf(fp, "    [-sscalclen msec]   length of head silence for SS (msec)  (%d)\n", jconf->frontend.sscalc_len);
+  fprintf(fp, "    [-sscalclen msec]   length of head silence for SS (msec)  (%d)\n", jconf->am_root->frontend.sscalc_len);
   fprintf(fp, "    [-ssload filename]  load constant noise spectrum from file for SS\n");
-  fprintf(fp, "    [-ssalpha value]    alpha coef. for SS                    (%f)\n", jconf->analysis.para_default.ss_alpha);
-  fprintf(fp, "    [-ssfloor value]    spectral floor for SS                 (%f)\n", jconf->analysis.para_default.ss_floor);
+  fprintf(fp, "    [-ssalpha value]    alpha coef. for SS                    (%f)\n", jconf->am_root->frontend.ss_alpha);
+  fprintf(fp, "    [-ssfloor value]    spectral floor for SS                 (%f)\n", jconf->am_root->frontend.ss_floor);
 
   fprintf(fp, "\n GMM utterance verification:\n");
   fprintf(fp, "    -gmm filename       GMM definition file\n");
   fprintf(fp, "    -gmmnum num         GMM Gaussian pruning num              (%d)\n", jconf->reject.gmm_gprune_num);
   fprintf(fp, "    -gmmreject string   comma-separated list of noise model name to reject\n");
+#ifdef GMM_VAD
+  fprintf(fp, "\n GMM-based VAD:\n");
+  fprintf(fp, "    -gmmmargin frames   backstep margin on speech trigger     (%d)\n", jconf->detect.gmm_margin);
+#endif
 
   fprintf(fp, "\n N-gram Language model:\n");
   fprintf(fp, "    -d file.bingram     n-gram file in Julius binary format\n");
@@ -117,14 +132,14 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    -nrl file.arpa      backward n-gram file in ARPA format\n");
   fprintf(fp, "    [-lmp float float]  weight and penalty (tri: %.1f %.1f mono: %.1f %1.f)\n", DEFAULT_LM_WEIGHT_TRI_PASS1, DEFAULT_LM_PENALTY_TRI_PASS1, DEFAULT_LM_WEIGHT_MONO_PASS1, DEFAULT_LM_PENALTY_MONO_PASS1);
   fprintf(fp, "    [-lmp2 float float]       for 2nd pass (tri: %.1f %.1f mono: %.1f %1.f)\n", DEFAULT_LM_WEIGHT_TRI_PASS2, DEFAULT_LM_PENALTY_TRI_PASS2, DEFAULT_LM_WEIGHT_MONO_PASS2, DEFAULT_LM_PENALTY_MONO_PASS2);
-  fprintf(fp, "    [-transp float]     penalty for transparent word (%+2.1f)\n", jconf->lm.lm_penalty_trans);
+  fprintf(fp, "    [-transp float]     penalty for transparent word (%+2.1f)\n", jconf->search_root->lmp.lm_penalty_trans);
 
   fprintf(fp, "\n DFA Grammar:\n");
   fprintf(fp, "    -dfa file.dfa       DFA grammar file\n");
   fprintf(fp, "    -gram file[,file2...] (list of) grammar prefix(es)\n");
   fprintf(fp, "    -gramlist filename  filename of grammar list\n");
-  fprintf(fp, "    [-penalty1 float]   word insertion penalty (1st pass)     (%.1f)\n", jconf->lm.penalty1);
-  fprintf(fp, "    [-penalty2 float]   word insertion penalty (2nd pass)     (%.1f)\n", jconf->lm.penalty2);
+  fprintf(fp, "    [-penalty1 float]   word insertion penalty (1st pass)     (%.1f)\n", jconf->search_root->lmp.penalty1);
+  fprintf(fp, "    [-penalty2 float]   word insertion penalty (2nd pass)     (%.1f)\n", jconf->search_root->lmp.penalty2);
 
   fprintf(fp, "\n Word Dictionary: (for N-gram and DFA)\n");
   fprintf(fp, "    -v dictfile         dictionary file name\n");
@@ -138,19 +153,19 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    -w file[,file2...]  (list of) wordlist file name(s)\n");
   fprintf(fp, "    -wlist filename     file that contains list of wordlists\n");
   fprintf(fp, "    -wsil head tail sp  name of silence/pause model\n");
-  fprintf(fp, "                          head - BOS silence model name       (%s)\n", jconf->lm.wordrecog_head_silence_model_name);
-  fprintf(fp, "                          tail - EOS silence model name       (%s)\n", jconf->lm.wordrecog_tail_silence_model_name);
-  fprintf(fp, "                           sp  - their name as context or \"NULL\" (%s)\n", (jconf->lm.wordrecog_silence_context_name[0] == '\0') ? "NULL" : jconf->lm.wordrecog_silence_context_name);
+  fprintf(fp, "                          head - BOS silence model name       (%s)\n", jconf->lm_root->wordrecog_head_silence_model_name);
+  fprintf(fp, "                          tail - EOS silence model name       (%s)\n", jconf->lm_root->wordrecog_tail_silence_model_name);
+  fprintf(fp, "                           sp  - their name as context or \"NULL\" (%s)\n", (jconf->lm_root->wordrecog_silence_context_name[0] == '\0') ? "NULL" : jconf->lm_root->wordrecog_silence_context_name);
 #ifdef DETERMINE
   fprintf(fp, "    -wed float int      thresholds for early word determination\n");
-  fprintf(fp, "                        float: score threshold    (%.1f)\n", jconf->search.pass1.determine_score_thres);
-  fprintf(fp, "                        int: frame duration thres (%d)\n", jconf->search.pass1.determine_duration_thres);
+  fprintf(fp, "                        float: score threshold    (%.1f)\n", jconf->search_root->pass1.determine_score_thres);
+  fprintf(fp, "                        int: frame duration thres (%d)\n", jconf->search_root->pass1.determine_duration_thres);
 #endif
   fprintf(fp, "\n Acoustic Model:\n");
   fprintf(fp, "    -h hmmdefsfile      HMM definition file name\n");
   fprintf(fp, "    [-hlist HMMlistfile] HMMlist filename (must for triphone model)\n");
   fprintf(fp, "    [-iwcd1 methodname] switch IWCD triphone handling on 1st pass\n");
-  fprintf(fp, "             best N     use N best score (default of n-gram, N=%d)\n", jconf->search.pass1.iwcdmaxn);
+  fprintf(fp, "             best N     use N best score (default of n-gram, N=%d)\n", jconf->am_root->iwcdmaxn);
   fprintf(fp, "             max        use maximum score\n");
   fprintf(fp, "             avg        use average score (default of dfa)\n");
   fprintf(fp, "    [-force_ccd]        force to handle IWCD\n");
@@ -177,42 +192,47 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "             beam          beam pruning\n");
 #endif
   fprintf(fp, "             none          no pruning (default for non tmix models)\n");
-  fprintf(fp, "    [-tmix gaussnum]    Gaussian num threshold per mixture for pruning (%d)\n", jconf->am.mixnum_thres);
+  fprintf(fp, "    [-tmix gaussnum]    Gaussian num threshold per mixture for pruning (%d)\n", jconf->am_root->mixnum_thres);
   fprintf(fp, "    [-gshmm hmmdefs]    monophone hmmdefs for GS\n");
-  fprintf(fp, "    [-gsnum N]          N-best state will be selected        (%d)\n", jconf->am.gs_statenum);
+  fprintf(fp, "    [-gsnum N]          N-best state will be selected        (%d)\n", jconf->am_root->gs_statenum);
 
-#ifdef SP_BREAK_CURRENT_FRAME
   fprintf(fp, "\n Short-pause Segmentation:\n");
-  fprintf(fp, "    [-spdur]            length threshold of sp frames         (%d)\n", jconf->successive.sp_frame_duration);
+  fprintf(fp, "    [-spsegment]        enable short-pause segmentation\n");
+  fprintf(fp, "    [-spdur]            length threshold of sp frames         (%d)\n", jconf->search_root->successive.sp_frame_duration);
+#ifdef SPSEGMENT_NAIST
+  fprintf(fp, "    [-spmargin]         backstep margin on speech trigger     (%d)\n", jconf->search_root->successive.sp_margin);
+  fprintf(fp, "    [-spdelay]          delay on speech trigger               (%d)\n", jconf->search_root->successive.sp_delay);
 #endif
+  fprintf(fp, "    [-pausemodels str]  comma-delimited list of pause models for segment\n");
 
   fprintf(fp, "\n Search Parameters (First Pass):\n");
   fprintf(fp, "    [-b beamwidth]      beam width (by state num)             (guessed)\n");
   fprintf(fp, "                        (0: full search, -1: force guess)\n");
 #ifdef WPAIR
 # ifdef WPAIR_KEEP_NLIMIT
-  fprintf(fp, "    [-nlimit N]         keeps only N tokens on each state     (%d)\n", jconf->search.pass1.wpair_keep_nlimit);
+  fprintf(fp, "    [-nlimit N]         keeps only N tokens on each state     (%d)\n", jconf->search_root->pass1.wpair_keep_nlimit);
 # endif
 #endif
 #ifdef SEPARATE_BY_UNIGRAM
-  fprintf(fp, "    [-sepnum wordnum]   (n-gram) # of hi-freq word isolated from tree (%d)\n", jconf->search.pass1.separate_wnum);
+  fprintf(fp, "    [-sepnum wordnum]   (n-gram) # of hi-freq word isolated from tree (%d)\n", jconf->lm_root->separate_wnum);
 #endif
 #ifdef HASH_CACHE_IW
-  fprintf(fp, "    [-iwcache percent]  (n-gram) amount of inter-word LM cache (%3d)\n", jconf->search.pass1.iw_cache_rate);
+  fprintf(fp, "    [-iwcache percent]  (n-gram) amount of inter-word LM cache (%3d)\n", jconf->search_root->pass1.iw_cache_rate);
 #endif
   fprintf(fp, "    [-1pass]            do 1st pass only, omit 2nd pass\n");
+  fprintf(fp, "    [-inactive]         recognition process not active on startup\n");
 
   fprintf(fp, "\n Search Parameters (Second Pass):\n");
-  fprintf(fp, "    [-b2 hyponum]       word envelope beam width (by hypo num) (%d)\n",jconf->search.pass2.enveloped_bestfirst_width);
-  fprintf(fp, "    [-n N]              # of sentence to find                 (%d)\n", jconf->search.pass2.nbest);
-  fprintf(fp, "    [-output N]         # of sentence to output               (%d)\n",jconf->output.output_hypo_maxnum);
+  fprintf(fp, "    [-b2 hyponum]       word envelope beam width (by hypo num) (%d)\n",jconf->search_root->pass2.enveloped_bestfirst_width);
+  fprintf(fp, "    [-n N]              # of sentence to find                 (%d)\n", jconf->search_root->pass2.nbest);
+  fprintf(fp, "    [-output N]         # of sentence to output               (%d)\n",jconf->search_root->output.output_hypo_maxnum);
 #ifdef SCAN_BEAM
-  fprintf(fp, "    [-sb score]         score beam threshold (by score)       (%.1f)\n", jconf->search.pass2.scan_beam_thres);
+  fprintf(fp, "    [-sb score]         score beam threshold (by score)       (%.1f)\n", jconf->search_root->pass2.scan_beam_thres);
 #endif
-  fprintf(fp, "    [-s hyponum]        global stack size of hypotheses       (%d)\n", jconf->search.pass2.stack_size);
-  fprintf(fp, "    [-m hyponum]        hypotheses overflow threshold num     (%d)\n", jconf->search.pass2.hypo_overflow);
+  fprintf(fp, "    [-s hyponum]        global stack size of hypotheses       (%d)\n", jconf->search_root->pass2.stack_size);
+  fprintf(fp, "    [-m hyponum]        hypotheses overflow threshold num     (%d)\n", jconf->search_root->pass2.hypo_overflow);
 
-  fprintf(fp, "    [-lookuprange N]    frame lookup range in word expansion  (%d)\n", jconf->search.pass2.lookup_range);
+  fprintf(fp, "    [-lookuprange N]    frame lookup range in word expansion  (%d)\n", jconf->search_root->pass2.lookup_range);
   fprintf(fp, "    [-looktrellis]      (dfa) expand only backtrellis words\n");
   fprintf(fp, "    [-[no]multigramout] (dfa) output per-grammar results\n");
   fprintf(fp, "    [-oldtree]          (dfa) use old build_wchmm()\n");
@@ -220,21 +240,21 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-oldiwcd]          (dfa) use full lcdset\n");
 #endif
   fprintf(fp, "    [-iwsp]             insert sp for all word end (multipath)(off)\n");
-  fprintf(fp, "    [-iwsppenalty]      trans. penalty for iwsp (multipath)   (%.1f)\n", jconf->lm.iwsp_penalty);
+  fprintf(fp, "    [-iwsppenalty]      trans. penalty for iwsp (multipath)   (%.1f)\n", jconf->am_root->iwsp_penalty);
 
   fprintf(fp, "\n Graph Output with graph-oriented search:\n");
   fprintf(fp, "    [-lattice]          enable word graph (lattice) output\n");
   fprintf(fp, "    [-confnet]          enable confusion network output\n");
   fprintf(fp, "    [-nolattice]][-noconfnet] disable lattice / confnet output\n");
-  fprintf(fp, "    [-graphrange N]     merge same words in graph (%d)\n", jconf->graph.graph_merge_neighbor_range);
+  fprintf(fp, "    [-graphrange N]     merge same words in graph (%d)\n", jconf->search_root->graph.graph_merge_neighbor_range);
   fprintf(fp, "                        -1: not merge, leave same loc. with diff. score\n");
   fprintf(fp, "                         0: merge same words at same location\n");
   fprintf(fp, "                        >0: merge same words around the margin\n");
 #ifdef GRAPHOUT_DEPTHCUT
-  fprintf(fp, "    [-graphcut num]     graph cut depth at postprocess (-1: disable)(%d)\n", jconf->graph.graphout_cut_depth);
+  fprintf(fp, "    [-graphcut num]     graph cut depth at postprocess (-1: disable)(%d)\n", jconf->search_root->graph.graphout_cut_depth);
 #endif
 #ifdef GRAPHOUT_LIMIT_BOUNDARY_LOOP
-  fprintf(fp, "    [-graphboundloop num] max. num of boundary adjustment loop (%d)\n", jconf->graph.graphout_limit_boundary_loop_num);
+  fprintf(fp, "    [-graphboundloop num] max. num of boundary adjustment loop (%d)\n", jconf->search_root->graph.graphout_limit_boundary_loop_num);
 #endif
 #ifdef GRAPHOUT_SEARCH_DELAY_TERMINATION
   fprintf(fp, "    [-graphsearchdelay] inhibit search termination until 1st sent. found\n");
@@ -247,7 +267,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-cmnload file]     load initial CMN param from file on startup\n");
   fprintf(fp, "    [-cmnsave file]     save CMN param to file after each input\n");
   fprintf(fp, "    [-cmnnoupdate]      not update CMN param while recog. (use with -cmnload)\n");
-  fprintf(fp, "    [-cmnmapweight]     weight value of initial cm for MAP-CMN (%6.2f)\n", jconf->frontend.cmn_map_weight);
+  fprintf(fp, "    [-cmnmapweight]     weight value of initial cm for MAP-CMN (%6.2f)\n", jconf->am_root->analysis.cmn_map_weight);
 
   fprintf(fp, "\n Forced Alignment:\n");
   fprintf(fp, "    [-walign]           optionally output word alignments\n");
@@ -258,17 +278,17 @@ j_output_argument_help(FILE *fp)
 #ifdef CM_MULTIPLE_ALPHA
   fprintf(fp, "    [-cmalpha f t s]    CM smoothing factor        (from, to, step)\n");
 #else
-  fprintf(fp, "    [-cmalpha value]    CM smoothing factor                    (%f)\n", jconf->annotate.cm_alpha);
+  fprintf(fp, "    [-cmalpha value]    CM smoothing factor                    (%f)\n", jconf->search_root->annotate.cm_alpha);
 #endif
 #ifdef CM_SEARCH_LIMIT
-  fprintf(fp, "    [-cmthres value]    CM threshold to cut hypo on 2nd pass   (%f)\n", jconf->annotate.cm_cut_thres);
+  fprintf(fp, "    [-cmthres value]    CM threshold to cut hypo on 2nd pass   (%f)\n", jconf->search_root->annotate.cm_cut_thres);
 #endif
 #endif /* CONFIDENCE_MEASURE */
   fprintf(fp, "\n Message Output:\n");
   fprintf(fp, "    [-separatescore]    (n-gram) output LM and AM score independently\n");
   fprintf(fp, "    [-quiet]            reduce output to only word string\n");
   fprintf(fp, "    [-progout]          progressive output in 1st pass\n");
-  fprintf(fp, "    [-proginterval]     interval of progout in msec           (%d)\n", jconf->output.progout_interval);
+  fprintf(fp, "    [-proginterval]     interval of progout in msec           (%d)\n", jconf->search_root->output.progout_interval);
   fprintf(fp, "    [-demo]             equal to \"-quiet -progout\"\n");
   fprintf(fp, "\n Others:\n");
   fprintf(fp, "    [-C jconffile]      load options from jconf file\n");
@@ -284,3 +304,5 @@ j_output_argument_help(FILE *fp)
   useropt_show_desc(fp);
 
 }
+
+/* end of file */

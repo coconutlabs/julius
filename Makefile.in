@@ -1,11 +1,11 @@
-# Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+# Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
 # Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
-# Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+# Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
 # Makefile.in --- Makefile Template for configure
 #
-# $Id: Makefile.in,v 1.1 2007/09/28 02:50:55 sumomo Exp $
+# $Id: Makefile.in,v 1.2 2007/12/18 08:45:45 sumomo Exp $
 #
 SHELL=/bin/sh
 
@@ -55,7 +55,6 @@ distclean:
 	   (cd $$d; $(MAKE) distclean); \
 	  fi; \
 	done
-	$(RM) support/doxygen.conf.en support/doxygen.conf.ja
 	$(RM) config.log config.cache
 	$(RM) config.status
 	$(RM) Makefile
@@ -66,8 +65,9 @@ configure:
 	done
 
 doxygen:
-	(cd julius; $(MAKE) doxygen)
 	mkdir -p doxygen/en
-	doxygen support/doxygen.conf.en
 	mkdir -p doxygen/ja
-	doxygen support/doxygen.conf.ja
+	cat support/doxygen.conf.en libjulius/doxygen.conf.ver > doxygen/doxygen.conf.en
+	cat support/doxygen.conf.ja libjulius/doxygen.conf.ver > doxygen/doxygen.conf.ja
+	doxygen doxygen/doxygen.conf.en > doxygen/doxygen-en.log 2> doxygen/doxygen-en-err.log
+	doxygen doxygen/doxygen.conf.ja > doxygen/doxygen-ja.log 2> doxygen/doxygen-ja-err.log

@@ -1,23 +1,24 @@
 /**
  * @file   multi-gram.h
- * @author Akinobu Lee
- * @date   Fri Jul  8 14:47:05 2005
  * 
  * <JA>
- * @brief  複数の文法を同時に扱うための定義．
+ * @brief  複数の文法を同時に扱うための定義. 
  * </JA>
  * 
  * <EN>
  * @brief  Definitions for managing multiple grammars.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Fri Jul  8 14:47:05 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -52,9 +53,10 @@ typedef struct __gram_list__ {
 
 /* for command hook */
 #define MULTIGRAM_DEFAULT    0	///< Grammar hook value of no operation
-#define MULTIGRAM_DELETE     1  ///< Grammar hook value specifying that this grammar is to be deleted
-#define MULTIGRAM_ACTIVATE   2  ///< Grammar hook value specifying that this grammar is to be activated
-#define MULTIGRAM_DEACTIVATE 3  ///< Grammar hook value specifying that this grammar is to be deactivated
+#define MULTIGRAM_DELETE     1  ///< Grammar hook bit specifying that this grammar is to be deleted
+#define MULTIGRAM_ACTIVATE   2  ///< Grammar hook bit specifying that this grammar is to be activated
+#define MULTIGRAM_DEACTIVATE 4  ///< Grammar hook bit specifying that this grammar is to be deactivated
+#define MULTIGRAM_MODIFIED   8 /// < Grammar hook bit indicating modification  and needs rebuilding the whole lexicon
 
 
 #endif /* __J_MULTI_GRAM_H__ */

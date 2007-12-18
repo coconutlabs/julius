@@ -1,3 +1,26 @@
+4.0 (2007.12.19)
+=================
+For more detail about new features in 4.0, please see other document.
+
+- Re-constructed all data structures and re-organize source code.
+- Core engine now becomes a library called JuliusLib, with API and callbacks.
+- Multi-model decoding now available.
+- Modularize language model handling, and merge Julian to JuliusLib.
+- Support longer N-gram (N > 3).
+- User-defined LM function support.
+- Handy isolated word recognition mode.
+- Confusion network output.
+- Improvements in short-pause segmentation, especially for live input.
+- GMM-based VAD.
+- Decoder-based VAD.
+- Integrated many compile-time options.
+- Reduce memory usage.
+- Sample application to use the JuliusLib is included: "julius-simple".
+- Update tools:
+   - "adintool" supports multi-server mode.
+   - "generate-ngram" newly added to generate sentences from N-gram
+
+
 3.5.3 (2006.12.29)
 ===================
   o  Improved Performance:

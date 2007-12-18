@@ -1,116 +1,107 @@
 /**
  * @file   adin-cut.c
- * @author Akinobu LEE
- * @date   Sat Feb 12 13:20:53 2005
  *
  * <JA>
- * @brief  音声取り込みおよび音声区間検出
+ * @brief  音声キャプチャおよび有音区間検出
  *
- * 音声入力デバイスからの音声データの取り込み，および音声区間の検出を
- * 行ないます．
+ * 音声入力デバイスからの音声データの取り込み，および
+ * 音の存在する区間の検出を行ないます. 
  *
- * 音声区間の検出は，振幅レベルと零交差数を用いて行なっています．
+ * 有音区間の検出は，振幅レベルと零交差数を用いて行ないます. 
  * 入力断片ごとに，レベルしきい値を越える振幅について零交差数をカウントし，
- * それが指定した数以上になれば，音声区間開始検出として
- * 取り込みを開始します．取り込み中に零交差数が指定数以下になれば，
- * 取り込みを停止します．実際には頑健に切り出しを行なうため，開始部と
- * 停止部の前後にマージンを持たせて切り出します．
- * また必要であれば DC offset の調整を行ないます．
- *
- * 音声データの取り込みと並行して入力音声の処理を行ないます．このため，
- * 取り込んだ音声データはその取り込み単位（live入力では一定時間，音声ファイル
- * ではバッファサイズ）ごとに，それらを引数としてコールバック関数が呼ばれます．
- * このコールバック関数としてデータの保存や特徴量抽出，
- * （フレーム同期の）認識処理を進める関数を指定しておきます．
- *
- * マイク入力や NetAudio 入力などの Live 入力を直接読み込む場合，
- * コールバック内の処理が重く処理が入力の速度に追い付かないと，
- * デバイスのバッファが溢れ，入力断片がロストする場合があります．
- * このエラーを防ぐために，もし実行環境で pthread が使用可能であれば，
- * 音声取り込み・音声区間検出部は本体と独立したスレッドとして動作します．
- * この場合，このスレッドは本スレッドとバッファ @a speech を介して以下のように
- * 協調動作します．
+ * それが指定した数以上になれば，音の区間開始検出として
+ * 取り込みを開始します. 取り込み中に零交差数が指定数以下になれば，
+ * 取り込みを停止します. 実際には頑健に切り出しを行なうため，開始部と
+ * 停止部の前後にマージンを持たせて切り出します. 
  * 
- *    - Thread 1: 音声取り込み・音声区間検出スレッド
- *        - デバイスから音声データを読み込みながら音声区間検出を行なう．
- *          検出した音声区間のサンプルはバッファ @a speech の末尾に逐次
- *          追加される．
+ * また，オプション指定 (-zmean)により DC offset の除去をここで行ないます. 
+ * offset は最初の @a ZMEANSAMPLES 個のサンプルの平均から計算されます. 
+ *
+ * 音声データの取り込みと並行して入力音声の処理を行ないます. このため，
+ * 取り込んだ音声データはその取り込み単位（live入力では一定時間，音声ファイル
+ * ではバッファサイズ）ごとに，それらを引数としてコールバック関数が呼ばれます. 
+ * このコールバック関数としてデータの保存や特徴量抽出，
+ * （フレーム同期の）認識処理を進める関数を指定します. 
+ *
+ * マイク入力や NetAudio 入力などの Live 入力では，
+ * コールバック内の処理が重く処理が入力の速度に追い付かないと，
+ * デバイスのバッファが溢れ，入力断片がロストする場合があります. 
+ * このエラーを防ぐため，実行環境で pthread が使用可能である場合，
+ * 音声取り込み・区間検出部は本体と独立したスレッドで動作します. 
+ * この場合，このスレッドは本スレッドとバッファ @a speech を介して
+ * 以下のように協調動作します. 
+ * 
+ *    - Thread 1: 音声取り込み・音区間検出スレッド
+ *        - デバイスから音声データを読み込みながら音区間検出を行なう. 
+ *          検出した音区間のサンプルはバッファ @a speech の末尾に逐次
+ *          追加される. 
  *        - このスレッドは起動時から本スレッドから独立して動作し，
- *          上記の動作を行ない続ける．
+ *          上記の動作を行ない続ける. 
  *    - Thread 2: 音声処理・認識処理を行なう本スレッド
  *        - バッファ @a speech を一定時間ごとに監視し，新たなサンプルが
  *          Thread 1 によって追加されたらそれらを処理し，処理が終了した
- *          分バッファを詰める．
+ *          分バッファを詰める. 
  *
- * 定義される関数の概要は以下のとおりです．
- * Juliusのメイン部から呼び出される関数は adin_go() です．
- * 音声取り込みと区間検出処理の本体は adin_cut() です．
- * 音声入力ソースの切替えは， adin_setup_func() を対象となる入力ストリームの
- * 開始・読み込み・停止の関数を引数として呼び出すことで行なわれます．
- * また切り出し処理のための各種パラメータは adin_setup_param() でセットします．
  * </JA>
  * <EN>
- * @brief  Read in speech waveform and detect speech segment
+ * @brief  Capture audio and detect sound trigger
  *
- * This file contains functions to get speech waveform from an audio device
- * and detect speech segment.
+ * This file contains functions to get waveform from an audio device
+ * and detect speech/sound input segment
  *
- * Speech detection is based on level threshold and zero cross count.
- * The number of zero cross are counted for each incoming speech fragment.
- * If the number becomes larger than specified threshold, the fragment
- * is treated as a beginning of speech input (trigger on).  If the number goes
- * below the threshold, the fragment will be treated as an
- * end of speech input (trigger off).  In actual
- * detection, margins are considered on the beginning and ending point, which
- * will be treated as head and tail silence part.  DC offset normalization
- * will be also performed if configured so.
+ * Sound detection at this stage is based on level threshold and zero
+ * cross count.  The number of zero cross are counted for each
+ * incoming sound fragment.  If the number becomes larger than
+ * specified threshold, the fragment is treated as a beginning of
+ * sound/speech input (trigger on).  If the number goes below the threshold,
+ * the fragment will be treated as an end of input (trigger
+ * off).  In actual detection, margins are considered on the beginning
+ * and ending point, which will be treated as head and tail silence
+ * part.  DC offset normalization will be also performed if configured
+ * so (-zmean).
  *
- * The triggered input speech data should be processed concurrently with the
+ * The triggered input data should be processed concurrently with the
  * detection for real-time recognition.  For this purpose, after the
- * beginning of speech input has been detected, the following triggered input
+ * beginning of input has been detected, the following triggered input
  * fragments (samples of a certain period in live input, or buffer size in
  * file input) are passed sequencially in turn to a callback function.
  * The callback function should be specified by the caller, typicaly to
- * store the recoded speech, or to process them into a frame-synchronous
+ * store the recoded data, or to process them into a frame-synchronous
  * recognition process.
  *
  * When source is a live input such as microphone, the device buffer will
  * overflow if the processing callback is slow.  In that case, some input
  * fragments may be lost.  To prevent this, the A/D-in part together with
- * speech detection will become an independent thread if @em pthread functions
+ * sound detection will become an independent thread if @em pthread functions
  * are supported.  The A/D-in and detection thread will cooperate with
  * the original main thread through @a speech buffer, like the followings:
  *
  *    - Thread 1: A/D-in and speech detection thread
- *        - reads audio input from source device and perform speech detection.
+ *        - reads audio input from source device and perform sound detection.
  *          The detected fragments are immediately appended
  *          to the @a speech buffer.
  *        - will be detached after created, and run forever till the main
  *          thread dies.
  *    - Thread 2: Main thread
- *        - performs speech processing and recognition.
+ *        - performs input processing and recognition.
  *        - watches @a speech buffer, and if detect appendings of new samples
  *          by the Thread 1, proceed the processing for the appended samples
  *          and purge the finished samples from @a speech buffer.
  *
- * adin_setup_func() is used to switch audio input by specifying device-dependent
- * open/read/close functions, and should be called at first.
- * Function adin_setup_param() should be called after adin_setup_func() to
- * set various parameters for speech detection.
- * The adin_go() function is the top function that will be called from
- * outside, to perform actual input processing.  adin_cut() is
- * the main function to read audio input and detect speech segment.
  * </EN>
  *
  * @sa adin.c
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sat Feb 12 13:20:53 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -125,20 +116,23 @@
 #define TMP_FIX_200602		
 
 /** 
- * Setup silence detection parameters (should be called after adin_select()).
- * If using pthread, the A/D-in and detection thread will be started at the end
- * of this function.
+ * <EN>
+ * @brief  Set up parameters for A/D-in and input detection.
+ *
+ * Set variables in work area according to the configuration values.
  * 
- * @param silence_cut [in] whether to perform silence cutting.
- *                 0=force off, 1=force on, 2=keep device-specific default
- * @param strip_zero [in] TRUE if enables stripping of zero samples 
- * @param cthres [in]  input level threshold (0-32767)
- * @param czc [in] zero-cross count threshold in a second
- * @param head_margin [in] header margin length in msec
- * @param tail_margin [in] tail margin length in msec
- * @param sample_freq [in] sampling frequency: just providing value for computing other variables
- * @param ignore_speech [in] TRUE if ignore speech input between call, while waiting recognition process
- * @param need_zeromean [in] TRUE if perform zero-mean subtraction
+ * </EN>
+ * <JA>
+ * @brief  音声切り出し用各種パラメータをセット
+ *
+ * 設定を元に切り出し用のパラメータを計算し，ワークエリアにセットします. 
+ * 
+ * </JA>
+ * @param adin [in] AD-in work area
+ * @param jconf [in] configuration data
+ *
+ * @callergraph
+ * @callgraph
  */
 void
 adin_setup_param(ADIn *adin, Jconf *jconf)
@@ -151,18 +145,18 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   } else {
     adin->adin_cut_on = adin->silence_cut_default;
   }
-  adin->strip_flag = jconf->frontend.strip_zero_sample;
+  adin->strip_flag = jconf->preprocess.strip_zero_sample;
   adin->thres = jconf->detect.level_thres;
-  adin->ignore_speech_while_recog = TRUE;
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (jconf->input.speech_input == SP_MIC) {
-    /* does not drop speech while decoding */
+#ifdef HAVE_PTHREAD
+  if (jconf->input.speech_input == SP_MIC && jconf->decodeopt.segment) {
     adin->ignore_speech_while_recog = FALSE;
+  } else {
+    adin->ignore_speech_while_recog = TRUE;
   }
 #endif
-  adin->need_zmean = jconf->frontend.use_zmean;
+  adin->need_zmean = jconf->preprocess.use_zmean;
   /* calc & set internal parameter from configuration */
-  freq = jconf->analysis.para.smp_freq;
+  freq = jconf->input.sfreq;
   samples_in_msec = (float) freq / (float)1000.0;
   /* cycle buffer length = head margin length */
   adin->c_length = (int)((float)jconf->detect.head_margin_msec * samples_in_msec);	/* in msec. */
@@ -195,13 +189,21 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   
   adin->need_init = TRUE;
 
+  adin->rehash = FALSE;
+
 }
 
-
 /** 
- * Purge samples already processed in the temporary buffer @a buffer.
+ * <EN>
+ * Purge samples already processed in the temporary buffer.
+ * </EN>
+ * <JA>
+ * テンポラリバッファにある処理されたサンプルをパージする.
+ * </JA>
  * 
+ * @param a [in] AD-in work area
  * @param from [in] Purge samples in range [0..from-1].
+ * 
  */
 static void
 adin_purge(ADIn *a, int from)
@@ -213,30 +215,79 @@ adin_purge(ADIn *a, int from)
 }
 
 /** 
- * @brief  Main A/D-in function
+ * <EN>
+ * @brief  Main A/D-in and sound detection function
  *
- * In threaded mode, this function will detach and loop forever in ad-in
- * thread, storing triggered samples in @a speech, and telling the status
- * to another process thread via @a transfer_online.
- * The process thread, called from adin_go(), polls the length of
- * @a speech and @a transfer_online, and if there are stored samples,
- * process them.
+ * This function read inputs from device and do sound detection
+ * (both up trigger and down trigger) until end of device.
+ *
+ * In threaded mode, this function will detach and loop forever as
+ * ad-in thread, (adin_thread_create()) storing triggered samples in
+ * speech[], and telling the status to another process thread via @a
+ * transfer_online in work area.  The process thread, called from
+ * adin_go(), polls the length of speech[] and transfer_online in work area
+ * and process them if new samples has been stored.
  *
  * In non-threaded mode, this function will be called directly from
  * adin_go(), and triggered samples are immediately processed within here.
  *
- * In module mode, the function argument @a ad_check should be specified
- * to poll the status of incoming command from client while recognition.
+ * Threaded mode should be used for "live" input such as microphone input
+ * where input is infinite and capture delay is severe.  For file input,
+ * adinnet input and other "buffered" input, non-threaded mode will be used.
+ *
+ * Argument "ad_process()" should be a function to process the triggered
+ * input samples.  On real-time recognition, a frame-synchronous search
+ * function for the first pass will be specified by the caller.  The current
+ * input will be segmented if it returns 1, and will be terminated as error
+ * if it returns -1.
+ *
+ * When the argument "ad_check()" specified, it will be called periodically.
+ * When it returns less than 0, this function will be terminated.
  * 
- * @return -2 when input terminated by result of the @a ad_check function,
- * -1 on error, 0 on end of stream, 1 if segmented by frontend, 2 if segmented
- * by processing callback.
+ * </EN>
+ * <JA>
+ * @brief  音声入力と音検出を行うメイン関数
+ *
+ * ここでは音声入力の取り込み，音区間の開始・終了の検出を行います. 
+ *
+ * スレッドモード時，この関数は独立したAD-inスレッドとしてデタッチされます. 
+ * (adin_thread_create()), 音入力を検知するとこの関数はワークエリア内の
+ * speech[] にトリガしたサンプルを記録し，かつ transfer_online を TRUE に
+ * セットします. Julius のメイン処理スレッド (adin_go()) は
+ * adin_thread_process() に移行し，そこで transfer_online 時に speech[] を
+ * 参照しながら認識処理を行います. 
+ *
+ * 非スレッドモード時は，メイン処理関数 adin_go() は直接この関数を呼び，
+ * 認識処理はこの内部で直接行われます. 
+ *
+ * スレッドモードはマイク入力など，入力が無限で処理の遅延がデータの
+ * 取りこぼしを招くような live input で用いられます. 一方，ファイル入力
+ * やadinnet 入力のような buffered input では非スレッドモードが用いられます. 
+ *
+ * 引数の ad_process は，取り込んだサンプルに対して処理を行う関数を
+ * 指定します. リアルタイム認識を行う場合は，ここに第1パスの認識処理を
+ * 行う関数が指定されます. 返り値が 1 であれば，入力をここで区切ります. 
+ * -1 であればエラー終了します. 
+ * 
+ * 引数の ad_check は一定処理ごとに繰り返し呼ばれる関数を指定します. この
+ * 関数の返り値が 0 以下だった場合，入力を即時中断して関数を終了します. 
+ * </JA>
+ *
+ * @param ad_process [in] function to process triggerted input.
+ * @param ad_check [in] function to be called periodically.
+ * @param recog [in] engine instance
+ * 
+ * @return 2 when input termination requested by ad_process(), 1 when
+ * if detect end of an input segment (down trigger detected after up
+ * trigger), 0 when reached end of input device, -1 on error, -2 when
+ * input termination requested by ad_check().
+ *
+ * @callergraph
+ * @callgraph
+ *
  */
 static int
-adin_cut(
-	 int (*ad_process)(SP16 *, int, Recog **, int), ///< function to process the triggered samples
-	 int (*ad_check)(Recog **, int),	///< function periodically called while input processing
-	 Recog **recoglist, int recognum) ///< If NULL, not execute callback
+adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog)
 {
   ADIn *a;
   static int i;
@@ -246,9 +297,6 @@ adin_cut(
   static int end_status;	/* return value */
   static boolean transfer_online_local;	/* local repository of transfer_online */
   static int zc;		/* count of zero cross */
-  Recog *recog;
-
-  recog = recoglist[0];
 
   a = recog->adin;
 
@@ -277,13 +325,21 @@ adin_cut(
     a->sblen = 0;
     a->need_init = FALSE;		/* for next call */
   }
-      
+
   /****************/
   /* resume input */
   /****************/
   /* restart speech input if paused on the last call */
   if (a->ad_resume != NULL) {
     if ((*(a->ad_resume))() == FALSE)  return(-1);
+  }
+
+  if (!a->adin_cut_on && a->is_valid_data == TRUE) {
+#ifdef HAVE_PTHREAD
+    if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
+#else
+    callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
+#endif
   }
 
   /*************/
@@ -373,10 +429,10 @@ adin_cut(
     }
 #ifdef THREAD_DEBUG
     if (a->end_of_stream) {
-      jlog("DEBUG: stream already ended\n");
+      jlog("DEBUG: adin_cut: stream already ended\n");
     }
     if (cnt > 0) {
-      jlog("DEBUG: input: get %d samples [%d-%d]\n", a->current_len - a->bp, a->bp, a->current_len);
+      jlog("DEBUG: adin_cut: get %d samples [%d-%d]\n", a->current_len - a->bp, a->bp, a->current_len);
     }
 #endif
 
@@ -392,7 +448,7 @@ adin_cut(
 #endif
 	) {
       /* if ad_check() returns value < 0, termination of speech input is required */
-      if ((i = (*ad_check)(recoglist, recognum)) < 0) { /* -1: soft termination -2: hard termination */
+      if ((i = (*ad_check)(recog)) < 0) { /* -1: soft termination -2: hard termination */
 	//	if ((i == -1 && current_len == 0) || i == -2) {
  	if (i == -2 ||
  	    (i == -1 && a->adin_cut_on && a->is_valid_data == FALSE) ||
@@ -415,9 +471,9 @@ adin_cut(
     if (!a->adin_cut_on && a->is_valid_data == FALSE && a->current_len > 0) {
       a->is_valid_data = TRUE;
 #ifdef HAVE_PTHREAD
-      if (!a->enable_thread) callback_multi_exec(CALLBACK_EVENT_SPEECH_START, recoglist, recognum);
+      if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
 #else
-      callback_multi_exec(CALLBACK_EVENT_SPEECH_START, recoglist, recognum);
+      callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
 #endif
     }
 
@@ -493,10 +549,11 @@ adin_cut(
 	    jlog("DEBUG: detect on\n");
 #endif
 #ifdef HAVE_PTHREAD
-	    if (!a->enable_thread) callback_multi_exec(CALLBACK_EVENT_SPEECH_START, recoglist, recognum);
+	    if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
 #else
-	    callback_multi_exec(CALLBACK_EVENT_SPEECH_START, recoglist, recognum);
+	    callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
 #endif
+
 	    /****************************************/
 	    /* flush samples stored in cycle buffer */
 	    /****************************************/
@@ -526,7 +583,7 @@ adin_cut(
 #else
 		callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->cbuf, len - wstep);
 #endif
-		ad_process_ret = (*ad_process)(a->cbuf, len - wstep, recoglist, recognum);
+		ad_process_ret = (*ad_process)(a->cbuf, len - wstep, recog);
 		switch(ad_process_ret) {
 		case 1:		/* segmentation notification from process callback */
 #ifdef HAVE_PTHREAD
@@ -600,7 +657,7 @@ adin_cut(
 #else
 		callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->swapbuf, a->sblen);
 #endif
-		ad_process_ret = (*ad_process)(a->swapbuf, a->sblen, recoglist, recognum);
+		ad_process_ret = (*ad_process)(a->swapbuf, a->sblen, recog);
 		a->sblen = 0;
 		switch(ad_process_ret) {
 		case 1:		/* segmentation notification from process callback */
@@ -726,7 +783,7 @@ adin_cut(
 #else
 	    callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->buffer[i]), wstep);
 #endif
-	    ad_process_ret = (*ad_process)(&(a->buffer[i]), wstep, recoglist, recognum);
+	    ad_process_ret = (*ad_process)(&(a->buffer[i]), wstep, recog);
 	    switch(ad_process_ret) {
 	    case 1:		/* segmentation notification from process callback */
 #ifdef HAVE_PTHREAD
@@ -814,9 +871,9 @@ break_input:
 
   /* execute callback */
 #ifdef HAVE_PTHREAD
-  if (!a->enable_thread) callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+  if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 #else
-  callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+  callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 #endif
 
   if (a->end_of_stream) {			/* input already ends */
@@ -830,13 +887,6 @@ break_input:
   return(end_status);
 }
 
-
-
-
-
-
-
-
 #ifdef HAVE_PTHREAD
 /***********************/
 /* threading functions */
@@ -846,21 +896,25 @@ break_input:
 /* adin thread functions */
 /*************************/
 
-/** 
- * Callback for storing triggered samples to @a speech in A/D-in thread.
+/**
+ * <EN>
+ * Callback to store triggered samples within A/D-in thread.
+ * </EN>
+ * <JA>
+ * A/D-in スレッドにてトリガした入力サンプルを保存するコールバック.
+ * </JA>
  * 
  * @param now [in] triggered fragment
  * @param len [in] length of above
+ * @param recog [in] engine instance
  * 
- * @return always 0, to tell caller to continue recording.
+ * @return always 0, to tell caller to just continue the input
  */
 static int
-adin_store_buffer(SP16 *now, int len, Recog **recoglist, int recognum)
+adin_store_buffer(SP16 *now, int len, Recog *recog)
 {
   ADIn *a;
-  Recog *recog;
 
-  recog = recoglist[0];
   a = recog->adin;
   if (a->speechlen + len > MAXSPEECHLEN) {
     /* just mark as overflowed, and continue this thread */
@@ -880,33 +934,44 @@ adin_store_buffer(SP16 *now, int len, Recog **recoglist, int recognum)
   return(0);			/* continue */
 }
 
-static Recog **recoglist_for_thread;
-static int recognum_for_thread;
-
-/** 
- * A/D-in thread main function: just call adin_cut() with storing function.
+/**
+ * <EN>
+ * A/D-in thread main function.
+ * </EN>
+ * <JA>
+ * A/D-in スレッドのメイン関数.
+ * </JA>
  * 
  * @param dummy [in] a dummy data, not used.
  */
 static void
 adin_thread_input_main(void *dummy)
 {
-  adin_cut(adin_store_buffer, NULL, recoglist_for_thread, recognum_for_thread);
+  Recog *recog;
+
+  recog = dummy;
+
+  adin_cut(adin_store_buffer, NULL, recog);
 }
 
-/** 
- * Start new A/D-in thread, and also initialize buffer @a speech.
- * 
+/**
+ * <EN>
+ * Start new A/D-in thread, and initialize buffer.
+ * </EN>
+ * <JA>
+ * バッファを初期化して A/D-in スレッドを開始する. 
+ * </JA>
+ * @param recog [in] engine instance
+ *
+ * @callergraph
+ * @callgraph
  */
 boolean
-adin_thread_create(Recog **recoglist, int recognum)
+adin_thread_create(Recog *recog)
 {
   pthread_t adin_thread;	///< Thread information
   ADIn *a;
-  Recog *recog;
-  int i;
 
-  recog = recoglist[0];
   a = recog->adin;
 
   /* init storing buffer */
@@ -916,16 +981,11 @@ adin_thread_create(Recog **recoglist, int recognum)
   a->transfer_online = FALSE; /* tell adin-mic thread to wait at initial */
   a->adinthread_buffer_overflowed = FALSE;
 
-  /* make local copy of recoglist for the creating thread */
-  recoglist_for_thread = (Recog **)mymalloc(sizeof(Recog *) * recognum);
-  for(i=0;i<recognum;i++) recoglist_for_thread[i] = recoglist[i];
-  recognum_for_thread = recognum;
-
   if (pthread_mutex_init(&(a->mutex), NULL) != 0) { /* error */
     jlog("ERROR: adin_thread_create: failed to initialize mutex\n");
     return FALSE;
   }
-  if (pthread_create(&adin_thread, NULL, (void *)adin_thread_input_main, NULL) != 0) {
+  if (pthread_create(&adin_thread, NULL, (void *)adin_thread_input_main, recog) != 0) {
     jlog("ERROR: adin_thread_create: failed to create AD-in thread\n");
     return FALSE;
   }
@@ -940,24 +1000,33 @@ adin_thread_create(Recog **recoglist, int recognum)
 /****************************/
 /* process thread functions */
 /****************************/
-/* used for module mode: return value: -2 = input cancellation forced by control module */
 
-/** 
- * @brief  Main function of processing triggered samples at main thread.
+/**
+ * <EN>
+ * @brief  Main processing function for thread mode.
  *
- * Wait for the new samples to be stored in @a speech by A/D-in thread,
- * and if found, process them.
+ * It waits for the new samples to be stored in @a speech by A/D-in thread,
+ * and if found, process them.  The interface are the same as adin_cut().
+ * </EN>
+ * <JA>
+ * @brief  スレッドモード用メイン関数
+ *
+ * この関数は A/D-in スレッドによってサンプルが保存されるのを待ち，
+ * 保存されたサンプルを順次処理していきます. 引数や返り値は adin_cut() と
+ * 同一です. 
+ * </JA>
  * 
- * @param ad_process [in] function to process the recorded fragments
- * @param ad_check [in] function to be called periodically for checking
- * incoming user command in module mode.
+ * @param ad_process [in] function to process triggerted input.
+ * @param ad_check [in] function to be called periodically.
+ * @param recog [in] engine instance
  * 
- * @return -2 when input terminated by result of the @a ad_check function,
- * -1 on error, 0 on end of stream, 1 if segmented by frontend, 2 if segmented
- * by processing callback.
+ * @return 2 when input termination requested by ad_process(), 1 when
+ * if detect end of an input segment (down trigger detected after up
+ * trigger), 0 when reached end of input device, -1 on error, -2 when
+ * input termination requested by ad_check().
  */
 static int
-adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_check)(Recog **, int), Recog **recoglist, int recognum)
+adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog)
 {
   int prev_len, nowlen;
   int ad_process_ret;
@@ -966,9 +1035,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
   boolean transfer_online_local;
   boolean first_trig;
   ADIn *a;
-  Recog *recog;
-
-  recog = recoglist[0];
 
   a = recog->adin;
 
@@ -1000,18 +1066,18 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
       a->speechlen = 0;
       a->transfer_online = transfer_online_local = FALSE;
       pthread_mutex_unlock(&(a->mutex));
-      if (!first_trig) callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+      if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
       return(1);		/* return with segmented status */
     }
     /* callback poll */
     if (ad_check != NULL) {
-      if ((i = (*(ad_check))(recoglist, recognum)) < 0) {
+      if ((i = (*(ad_check))(recog)) < 0) {
 	if ((i == -1 && nowlen == 0) || i == -2) {
 	  pthread_mutex_lock(&(a->mutex));
 	  a->transfer_online = transfer_online_local = FALSE;
 	  a->speechlen = 0;
 	  pthread_mutex_unlock(&(a->mutex));
-	  if (!first_trig) callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+	  if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 	  return(-2);
 	}
       }
@@ -1030,11 +1096,11 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
       /* call on/off callback */
       if (first_trig) {
 	first_trig = FALSE;
-	callback_multi_exec(CALLBACK_EVENT_SPEECH_START, recoglist, recognum);
+	callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
       }
       if (ad_process != NULL) {
 	callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->speech[prev_len]), nowlen - prev_len);
-	ad_process_ret = (*ad_process)(&(a->speech[prev_len]), nowlen - prev_len, recoglist, recognum);
+	ad_process_ret = (*ad_process)(&(a->speech[prev_len]), nowlen - prev_len, recog);
 #ifdef THREAD_DEBUG
 	jlog("DEBUG: ad_process_ret=%d\n", ad_process_ret);
 #endif
@@ -1044,23 +1110,33 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
 	  /* purge processed samples and keep transfering */
 	  pthread_mutex_lock(&(a->mutex));
 	  if(a->speechlen > nowlen) {
-	    memmove(a->buffer, &(a->buffer[nowlen]), (a->speechlen - nowlen) * sizeof(SP16));
+	    memmove(a->speech, &(a->speech[nowlen]), (a->speechlen - nowlen) * sizeof(SP16));
 	    a->speechlen -= nowlen;
 	  } else {
 	    a->speechlen = 0;
 	  }
 	  a->transfer_online = transfer_online_local = FALSE;
 	  pthread_mutex_unlock(&(a->mutex));
-	  if (!first_trig) callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+	  if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 	  /* keep transfering */
 	  return(2);		/* return with segmented status */
 	case -1:		/* error */
 	  pthread_mutex_lock(&(a->mutex));
 	  a->transfer_online = transfer_online_local = FALSE;
 	  pthread_mutex_unlock(&(a->mutex));
-	  if (!first_trig) callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+	  if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 	  return(-1);		/* return with error */
 	}
+      }
+      if (a->rehash) {
+	/* rehash */
+	pthread_mutex_lock(&(a->mutex));
+	if (debug2_flag) jlog("STAT: adin_cut: rehash from %d to %d\n", a->speechlen, a->speechlen - prev_len);
+	a->speechlen -= prev_len;
+	nowlen -= prev_len;
+	memmove(a->speech, &(a->speech[prev_len]), a->speechlen * sizeof(SP16));
+	pthread_mutex_unlock(&(a->mutex));
+	a->rehash = FALSE;
       }
       prev_len = nowlen;
     } else {
@@ -1070,7 +1146,7 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
 	pthread_mutex_lock(&(a->mutex));
 	a->speechlen = 0;
 	pthread_mutex_unlock(&(a->mutex));
-	if (!first_trig) callback_multi_exec(CALLBACK_EVENT_SPEECH_STOP, recoglist, recognum);
+	if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
         break;
       }
       usleep(50000);   /* wait = 0.05sec*/            
@@ -1087,6 +1163,7 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
 
 
 /**
+ * <EN>
  * @brief  Top function to start input processing
  *
  * If threading mode is enabled, this function simply enters to
@@ -1096,32 +1173,56 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_chec
  * If threading mode is not available or disabled by either device requirement
  * or OS capability, this function simply calls adin_cut() to detect speech
  * segment from input device and process them concurrently by one process.
+ * </EN>
+ * <JA>
+ * @brief  入力処理を行うトップ関数
+ *
+ * スレッドモードでは，この関数は adin_thead_process() を呼び出し，
+ * 非スレッドモードでは adin_cut() を直接呼び出す. 引数や返り値は
+ * adin_cut() と同一である. 
+ * </JA>
  * 
- * @param ad_process [in] function to process the recorded fragments
- * @param ad_check [in] function to be called periodically for checking
- * incoming user command in module mode.
+ * @param ad_process [in] function to process triggerted input.
+ * @param ad_check [in] function to be called periodically.
+ * @param recog [in] engine instance
  * 
- * @return the same as adin_thread_process() in threading mode, or
- * same as adin_cut() when non-threaded mode.
+ * @return 2 when input termination requested by ad_process(), 1 when
+ * if detect end of an input segment (down trigger detected after up
+ * trigger), 0 when reached end of input device, -1 on error, -2 when
+ * input termination requested by ad_check().
+ *
+ * @callergraph
+ * @callgraph
+ * 
  */
 int
-adin_go(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_check)(Recog **, int), Recog **recoglist, int recognum)
+adin_go(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog)
 {
 #ifdef HAVE_PTHREAD
-  if (recoglist[0]->adin->enable_thread) {
-    return(adin_thread_process(ad_process, ad_check, recoglist, recognum));
+  if (recog->adin->enable_thread) {
+    return(adin_thread_process(ad_process, ad_check, recog));
   }
 #endif
-  return(adin_cut(ad_process, ad_check, recoglist, recognum));
+  return(adin_cut(ad_process, ad_check, recog));
 }
 
 /** 
+ * <EN>
  * Call device-specific initialization.
+ * </EN>
+ * <JA>
+ * デバイス依存の初期化関数を呼び出す. 
+ * </JA>
  * 
+ * @param a [in] A/D-in work area
  * @param freq [in] sampling frequency
- * @param arg [in] device-dependent extra argument
+ * @param arg [in] device-dependent argument
  * 
- * @return TRUE on success, FALSE on failure.
+ * @return TRUE if succeeded, FALSE if failed.
+ * 
+ * @callergraph
+ * @callgraph
+ * 
  */
 boolean
 adin_standby(ADIn *a, int freq, void *arg)
@@ -1131,9 +1232,20 @@ adin_standby(ADIn *a, int freq, void *arg)
   return TRUE;
 }
 /** 
+ * <EN>
  * Call device-specific function to begin capturing of the audio stream.
+ * </EN>
+ * <JA>
+ * 音の取り込みを開始するデバイス依存の関数を呼び出す. 
+ * </JA>
+ * 
+ * @param a [in] A/D-in work area
  * 
  * @return TRUE on success, FALSE on failure.
+ * 
+ * @callergraph
+ * @callgraph
+ * 
  */
 boolean
 adin_begin(ADIn *a)
@@ -1143,9 +1255,19 @@ adin_begin(ADIn *a)
   return TRUE;
 }
 /** 
+ * <EN>
  * Call device-specific function to end capturing of the audio stream.
+ * </EN>
+ * <JA>
+ * 音の取り込みを終了するデバイス依存の関数を呼び出す. 
+ * </JA>
+ * 
+ * @param a [in] A/D-in work area
  * 
  * @return TRUE on success, FALSE on failure.
+ *
+ * @callergraph
+ * @callgraph
  */
 boolean
 adin_end(ADIn *a)
@@ -1154,6 +1276,20 @@ adin_end(ADIn *a)
   return TRUE;
 }
 
+/** 
+ * <EN>
+ * Free memories of A/D-in work area.
+ * </EN>
+ * <JA>
+ * 音取り込み用ワークエリアのメモリを開放する. 
+ * </JA>
+ * 
+ * @param recog [in] engine instance
+ *
+ * @callergraph
+ * @callgraph
+ * 
+ */
 void
 adin_free_param(Recog *recog)
 {
@@ -1171,7 +1307,6 @@ adin_free_param(Recog *recog)
   if (a->down_sample) {
     free(a->buffer48);
   }
-  exit(1);
   free(a->swapbuf);
   free(a->cbuf);
   free(a->buffer);
@@ -1179,3 +1314,5 @@ adin_free_param(Recog *recog)
   if (a->speech) free(a->speech);
 #endif
 }
+
+/* end of file */

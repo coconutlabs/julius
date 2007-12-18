@@ -12,7 +12,7 @@
 #
 # ripped from gtk's gtk-config.in
 #
-# $Id: libsent-config.in,v 1.1 2007/09/28 02:50:55 sumomo Exp $
+# $Id: libsent-config.in,v 1.2 2007/12/18 08:45:50 sumomo Exp $
 #
 
 #
@@ -22,10 +22,10 @@
 sound_inc="@SOUNDINC@"
 sound_libs="@SOUNDLIB@ @EXTRALIB@"
 version="\
-Julius/Julian libsent library rev.@VERSION@"
+Julius/Julian libsent library rev.@LIBSENT_VERSION@"
 info="\
 ****************************************************************
-Julius/Julian libsent library rev.@VERSION@:
+Julius/Julian libsent library rev.@LIBSENT_VERSION@:
 
 - Audio I/O
     mic device API          : @altype@ (@aldesc@)

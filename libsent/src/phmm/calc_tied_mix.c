@@ -1,7 +1,5 @@
 /**
  * @file   calc_tied_mix.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 14:22:44 2005
  * 
  * <JA>
  * @brief  混合ガウス分布の重みつき和の計算：tied-mixture用，キャッシュ有り
@@ -21,13 +19,16 @@
  * value will be returned.
  * </EN>
  * 
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 14:22:44 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -41,6 +42,8 @@
 
 /** 
  * Initialize codebook cache area.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  * @return TRUE on success, FALSE on failure.
  */
@@ -57,6 +60,7 @@ calc_tied_mix_init(HMMWork *wrk)
 /** 
  * Setup codebook cache for the next incoming input.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param framenum [in] length of the next input.
  * 
  * @return TRUE on success, FALSE on failure.
@@ -79,6 +83,7 @@ calc_tied_mix_prepare(HMMWork *wrk, int framenum)
 /** 
  * Expand the cache to time axis if needed.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param reqframe [in] required frame length
  */
 static void
@@ -121,6 +126,8 @@ calc_tied_mix_extend(HMMWork *wrk, int reqframe)
 /** 
  * Free work area for tied-mixture calculation.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 void
 calc_tied_mix_free(HMMWork *wrk)
@@ -139,6 +146,8 @@ calc_tied_mix_free(HMMWork *wrk)
  * referred by OP_state is consulted to the book level cache, and if not
  * computed yet on that input frame time, it will be computed here.
  *
+ * @param wrk [i/o] HMM computation work area
+ * 
  * @return the computed output probability in log10.
  */
 LOGPROB

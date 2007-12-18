@@ -1,52 +1,49 @@
 /**
  * @file   search_bestfirst_v1.c
- * @author Akinobu Lee
- * @date   Sun Sep 11 23:54:53 2005
  * 
  * <JA>
- * @brief  第2パスで仮説のViterbi演算およびスコア計算を行う（backscan用）
+ * @brief  第2パスのViterbi演算および仮説スコア計算 (高速版)
  *
  * ここでは，第2パスにおいて探索中の仮説のViterbiスコアの更新演算，
  * 次単語とのトレリス接続，および仮説のスコア計算を行う関数が定義されて
- * います．
+ * います. 
  *
  * 単語接続部の単語間音素環境依存性は，高速な backscan アルゴリズムに
- * よって行われます．このファイルで定義されている関数は，config.h において
- * PASS2_STRICT_IWCD が undef であるときに使用されます．逆に上記が define
- * されているときは，search_bestfirst_v2.c の関数が用いられます．
+ * よって行われます. このファイルで定義されている関数は，config.h において
+ * PASS2_STRICT_IWCD が undef であるときに使用されます. 逆に上記が define
+ * されているときは，search_bestfirst_v2.c の関数が用いられます. 
  *
  * Backscan アルゴリズムでは，デコーディングの高速化のため，
  * 次単語とその前の単語の接続点について，「単語間音素コンテキストの遅延処理」
  * を行ないます：
  * 
  *  -# 新仮説の生成(next_word())では，次単語の最後の音素の右コンテキスト
- *     のみが考慮される．
+ *     のみが考慮される. 
  *  -# その単語間の完全な音素環境依存性は，その仮説がいったんスタックに
- *     入った後もう一度 POP されたときに scan_word() にて改めて計算する．
+ *     入った後もう一度 POP されたときに scan_word() にて改めて計算する. 
  *
  * 仮説生成時にはすべての生成仮説に対して依存計算を行なず，あとでスコアが
- * 高く POP された仮説についてのみ再計算を行ないます．このため処理が
+ * 高く POP された仮説についてのみ再計算を行ないます. このため処理が
  * 高速化されますが，仮説スコア計算(next_word())において次単語接続部分の
- * 環境依存性が考慮されないので, 探索中のスコアに誤差が生じる場合があります．
+ * 環境依存性が考慮されないので, 探索中のスコアに誤差が生じる場合があります. 
  *
  * 実装について:
  * 
  *  -# next_word() では，次単語の最後の音素のみを右コンテキスト(=展開元
- *     単語の最初の音素)を考慮して変化させ，トレリス接続点の出力確率を求める．
+ *     単語の最初の音素)を考慮して変化させ，トレリス接続点の出力確率を求める. 
  *  -# scan_word() では，新単語部分ともう１つ前の単語の最初の音素を変化
- *     させ，scan する．そのため新単語部分だけでなく，そのもう一音素前まで
- *     scan の対象となる．この "1-phoneme backscan" を行なうため,
+ *     させ，scan する. そのため新単語部分だけでなく，そのもう一音素前まで
+ *     scan の対象となる. この "1-phoneme backscan" を行なうため,
  *     各仮説ノードは最終HMM状態の前向きスコア (NODEにおける g[]) だけでなく，
  *     その backscan 開始点(もう１つ前の単語の最初の音素の手前)のスコア
- *     も保存しておく必要がある (NODE における g_prev[])．
+ *     も保存しておく必要がある (NODE における g_prev[]). 
  *
  * なお，１音素のみからなる単語では backscan 開始点と単語境界が重なることを
- * 考慮する必要があるため，実装はもう少し複雑になる．
+ * 考慮する必要があるため，実装はもう少し複雑になる. 
  * </JA>
  * 
  * <EN>
- * @brief  Viterbi path update and hypothesis score calculation on the 2nd
- * pass, using backscan algorithm.
+ * @brief  Viterbi path update and scoring on the second pass (fast version)
  *
  * This file has functions for score calculations on the 2nd pass.
  * It includes Viterbi path update calculation of a hypothesis, calculations
@@ -92,13 +89,16 @@
  * to handle 1-phoneme words...
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Sun Sep 11 23:54:53 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -124,7 +124,7 @@ static int request_num = 0;
 
 /** 
  * <JA>
- * 仮説ノードを実際にメモリ上から解放する．
+ * 仮説ノードを実際にメモリ上から解放する. 
  * 
  * @param node [in] 仮説ノード
  * </JA>
@@ -162,6 +162,9 @@ free_node_exec(NODE *node)
  * 
  * @param node [in] hypothesis node
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
  */
 void
 free_node(NODE *node)
@@ -185,13 +188,19 @@ free_node(NODE *node)
 
 /** 
  * <JA>
- * リサイクル用ノード格納庫を空にする．
+ * リサイクル用ノード格納庫を空にする.
+ *
+ * @param s [in] stack decoding work area
  * 
  * </JA>
  * <EN>
  * Clear the node stocker for recycle.
+ *
+ * @param s [in] stack decoding work area
  * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 clear_stocker(StackDecode *s)
@@ -216,12 +225,12 @@ clear_stocker(StackDecode *s)
 
 /** 
  * <JA>
- * 仮説をコピーする．
+ * 仮説をコピーする. 
  * 
  * @param dst [out] コピー先の仮説
  * @param src [in] コピー元の仮説
  * 
- * @return @a dst を返す．
+ * @return @a dst を返す. 
  * </JA>
  * <EN>
  * Copy the content of node to another.
@@ -231,6 +240,8 @@ clear_stocker(StackDecode *s)
  * 
  * @return the value of @a dst.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 NODE *
 cpy_node(NODE *dst, NODE *src)
@@ -248,7 +259,7 @@ cpy_node(NODE *dst, NODE *src)
   {
     int w;
     for(w=0;w<src->seqnum;w++) {
-      memcpy(dst->cmscore[w], src->cmscore[w], sizeof(LOGPROB) * src->region->jconf->annotate.cm_alpha_num);
+      memcpy(dst->cmscore[w], src->cmscore[w], sizeof(LOGPROB) * src->region->config->annotate.cm_alpha_num);
     }
   }     
 #else
@@ -291,33 +302,39 @@ cpy_node(NODE *dst, NODE *src)
 
 /** 
  * <JA>
- * 新たな仮説ノードを割り付ける．もし格納庫に以前試用されなくなった
- * ノードがある場合はそれを再利用する．なければ新たに割り付ける．
+ * 新たな仮説ノードを割り付ける. もし格納庫に以前試用されなくなった
+ * ノードがある場合はそれを再利用する. なければ新たに割り付ける.
+ *
+ * @param r [in] 認識処理インスタンス
  * 
- * @return 新たに割り付けられた仮説ノードへのポインタを返す．
+ * @return 新たに割り付けられた仮説ノードへのポインタを返す. 
  * </JA>
  * <EN>
  * Allocate a new hypothesis node.  If the node stocker is not empty,
  * the one in the stocker is re-used.  Otherwise, allocate as new.
+ *
+ * @param r [in] recognition process instance
  * 
  * @return pointer to the newly allocated node.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 NODE *
-newnode(Recog *recog)
+newnode(RecogProcess *r)
 {
   NODE *tmp;
   int i;
   int peseqlen;
 
-  peseqlen = recog->peseqlen;
+  peseqlen = r->peseqlen;
 
 #ifdef STOCKER_DEBUG
   request_num++;
 #endif
-  if ((tmp = recog->pass2.stocker_root) != NULL) {
+  if ((tmp = r->pass2.stocker_root) != NULL) {
     /* re-use ones in the stocker */
-    recog->pass2.stocker_root = tmp->next;
+    r->pass2.stocker_root = tmp->next;
 #ifdef STOCKER_DEBUG
     stocked_num--;
     reused_num++;
@@ -326,14 +343,14 @@ newnode(Recog *recog)
     /* allocate new */
     tmp =(NODE *)mymalloc(sizeof(NODE));
     tmp->g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * peseqlen);
-    if (recog->ccd_flag) {
+    if (r->ccd_flag) {
       tmp->g_prev = (LOGPROB *)mymalloc(sizeof(LOGPROB) * peseqlen);
     } else {
       tmp->g_prev = NULL;
     }
 
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       tmp->wordend_frame = (short *)mymalloc(sizeof(short) * peseqlen);
       tmp->wordend_gscore = (LOGPROB *)mymalloc(sizeof(LOGPROB) * peseqlen);
     }
@@ -349,11 +366,11 @@ newnode(Recog *recog)
   tmp->prev=NULL;
   tmp->last_ph = NULL;
   tmp->last_ph_sp_attached = FALSE;
-  if (recog->ccd_flag) {
-    if (recog->lmtype == LM_PROB) {
+  if (r->ccd_flag) {
+    if (r->lmtype == LM_PROB) {
       tmp->lscore = LOG_ZERO;
       tmp->totallscore = LOG_ZERO;
-    } else if (recog->lmtype == LM_DFA) {
+    } else if (r->lmtype == LM_DFA) {
       tmp->lscore = 0.0;
       tmp->totallscore = 0.0;
     }
@@ -363,7 +380,7 @@ newnode(Recog *recog)
   for(i=0;i<peseqlen;i++) {
     tmp->g[i] = LOG_ZERO;
   }
-  if (recog->ccd_flag) {
+  if (r->ccd_flag) {
     for(i=0;i<peseqlen;i++) {
       tmp->g_prev[i] = LOG_ZERO;
     }
@@ -374,12 +391,12 @@ newnode(Recog *recog)
 #endif
   tmp->tre = NULL;
 
-  if (recog->graphout) {
+  if (r->graphout) {
     tmp->prevgraph = NULL;
     tmp->lastcontext = NULL;
   }
 
-  tmp->region = recog;
+  tmp->region = r;
 
   return(tmp);
 }
@@ -391,7 +408,6 @@ newnode(Recog *recog)
 /**********************************************************************/
 
 static LOGPROB *wordtrellis[2]; ///< Buffer to compute viterbi path of a word
-static int maxwn;		///< Maximum number of state in a word
 static int tn;		       ///< Temporal pointer to current buffer
 static int tl;		       ///< Temporal pointer to previous buffer
 static LOGPROB *g;		///< Buffer to hold source viterbi scores
@@ -406,28 +422,34 @@ static LOGPROB *wend_token_gscore[2]; ///< Propagating token of scores at word-e
 
 /** 
  * <JA>
- * 1単語分のトレリス計算用のワークエリアを確保．
+ * 1単語分のトレリス計算用のワークエリアを確保.
+ * 
+ * @param r [in] 認識処理インスタンス
  * 
  * </JA>
  * <EN>
  * Allocate work area for trellis computation of a word.
  * 
+ * @param r [in] recognition process instance
+ * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-malloc_wordtrellis(Recog *recog)
+malloc_wordtrellis(RecogProcess *r)
 {
   int maxwn;
 
-  maxwn = recog->model->winfo->maxwn + 10;
+  maxwn = r->lm->winfo->maxwn + 10;
   wordtrellis[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
   wordtrellis[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
 
-  g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * recog->peseqlen);
+  g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
 
-  phmmlen_max = recog->model->winfo->maxwlen + 2;
+  phmmlen_max = r->lm->winfo->maxwlen + 2;
   phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * phmmlen_max);
-  if (recog->model->hmminfo->multipath) {
+  if (r->am->hmminfo->multipath) {
     has_sp = (boolean *)mymalloc(sizeof(boolean) * phmmlen_max);
   } else {
     has_sp = NULL;
@@ -438,7 +460,7 @@ malloc_wordtrellis(Recog *recog)
   wend_token_gscore[0] = NULL;
   wend_token_gscore[1] = NULL;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-  if (recog->graphout) {
+  if (r->graphout) {
     wend_token_frame[0] = (short *)mymalloc(sizeof(short) * maxwn);
     wend_token_frame[1] = (short *)mymalloc(sizeof(short) * maxwn);
     wend_token_gscore[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
@@ -457,6 +479,8 @@ malloc_wordtrellis(Recog *recog)
  * Free the work area for trellis computation of a word.
  * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 free_wordtrellis()
@@ -498,7 +522,7 @@ free_wordtrellis()
  * @param tr [in] 遷移行列
  * @param state_num [in] 状態数
  * 
- * @return 最終状態への遷移確率への最大値を返す．
+ * @return 最終状態への遷移確率への最大値を返す. 
  * </JA>
  * <EN>
  * Get the maximum transition log probability to final state. (multipath)
@@ -526,11 +550,11 @@ get_max_out_arc(HTK_HMM_Trans *tr, int state_num)
 
 /** 
  * <JA>
- * 音素の出力状態への遷移確率の最大値を求める． (multipath)
+ * 音素の出力状態への遷移確率の最大値を求める.  (multipath)
  * 
  * @param l [in] 音素
  * 
- * @return 出力状態への遷移確率の最大値を返す．
+ * @return 出力状態への遷移確率の最大値を返す. 
  * </JA>
  * <EN>
  * Get the maximum transition log probability outside a phone. (multipath)
@@ -548,10 +572,12 @@ max_out_arc(HMM_Logical *l)
 
 /** 
  * <JA>
- * 最後の1単語の前向きトレリスを計算して，文仮説の前向き尤度を更新する．
+ * 最後の1単語の前向きトレリスを計算して，文仮説の前向き尤度を更新する. 
  * 
  * @param now [i/o] 文仮説
  * @param param [in] 入力パラメータ列
+ * @param r [in] 認識処理インスタンス
+ * 
  * </JA>
  * <EN>
  * Compute the forward viterbi for the last word to update forward scores
@@ -559,10 +585,14 @@ max_out_arc(HMM_Logical *l)
  * 
  * @param now [i/o] hypothesis
  * @param param [in] input parameter vectors
+ * @param r [in] recognition process instance
+ * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-scan_word(NODE *now, HTK_Param *param, Recog *recog)
+scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 {
   int   i,t, j;
   HMM *whmm;
@@ -591,14 +621,14 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
   LOGPROB scan_beam_thres;
 #endif
 
-  winfo = recog->model->winfo;
-  hmminfo = recog->model->hmminfo;
-  peseqlen = recog->peseqlen;
-  framemaxscore = recog->pass2.framemaxscore;
-  ccd_flag = recog->ccd_flag;
-  enable_iwsp = recog->jconf->lm.enable_iwsp; /* multipath */
+  winfo = r->lm->winfo;
+  hmminfo = r->am->hmminfo;
+  peseqlen = r->peseqlen;
+  framemaxscore = r->pass2.framemaxscore;
+  ccd_flag = r->ccd_flag;
+  enable_iwsp = r->lm->config->enable_iwsp; /* multipath */
 #ifdef SCAN_BEAM
-  scan_beam_thres = recog->jconf->search.pass2.scan_beam_thres;
+  scan_beam_thres = r->config->pass2.scan_beam_thres;
 #endif
 
   if (hmminfo->multipath) {
@@ -842,7 +872,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
   }
 
 #ifndef GRAPHOUT_PRECISE_BOUNDARY
-  if (recog->graphout) {
+  if (r->graphout) {
     if (ccd_flag) {
       now->tail_g_score = now->g[now->bestt];
     }
@@ -868,7 +898,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
       now->g[t] = LOG_ZERO;
     }
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       for(t=0;t<peseqlen;t++) {
 	now->wordend_frame[t] = -1;
 	now->wordend_gscore[t] = LOG_ZERO;
@@ -884,7 +914,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
     if (ccd_flag) now->g_prev[t] = LOG_ZERO;
     now->g[t] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       now->wordend_frame[t] = -1;
       now->wordend_gscore[t] = LOG_ZERO;
     }
@@ -895,7 +925,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
   tn = 0; tl = 1;
 
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-  if (recog->graphout) {
+  if (r->graphout) {
     for(i=0;i<wordhmmnum;i++) {
       wend_token_frame[tn][i] = -1;
       wend_token_gscore[tn][i] = LOG_ZERO;
@@ -910,14 +940,14 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
     /* 時間 [startt] 上の値を初期化 */
     /* initialize scores on frame [startt] */
     for(i=0;i<wordhmmnum-1;i++) wordtrellis[tn][i] = LOG_ZERO;
-    wordtrellis[tn][wordhmmnum-1] = g[startt] + outprob(&(recog->hmmwrk), startt, &(whmm->state[wordhmmnum-1]), param);
+    wordtrellis[tn][wordhmmnum-1] = g[startt] + outprob(&(r->am->hmmwrk), startt, &(whmm->state[wordhmmnum-1]), param);
     if (ccd_flag) {
       now->g_prev[startt] = wordtrellis[tn][store_point];
     }
     now->g[startt] = wordtrellis[tn][0];
     
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       if (ccd_flag) {
 	if (back_rescan) {
 	  if (wordhmmnum-1 == crossword_point) {
@@ -976,7 +1006,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
       if (g[t] > tmptmp) {
 	tmpmax = g[t];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	if (recog->graphout) {
+	if (r->graphout) {
 	  if (!back_rescan || wordhmmnum-1 == crossword_point) {
 	    wend_token_frame[tn][wordhmmnum-1] = t;
 	    wend_token_gscore[tn][wordhmmnum-1] = g[t];
@@ -989,7 +1019,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
       } else {
 	tmpmax = tmptmp;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	if (recog->graphout) {
+	if (r->graphout) {
 	  wend_token_frame[tn][wordhmmnum-1] = wend_token_frame[tl][j];
 	  wend_token_gscore[tn][wordhmmnum-1] = wend_token_gscore[tl][j];
 	}
@@ -1006,14 +1036,14 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	  ) {
 	wordtrellis[tn][wordhmmnum-1] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	if (recog->graphout) {
+	if (r->graphout) {
 	  wend_token_frame[tn][wordhmmnum-1] = -1;
 	  wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
 	}
 #endif
       } else {
 	node_exist_p = TRUE;
-	wordtrellis[tn][wordhmmnum-1] = tmpmax + outprob(&(recog->hmmwrk), t, &(whmm->state[wordhmmnum-1]), param);
+	wordtrellis[tn][wordhmmnum-1] = tmpmax + outprob(&(r->am->hmmwrk), t, &(whmm->state[wordhmmnum-1]), param);
       }
 
     } /* end of ~multipath */
@@ -1075,7 +1105,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	    ) {  /* invalid node */
 	  wordtrellis[tn][i] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	  if (recog->graphout) {
+	  if (r->graphout) {
 	    wend_token_frame[tn][i] = -1;
 	    wend_token_gscore[tn][i] = LOG_ZERO;
 	  }
@@ -1088,7 +1118,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	    if (i == store_point) now->g_prev[t] = tmpmax2;
 	  }
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	  if (recog->graphout) {
+	  if (r->graphout) {
 
 	    if (hmminfo->multipath) {
 	      if ((back_rescan && i <= crossword_point && j > crossword_point)
@@ -1115,7 +1145,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	  wordtrellis[tn][i] = tmpmax;
 	  if (! hmminfo->multipath || i > 0) {
 	    /* compute output probability */
-	    wordtrellis[tn][i] += outprob(&(recog->hmmwrk), t, &(whmm->state[i]), param);
+	    wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
 	  }
 	}
 	
@@ -1156,7 +1186,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	  /* invalid node */
 	  wordtrellis[tn][i] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	  if (recog->graphout) {
+	  if (r->graphout) {
 	    wend_token_frame[tn][i] = -1;
 	    wend_token_gscore[tn][i] = LOG_ZERO;
 	  }
@@ -1165,7 +1195,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	  /* survived node */
 	  node_exist_p = TRUE;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	  if (recog->graphout) {
+	  if (r->graphout) {
 	    if (hmminfo->multipath) {
 	      if (j == wordhmmnum-1) {
 		wend_token_frame[tn][i] = t;
@@ -1183,19 +1213,19 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 	  /* score of node [t][i] has been determined here */
 	  wordtrellis[tn][i] = tmpmax;
 	  if (! hmminfo->multipath || i > 0) {
-	    wordtrellis[tn][i] += outprob(&(recog->hmmwrk), t, &(whmm->state[i]), param);
+	    wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
 	  }
 	}
 	
       }
     } /* end of node loop */
 
-    /* 時間 t のViterbi計算終了．前向きスコアはscanした単語の始端 */
+    /* 時間 t のViterbi計算終了. 前向きスコアはscanした単語の始端 */
     /* Viterbi end for frame [t].  the forward score is the score of word
        beginning scanned */
     now->g[t] = wordtrellis[tn][0];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       now->wordend_frame[t] = wend_token_frame[tn][0];
       now->wordend_gscore[t] = wend_token_gscore[tn][0];
     }
@@ -1228,7 +1258,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
       for (i=t-1;i>=0;i--) {
 	now->g[i] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-	if (recog->graphout) {
+	if (r->graphout) {
 	  now->wordend_frame[i] = -1;
 	  now->wordend_gscore[i] = LOG_ZERO;
 	}
@@ -1265,7 +1295,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
   if (ccd_flag) {
     if (store_point == (hmminfo->multipath ? wordhmmnum - 2 : wordhmmnum - 1)) {
       /* last_ph無し，かつ単語の音素長=1の場合、次回の scan_word() で
-	 単語全体がもう一度再計算される．この場合,
+	 単語全体がもう一度再計算される. この場合,
 	 g_prev は，このscan_wordを開始する前のスコアを入れておく必要がある */
       /* if there was no 'last_ph' and the scanned word consists of only
 	 1 phone, the whole word should be re-computed in the future scan_word().
@@ -1276,7 +1306,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
       }
     }
 #ifndef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       if (now->tail_g_score != LOG_ZERO) {
 	if (now->prevgraph != NULL) {
 	  (now->prevgraph)->leftscore = now->tail_g_score;
@@ -1298,7 +1328,7 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   if (! hmminfo->multipath) {
-    if (recog->graphout) {
+    if (r->graphout) {
       /* 次回の next_word 用に境界情報を調整 */
       /* proceed word boundary for one step for next_word */
       now->wordend_frame[peseqlen-1] = now->wordend_frame[0];
@@ -1334,14 +1364,15 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
 
 /** 
  * <JA>
- * 展開元仮説に次単語を接続して新しい仮説を生成する．次単語の単語トレリス上の
- * スコアから最尤接続点を求め，仮説スコアを計算する．
+ * 展開元仮説に次単語を接続して新しい仮説を生成する. 次単語の単語トレリス上の
+ * スコアから最尤接続点を求め，仮説スコアを計算する. 
  * 
  * @param now [in] 展開元仮説
  * @param new [out] 新たに生成された仮説が格納される
  * @param nword [in] 接続する次単語の情報
  * @param param [in] 入力パラメータ列
- * @param backtrellis [in] 単語トレリス
+ * @param r [in] 認識処理インスタンス
+ *
  * </JA>
  * <EN>
  * Connect a new word to generate a next hypothesis.  The optimal connection
@@ -1352,11 +1383,14 @@ scan_word(NODE *now, HTK_Param *param, Recog *recog)
  * @param new [out] pointer to save the newly generated hypothesis
  * @param nword [in] next word to be connected
  * @param param [in] input parameter vector
- * @param backtrellis [in] word trellis
+ * @param r [in] recognition process instance
+ * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
+next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, RecogProcess *r)
 {
   int   t;
   HMM_Logical *newphone;
@@ -1375,11 +1409,11 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
   int peseqlen;
   boolean ccd_flag;
 
-  backtrellis = recog->backtrellis;
-  winfo = recog->model->winfo;
-  hmminfo = recog->model->hmminfo;
-  peseqlen = recog->peseqlen;
-  ccd_flag = recog->ccd_flag;
+  backtrellis = r->backtrellis;
+  winfo = r->lm->winfo;
+  hmminfo = r->am->hmminfo;
+  peseqlen = r->peseqlen;
+  ccd_flag = r->ccd_flag;
 
   new->score = LOG_ZERO;
 
@@ -1392,7 +1426,7 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
     new->seq[i] = now->seq[i];
 #ifdef CM_SEARCH
 #ifdef CM_MULTIPLE_ALPHA
-    memcpy(new->cmscore[i], now->cmscore[i], sizeof(LOGPROB) * recog->jconf->annotate.cm_alpha_num);
+    memcpy(new->cmscore[i], now->cmscore[i], sizeof(LOGPROB) * r->config->annotate.cm_alpha_num);
 #else
     new->cmscore[i] = now->cmscore[i];
 #endif
@@ -1406,7 +1440,7 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
   
   if (ccd_flag) {
     
-    /* 展開単語の接続点の音素HMMをnewphoneにセットする．
+    /* 展開単語の接続点の音素HMMをnewphoneにセットする. 
        元仮説 now との単語間の音素環境依存性を考慮する */
     /* set the triphone at the connection point to 'newphone', considering
        cross-word context dependency to 'now' */
@@ -1443,9 +1477,9 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
   }
 
 
-  if (recog->lmtype == LM_PROB) {
+  if (r->lmtype == LM_PROB) {
     new->lscore = nword->lscore;
-  } else if (recog->lmtype == LM_DFA) {
+  } else if (r->lmtype == LM_DFA) {
     new->lscore = 0.0;
   }
 
@@ -1487,7 +1521,7 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
 
   new->tre = NULL;
 
-  if (recog->lmtype == LM_DFA && !recog->jconf->search.pass2.looktrellis_flag) {
+  if (r->lmtype == LM_DFA && !r->config->pass2.looktrellis_flag) {
     /* すべてのフレームにわたって最尤を探す */
     /* search for best trellis word throughout all frame */
     for(t = startt; t >= 0; t--) {
@@ -1496,9 +1530,9 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
       totalscore = new->g[t] + tre->backscore;
       if (! hmminfo->multipath) {
 	if (newphone->is_pseudo) {
-	  tmpp = outprob_cd(&(recog->hmmwrk), t, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
+	  tmpp = outprob_cd(&(r->am->hmmwrk), t, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
 	} else {
-	  tmpp = outprob_state(&(recog->hmmwrk), t, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
+	  tmpp = outprob_state(&(r->am->hmmwrk), t, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
 	}
 	totalscore += tmpp;
       }
@@ -1524,9 +1558,9 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
     totalscore = new->g[t] + tre->backscore;
     if (! hmminfo->multipath) {
       if (newphone->is_pseudo) {
-	tmpp = outprob_cd(&(recog->hmmwrk), t, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
+	tmpp = outprob_cd(&(r->am->hmmwrk), t, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
       } else {
-	tmpp = outprob_state(&(recog->hmmwrk), t, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
+	tmpp = outprob_state(&(r->am->hmmwrk), t, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
       }
       totalscore += tmpp;
     }
@@ -1544,9 +1578,9 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
     totalscore = new->g[t] + tre->backscore;
     if (! hmminfo->multipath) {
       if (newphone->is_pseudo) {
-	tmpp = outprob_cd(&(recog->hmmwrk), t, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
+	tmpp = outprob_cd(&(r->am->hmmwrk), t, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
       } else {
-	tmpp = outprob_state(&(recog->hmmwrk), t, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
+	tmpp = outprob_state(&(r->am->hmmwrk), t, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
       }
       totalscore += tmpp;
     }
@@ -1567,12 +1601,13 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
 
 /** 
  * <JA>
- * 与えられた単語から初期仮説を生成する．
+ * 与えられた単語から初期仮説を生成する. 
  * 
  * @param new [out] 新たに生成された仮説が格納される
  * @param nword [in] 初期仮説単語の情報
  * @param param [in] 入力パラメータ列
- * @param backtrellis [in] 単語トレリス
+ * @param r [in] 認識処理インスタンス
+ * 
  * </JA>
  * <EN>
  * Generate an initial hypothesis from given word.
@@ -1580,12 +1615,14 @@ next_word(NODE *now, NODE *new,	NEXTWORD *nword, HTK_Param *param, Recog *recog)
  * @param new [out] pointer to save the newly generated hypothesis
  * @param nword [in] words of the first candidates
  * @param param [in] input parameter vector
- * @param backtrellis [in] word trellis
+ * @param r [in] recognition process instance
  *
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog)
+start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess *r)
 {
   HMM_Logical *newphone;
   WORD_ID word;
@@ -1598,10 +1635,10 @@ start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog)
   int peseqlen;
   boolean ccd_flag;
 
-  backtrellis = recog->backtrellis;
-  winfo = recog->model->winfo;
-  peseqlen = recog->peseqlen;
-  ccd_flag = recog->ccd_flag;
+  backtrellis = r->backtrellis;
+  winfo = r->lm->winfo;
+  peseqlen = r->peseqlen;
+  ccd_flag = r->ccd_flag;
 
   /* initialize data */
   word = nword->id;
@@ -1620,26 +1657,26 @@ start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog)
   }
   new->lscore = nword->lscore;
 
-  if (recog->lmtype == LM_PROB) {
+  if (r->lmtype == LM_PROB) {
     new->g[peseqlen-1] = nword->lscore;
-  } else if (recog->lmtype == LM_DFA) {
+  } else if (r->lmtype == LM_DFA) {
     new->g[peseqlen-1] = 0;
   }
   
   for (t=peseqlen-1; t>=0; t--) {
     tre = bt_binsearch_atom(backtrellis, t, word);
     if (tre != NULL) {
-      if (recog->graphout) {
+      if (r->graphout) {
 	new->bestt = peseqlen-1;
       } else {
 	new->bestt = t;
       }
       new->score = new->g[peseqlen-1] + tre->backscore;
-      if (! recog->model->hmminfo->multipath) {
+      if (! r->am->hmminfo->multipath) {
 	if (newphone->is_pseudo) {
-	  tmpp = outprob_cd(&(recog->hmmwrk), peseqlen-1, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
+	  tmpp = outprob_cd(&(r->am->hmmwrk), peseqlen-1, &(newphone->body.pseudo->stateset[newphone->body.pseudo->state_num-2]), param);
 	} else {
-	  tmpp = outprob_state(&(recog->hmmwrk), peseqlen-1, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
+	  tmpp = outprob_state(&(r->am->hmmwrk), peseqlen-1, newphone->body.defined->s[newphone->body.defined->state_num-2], param);
 	}
 	new->score += tmpp;
       }
@@ -1657,11 +1694,13 @@ start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog)
 
 /** 
  * <JA>
- * 終端処理：終端まで達した文仮説の最終的なスコアをセットする．
+ * 終端処理：終端まで達した文仮説の最終的なスコアをセットする. 
  * 
  * @param now [in] 終端まで達した仮説
  * @param new [out] 最終的な文仮説のスコアを格納する場所へのポインタ
  * @param param [in] 入力パラメータ列
+ * @param r [in] 認識処理インスタンス
+ * 
  * </JA>
  * <EN>
  * Hypothesis termination: set the final sentence scores of hypothesis
@@ -1670,15 +1709,19 @@ start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog)
  * @param now [in] hypothesis that has already reached to the end
  * @param new [out] pointer to save the final sentence information
  * @param param [in] input parameter vectors
+ * @param r [in] recognition process instance
+ * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-last_next_word(NODE *now, NODE *new, HTK_Param *param, Recog *recog)
+last_next_word(NODE *now, NODE *new, HTK_Param *param, RecogProcess *r)
 {
   cpy_node(new, now);
   /* 最終スコアを設定 */
   /* update the final score */
-  if (recog->model->hmminfo->multipath) {
+  if (r->am->hmminfo->multipath) {
     new->score = now->final_g;
   } else {
     new->score = now->g[0];
@@ -1687,3 +1730,5 @@ last_next_word(NODE *now, NODE *new, HTK_Param *param, Recog *recog)
 
 
 #endif /* PASS2_STRICT_IWCD */
+
+/* end of file */

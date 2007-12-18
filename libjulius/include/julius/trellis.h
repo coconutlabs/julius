@@ -1,7 +1,5 @@
 /**
  * @file   trellis.h
- * @author Akinobu Lee
- * @date   Fri Aug 17 18:30:17 2007
  * 
  * <JA>
  * @brief  単語トレリスの構造体定義
@@ -12,7 +10,10 @@
  * @brief  Structure definitions of word trellis.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Fri Aug 17 18:30:17 2007
+ *
+ * $Revision: 1.2 $
  * 
  */
 

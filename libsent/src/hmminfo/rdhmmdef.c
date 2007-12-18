@@ -1,7 +1,5 @@
 /**
  * @file   rdhmmdef.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 00:17:18 2005
  * 
  * <JA>
  * @brief  HTK %HMM 定義ファイルの読み込み：メイン
@@ -29,13 +27,16 @@
  * variable to read the current token.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 00:17:18 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -228,9 +229,9 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
   /* determine whether this model needs multi-path handling */
   hmm->need_multipath = htk_hmm_has_several_arc_on_edge(hmm);
   if (hmm->need_multipath) {
-    jlog("Stat: rdhmmdef: requires MULTI-PATH handling at decoding\n");
+    jlog("Stat: rdhmmdef: this HMM requires multipath handling at decoding\n");
   } else {
-    jlog("Stat: rdhmmdef: allows NORMAL handling at decoding\n");
+    jlog("Stat: rdhmmdef: this HMM does not need multipath handling\n");
   }
   
   /* inverse all variance values for faster computation */

@@ -1,7 +1,5 @@
 /**
  * @file   adin_esd.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 16:18:26 2005
  *
  * <JA>
  * @brief  ネットワーク入力：Enlightened Sound Daemon (EsounD) からの音声入力
@@ -20,12 +18,15 @@
  * to configure script.
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 16:18:26 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
  * Copyright (c) 2004-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

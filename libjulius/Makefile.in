@@ -1,11 +1,11 @@
-# Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+# Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
 # Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 # Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
-# Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+# Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.1 2007/09/28 02:50:55 sumomo Exp $
+# $Id: Makefile.in,v 1.2 2007/12/18 08:45:49 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -14,6 +14,7 @@ SHELL=/bin/sh
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 LIBSENT=../libsent
+
 CC=@CC@
 CFLAGS=@CFLAGS@
 CPPFLAGS=-Iinclude -I$(LIBSENT)/include @CPPFLAGS@ `$(LIBSENT)/libsent-config --cflags`
@@ -22,6 +23,15 @@ RM=@RM@ -f
 AR=@AR@ r
 RANLIB=@RANLIB@
 
+## install
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libdir=@libdir@
+includedir=@includedir@
+INSTALL=@INSTALL@
+INSTALL_DATA=@INSTALL_DATA@
+INSTALL_PROGRAM=@INSTALL_PROGRAM@
 
 ############################################################
 
@@ -29,6 +39,7 @@ TARGET = libjulius.a
 
 OBJ = \
 src/recogmain.o \
+src/instance.o \
 src/default.o \
 src/jfunc.o \
 src/callback.o \
@@ -41,12 +52,15 @@ src/m_info.o \
 src/m_fusion.o \
 src/hmm_check.o \
 src/multi-gram.o \
+src/gramlist.o \
 src/wchmm.o \
 src/wchmm_check.o \
 src/m_adin.o \
 src/adin-cut.o \
 src/wav2mfcc.o \
 src/beam.o \
+src/pass1.o \
+src/spsegment.o \
 src/realtime-1stpass.o \
 src/factoring_sub.o \
 src/outprob_style.o \
@@ -66,17 +80,25 @@ src/version.o
 
 all: $(TARGET)
 
-$(TARGET): $(LIBSENT)/libsent.a $(OBJ)
+$(TARGET): $(OBJ)
 	$(AR) $@ $?
 	$(RANLIB) $@
 
 ############################################################
 
-install: $(TARGET)
-	echo nothing to be installed for libjulius.
+install: install.lib install.include install.bin
 
-install.bin: $(TARGET)
-	echo nothing to be installed for libjulius.
+install.lib: $(TARGET)
+	${INSTALL} -d ${libdir}
+	${INSTALL_DATA} $(TARGET) ${libdir}
+
+install.include:
+	${INSTALL} -d ${includedir}/julius
+	${INSTALL_DATA} -t ${includedir}/julius include/julius/*.h
+
+install.bin: libjulius-config
+	${INSTALL} -d ${bindir}
+	${INSTALL_PROGRAM} libjulius-config ${bindir}
 
 install.man:
 	echo nothing to be installed for libjulius.
@@ -101,6 +123,7 @@ distclean:
 	$(RM) $(TARGET)
 	$(RM) src/version.c
 	$(RM) libjulius-config
+	$(RM) doxygen.conf.ver
 	$(RM) config.status include/julius/config.h
 	$(RM) Makefile
 
@@ -109,9 +132,3 @@ configure:
 	autoconf
 	$(RM) include/julius/config.h.in
 	autoheader
-
-doxygen:
-	echo "PROJECT_NAME=@PRODUCTNAME@" >> ../support/doxygen.conf.en
-	echo "PROJECT_NAME=@PRODUCTNAME@" >> ../support/doxygen.conf.ja
-	echo "PROJECT_NUMBER=@VERSION@" >> ../support/doxygen.conf.en
-	echo "PROJECT_NUMBER=@VERSION@" >> ../support/doxygen.conf.ja

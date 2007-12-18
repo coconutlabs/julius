@@ -1,47 +1,52 @@
 /**
  * @file   confnet.c
- * @author Akinobu Lee
- * @date   Thu Aug 16 00:15:51 2007
  * 
  * <JA>
  * @brief  Confusion network の生成
+ *
+ * 認識の結果得られた単語グラフから，confusion network を生成する. 
  * </JA>
  * 
  * <EN>
- * @brief  Confusion network construction
+ * @brief  Confusion network generation
+ *
+ * Generate confusion network from the obtained word lattice.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Thu Aug 16 00:15:51 2007
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include <julius/julius.h>
 
-
 /**
- * Enable debug output.
+ * Define to enable debug output.
  * 
  */
 #undef CDEBUG
 
 /**
- * Enable insane debug output.
+ * Define to enable further debug output.
  * 
  */
 #undef CDEBUG2
 
 /**
- * Use graph-based CM for confusion network generation.
- * If not defined search-based CM (default of old julius) will be used.
- * However, the clustering process does not work well since sum of the search-
- * based CM for a word set on the same position is not 1.0.  Thus
- * you'd better always define this.
+ * Use graph-based CM for confusion network generation.  If not
+ * defined search-based CM (default of old julius) will be used.
+ * However, the clustering process does not work properly with this
+ * definition, since sum of the search- based CM for a word set on the
+ * same position is not always 1.0.  Thus you'd better always define
+ * this.
  * 
  */
 #define PREFER_GRAPH_CM
@@ -50,10 +55,11 @@
  * Julius identify the words by their dictionary IDs, so words with
  * different entries are treated as a different word.  If this is
  * defined, Julius treat words with the same output string as same
- * words in confusion network generation.
+ * words and bundle them in confusion network generation.
  * 
  */
-#define IDENTIAL_IF_WOUTPUT_IS_SAME
+#define BUNDLE_WORD_WITH_SAME_OUTPUT
+
 
 /** 
  * Determine whether the two words are idential in confusion network
@@ -69,7 +75,7 @@ static boolean
 is_same_word(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo)
 {
   if (w1 == w2
-#ifdef IDENTIAL_IF_WOUTPUT_IS_SAME
+#ifdef BUNDLE_WORD_WITH_SAME_OUTPUT
       || strmatch(winfo->woutput[w1], winfo->woutput[w2])
 #endif
       ) return TRUE;
@@ -79,7 +85,7 @@ is_same_word(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo)
 /**************************************************************/
 
 /**
- * Matrix to hold order relation between words
+ * Temporal matrix work area to hold the order relations between words.
  * 
  */
 static char *order_matrix = NULL;
@@ -91,7 +97,7 @@ static char *order_matrix = NULL;
 static int order_matrix_count;
 
 /**
- * Macro to access order matrix.
+ * Macro to access the order matrix.
  * 
  */
 #define m2i(A, B) (B) * order_matrix_count + (A)
@@ -113,7 +119,12 @@ graph_ordered(int i, int j)
   return TRUE;
 }  
 
-void
+/** 
+ * Scan the order matrix to update it at initial step and after word
+ * (set) marging.
+ * 
+ */
+static void
 graph_update_order()
 {
   int i, j, k;
@@ -146,27 +157,35 @@ graph_update_order()
  * for confusion network generation.
  * 
  * @param root [in] root pointer to the word graph
- * @param recog [in] recognition instance
+ * @param r [in] recognition process instance
+ *
+ * @callgraph
+ * @callergraph
  */
 void
-graph_make_order(WordGraph *root, Recog *recog)
+graph_make_order(WordGraph *root, RecogProcess *r)
 {
   int count;
-  WordGraph *wg, *left, *right;
+  WordGraph *wg, *right;
   int i;
   
   /* make sure total num and id are valid */
   count = 0;
   for(wg=root;wg;wg=wg->next) count++;
-  if (count == 0) return;
-  if (count != recog->graph_totalwordnum) {
-    jlog("Error: recog->graph_totalwordnum differ from actual number?\n");
+  if (count == 0) {
+    order_matrix = NULL;
+    return;
+  }
+  if (count != r->graph_totalwordnum) {
+    jlog("Error: graph_make_order: r->graph_totalwordnum differ from actual number?\n");
+    order_matrix = NULL;
     return;
   }
   order_matrix_count = count;
   for(wg=root;wg;wg=wg->next) {
     if (wg->id >= count) {
-      jlog("Error: wordgraph id >= count (%d >= %d)\n", wg->id, count);
+      jlog("Error: graph_make_order: wordgraph id >= count (%d >= %d)\n", wg->id, count);
+      order_matrix = NULL;
       return;
     }
   }
@@ -190,11 +209,13 @@ graph_make_order(WordGraph *root, Recog *recog)
 /**
  * Free the order relation data.
  * 
+ * @callgraph
+ * @callergraph
  */
 void
 graph_free_order()
 {
-  free(order_matrix);
+  if (order_matrix) free(order_matrix);
 }
 
 /**************************************************************/
@@ -237,6 +258,10 @@ cn_free(CN_CLUSTER *c)
  * Free all cluster holders.
  * 
  * @param croot [out] pointer to root pointer of cluster holder list.
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 cn_free_all(CN_CLUSTER **croot)
@@ -278,7 +303,7 @@ static void
 cn_merge(CN_CLUSTER *dst, CN_CLUSTER *src)
 {
   WordGraph *wg;
-  int i, j, k, n;
+  int i, j, n;
 
   /* update order matrix */
   for(i=0;i<src->wgnum;i++) {
@@ -479,6 +504,7 @@ get_cluster_intraword_similarity(CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winf
   return(simmax);
 }
 
+#ifdef CDEBUG
 /** 
  * Output a cluster information.
  *
@@ -496,6 +522,7 @@ put_cluster(FILE *fp, CN_CLUSTER *c, WORD_INFO *winfo)
   }
   printf("\n");
 }
+#endif
 
 /** 
  * Return minimum value of the three arguments.
@@ -577,7 +604,7 @@ edit_distance(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo)
 static PROB
 get_cluster_interword_similarity(CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winfo)
 {
-  int i1, i2, j, n;
+  int i1, i2, j;
   WORD_ID w1, w2;
   PROB p1, p2;
   PROB sim, simsum;
@@ -667,12 +694,16 @@ get_cluster_interword_similarity(CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winf
  * @brief  Create a confusion network from word graph.
  *
  * @param root [in] root pointer of word graph
- * @param recog [in] recognition instance
+ * @param r [in] recognition process instance
  *
  * @return root pointer to the cluster list.
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 CN_CLUSTER *
-confnet_create(WordGraph *root, Recog *recog)
+confnet_create(WordGraph *root, RecogProcess *r)
 {
   CN_CLUSTER *croot;
   CN_CLUSTER *c, *cc, *cmax1, *cmax2;
@@ -697,7 +728,7 @@ confnet_create(WordGraph *root, Recog *recog)
     max_sim = 0.0;
     for(c=croot;c;c=c->next) {
       for(cc=c->next;cc;cc=cc->next) {
-	sim = get_cluster_intraword_similarity(c, cc, recog->model->winfo);
+	sim = get_cluster_intraword_similarity(c, cc, r->lm->winfo);
 	if (max_sim < sim) {
 	  max_sim = sim;
 	  cmax1 = c;
@@ -709,8 +740,8 @@ confnet_create(WordGraph *root, Recog *recog)
     if (max_sim != 0.0) {
 #ifdef CDEBUG
       printf(">>> max_sim = %f\n", max_sim);
-      put_cluster(stdout, cmax1, recog->model->winfo);
-      put_cluster(stdout, cmax2, recog->model->winfo);
+      put_cluster(stdout, cmax1, r->lm->winfo);
+      put_cluster(stdout, cmax2, r->lm->winfo);
 #endif
       cn_merge(cmax1, cmax2);
       cn_destroy(cmax2, &croot);
@@ -719,18 +750,18 @@ confnet_create(WordGraph *root, Recog *recog)
 
   n = 0;
   for(c=croot;c;c=c->next) n++;
-  jlog("STAT: confnet: %d words -> %d clusters by intra-word clustering\n", wg_totalnum, n);
+  if (verbose_flag) jlog("STAT: confnet: %d words -> %d clusters by intra-word clustering\n", wg_totalnum, n);
 
 #ifdef CDEBUG
   printf("---- result of intra-word clustering ---\n");
   i = 0;
   for(c=croot;c;c=c->next) {
     printf("%d :", i);
-    put_cluster(stdout, c, recog->model->winfo);
+    put_cluster(stdout, c, r->lm->winfo);
 #ifdef CDEBUG2
     for(i=0;i<c->wgnum;i++) {
       printf("    ");
-      put_wordgraph(stdout, c->wg[i], recog->model->winfo);
+      put_wordgraph(stdout, c->wg[i], r->lm->winfo);
     }
 #endif
     i++;
@@ -741,12 +772,12 @@ confnet_create(WordGraph *root, Recog *recog)
   /* inter-word clustering */
   do {
     /* build word list for each cluster */
-    for(c=croot;c;c=c->next) cn_build_wordlist(c, recog->model->winfo);
+    for(c=croot;c;c=c->next) cn_build_wordlist(c, r->lm->winfo);
     /* find most similar pair */
     max_sim = 0.0;
     for(c=croot;c;c=c->next) {
       for(cc=c->next;cc;cc=cc->next) {
-	sim = get_cluster_interword_similarity(c, cc, recog->model->winfo);
+	sim = get_cluster_interword_similarity(c, cc, r->lm->winfo);
 	if (max_sim < sim) {
 	  max_sim = sim;
 	  cmax1 = c;
@@ -758,8 +789,8 @@ confnet_create(WordGraph *root, Recog *recog)
     if (max_sim != 0.0) {
 #ifdef CDEBUG
       printf(">>> max_sim = %f\n", max_sim);
-      put_cluster(stdout, cmax1, recog->model->winfo);
-      put_cluster(stdout, cmax2, recog->model->winfo);
+      put_cluster(stdout, cmax1, r->lm->winfo);
+      put_cluster(stdout, cmax2, r->lm->winfo);
 #endif
       cn_merge(cmax1, cmax2);
       cn_destroy(cmax2, &croot);
@@ -768,7 +799,7 @@ confnet_create(WordGraph *root, Recog *recog)
 
   n = 0;
   for(c=croot;c;c=c->next) n++;
-  jlog("STAT: confnet: -> %d clusters by inter-word clustering\n", n);
+  if (verbose_flag) jlog("STAT: confnet: -> %d clusters by inter-word clustering\n", n);
 
   /* compute posterior probabilities and insert NULL entry */
   {
@@ -781,7 +812,7 @@ confnet_create(WordGraph *root, Recog *recog)
       for(i=0;i<c->wordsnum;i++) {
 	p = 0.0;
 	for(j = 0; j < c->wgnum; j++) {
-	  if (is_same_word(c->wg[j]->wid, c->words[i], recog->model->winfo)) {
+	  if (is_same_word(c->wg[j]->wid, c->words[i], r->lm->winfo)) {
 #ifdef PREFER_GRAPH_CM
 	    p += c->wg[j]->graph_cm;
 #else
@@ -824,7 +855,7 @@ confnet_create(WordGraph *root, Recog *recog)
   /* re-order clusters by their beginning frames */
   {
     CN_CLUSTER **clist;
-    int j, k;
+    int k;
 
     /* sort cluster list by the left frame*/
     clist = (CN_CLUSTER **)mymalloc(sizeof(CN_CLUSTER *) * n);
@@ -844,7 +875,7 @@ confnet_create(WordGraph *root, Recog *recog)
   printf("---- begin confusion network ---\n");
   for(c=croot;c;c=c->next) {
     for(i=0;i<c->wordsnum;i++) {
-      printf("(%s:%.3f)", (c->words[i] == WORD_INVALID) ? "-" : recog->model->winfo->woutput[c->words[i]], c->pp[i]);
+      printf("(%s:%.3f)", (c->words[i] == WORD_INVALID) ? "-" : r->lm->winfo->woutput[c->words[i]], c->pp[i]);
       if (i == 0) printf("  ");
     }
     printf("\n");
@@ -855,3 +886,4 @@ confnet_create(WordGraph *root, Recog *recog)
   return(croot);
 }
 
+/* end of file */

@@ -1,7 +1,5 @@
 /**
  * @file   adin_mic_sp.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 19:16:43 2005
  * 
  * <JA>
  * @brief  マイク入力 (spAudioライブラリ)
@@ -34,7 +32,10 @@
  * 
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 19:16:43 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /* adin_mic_sp.c --- adin microphone library for spAudio

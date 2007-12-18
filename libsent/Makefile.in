@@ -1,9 +1,9 @@
-# Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+# Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
 # Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
-# Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+# Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.1 2007/09/28 02:50:55 sumomo Exp $
+# $Id: Makefile.in,v 1.2 2007/12/18 08:45:49 sumomo Exp $
 #
 
 SHELL=/bin/sh
@@ -21,6 +21,16 @@ RM=@RM@ -f
 AR=@AR@ r
 RANLIB=@RANLIB@
 TARGET=libsent.a
+
+## install
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libdir=@libdir@
+includedir=@includedir@
+INSTALL=@INSTALL@
+INSTALL_DATA=@INSTALL_DATA@
+INSTALL_PROGRAM=@INSTALL_PROGRAM@
 
 ## rules
 OBJ = \
@@ -116,14 +126,29 @@ src/wav2mfcc/mfcc-core.o \
 src/wav2mfcc/para.o \
 @EXTRAOBJ@
 
+############################################################
+
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
 	$(AR) $@ $?
 	$(RANLIB) $@
 
-install:
-	echo nothing to be installed for libsent.
+############################################################
+
+install: install.lib install.include install.bin
+
+install.lib: $(TARGET)
+	${INSTALL} -d ${libdir}
+	${INSTALL_DATA} $(TARGET) ${libdir}
+
+install.include:
+	${INSTALL} -d ${includedir}/sent
+	${INSTALL_DATA} -t ${includedir}/sent include/sent/*.h
+
+install.bin: libsent-config
+	${INSTALL} -d ${bindir}
+	${INSTALL_PROGRAM} libsent-config ${bindir}
 
 install.man.ja:
 	echo nothing to be installed for libsent.

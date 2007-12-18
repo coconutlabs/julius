@@ -1,7 +1,5 @@
 /**
  * @file   gprune_heu.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 05:44:52 2005
  * 
  * <JA>
  * @brief  º®¹ç¥¬¥¦¥¹Ê¬ÉÛ·×»»: Gaussian pruning (heuristic algorithm)
@@ -37,13 +35,16 @@
  * calc_tied_mix() or calc_mix().
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 05:44:52 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -104,6 +105,8 @@
 /** 
  * Clear backmax information.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 static void
 init_backmax(HMMWork *wrk)
@@ -116,6 +119,7 @@ init_backmax(HMMWork *wrk)
  * Build backmax information for each frame, by summing up
  * current maximum values of each dimensions.
  * 
+ * @param wrk [i/o] HMM computation work area
  */
 /*                        |
  *  0 1 2 ... max-3 max-2 | max-1
@@ -148,6 +152,7 @@ make_backmax(HMMWork *wrk)
  * for future pruning.  The pruning itself is not performed here.
  * This function will be used to compute the first N Gaussians.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param binfo [in] Gaussian density
  * 
  * @return the output log probability.
@@ -185,6 +190,7 @@ compute_g_heu_updating(HMMWork *wrk, HTK_HMM_Dens *binfo)
  * that has been set by compute_g_heu_updating() and
  * make_backmax().
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param binfo [in] Gaussian density
  * @param thres [in] threshold 
  * 
@@ -223,6 +229,8 @@ compute_g_heu_pruning(HMMWork *wrk, HTK_HMM_Dens *binfo, LOGPROB thres)
 /** 
  * Initialize and setup work area for Gaussian pruning by heuristic algorithm.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
@@ -243,6 +251,8 @@ gprune_heu_init(HMMWork *wrk)
 
 /**
  * Free gprune_heu related work area.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  */
 void
@@ -273,6 +283,7 @@ gprune_heu_free(HMMWork *wrk)
  * 
  * This can be called from calc_tied_mix() or calc_mix().
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param g [in] set of Gaussian densities to compute the output probability
  * @param gnum [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,

@@ -1,18 +1,16 @@
 /**
  * @file   wchmm.h
- * @author Akinobu Lee
- * @date   Sun Sep 18 21:31:32 2005
  * 
  * <JA>
- * @brief  木構造化辞書の構造体定義．
+ * @brief  木構造化辞書の構造体定義. 
  *
  * このファイルでは，第1パスで用いられる木構造化辞書（あるいは単語連結
- * HMM (wchmm) とも呼ばれる）の構造体を定義しています．起動時に，単語辞書の
- * 前単語が並列に並べられ，ツリー上に結合されて木構造化辞書が構築されます．
+ * HMM (wchmm) とも呼ばれる）の構造体を定義しています. 起動時に，単語辞書の
+ * 前単語が並列に並べられ，ツリー上に結合されて木構造化辞書が構築されます. 
  * HMMの状態単位で構築され，各状態は，対応するHMM出力確率，ツリー内での遷移先
  * のリスト，および探索のための様々な情報（言語スコアファクタリングのための
  * successor word list や uni-gram 最大値，単語始終端マーカー，音素開始
- * マーカーなど）を含みます．
+ * マーカーなど）を含みます. 
  * </JA>
  * 
  * <EN>
@@ -27,13 +25,16 @@
  * start marker, and so on.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Sun Sep 18 21:31:32 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -158,13 +159,26 @@ typedef struct {
 } LM_PROB_CACHE;
 
 /*************************************************************************/
+/**
+ * Number of arcs in an arc cell.
+ * 
+ */
 #define A_CELL2_ALLOC_STEP 4
 
-typedef struct __A_CELL2__{
+/**
+ * Transition arc holding cell
+ * 
+ */
+typedef struct __A_CELL2__ {
+  /**
+   * Number of arcs currently stored in this cell.
+   * If this reaches A_CELL2_ALLOC_STEP, next cell will be allocated.
+   * 
+   */
   unsigned short n;
-  int arc[A_CELL2_ALLOC_STEP];
-  LOGPROB a[A_CELL2_ALLOC_STEP];
-  struct __A_CELL2__ *next;
+  int arc[A_CELL2_ALLOC_STEP];	///< Transition destination node numbers
+  LOGPROB a[A_CELL2_ALLOC_STEP]; ///< Transitino probabilities
+  struct __A_CELL2__ *next;	///< Pointer to next cell
 } A_CELL2;
 
 /**
@@ -205,20 +219,20 @@ typedef struct {
  * 
  */
 typedef struct wchmm_info {
-  int lmtype;
-  int lmvar;
-  boolean category_tree;
+  int lmtype;			///< LM type
+  int lmvar;			///< LM variant
+  boolean category_tree;	///< TRUE if category_tree is used
   HTK_HMM_INFO *hmminfo;	///< HMM definitions used to construct this lexicon
   NGRAM_INFO *ngram;		///< N-gram used to construct this lexicon
   DFA_INFO *dfa;		///< Grammar used to construct this lexicon
   WORD_INFO *winfo;		///< Word dictionary used to construct this lexicon
+  boolean ccd_flag;		///< TRUE if handling context dependency
   int	maxwcn;			///< Memory assigned maximum number of nodes
   int	n;			///< Num of nodes in this lexicon
   WCHMM_STATE	*state;		///< HMM state on tree lexicon [nodeID]
-  LOGPROB *self_a;
-  LOGPROB *next_a;
-  A_CELL2 **ac;
-  //WORD_ID	*ststart;	///< Word ID that begins at the state [nodeID] for non multipath mode
+  LOGPROB *self_a;		///< Transition probability to self node
+  LOGPROB *next_a;		///< Transition probabiltiy to next (now+1) node
+  A_CELL2 **ac;			///< Transition arc information other than self and next.
   WORD_ID	*stend;		///< Word ID that ends at the state [nodeID]
   int	**offset;		///< Node ID of a phone [wordID][0..phonelen-1]
   int	*wordend;		///< Node ID of word-end state [wordID]
@@ -249,11 +263,11 @@ typedef struct wchmm_info {
   APATNODE *lcdset_category_root; ///< Index of lexicon-dependent category-aware pseudo phone set when used on Julian
 #endif /* PASS1_IWCD */
 
-  HMMWork *hmmwrk;
+  HMMWork *hmmwrk;		///< Work area for HMM computation in wchmm
 
-  LM_PROB_CACHE lmcache;
+  LM_PROB_CACHE lmcache;	///< LM score cache for 1st pass
 
-  WCHMM_WORK wrk;
+  WCHMM_WORK wrk;		///< Other work area for 1st pass transition computation
 
   int separated_word_count; ///< Number of words actually separated (linearlized) from the tree
 

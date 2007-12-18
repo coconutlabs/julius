@@ -1,23 +1,49 @@
 /**
  * @file   m_jconf.c
- * @author Akinobu Lee
- * @date   Thu May 12 14:16:18 2005
  * 
  * <JA>
- * @brief  jconf 設定ファイルを読み込んで処理する．
+ * @brief  設定ファイルの読み込み. 
+ *
+ * オプション指定を記述した jconf 設定ファイルを読み込みます. 
+ * jconf 設定ファイル内では，ダブルクォーテーションによる文字列の
+ * 指定，バックスラッシュによる文字のエスケープができます. 
+ * また，各行において '#' 以降はスキップされます. 
+ *
+ * jconf 設定ファイル内では，全ての相対パスは，アプリケーションの
+ * カレントディレクトリではなく，その jconf の存在するディレクトリからの
+ * 相対パスとして解釈されます. 
+ *
+ * また，$HOME, ${HOME}, $(HOME), の形で指定された部分について
+ * 環境変数を展開できます. 
+ * 
  * </JA>
  * 
  * <EN>
- * @brief  Read in a jconf file and process them.
+ * @brief  Read a configuration file.
+ *
+ * These functions are for reading jconf configuration file and set the
+ * parameters into jconf structure.  String bracing by double quotation,
+ * and escaping character with backslash are supproted.
+ * Characters after '#' at each line will be ignored.
+ *
+ * Note that all relative paths in jconf file are treated as relative
+ * to the jconf file, not the run-time current directory.
+ *
+ * You can expand environment variables in a format of $HOME, ${HOME} or
+ * $(HOME) in jconf file.
+ *
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Thu May 12 14:16:18 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -34,13 +60,13 @@
  * @brief  jconf 用の行読み込みルーチン
  *
  * バックスラッシュによるエスケープ処理，および Mac/Win の改行コードに
- * 対応する．空行はスキップされ，改行コードは消される．
+ * 対応する. 空行はスキップされ，改行コードは消される. 
  * 
  * @param buf [out] 読み込んだ1行分のテキストを格納するバッファ
  * @param size [in] @a buf の大きさ（バイト数）
  * @param fp [in] ファイルポインタ
  * 
- * @return @a buf を返す．EOF でこれ以上入力がなければ NULL を返す．
+ * @return @a buf を返す. EOF でこれ以上入力がなければ NULL を返す. 
  * </JA>
  * <EN>
  * @brief  line reading function for jconf file.
@@ -109,9 +135,9 @@ fgets_jconf(char *buf, int size, FILE *fp)
 
 /** 
  * <JA>
- * @brief  ファイルのパス名からディレクトリ名を抜き出す．
+ * @brief  ファイルのパス名からディレクトリ名を抜き出す. 
  *
- * 最後の '/' は残される．
+ * 最後の '/' は残される. 
  * 
  * @param path [i/o] ファイルのパス名（関数内で変更される）
  * </JA>
@@ -146,17 +172,17 @@ get_dirname(char *path)
  * <JA>
  * @brief  環境変数の展開
  * 
- * 環境変数を展開する．$HOME の形の文字列を環境変数とみなし，その値で
- * 置換する．置換が起こった際には，与えられた文字列バッファを内部で
- * 解放し，あらたに割り付けられたバッファを返す．
+ * 環境変数を展開する. $HOME の形の文字列を環境変数とみなし，その値で
+ * 置換する. 置換が起こった際には，与えられた文字列バッファを内部で
+ * 解放し，あらたに割り付けられたバッファを返す. 
  *
- * 変数の指定は $HOME, ${HOME}, $(HOME), の形で指定できる．
- * $ を展開したくない場合はバックスラッシュ "\" でエスケープできる．
- * またシングルクォート "'" で括られた範囲は展開を行わない．
+ * 変数の指定は $HOME, ${HOME}, $(HOME), の形で指定できる. 
+ * $ を展開したくない場合はバックスラッシュ "\" でエスケープできる. 
+ * またシングルクォート "'" で括られた範囲は展開を行わない. 
  * 
  * @param str [in] 対象文字列（展開発生時は内部で free されるので注意）
  * 
- * @return 展開すべき対象がなかった場合，str がそのまま返される．展開が行われた場合，あらたに割り付けられた展開後の文字列を含むバッファが返される．
+ * @return 展開すべき対象がなかった場合，str がそのまま返される. 展開が行われた場合，あらたに割り付けられた展開後の文字列を含むバッファが返される. 
  * </JA>
  * <EN>
  * @brief  Envronment valuable expansion for a string
@@ -331,15 +357,20 @@ expand_env(char *str)
 /* read-in and parse jconf file and process those using m_options */
 /** 
  * <JA>
- * jconf 設定ファイルを読み込んで解析し，対応するオプションを設定する．
+ * jconf 設定ファイルを読み込んで解析し，対応するオプションを設定する. 
  * 
  * @param conffile [in] jconf ファイルのパス名
+ * @param jconf [out] 値をセットする jconf 設定データ
  * </JA>
  * <EN>
  * Read and parse a jconf file, and set the specified option values.
  * 
  * @param conffile [in] jconf file path name
+ * @param jconf [out] global configuration data to be written.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
  */
 boolean
 config_file_parse(char *conffile, Jconf *jconf)
@@ -443,3 +474,4 @@ config_file_parse(char *conffile, Jconf *jconf)
   return(ret);
 }
 
+/* end of file */

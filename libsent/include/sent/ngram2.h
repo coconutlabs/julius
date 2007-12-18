@@ -1,7 +1,5 @@
 /**
  * @file   ngram2.h
- * @author Akinobu LEE
- * @date   Fri Feb 11 15:04:02 2005
  *
  * <EN>
  * @brief Definitions for word N-gram
@@ -96,13 +94,16 @@
  * 与えられたN-gramが上記を満たさない場合，Julius はエラーを出します．
  * </JA>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 11 15:04:02 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -112,8 +113,7 @@
 #include <sent/stddefs.h>
 #include <sent/ptree.h>
 
-
-#define MAX_N 8		///< Maximum number of N for N-gram
+#define MAX_N 10		///< Maximum number of N for N-gram
 
 typedef unsigned char NNID_UPPER; ///< N-gram entry ID (upper bit)
 typedef unsigned short NNID_LOWER; ///< N-gram entry ID (lower bit)
@@ -176,7 +176,6 @@ typedef struct __ngram_info__ {
 } NGRAM_INFO;
 
 
-
 /* Definitions for binary N-gram */
 
 /// Header string to identify version of bingram (v3: <= rev.3.4.2)
@@ -207,7 +206,6 @@ typedef struct __ngram_info__ {
 #define BINGRAM_NATURAL_BYTEORDER "LE"
 #endif
 
-
 /* function declaration */
 NNID search_ngram(NGRAM_INFO *ndata, int n, WORD_ID *w);
 LOGPROB ngram_prob(NGRAM_INFO *ndata, int n, WORD_ID *w);

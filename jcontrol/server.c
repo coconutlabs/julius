@@ -1,7 +1,5 @@
 /**
  * @file   server.c
- * @author Akinobu LEE
- * @date   Thu Mar 24 12:07:24 2005
  * 
  * <JA>
  * @brief  Julius サーバと通信を行うための低レベル関数群
@@ -11,13 +9,16 @@
  * @brief  Low-level functions for send/receive data to/from Julius server
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 24 12:07:24 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

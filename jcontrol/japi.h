@@ -1,7 +1,5 @@
 /**
  * @file   japi.h
- * @author Akinobu LEE
- * @date   Thu Mar 24 07:12:32 2005
  * 
  * <JA>
  * @brief  jcontrol 共通ヘッダファイル
@@ -11,13 +9,16 @@
  * @brief  Common header file for jcontrol
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 24 07:12:32 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -97,5 +98,16 @@ void japi_delete_grammar(int sd, char *idlist);
 void japi_activate_grammar(int sd, char *idlist);
 void japi_deactivate_grammar(int sd, char *idlist);
 void japi_sync_grammar(int sd);
+void japi_add_words(int sd, char *idstr, char *dictfile);
+
+/* japi_process.c */
+void japi_list_process(int sd);
+void japi_current_process(int sd, char *pname);
+void japi_shift_process(int sd);
+void japi_add_process(int sd, char *jconffile);
+void japi_del_process(int sd, char *pname);
+void japi_activate_process(int sd, char *pname);
+void japi_deactivate_process(int sd, char *pname);
+
 
 #endif /* __JAPI_H__ */

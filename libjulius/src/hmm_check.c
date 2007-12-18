@@ -1,23 +1,24 @@
 /**
  * @file   hmm_check.c
- * @author Akinobu LEE
- * @date   Thu Mar 17 20:50:07 2005
  * 
  * <JA>
- * @brief  トライフォンモデルのデバッグ用関数
+ * @brief  トライフォンの辞書上での整合性チェック
  * </JA>
  * 
  * <EN>
- * @brief  Functions for checking triphone model
+ * @brief  Triphone checker on word dictionary
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 17 20:50:07 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -27,22 +28,22 @@
 
 /** 
  * <JA>
- * @brief  音素列からHMM列への変換を行ない，結果を表示する．
+ * @brief  音素列からHMM列への変換を行ない，結果を表示する. 
  *
  * このルーチンは，Julius/Julian に与えられた音響モデルと
  * HMMList ファイルにおいて，音素列からHMM列への変換をテストする
- * ための関数である．
+ * ための関数である. 
  * 
  * 空白で区切られた音素列の文字列に対して，トライフォンモデル使用時には
- * コンテキストが考慮され，最終的に対応する HMM 列へ変換される．
+ * コンテキストが考慮され，最終的に対応する HMM 列へ変換される. 
  * その後，変換した結果を，
  *   - 音素列から導かれる本来の適用すべきモデル名
  *   - 上記を HMMList にしたがって変換した論理 HMM 名
  *   - 実際に計算で用いられる物理HMM名または pseudo HMM 名
- * の順に出力する．
+ * の順に出力する. 
  * 
  * なお，文字列中に "|" を含めることで，そこを単語区切りとして扱い，
- * トライフォンにおいて単語間の展開を考慮することができる．
+ * トライフォンにおいて単語間の展開を考慮することができる. 
  * 
  * @param str [i/o] 空白で区切られた音素列の文字列
  * @param hmminfo [in] HMM定義構造体
@@ -244,7 +245,7 @@ new_str2phseq(char *str, HTK_HMM_INFO *hmminfo, int *len_ret)
 /** 
  * <JA>
  * 標準入力から1行を音素列表記として読み込み，トライフォンへの変換チェックを
- * 行なう．
+ * 行なう. 
  * 
  * @param hmminfo [in] HMM定義構造体
  * </JA>
@@ -285,20 +286,21 @@ test_expand_triphone(HTK_HMM_INFO *hmminfo)
 
 /** 
  * <JA>
- * コマンドライン上でトライフォンのチェックを行なうモード ("-check triphone")．
- * 
- * @param hmminfo [in] HMM定義構造体
- * @param winfo [in] 単語辞書
+ * コマンドライン上でトライフォンのチェックを行なうモード ("-check triphone"). 
+ *
+ * @param r [in] 認識処理インスタンス
  * </JA>
  * <EN>
  * Mode to do interactive triphone conversion check ("-check triphone").
  * 
- * @param hmminfo [in] HMM definition structure
- * @param winfo [in] word dictionary
+ * @param r [in] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
  */
 void
-hmm_check(Jconf *jconf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo)
+hmm_check(RecogProcess *r)
 {
   boolean endflag;
   static char cmd[MAX_HMMNAME_LEN];
@@ -308,21 +310,21 @@ hmm_check(Jconf *jconf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo)
   printf("********  TRIPHONE COHERENCE CHECK MODE  ********\n");
   printf("*************************************************\n");
 
-  printf("hmmdefs=%s\n", jconf->am.hmmfilename);
-  if (jconf->am.mapfilename != NULL) {
-    printf("hmmlist=%s\n", jconf->am.mapfilename);
+  printf("hmmdefs=%s\n", r->am->config->hmmfilename);
+  if (r->am->config->mapfilename != NULL) {
+    printf("hmmlist=%s\n", r->am->config->mapfilename);
   }
-  printf("dict=%s\n", jconf->lm.dictfilename);
-  printf("headsil = "); put_voca(stdout, winfo, winfo->head_silwid);
-  printf("tailsil = "); put_voca(stdout, winfo, winfo->tail_silwid);
+  printf("dict=%s\n", r->lm->config->dictfilename);
+  printf("headsil = "); put_voca(stdout, r->lm->winfo, r->lm->winfo->head_silwid);
+  printf("tailsil = "); put_voca(stdout, r->lm->winfo, r->lm->winfo->tail_silwid);
 
-  if (make_base_phone(hmminfo, winfo) == FALSE) {
+  if (make_base_phone(r->am->hmminfo, r->lm->winfo) == FALSE) {
     jlog("ERROR: hmm_check: error in making base phone list\n");
     printf("ERROR: hmm_check: error in making base phone list\n");
     return;
   }
 
-  print_phone_info(stdout, hmminfo);
+  print_phone_info(stdout, r->am->hmminfo);
 
   for(endflag = FALSE; endflag == FALSE;) {
     printf("===== command (\"H\" for help) > ");
@@ -334,30 +336,30 @@ hmm_check(Jconf *jconf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo)
     switch(cmd[0]) {
     case 'a':			/* all */
       /* check if logical HMMs cover all possible variants */
-      test_interword_triphone(hmminfo, winfo);
+      test_interword_triphone(r->am->hmminfo, r->lm->winfo);
       break;
     case 'c':			/* conv */
       /* try to expand triphone for given phoneme sequence */
-      endflag = test_expand_triphone(hmminfo);
+      endflag = test_expand_triphone(r->am->hmminfo);
       break;
     case 'i':			/* info */
       /* output data source */
-      printf("hmmdefs=%s\n", jconf->am.hmmfilename);
-      if (jconf->am.mapfilename != NULL) {
-	printf("hmmlist=%s\n", jconf->am.mapfilename);
+      printf("hmmdefs=%s\n", r->am->config->hmmfilename);
+      if (r->am->config->mapfilename != NULL) {
+	printf("hmmlist=%s\n", r->am->config->mapfilename);
       }
-      printf("dict=%s\n", jconf->lm.dictfilename);
-      printf("headsil = "); put_voca(stdout, winfo, winfo->head_silwid);
-      printf("tailsil = "); put_voca(stdout, winfo, winfo->tail_silwid);
-      print_phone_info(stdout, hmminfo);
+      printf("dict=%s\n", r->lm->config->dictfilename);
+      printf("headsil = "); put_voca(stdout, r->lm->winfo, r->lm->winfo->head_silwid);
+      printf("tailsil = "); put_voca(stdout, r->lm->winfo, r->lm->winfo->tail_silwid);
+      print_phone_info(stdout, r->am->hmminfo);
       break;
     case 'p':			/* phonelist */
       /* output basephone */
-      print_all_basephone_name(&(hmminfo->basephone));
+      print_all_basephone_name(&(r->am->hmminfo->basephone));
       break;
     case 'd':			/* phonelist in detail */
       /* output basephone */
-      print_all_basephone_detail(&(hmminfo->basephone));
+      print_all_basephone_detail(&(r->am->hmminfo->basephone));
       break;
     case 'q':			/* quit */
       /* quit this check mode */
@@ -377,3 +379,4 @@ hmm_check(Jconf *jconf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo)
   printf("*****  END OF TRIPHONE COHERENCE CHECK MODE  ****\n");
   printf("*************************************************\n");
 }
+/* end of file */

@@ -1,7 +1,5 @@
 /**
  * @file   write_binhmm.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 06:03:36 2005
  * 
  * <JA>
  * @brief  %HMM 定義をバイナリ形式のファイルへ書き出す
@@ -21,16 +19,19 @@
  * not compatible with the HTK binary format.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 06:03:36 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.1 2007/09/28 02:50:56 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.2 2007/12/18 08:45:51 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
@@ -149,8 +150,6 @@ wt_para(FILE *fp, Value *para)
   wrt(fp, &(para->lopass), sizeof(int), 1);		
   wrt(fp, &(para->enormal), sizeof(int), 1);          
   wrt(fp, &(para->raw_e), sizeof(int), 1);            
-  wrt(fp, &(para->ss_alpha), sizeof(float), 1);	
-  wrt(fp, &(para->ss_floor), sizeof(float), 1);	
   wrt(fp, &(para->zmeanframe), sizeof(int), 1);	
 
   return TRUE;

@@ -1,7 +1,5 @@
 /**
  * @file   mfcc-core.c
- * @author Akinobu Lee
- * @date   Mon Aug  7 11:55:45 2006
  * 
  * <JA>
  * @brief  MFCC ÆÃÄ§ÎÌ¤Î·×»»
@@ -16,13 +14,16 @@
  * These are core functions to compute MFCC vectors from windowed speech data.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Mon Aug  7 11:55:45 2006
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -34,6 +35,7 @@
 /** 
  * Generate table for hamming window.
  * 
+ * @param w [i/o] MFCC calculation work area
  * @param framesize [in] window size
  */
 static void
@@ -58,6 +60,7 @@ make_costbl_hamming(MFCCWork *w, int framesize)
 /** 
  * Build tables for FFT.
  * 
+ * @param w [i/o] MFCC calculation work area
  * @param n [in] 2^n = FFT point
  */
 static void
@@ -83,6 +86,7 @@ make_fft_table(MFCCWork *w, int n)
 /** 
  * Generate table for DCT operation to make mfcc from fbank.
  * 
+ * @param w [i/o] MFCC calculation work area
  * @param fbank_num [in] number of filer banks
  * @param mfcc_dim [in] number of dimensions in MFCC
  */
@@ -115,6 +119,7 @@ make_costbl_makemfcc(MFCCWork *w, int fbank_num, int mfcc_dim)
 /** 
  * Generate table for weighing cepstrum.
  * 
+ * @param w [i/o] MFCC calculation work area
  * @param lifter [in] cepstral liftering coefficient
  * @param mfcc_dim [in] number of dimensions in MFCC
  */
@@ -155,38 +160,39 @@ float Mel(int k, float fres)
 /** 
  * Build filterbank information and generate tables for MFCC comptutation.
  * 
+ * @param w [i/o] MFCC calculation work area
  * @param para [in] configuration parameters
  * 
  * @return the generated filterbank information. 
  */
 void
-InitFBank(MFCCWork *w, Value para)
+InitFBank(MFCCWork *w, Value *para)
 {
   float mlo, mhi, ms, melk;
   int k, chan, maxChan, nv2;
 
   /* Calculate FFT size */
   w->fb.fftN = 2;  w->fb.n = 1;
-  while(para.framesize > w->fb.fftN){
+  while(para->framesize > w->fb.fftN){
     w->fb.fftN *= 2; w->fb.n++;
   }
 
   nv2 = w->fb.fftN / 2;
-  w->fb.fres = 1.0E7 / (para.smp_period * w->fb.fftN * 700.0);
-  maxChan = para.fbank_num + 1;
+  w->fb.fres = 1.0E7 / (para->smp_period * w->fb.fftN * 700.0);
+  maxChan = para->fbank_num + 1;
   w->fb.klo = 2;   w->fb.khi = nv2;
   mlo = 0;      mhi = Mel(nv2 + 1, w->fb.fres);
 
   /* lo pass filter */
-  if (para.lopass >= 0) {
-    mlo = 1127*log(1+(float)para.lopass/700.0);
-    w->fb.klo = ((float)para.lopass * para.smp_period * 1.0e-7 * w->fb.fftN) + 2.5;
+  if (para->lopass >= 0) {
+    mlo = 1127*log(1+(float)para->lopass/700.0);
+    w->fb.klo = ((float)para->lopass * para->smp_period * 1.0e-7 * w->fb.fftN) + 2.5;
     if (w->fb.klo<2) w->fb.klo = 2;
   }
   /* hi pass filter */
-  if (para.hipass >= 0) {
-    mhi = 1127*log(1+(float)para.hipass/700.0);
-    w->fb.khi = ((float)para.hipass * para.smp_period * 1.0e-7 * w->fb.fftN) + 0.5;
+  if (para->hipass >= 0) {
+    mhi = 1127*log(1+(float)para->hipass/700.0);
+    w->fb.khi = ((float)para->hipass * para->smp_period * 1.0e-7 * w->fb.fftN) + 0.5;
     if (w->fb.khi>nv2) w->fb.khi = nv2;
   }
 
@@ -224,7 +230,7 @@ InitFBank(MFCCWork *w, Value para)
   w->fb.Re = (float *)mymalloc((w->fb.fftN + 1) * sizeof(float));
   w->fb.Im = (float *)mymalloc((w->fb.fftN + 1) * sizeof(float));
 
-  w->sqrt2var = sqrt(2.0 / para.fbank_num);
+  w->sqrt2var = sqrt(2.0 / para->fbank_num);
 
 }
 
@@ -287,7 +293,8 @@ float CalcLogRawE(float *wave, int framesize)
  * Apply pre-emphasis filter.
  * 
  * @param wave [i/o] waveform data in the current frame
- * @param para [in] configuration parameters
+ * @param framesize [i/o] frame size in samples
+ * @param preEmph [in] pre-emphasis coef.
  */
 void PreEmphasise (float *wave, int framesize, float preEmph)
 {
@@ -303,6 +310,7 @@ void PreEmphasise (float *wave, int framesize, float preEmph)
  * 
  * @param wave [i/o] waveform data in the current frame
  * @param framesize [in] frame size
+ * @param w [i/o] MFCC calculation work area
  */
 void Hamming(float *wave, int framesize, MFCCWork *w)
 {
@@ -324,6 +332,7 @@ void Hamming(float *wave, int framesize, MFCCWork *w)
  * @param xRe [i/o] real part of waveform
  * @param xIm [i/o] imaginal part of waveform
  * @param p [in] 2^p = FFT point
+ * @param w [i/o] MFCC calculation work area
  */
 void FFT(float *xRe, float *xIm, int p, MFCCWork *w)
 {
@@ -374,21 +383,19 @@ void FFT(float *xRe, float *xIm, int p, MFCCWork *w)
  * Convert wave -> (spectral subtraction) -> mel-frequency filterbank
  * 
  * @param wave [in] waveform data in the current frame
- * @param fbank [out] the resulting mel-frequency filterbank
- * @param fb [in] filterbank information
+ * @param w [i/o] MFCC calculation work area
  * @param para [in] configuration parameters
- * @param ssbuf [in] noise spectrum, or NULL if not apply subtraction
  */
 void
-MakeFBank(float *wave, MFCCWork *w, Value para)
+MakeFBank(float *wave, MFCCWork *w, Value *para)
 {
   int k, bin, i;
   double Re, Im, A, P, NP, H, temp;
 
-  for(k = 1; k <= para.framesize; k++){
+  for(k = 1; k <= para->framesize; k++){
     w->fb.Re[k - 1] = wave[k];  w->fb.Im[k - 1] = 0.0;  /* copy to workspace */
   }
-  for(k = para.framesize + 1; k <= w->fb.fftN; k++){
+  for(k = para->framesize + 1; k <= w->fb.fftN; k++){
     w->fb.Re[k - 1] = 0.0;      w->fb.Im[k - 1] = 0.0;  /* pad with zeroes */
   }
   
@@ -401,10 +408,10 @@ MakeFBank(float *wave, MFCCWork *w, Value para)
       Re = w->fb.Re[k - 1];  Im = w->fb.Im[k - 1];
       P = sqrt(Re * Re + Im * Im);
       NP = w->ssbuf[k - 1];
-      if((P * P -  para.ss_alpha * NP * NP) < 0){
-	H = para.ss_floor;
+      if((P * P -  w->ss_alpha * NP * NP) < 0){
+	H = w->ss_floor;
       }else{
-	H = sqrt(P * P - para.ss_alpha * NP * NP) / P;
+	H = sqrt(P * P - w->ss_alpha * NP * NP) / P;
       }
       w->fb.Re[k - 1] = H * Re;
       w->fb.Im[k - 1] = H * Im;
@@ -412,7 +419,7 @@ MakeFBank(float *wave, MFCCWork *w, Value para)
   }
 
   /* Fill filterbank channels */ 
-  for(i = 1; i <= para.fbank_num; i++)
+  for(i = 1; i <= para->fbank_num; i++)
     w->fbank[i] = 0.0;
   
   for(k = w->fb.klo; k <= w->fb.khi; k++){
@@ -421,11 +428,11 @@ MakeFBank(float *wave, MFCCWork *w, Value para)
     bin = w->fb.loChan[k];
     Re = w->fb.loWt[k] * A;
     if(bin > 0) w->fbank[bin] += Re;
-    if(bin < para.fbank_num) w->fbank[bin + 1] += A - Re;
+    if(bin < para->fbank_num) w->fbank[bin + 1] += A - Re;
   }
 
   /* Take logs */
-  for(bin = 1; bin <= para.fbank_num; bin++){ 
+  for(bin = 1; bin <= para->fbank_num; bin++){ 
     temp = w->fbank[bin];
     if(temp < 1.0) temp = 1.0;
     w->fbank[bin] = log(temp);  
@@ -435,18 +442,18 @@ MakeFBank(float *wave, MFCCWork *w, Value para)
 /** 
  * Calculate 0'th cepstral coefficient.
  * 
- * @param fbank [in] filterbank
+ * @param w [i/o] MFCC calculation work area
  * @param para [in] configuration parameters
  * 
  * @return 
  */
-float CalcC0(MFCCWork *w, Value para)
+float CalcC0(MFCCWork *w, Value *para)
 {
   int i; 
   float S;
   
   S = 0.0;
-  for(i = 1; i <= para.fbank_num; i++)
+  for(i = 1; i <= para->fbank_num; i++)
     S += w->fbank[i];
   return S * w->sqrt2var;
 }
@@ -454,19 +461,19 @@ float CalcC0(MFCCWork *w, Value para)
 /** 
  * Apply DCT to filterbank to make MFCC.
  * 
- * @param fbank [in] filterbank
  * @param mfcc [out] output MFCC vector
  * @param para [in] configuration parameters
+ * @param w [i/o] MFCC calculation work area
  */
-void MakeMFCC(float *mfcc, Value para, MFCCWork *w)
+void MakeMFCC(float *mfcc, Value *para, MFCCWork *w)
 {
 #ifdef MFCC_SINCOS_TABLE
   int i, j, k;
   k = 0;
   /* Take DCT */
-  for(i = 0; i < para.mfcc_dim; i++){
+  for(i = 0; i < para->mfcc_dim; i++){
     mfcc[i] = 0.0;
-    for(j = 1; j <= para.fbank_num; j++)
+    for(j = 1; j <= para->fbank_num; j++)
       mfcc[i] += w->fbank[j] * w->costbl_makemfcc[k++];
     mfcc[i] *= w->sqrt2var;
   }
@@ -474,12 +481,12 @@ void MakeMFCC(float *mfcc, Value para, MFCCWork *w)
   int i, j;
   float B, C;
   
-  B = PI / para.fbank_num;
+  B = PI / para->fbank_num;
   /* Take DCT */
-  for(i = 1; i <= para.mfcc_dim; i++){
+  for(i = 1; i <= para->mfcc_dim; i++){
     mfcc[i - 1] = 0.0;
     C = i * B;
-    for(j = 1; j <= para.fbank_num; j++)
+    for(j = 1; j <= para->fbank_num; j++)
       mfcc[i - 1] += w->fbank[j] * cos(C * (j - 0.5));
     mfcc[i - 1] *= w->sqrt2var;     
   }
@@ -491,23 +498,24 @@ void MakeMFCC(float *mfcc, Value para, MFCCWork *w)
  * 
  * @param mfcc [i/o] a MFCC vector
  * @param para [in] configuration parameters
+ * @param w [i/o] MFCC calculation work area
  */
-void WeightCepstrum (float *mfcc, Value para, MFCCWork *w)
+void WeightCepstrum (float *mfcc, Value *para, MFCCWork *w)
 {
 #ifdef MFCC_SINCOS_TABLE
   int i;
-  for(i=0;i<para.mfcc_dim;i++) {
+  for(i=0;i<para->mfcc_dim;i++) {
     mfcc[i] *= w->sintbl_wcep[i];
   }
 #else
   int i;
   float a, b, *cepWin;
   
-  cepWin = (float *)mymalloc(para.mfcc_dim * sizeof(float));
-  a = PI / para.lifter;
-  b = para.lifter / 2.0;
+  cepWin = (float *)mymalloc(para->mfcc_dim * sizeof(float));
+  a = PI / para->lifter;
+  b = para->lifter / 2.0;
   
-  for(i = 0; i < para.mfcc_dim; i++){
+  for(i = 0; i < para->mfcc_dim; i++){
     cepWin[i] = 1.0 + b * sin((i + 1) * a);
     mfcc[i] *= cepWin[i];
   }
@@ -530,7 +538,7 @@ void WeightCepstrum (float *mfcc, Value para, MFCCWork *w)
  * @return pointer to the newly allocated work area.
  */
 MFCCWork *
-WMP_work_new(Value para)
+WMP_work_new(Value *para)
 {
   MFCCWork *w;
 
@@ -543,16 +551,16 @@ WMP_work_new(Value para)
 
 #ifdef MFCC_SINCOS_TABLE
   /* prepare tables */
-  make_costbl_hamming(w, para.framesize);
+  make_costbl_hamming(w, para->framesize);
   make_fft_table(w, w->fb.n);
-  if (para.mfcc_dim >= 0) {
-    make_costbl_makemfcc(w, para.fbank_num, para.mfcc_dim);
-    make_sintbl_wcep(w, para.lifter, para.mfcc_dim);
+  if (para->mfcc_dim >= 0) {
+    make_costbl_makemfcc(w, para->fbank_num, para->mfcc_dim);
+    make_sintbl_wcep(w, para->lifter, para->mfcc_dim);
   }
 #endif
 
   /* prepare some buffers */
-  w->fbank = (double *)mymalloc((para.fbank_num+1)*sizeof(double));
+  w->fbank = (double *)mymalloc((para->fbank_num+1)*sizeof(double));
   w->bf = (float *)mymalloc(w->fb.fftN * sizeof(float));
   w->bflen = w->fb.fftN;
 
@@ -563,52 +571,51 @@ WMP_work_new(Value para)
  * Calculate MFCC and log energy for one frame.  Perform spectral subtraction
  * if @a ssbuf is specified.
  * 
+ * @param w [i/o] MFCC calculation work area
  * @param mfcc [out] buffer to hold the resulting MFCC vector
- * @param bf [i/o] work area for FFT
  * @param para [in] configuration parameters
- * @param ssbuf [in] noise spectrum, or NULL if not using spectral subtraction
  */
 void
-WMP_calc(MFCCWork *w, float *mfcc, Value para)
+WMP_calc(MFCCWork *w, float *mfcc, Value *para)
 {
   float energy = 0.0;
   float c0 = 0.0;
   int p;
 
-  if (para.zmeanframe) {
-    ZMeanFrame(w->bf, para.framesize);
+  if (para->zmeanframe) {
+    ZMeanFrame(w->bf, para->framesize);
   }
 
-  if (para.energy && para.raw_e) {
+  if (para->energy && para->raw_e) {
     /* calculate log raw energy */
-    energy = CalcLogRawE(w->bf, para.framesize);
+    energy = CalcLogRawE(w->bf, para->framesize);
   }
   /* pre-emphasize */
-  PreEmphasise(w->bf, para.framesize, para.preEmph);
+  PreEmphasise(w->bf, para->framesize, para->preEmph);
   /* hamming window */
-  Hamming(w->bf, para.framesize, w);
-  if (para.energy && ! para.raw_e) {
+  Hamming(w->bf, para->framesize, w);
+  if (para->energy && ! para->raw_e) {
     /* calculate log energy */
-    energy = CalcLogRawE(w->bf, para.framesize);
+    energy = CalcLogRawE(w->bf, para->framesize);
   }
   /* filterbank */
   MakeFBank(w->bf, w, para);
   /* 0'th cepstral parameter */
-  if (para.c0) c0 = CalcC0(w, para);
+  if (para->c0) c0 = CalcC0(w, para);
   /* MFCC */
   MakeMFCC(mfcc, para, w);
   /* weight cepstrum */
   WeightCepstrum(mfcc, para, w);
   /* set energy to mfcc */
-  p = para.mfcc_dim;
-  if (para.c0) mfcc[p++] = c0;
-  if (para.energy) mfcc[p++] = energy;
+  p = para->mfcc_dim;
+  if (para->c0) mfcc[p++] = c0;
+  if (para->energy) mfcc[p++] = energy;
 }
 
 /** 
  * Free all work area for MFCC computation
  * 
- * @param bf [in] window buffer previously allocated by WMP_calc_init()
+ * @param w [i/o] MFCC calculation work area
  */
 void
 WMP_free(MFCCWork *w)

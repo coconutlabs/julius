@@ -1,7 +1,5 @@
 /**
  * @file   para.c
- * @author Akinobu Lee
- * @date   Fri Oct 27 14:55:00 2006
  * 
  * <JA>
  * @brief  ÆÃÄ§ÎÌÃê½Ð¾ò·ï¤Î°·¤¤
@@ -15,13 +13,16 @@
  *
  * Value structure holds acoustic analysis configuration parameters.
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Fri Oct 27 14:55:00 2006
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -55,8 +56,8 @@ undef_para(Value *para)
   para->cmn        = -1;
   para->raw_e      = -1;
   para->c0         = -1;
-  para->ss_alpha   = -1;
-  para->ss_floor   = -1;
+  //para->ss_alpha   = -1;
+  //para->ss_floor   = -1;
   para->zmeanframe = -1;
   para->delta      = -1;
   para->acc        = -1;
@@ -93,8 +94,8 @@ make_default_para(Value *para)
   para->silFloor   = DEF_SILFLOOR;
   para->hipass     = -1;	/* disabled */
   para->lopass     = -1;	/* disabled */
-  para->ss_alpha    = DEF_SSALPHA;
-  para->ss_floor    = DEF_SSFLOOR;
+  //para->ss_alpha    = DEF_SSALPHA;
+  //para->ss_floor    = DEF_SSFLOOR;
   para->zmeanframe = FALSE;
 }
 
@@ -151,8 +152,8 @@ apply_para(Value *dst, Value *src)
   if (dst->cmn        == -1) dst->cmn = src->cmn; 
   if (dst->raw_e      == -1) dst->raw_e = src->raw_e; 
   if (dst->c0         == -1) dst->c0 = src->c0; 
-  if (dst->ss_alpha   == -1) dst->ss_alpha = src->ss_alpha; 
-  if (dst->ss_floor   == -1) dst->ss_floor = src->ss_floor; 
+  //if (dst->ss_alpha   == -1) dst->ss_alpha = src->ss_alpha; 
+  //if (dst->ss_floor   == -1) dst->ss_floor = src->ss_floor; 
   if (dst->zmeanframe == -1) dst->zmeanframe = src->zmeanframe; 
   if (dst->delta      == -1) dst->delta = src->delta; 
   if (dst->acc        == -1) dst->acc = src->acc; 
@@ -163,7 +164,6 @@ apply_para(Value *dst, Value *src)
   if (dst->veclen     == -1) dst->veclen = src->veclen; 
 }
 
-
 #define ISTOKEN(A) (A == ' ' || A == '\t' || A == '\n') ///< Determine token characters
 
 /** 
@@ -277,7 +277,6 @@ htk_config_file_parse(char *HTKconffile, Value *para)
   return TRUE;
 }
 
-
 /** 
  * Set acoustic analysis parameters from HTK HMM definition header information.
  * 
@@ -314,17 +313,17 @@ calc_para_from_header(Value *para, short param_type, short vec_size)
   para->veclen = para->vecbuflen - (para->absesup ? 1 : 0);
 }
 
-
 /** 
  * Output acoustic analysis configuration parameters to stdout.
- * 
+ *
+ * @param fp [in] file pointer
  * @param para [in] configuration parameter
  * 
  */
 void
 put_para(FILE *fp, Value *para)
 {
-  fprintf(fp, "Acoustic analysis condition:\n");
+  fprintf(fp, " Acoustic analysis condition:\n");
   fprintf(fp, "\t       parameter = MFCC");
   if (para->c0) fprintf(fp, "_0");
   if (para->energy) fprintf(fp, "_E");
@@ -334,7 +333,7 @@ put_para(FILE *fp, Value *para)
   if (para->cmn) fprintf(fp, "_Z");
   fprintf(fp, " (%d dimension from %d cepstrum)\n", para->veclen, para->mfcc_dim);
   fprintf(fp, "\tsample frequency = %5ld Hz\n", para->smp_freq);
-  fprintf(fp, "\t   sample period = %4ld  (100ns unit)\n", para->smp_period);
+  fprintf(fp, "\t   sample period = %4ld  (1 = 100ns)\n", para->smp_period);
   fprintf(fp, "\t     window size = %4d samples (%.1f ms)\n", para->framesize,
            (float)para->smp_period * (float)para->framesize / 10000.0);
   fprintf(fp, "\t     frame shift = %4d samples (%.1f ms)\n", para->frameshift,
@@ -354,10 +353,10 @@ put_para(FILE *fp, Value *para)
   if (para->acc) {
     fprintf(fp, "\t      acc window = %d frames (%.1f ms) around\n", para->accWin, (float)para->accWin * (float)para->smp_period * (float)para->frameshift / 10000.0);
   }
-  fprintf(fp, "\t        hi freq. = ");
+  fprintf(fp, "\t     hi freq cut = ");
   if (para->hipass < 0) fprintf(fp, "OFF\n"); 
   else fprintf(fp, "%5d Hz\n", para->hipass);
-  fprintf(fp, "\t        lo freq. = ");
+  fprintf(fp, "\t     lo freq cut = ");
   if (para->lopass < 0) fprintf(fp, "OFF\n"); 
   else fprintf(fp, "%5d Hz\n", para->lopass);
   fprintf(fp, "\t zero mean frame = ");

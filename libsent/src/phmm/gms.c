@@ -1,7 +1,5 @@
 /**
  * @file   gms.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 14:52:18 2005
  * 
  * <JA>
  * @brief  Gaussian Mixture Selection による状態尤度計算
@@ -15,13 +13,16 @@
  * See the comments in the source for details about implementation.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 14:52:18 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -79,6 +80,8 @@
 /** 
  * Register all state defs in GS HMM to GS_SET.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 static void
 build_gsset(HMMWork *wrk)
@@ -97,6 +100,8 @@ build_gsset(HMMWork *wrk)
 /**
  * Free gsset.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 static void
 free_gsset(HMMWork *wrk)
@@ -106,6 +111,8 @@ free_gsset(HMMWork *wrk)
 
 /** 
  * Build the correspondence from GS states to triphone states.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  * @return TRUE on success, FALSE on failure.
  */
@@ -162,6 +169,8 @@ build_state2gs(HMMWork *wrk)
 /**
  * free state2gs.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 static void
 free_state2gs(HMMWork *wrk)
@@ -179,8 +188,8 @@ free_state2gs(HMMWork *wrk)
 /** 
  * Heap sort of @a gsindex to determine which model gets N best likelihoods.
  * 
- * @param neednum [in] needed number N
- * @param totalnum [in] total number of data
+ * @param wrk [i/o] HMM computation work area
+ *
  */
 static void
 sort_gsindex_upward(HMMWork *wrk)
@@ -234,6 +243,8 @@ sort_gsindex_upward(HMMWork *wrk)
 /** 
  * Calculate all GS state scores and select the best ones.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 static void
 do_gms(HMMWork *wrk)
@@ -264,7 +275,7 @@ do_gms(HMMWork *wrk)
 /** 
  * Initialize the GMS related functions and data.
  * 
- * @param nbest [in] N-best state to compute the precise triphone.
+ * @param wrk [i/o] HMM computation work area
  * 
  * @return TRUE on success, FALSE on failure.
  */
@@ -310,6 +321,7 @@ gms_init(HMMWork *wrk)
 /** 
  * Setup GMS parameters for next input.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param framenum [in] length of next input in frames
  * 
  * @return TRUE on success, FALSE on failure.
@@ -347,6 +359,8 @@ gms_prepare(HMMWork *wrk, int framenum)
 /**
  * Free GMS related work areas.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 void
 gms_free(HMMWork *wrk)
@@ -371,6 +385,8 @@ gms_free(HMMWork *wrk)
  * N-best, the triphone score will not be computed, and the score of
  * the GMS %HMM will be returned instead as a fallback score.
  * Else, the precise triphone will be computed and returned.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  * @return the state output probability score in log10.
  */

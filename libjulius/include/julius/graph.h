@@ -1,13 +1,11 @@
 /**
  * @file   graph.h
- * @author Akinobu Lee
- * @date   Thu Aug 16 00:30:54 2007
  * 
  * <JA>
  * @brief  単語グラフの構造体定義
  *
  * 単語グラフ中の単語を表す構造体，および confusion network 中の
- * 単語を表す構造体が定義されています．
+ * 単語を表す構造体が定義されています. 
  * </JA>
  * 
  * <EN>
@@ -16,13 +14,16 @@
  * This file defines instances for word graph and confusion network.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Thu Aug 16 00:30:54 2007
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -33,7 +34,7 @@
 
 /**
  * <JA>
- * 単語グラフ上の単語候補．
+ * 単語グラフ上の単語候補. 
  * </JA>
  * <EN>
  * Word arc on the word graph.

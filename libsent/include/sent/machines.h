@@ -1,7 +1,5 @@
 /**
  * @file   machines.h
- * @author Akinobu LEE
- * @date   Fri Feb 11 03:38:31 2005
  *
  * <EN>
  * @brief  Machine-dependent definitions
@@ -20,13 +18,16 @@
  *
  * @sa config.h.in
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 11 03:38:31 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

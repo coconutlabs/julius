@@ -1,7 +1,5 @@
 /**
  * @file   hmm_calc.h
- * @author Akinobu LEE
- * @date   Thu Feb 10 14:54:06 2005
  *
  * <EN>
  * @brief  Work area and outprob cache for acoustic computation.
@@ -12,13 +10,16 @@
  *
  * </JA>
  *
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 10 14:54:06 2005
+ *
+ * $Revision: 1.3 $
  *
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -149,7 +150,6 @@ typedef struct __hmmwork__{
 } HMMWork;  
 
 
-
 /* addlog.c */
 void make_log_tbl();
 LOGPROB addlog(LOGPROB x, LOGPROB y);

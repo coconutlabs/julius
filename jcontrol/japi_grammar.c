@@ -1,7 +1,5 @@
 /**
  * @file   japi_grammar.c
- * @author Akinobu LEE
- * @date   Thu Mar 24 07:13:41 2005
  * 
  * <JA>
  * @brief  文法関連のモジュールコマンド実装
@@ -11,13 +9,16 @@
  * @brief  Implementation of grammar relatedd module commands.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 24 07:13:41 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -279,4 +280,22 @@ void
 japi_sync_grammar(int sd)
 {
   do_send(sd, "SYNCGRAM\n");
+}
+
+void
+japi_add_words(int sd, char *idstr, char *dictfile)
+{
+  FILE *fp;
+
+  if ((fp = fopen(dictfile, "r")) == NULL) {
+    perror("japi_add_words");
+    return;
+  }
+  do_send(sd, "ADDWORD\n");
+  do_sendf(sd, "%s\n", idstr);
+  while(fgets(buf, MAXLINELEN, fp) != NULL) {
+    do_send(sd, buf);
+  }
+  do_send(sd, "DICEND\n");
+  fclose(fp);
 }

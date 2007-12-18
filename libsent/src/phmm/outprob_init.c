@@ -1,7 +1,5 @@
 /**
  * @file   outprob_init.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 13:35:37 2005
  * 
  * <JA>
  * @brief  音響尤度計算ルーチンの初期化とセットアップ
@@ -33,13 +31,16 @@
  *      -# use outprob(t, hmmstate, param) to get output probability of a state
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 13:35:37 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -52,6 +53,14 @@
 
 /** 
  * Initialize and setup acoustic computation functions.
+ * 
+ * @param wrk [i/o] HMM computation work area
+ * @param hmminfo [in] HMM definition
+ * @param gshmm [in] GMS HMM definition if exist, or NULL if not
+ * @param gms_num [in] number of GMS HMM to compute (valid if gshmm != NULL)
+ * @param gprune_method [in] gaussian pruning method
+ * @param gprune_mixnum [in] number of pdf to compute at a codebook
+ * in gaussian pruning
  * 
  * @return TRUE on success, FALSE on failure.
  */
@@ -147,7 +156,8 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
 
 /** 
  * Prepare for the next input of given frame length.
- * 
+ *
+ * @param wrk [i/o] HMM computation work area
  * @param framenum [in] input length in frame.
  * 
  * @return TRUE on success, FALSE on failure.
@@ -169,6 +179,8 @@ outprob_prepare(HMMWork *wrk, int framenum)
 
 /**
  * Free all work area for outprob computation.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  */
 void

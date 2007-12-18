@@ -1,7 +1,5 @@
 /**
  * @file   m_adin.c
- * @author Akinobu LEE
- * @date   Fri Mar 18 16:17:23 2005
  * 
  * <JA>
  * @brief  音声入力デバイスの初期化
@@ -11,13 +9,16 @@
  * @brief  Initialize audio input device
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Mar 18 16:17:23 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -25,9 +26,10 @@
 
 
 /** 
- * Select input source and setup device-specific functions.
- * 
- * @param source [In] selection ID of input source @sa adin.h
+ * Set up device-specific parameters and functions to AD-in work area.
+ *
+ * @param a [i/o] AD-in work area
+ * @param source [in] input source ID @sa adin.h
  * 
  * @return TRUE on success, FALSE if @a source is not available.
  */
@@ -119,18 +121,18 @@ adin_select(ADIn *a, int source)
 
 /** 
  * <JA>
- * 音声入力デバイスの初期化，パラメータのセットアップ，および
- * マイク入力などスレッド入力を行うデバイスの場合は入力スレッドを開始する．
- * 
- * @param recog 
- * @param arg 
+ * 音声入力デバイスを初期化し，音入力切出用パラメータをセットアップする. 
+ *
+ * @param adin [in] AD-in ワークエリア
+ * @param jconf [in] 全体設定パラメータ
+ * @param arg [in] デバイス依存引数
  * </JA>
  * <EN>
- * Initialize audio device, setup parameters, and start A/D-in thread
- * for threaded input device (microphone etc.)
+ * Initialize audio device and set up parameters for sound detection.
  * 
- * @param recog 
- * @param arg 
+ * @param adin [in] AD-in work area
+ * @param jconf [in] global configuration parameters
+ * @param arg [in] device-specific argument
  * </EN>
  */
 static boolean
@@ -138,7 +140,7 @@ adin_setup_all(ADIn *adin, Jconf *jconf, void *arg)
 {
 
   if (jconf->input.use_ds48to16) {
-    if (jconf->input.use_ds48to16 && jconf->analysis.para.smp_freq != 16000) {
+    if (jconf->input.use_ds48to16 && jconf->input.sfreq != 16000) {
       jlog("ERROR: m_adin: in 48kHz input mode, target sampling rate should be 16k!\n");
       return FALSE;
     }
@@ -152,7 +154,7 @@ adin_setup_all(ADIn *adin, Jconf *jconf, void *arg)
     }
   } else {
     adin->down_sample = FALSE;
-    if (adin_standby(adin, jconf->analysis.para.smp_freq, arg) == FALSE) { /* fail */
+    if (adin_standby(adin, jconf->input.sfreq, arg) == FALSE) { /* fail */
       jlog("ERROR: m_adin: failed to ready input device\n");
       return FALSE;
     }
@@ -166,13 +168,19 @@ adin_setup_all(ADIn *adin, Jconf *jconf, void *arg)
 
 /** 
  * <JA>
- * Jconf の設定に従い音声入力デバイスをセットアップする．
+ * 設定パラメータに従い音声入力デバイスをセットアップする. 
+ *
+ * @param recog [i/o] エンジンインスタンス
  * 
  * </JA>
  * <EN>
- * Initialize audio input device according to the jconf configurations.
+ * Set up audio input device according to the jconf configurations.
  * 
+ * @param recog [i/o] engine instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
  */
 boolean
 adin_initialize(Recog *recog)
@@ -233,20 +241,27 @@ adin_initialize(Recog *recog)
 
 /** 
  * <JA>
- * ユーザ指定のA/D-in関数を用いて音声入力デバイスをセットアップする．
+ * ユーザ指定のA/D-in関数を用いて音声入力デバイスをセットアップする. 
  * recog->adin にデバイス用の各種関数 (ad->*) とパラメータ 
- * (silence_cut_default, enable_thread)があらかじめ格納されていること．
- * 詳細は adin_select() を参照のこと．
+ * (silence_cut_default, enable_thread)があらかじめ格納されていること. 
+ * 詳細は adin_select() を参照のこと. 
+ *
+ * @param recog [i/o] エンジンインスタンス
+ * @param arg [in] adin_initialize 用引数
  * 
  * </JA>
  * <EN>
  * Initialize audio input device using user-specified A/D-in functions.
  * The user functions and parameters (silence_cut_default and enable_thread)
  * should be defined beforehand.  See adin_select() for details.
+ *
+ * @param recog [i/o] engine instance
+ * @param arg [in] argument for adin_initialize
  * 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
-
 boolean
 adin_initialize_user(Recog *recog, void *arg)
 {
@@ -264,3 +279,4 @@ adin_initialize_user(Recog *recog, void *arg)
 
   return ret;
 }
+/* end of file */

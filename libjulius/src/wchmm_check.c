@@ -1,20 +1,18 @@
 /**
  * @file   wchmm_check.c
- * @author Akinobu Lee
- * @date   Sat Sep 24 15:45:06 2005
  * 
  * <JA>
- * @brief  木構造化辞書のユーザチェックモード
+ * @brief  木構造化辞書のマニュアルチェック
  *
  * ここでは，与えられた単語辞書と言語モデルから生成された木構造化辞書の構造を
- * 対話的にチェックするための関数が定義されています．起動時に "-check wchmm"
+ * 対話的にチェックするための関数が定義されています. 起動時に "-check wchmm"
  * とすることで，木構造化辞書の構築後にプロンプトが表示され，ある単語が
  * 木構造化辞書のどこに位置するか，あるいはあるノードにどのような情報が
- * 付与されているかなどを調べることができます．
+ * 付与されているかなどを調べることができます. 
  * </JA>
  * 
  * <EN>
- * @brief  User inspection mode of tree lexicon
+ * @brief  Manual inspection of tree lexicon
  *
  * This file defines some functions to browse and check the structure
  * of the tree lexicon at startup time. When invoking with "-check wchmm",
@@ -23,13 +21,16 @@
  * tree lexicon, or what kind of information a node has in it.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Sat Sep 24 15:45:06 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -41,12 +42,14 @@
  * 
  * @param winfo [in] 単語辞書
  * @param word [in] 出力する単語のID
+ * @param ngram_exist [in] 同時に使用する言語制約が存在する場合TRUE
  * </JA>
  * <EN>
  * Display informations of a word in the dictionary.
  * 
  * @param winfo [in] word dictionary
- * @param word [in] ID of a word to be displayed.
+ * @param word [in] ID of a word to be displayed
+ * @param ngram_exist [in] TRUE when an N-gram was tied with this winfo
  * </EN>
  */
 static void
@@ -82,7 +85,7 @@ print_winfo_w(WORD_INFO *winfo, WORD_ID word, boolean ngram_exist)
 
 /** 
  * <JA>
- * 木構造化辞書上の単語の位置情報を出力する．
+ * 木構造化辞書上の単語の位置情報を出力する. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param word [in] 単語ID
@@ -113,7 +116,7 @@ print_wchmm_w(WCHMM_INFO *wchmm, WORD_ID word)
 
 /** 
  * <JA>
- * 木構造化辞書上のあるノードの情報を出力する．
+ * 木構造化辞書上のあるノードの情報を出力する. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param node [in] ノード番号
@@ -179,7 +182,7 @@ print_wchmm_s(WCHMM_INFO *wchmm, int node)
 
 /** 
  * <JA>
- * 木構造化辞書上のあるノードについて，遷移先のリストを出力する．
+ * 木構造化辞書上のあるノードについて，遷移先のリストを出力する. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param node [in] ノード番号
@@ -217,7 +220,7 @@ print_wchmm_s_arc(WCHMM_INFO *wchmm, int node)
 
 /** 
  * <JA>
- * 木構造化辞書上のあるノードの持つ factoring 情報を出力する．
+ * 木構造化辞書上のあるノードの持つ factoring 情報を出力する. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param node [in] ノード番号
@@ -258,14 +261,16 @@ print_wchmm_s_successor(WCHMM_INFO *wchmm, int node)
 
 /** 
  * <JA>
- * 指定された論理名のHMMを検索し，その情報を出力する．
+ * 指定された論理名のHMMを検索し，その情報を出力する. 
  * 
  * @param name [in] 論理HMMの名前
+ * @param hmminfo [in] HMM定義
  * </JA>
  * <EN>
  * Lookup an HMM of given name, and display specs of it.
  * 
  * @param name [in] HMM logical name
+ * @param hmminfo [in] HMM definition
  * </EN>
  */
 static void
@@ -283,7 +288,7 @@ print_hmminfo(char *name, HTK_HMM_INFO *hmminfo)
 
 /** 
  * <JA>
- * 単語N-gramのある単語の情報を出力する．
+ * 単語N-gramのある単語の情報を出力する. 
  * 
  * @param ngram [in] 単語N-gram
  * @param nid [in] N-gram単語のID
@@ -316,6 +321,8 @@ print_ngraminfo(NGRAM_INFO *ngram, int nid)
  * 
  * @param wchmm [in] tree lexicon
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 wchmm_check_interactive(WCHMM_INFO *wchmm) /* interactive check */
@@ -429,6 +436,8 @@ wchmm_check_interactive(WCHMM_INFO *wchmm) /* interactive check */
  * 
  * @param wchmm [in] tree lexicon
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 check_wchmm(WCHMM_INFO *wchmm)
@@ -446,7 +455,7 @@ check_wchmm(WCHMM_INFO *wchmm)
     for(i=0;i<wchmm->startnum;i++) {
       node = wchmm->startnode[i];
       if (wchmm->state[node].out.state != NULL) {
-	printf("Error: word-beginning node %d has output function!\n, node");
+	printf("Error: word-beginning node %d has output function!\n", node);
 	ok_flag = FALSE;
       }
     }
@@ -507,3 +516,4 @@ check_wchmm(WCHMM_INFO *wchmm)
   jlog("STAT: coordination check passed\n");
 }
 
+/* end of file */

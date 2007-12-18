@@ -12,7 +12,7 @@
 #
 # ripped from gtk's gtk-config.in
 #
-# $Id: libjulius-config.in,v 1.1 2007/09/28 02:50:55 sumomo Exp $
+# $Id: libjulius-config.in,v 1.2 2007/12/18 08:45:49 sumomo Exp $
 #
 
 #
@@ -20,7 +20,7 @@
 #
 
 version="\
-Julius/Julian library rev.@VERSION@"
+Julius/Julian library rev.@JULIUS_VERSION@"
 usage="\
 Usage: libjulius-config [--libs] [--cflags] [--info] [--version]"
 

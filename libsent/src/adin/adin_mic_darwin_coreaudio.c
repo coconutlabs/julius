@@ -1,7 +1,5 @@
 /**
  * @file   adin_mic_darwin_coreaudio.c
- * @author Masatomo Hashimoto
- * @date   Wed Oct 12 11:31:27 2005
  * 
  * <JA>
  * @brief  adin microphone library for CoreAudio API
@@ -28,7 +26,10 @@
  * 
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Masatomo Hashimoto
+ * @date   Wed Oct 12 11:31:27 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 
@@ -43,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.1 2007/09/28 02:50:55 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.2 2007/12/18 08:45:50 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -87,6 +88,9 @@ static AudioBufferList* BufList;
 static AudioBufferList BufListBackup;
 static AudioBufferList* BufListConverted;
 
+#ifndef boolean
+typedef unsigned char boolean;
+#endif
 
 static void printStreamInfo(AudioStreamBasicDescription* desc) {
   jlog("Stat: adin_darwin: ----- details of stream -----\n");

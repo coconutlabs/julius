@@ -1,7 +1,5 @@
 /**
  * @file   rdhmmdef_state.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 03:07:44 2005
  * 
  * <JA>
  * @brief  HTK %HMM 定義ファイルの読み込み：状態
@@ -11,13 +9,16 @@
  * @brief  Read HTK %HMM definition file: state
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 03:07:44 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

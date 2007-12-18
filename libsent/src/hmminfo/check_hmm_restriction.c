@@ -1,7 +1,5 @@
 /**
  * @file   check_hmm_restriction.c
- * @author Akinobu LEE
- * @date   Tue Feb 15 19:00:58 2005
  * 
  * <JA>
  * @brief  与えられた %HMM の遷移が使用可能な形式かどうかチェックする
@@ -33,13 +31,16 @@
  * If such transition is found, Julius output warning and
  * proceed by modifying transition to suite for the restriction.
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 15 19:00:58 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -53,7 +54,7 @@
  * to the final state.  In such case, Julius should be run in
  * multi-path version.
  * 
- * @param hmm [in] HMM definition
+ * @param hmminfo [in] HMM definition
  * 
  * @return TRUE if has, or FALSE if not exist.
  * </EN>
@@ -91,7 +92,6 @@ htk_hmm_has_several_arc_on_edge(HTK_HMM_INFO *hmminfo)
       }
     }
   }
-  jlog("Stat: check_hmm_restriction: all transitions are moderate\n");
 
   return FALSE;
 }
@@ -174,7 +174,6 @@ boolean
 check_hmm_limit(HTK_HMM_Data *dt)
 {
   boolean return_flag = TRUE;
-  int tflag;
 
   if (trans_ok_p(dt->tr) == FALSE) {
     return_flag = FALSE;

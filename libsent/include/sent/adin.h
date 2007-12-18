@@ -1,29 +1,30 @@
 /**
  * @file   adin.h
- * @author Akinobu LEE
- * @date   Thu Feb 10 17:22:36 2005
  *
  * <EN>
- * @brief  Definitions for A/D-in processing and speech detection.
+ * @brief  Definitions for A/D-in processing and sound detection.
  *
  * This file has some definitions relating audio input processing from
  * various devices, and start/end of speech detection.
  * @sa speech.h
  * </EN>
  * <JA>
- * @brief  音声入力および音声区間検出に関する定義
+ * @brief  音声入力および振幅による音区間検出に関する定義
  *
  * このファイルには, さまざまなソースからの音声入力処理と音声区間の検出
  * に関連するいくつかの定義が含まれています．
  * @sa speech.h
  * </JA>
  *
- * $Revision: 1.1 $ 
+ * @author Akinobu LEE
+ * @date   Thu Feb 10 17:22:36 2005
+ *
+ * $Revision: 1.2 $ 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -89,9 +90,9 @@ typedef struct {
  * 
  */
 typedef struct {
-  DS_FILTER *fir[3];
-  double *buf[4];
-  int buflen;
+  DS_FILTER *fir[3]; ///< FIR filters for 48k-to-16k down sampling
+  double *buf[4]; ///< work buffer for each filter
+  int buflen; ///< Length of buffer
 } DS_BUFFER;
 
 /**
@@ -139,6 +140,7 @@ boolean adin_file_end();
 boolean adin_stdin_standby(int freq, void *arg);
 boolean adin_stdin_begin();
 int adin_stdin_read(SP16 *buf, int sampnum);
+char *adin_file_get_current_filename();
 
 /* adin/adin_sndfile.c */
 #ifdef HAVE_LIBSNDFILE
@@ -146,6 +148,7 @@ boolean adin_sndfile_standby(int freq, void *arg);
 boolean adin_sndfile_begin();
 int adin_sndfile_read(SP16 *buf, int sampnum);
 boolean adin_sndfile_end();
+char *adin_sndfile_get_current_filename();
 #endif
 
 /* adin/adin_tcpip.c */

@@ -1,7 +1,5 @@
 /**
  * @file   calc_mix.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 14:18:52 2005
  * 
  * <JA>
  * @brief  混合ガウス分布の重みつき和の計算：非 tied-mixture 用，キャッシュ無し
@@ -11,13 +9,16 @@
  * @brief Compute weighed sum of Gaussian mixture for non tied-mixture model (no cache)
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 14:18:52 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -31,6 +32,8 @@
  * @brief  Compute the output probability of current state OP_State.
  *
  * No codebook-level cache is done.  
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  * @return the output probability of the state OP_State in log10
  */

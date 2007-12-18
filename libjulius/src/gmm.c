@@ -1,25 +1,26 @@
 /**
  * @file   gmm.c
- * @author Akinobu LEE
- * @date   Tue Mar 15 05:14:10 2005
  * 
  * <JA>
- * @brief  Gaussian Mixture Model による入力発話のスコア計算
+ * @brief  GMM による入力棄却およびVAD
  *
  * Gaussian Mixture Model (GMM) が起動時に指定された場合，Julius/Julian は
- * 入力発話に対してフレームごとにスコアを計算し，その累積スコアを算出する．
- * これはGMMに基づく入力音声の発話検証および棄却に用いられる．実際の計算は
+ * 入力発話に対してフレームごとにスコアを計算し，その累積スコアを算出する. 
+ * これはGMMに基づく入力音声の発話検証および棄却に用いられる. 実際の計算は
  * 第1パスの認識処理と並行してリアルタイムに行なわれ，第1パス終了と同時に
- * 結果が出力される．
+ * 結果が出力される. 
  *
  * GMMのスコア計算には Gaussian pruning の safe algorithm が用いられ，
- * 各フレームにおいて上位 N 個だけが正しく得られるように計算される．
+ * 各フレームにおいて上位 N 個だけが正しく得られるように計算される. 
  * ただし通常の認識用音響モデルの場合と異なり，直前フレームの順位情報は
- * 用いていない．
+ * 用いていない. 
+ *
+ * GMM_VAD 定義時は，上記の入力棄却に加えて，short-pause segmentation と
+ * 同じ枠組にを用いた VAD が行われる. 
  * </JA>
  * 
  * <EN>
- * @brief  Compute scores using Gaussian Mixture Model
+ * @brief  Input rejection and VAD using GMM
  *
  * When a Gaussian Mixture Model (GMM) is specified on startup, Julius/Julian
  * will compute the frame-wise likelihoods of each GMM for given inputs,
@@ -32,15 +33,21 @@
  * of GMM scores.  In each frame, pruning will be done to fully compute only
  * the top N Gaussians.  The algorithm is slightly simpler than AM computation,
  * i.e. the score order of the previous frame is not used here.
+ *
+ * When GMM_VAD is defined, a GMM-based VAD will be enabled in addition to
+ * the input rejection, using the scheme of short-pause segmentation.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Mar 15 05:14:10 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -50,8 +57,9 @@
 
 /** 
  * <JA>
- * Gaussianのスコアを計算済みGaussianリストのどの位置に挿入すべきかを返す．
- * 
+ * Gaussianのスコアを計算済みGaussianリストのどの位置に挿入すべきかを返す. 
+ *
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param score [in] 挿入したいスコア
  * @param len [in] 現在のリストの長さ
  * 
@@ -60,7 +68,8 @@
  * <EN>
  * Return insertion point where a computed Gaussian score should be
  * inserted in current list of computed Gaussians.
- * 
+ *
+ * @param gc [i/o] work area for GMM calculation
  * @param score [in] a score to be inserted
  * @param len [in] current length of the list
  * 
@@ -88,17 +97,19 @@ gmm_find_insert_point(GMMCalc *gc, LOGPROB score, int len)
 
 /** 
  * <JA>
- * あるGaussianの計算結果を計算済みGaussianリストに格納する．
+ * あるGaussianの計算結果を計算済みGaussianリストに格納する. 
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param id [in] Gaussian の GMM 内での番号
  * @param score [in] その Gaussian の計算された音響尤度
  * @param len [in] 現在のリストの長さ（現在格納されている Gaussian の数）
  * 
- * @return 格納後のリストの長さ．
+ * @return 格納後のリストの長さ. 
  * </JA>
  * <EN>
  * Store a Gaussian likelihood to the list of computed Gaussians.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param id [in] id of a Gaussian in the GMM to be stored
  * @param score [in] the likelihood of the Gaussian to be stored
  * @param len [in] current list length (= current number of Gaussians in cache)
@@ -144,9 +155,10 @@ gmm_cache_push(GMMCalc *gc, int id, LOGPROB score, int len)
 
 /** 
  * <JA>
- * 現在のフレームの入力ベクトルに対する Gaussian の出力確率を計算する．
- * Gaussian pruning は行なわない．
+ * 現在のフレームの入力ベクトルに対する Gaussian の出力確率を計算する. 
+ * Gaussian pruning は行なわない. 
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param binfo [in] Gaussian
  * 
  * @return 出力確率の対数値
@@ -155,6 +167,7 @@ gmm_cache_push(GMMCalc *gc, int id, LOGPROB score, int len)
  * Compute an output probability of a Gaussian for the input vector of
  * current frame.  No Gaussian pruning is performed in this function.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param binfo [in] Gaussian
  * 
  * @return the log output probability.
@@ -182,9 +195,10 @@ gmm_compute_g_base(GMMCalc *gc, HTK_HMM_Dens *binfo)
 
 /** 
  * <JA>
- * 現在のフレームの入力ベクトルに対する Gaussian の出力確率を計算する．
- * 計算時には固定しきい値による safe pruning を行なう．
+ * 現在のフレームの入力ベクトルに対する Gaussian の出力確率を計算する. 
+ * 計算時には固定しきい値による safe pruning を行なう. 
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param binfo [in] Gaussian
  * @param thres [in] safe pruning のための枝刈りしきい値
  * 
@@ -194,6 +208,7 @@ gmm_compute_g_base(GMMCalc *gc, HTK_HMM_Dens *binfo)
  * Compute an output probability of a Gaussian for the input vector of
  * current frame.  Safe pruning is performed in this function.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param binfo [in] Gaussian
  * @param thres [in] pruning threshold for safe pruning
  * 
@@ -226,12 +241,14 @@ gmm_compute_g_safe(GMMCalc *gc, HTK_HMM_Dens *binfo, LOGPROB thres)
  * <JA>
  * GMM計算における Gaussian pruning のためのワークエリアを確保する
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param hmminfo [in] HMM 構造体
  * @param prune_num [in] Gaussian pruning において計算する上位ガウス分布数
  * </JA>
  * <EN>
  * Allocate work area for Gaussian pruning for GMM calculation.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param hmminfo [in] HMM structure
  * @param prune_num [in] number of top Gaussians to be computed at the pruning
  * </EN>
@@ -250,14 +267,15 @@ gmm_gprune_safe_init(GMMCalc *gc, HTK_HMM_INFO *hmminfo, int prune_num)
 
 /** 
  * <JA>
- * @brief  ガウス分布集合内の各ガウス分布の現フレームに対する出力確率を計算する．
+ * @brief  ガウス分布集合内の各ガウス分布の現フレームに対する出力確率を計算する. 
  *
  * Gaussian pruning により，実際には上位 N 個のみを保証する枝刈りが行なわれ，
- * スコアの低いガウス分布は計算されない．
+ * スコアの低いガウス分布は計算されない. 
  *
  * 計算結果は計算済みGaussianリスト (OP_calced_score, OP_calced_id) に
- * 格納される．
+ * 格納される. 
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param g [in] ガウス分布集合
  * @param gnum [in] @a g の長さ
  * </JA>
@@ -269,6 +287,7 @@ gmm_gprune_safe_init(GMMCalc *gc, HTK_HMM_INFO *hmminfo, int prune_num)
  * to be fully computed.  The results will be stored in the list of
  * computed Gaussians in OP_calced_score and OP_calced_id.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param g [in] set of Gaussians
  * @param gnum [in] length of @a g
  * </EN>
@@ -293,11 +312,11 @@ gmm_gprune_safe(GMMCalc *gc, HTK_HMM_Dens **g, int gnum)
   gc->OP_calced_num = num;
 }
 
-
 /** 
  * <JA>
- * あるGMM状態の現フレームに対する出力確率を計算する．
+ * あるGMM状態の現フレームに対する出力確率を計算する. 
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param s [in] GMM 状態
  * 
  * @return 出力確率の対数スコア
@@ -305,6 +324,7 @@ gmm_gprune_safe(GMMCalc *gc, HTK_HMM_Dens **g, int gnum)
  * <EN>
  * Compute the output probability of a GMM state for the current frame.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param s [in] GMM state
  * 
  * @return the log probability.
@@ -333,8 +353,9 @@ gmm_calc_mix(GMMCalc *gc, HTK_HMM_State *s)
 
 /** 
  * <JA>
- * 入力の指定フレームにおけるGMM状態のスコアを求めるメイン関数．
+ * 入力の指定フレームにおけるGMM状態のスコアを求めるメイン関数. 
  * 
+ * @param gc [i/o] GMM計算用ワークエリア
  * @param t [in] 計算するフレーム
  * @param stateinfo [in] GMM状態
  * @param param [in] 入力ベクトル系列
@@ -345,6 +366,7 @@ gmm_calc_mix(GMMCalc *gc, HTK_HMM_State *s)
  * Main function to compute the output probability of a GMM state for
  * the specified input frame.
  * 
+ * @param gc [i/o] work area for GMM calculation
  * @param t [in] time frame on which the output probability should be computed
  * @param stateinfo [in] GMM state
  * @param param [in] input vector sequence
@@ -361,25 +383,25 @@ outprob_state_nocache(GMMCalc *gc, int t, HTK_HMM_State *stateinfo, HTK_Param *p
   return(gmm_calc_mix(gc, stateinfo));
 }
 
-
 /************************************************************************/
 /* global functions */
 
 /** 
  * <JA>
- * GMMの計算のための初期化．起動時に一度だけ呼ばれる．
+ * GMMの計算のための初期化. 起動時に一度だけ呼ばれる. 
  * 
- * @param gmm [in] GMM定義構造体
- * @param gmm_prune_num [in] Gaussian pruning において計算するガウス分布数
+ * @param recog [i/o] エンジンインスタンス
  * </JA>
  * <EN>
  * Initialization for computing GMM likelihoods.  This will be called
  * once on startup.
  * 
- * @param gmm [in] GMM definition structure
- * @param gmm_prune_num [in] number of Gaussians which is guaranteed to be
- * fully computed on Gaussian pruning
+ * @param recog [i/o] engine instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 boolean
 gmm_init(Recog *recog)
@@ -387,19 +409,20 @@ gmm_init(Recog *recog)
   HTK_HMM_INFO *gmm;
   HTK_HMM_Data *d;
   GMMCalc *gc;
+  int i;
 
-  gmm = recog->model->gmm;
+  gmm = recog->gmm;
 
   /* check GMM format */
   /* tied-mixture GMM is not supported */
   if (gmm->is_tied_mixture) {
-    jlog("ERROR: tied-mixture GMM is not supported\n");
+    jlog("ERROR: gmm_init: tied-mixture GMM is not supported\n");
     return FALSE;
   }
   /* assume 3 state GMM (only one output state) */
   for(d=gmm->start;d;d=d->next) {
     if (d->state_num > 3) {
-      jlog("ERROR: more than three states (one output state) defined in GMM [%s]\n", d->name);
+      jlog("ERROR: gmm_init: more than three states (one output state) defined in GMM [%s]\n", d->name);
       return FALSE;
     }
   }
@@ -412,8 +435,31 @@ gmm_init(Recog *recog)
     recog->gc = gc;
   }
   
-  /* allocate score buffer */
+  /* allocate buffers */
   gc->gmm_score = (LOGPROB *)mymalloc(sizeof(LOGPROB) * gmm->totalhmmnum);
+
+#ifdef GMM_VAD
+  gc->nframe = recog->jconf->detect.gmm_margin;
+  gc->rates = (LOGPROB *)mymalloc(sizeof(LOGPROB) * gc->nframe);
+#endif
+
+  gc->is_voice = (boolean *)mymalloc(sizeof(boolean) * gmm->totalhmmnum);
+  i = 0;
+  if (recog->jconf->reject.gmm_reject_cmn_string) {
+    for(d=recog->gmm->start;d;d=d->next) {
+      if (strstr(recog->jconf->reject.gmm_reject_cmn_string, d->name)) {
+	gc->is_voice[i] = FALSE;
+      } else {
+	gc->is_voice[i] = TRUE;
+      }
+      i++;
+    }
+  } else {
+    for(d=recog->gmm->start;d;d=d->next) {
+      gc->is_voice[i] = TRUE;
+      i++;
+    }
+  }
 
   /* initialize work area */
   gmm_gprune_safe_init(gc, gmm, recog->jconf->reject.gmm_gprune_num);
@@ -430,16 +476,19 @@ gmm_init(Recog *recog)
 
 /** 
  * <JA>
- * GMM計算のための準備を行なう．１入力開始ごとに呼ばれる．
+ * GMM計算のための準備を行なう. １入力開始ごとに呼ばれる. 
  * 
- * @param gmm [in] GMM定義構造体
+ * @param recog [i/o] エンジンインスタンス
  * </JA>
  * <EN>
  * Prepare for the next GMM computation.  This will be called just before
  * an input begins.
  * 
- * @param gmm [in] GMM definition structure
+ * @param recog [i/o] engine instance
  * </EN>
+ * 
+ * @callgraph
+ * @callergraph
  */
 void
 gmm_prepare(Recog *recog)
@@ -449,60 +498,118 @@ gmm_prepare(Recog *recog)
 
   /* initialize score buffer and frame count */
   i = 0;
-  for(d=recog->model->gmm->start;d;d=d->next) {
+  for(d=recog->gmm->start;d;d=d->next) {
     recog->gc->gmm_score[i] = 0.0;
     i++;
   }
+#ifdef GMM_VAD
+  for(i=0;i<recog->gc->nframe;i++) recog->gc->rates[i] = 0.0;
+  recog->gc->framep = 0;
+  recog->gc->filled = FALSE;
+  recog->gc->in_voice = FALSE;
+#endif
+
   recog->gc->framecount = 0;
+
+#ifdef GMM_VAD_DEBUG
+  printf("GMM_VAD: init\n");
+#endif
 }
 
 /** 
  * <JA>
  * 与えられた入力ベクトル列上のあるフレームについて，全GMMのスコアを計算し，
- * 計算結果を gmm_score に積算する．
+ * 計算結果を gmm_score に積算する. 
+ *
+ * GMM_VAD 定義時は，後で VAD 判定するために，過去 jconf->detect.gmm_margin
+ * フレーム分の VAD スコア （音声GMMの最大スコア - 雑音GMMの最大スコア）が
+ * 保存される. 
  * 
- * @param gmm [in] GMM定義構造体
- * @param param [in] 入力ベクトル列
- * @param t [in] 計算する時刻フレーム
+ * @param recog [i/o] エンジンインスタンス
  * </JA>
  * <EN>
  * Compute output probabilities of all GMM for a given input vector, and
  * accumulate the results to the gmm_score buffer.
+ *
+ * When GMM_VAD is defined, VAD scores,
+ * "(maximum score of speech GMMs) - (maximum score of noise GMMs)" of
+ * last frames (jconf->detect.gmm_margin) will be stored for later VAD
+ * decision.
  * 
- * @param gmm [in] GMM definition structure
- * @param param [in] input vectors
- * @param t [in] time frame to compute the probabilities.
+ * @param recog [i/o] engine instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
  */
 void
-gmm_proceed(Recog *recog, HTK_Param *param, int t)
+gmm_proceed(Recog *recog)
 {
   HTK_HMM_Data *d;
   GMMCalc *gc;
   int i;
+  MFCCCalc *mfcc;
+  LOGPROB score;
+#ifdef GMM_VAD
+  LOGPROB max_n;
+  LOGPROB max_v;
+#endif
 
+  mfcc = recog->gmmmfcc;
   gc = recog->gc;
 
+  if (!mfcc->valid) return;
+
   gc->framecount++;
+
+#ifdef GMM_VAD
+  max_n = max_v = LOG_ZERO;
+#endif
+
   i = 0;
-  for(d=recog->model->gmm->start;d;d=d->next) {
-    gc->gmm_score[i] += outprob_state_nocache(gc, t, d->s[1], param);
+  for(d=recog->gmm->start;d;d=d->next) {
+    score = outprob_state_nocache(gc, mfcc->f, d->s[1], mfcc->param);
+    gc->gmm_score[i] += score;
+#ifdef GMM_VAD
+    if (gc->is_voice[i]) {
+      if (max_v < score) max_v = score;
+    } else {
+      if (max_n < score) max_n = score;
+    }
+#endif
 #ifdef MES
-    jlog("DEBUG: [%d:total=%f avg=%f]\n", i, gc->gmm_score[i], gc->gmm_score[i] / (float)gc->framecount);
+    jlog("DEBUG: [%s: total=%f avg=%f]\n", d->name, gc->gmm_score[i], gc->gmm_score[i] / (float)gc->framecount);
 #endif
     i++;
   }
+#ifdef GMM_VAD
+#ifdef GMM_VAD_DEBUG
+  //printf("GMM_VAD: max_v = %f, max_n = %f, rate = %f\n", max_v, max_n, max_v - max_n, gc->framep);
+#endif
+  /* set rate of this frame */
+  gc->rates[gc->framep] = max_v - max_n;
+#ifdef GMM_VAD_DEBUG
+  printf("GMM_VAD: %f\n", max_v - max_n);
+#endif
+  /* increment current frame pointer */
+  gc->framep++;
+  /* if reached end, go to start point */
+  if (gc->framep >= gc->nframe) {
+    gc->filled = TRUE;
+    gc->framep = 0;
+  }
+#endif
 }
 
 /** 
  * <JA>
- * @brief  GMMの計算を終了し，結果を出力する．
+ * @brief  GMMの計算を終了し，結果を出力する. 
  *
  * gmm_proceed() によって累積された各フレームごとのスコアから，
- * 最大スコアのGMMを決定する．その事後確率に基づく信頼度を計算し
- * 最終的な結果を result_gmm() によって出力する．
+ * 最大スコアのGMMを決定する. その事後確率に基づく信頼度を計算し
+ * 最終的な結果を result_gmm() によって出力する. 
  * 
- * @param gmm [in] GMM定義構造体
+ * @param recog [i/o] エンジンインスタンス
  * </JA>
  * <EN>
  * @brief  Finish the GMM computation for an input, and output the result.
@@ -512,8 +619,11 @@ gmm_proceed(Recog *recog, HTK_Param *param, int t)
  * maximum GMM using posterior probability.  Then the result will be output
  * using result_gmm().
  * 
- * @param gmm [in] GMM definition structure.
+ * @param recog [i/o] engine instance
  * </EN>
+ * 
+ * @callgraph
+ * @callergraph
  */
 void
 gmm_end(Recog *recog)
@@ -527,10 +637,11 @@ gmm_end(Recog *recog)
   LOGPROB sum;
 #endif
   int i;
+  int maxid;
 
   if (recog->gc->framecount == 0) return;
 
-  gmm = recog->model->gmm;
+  gmm = recog->gmm;
   score = recog->gc->gmm_score;
 
   /* get max score */
@@ -541,17 +652,20 @@ gmm_end(Recog *recog)
     if (maxprob < score[i]) {
       dmax = d;
       maxprob = score[i];
+      maxid = i;
     }
     i++;
   }
   recog->gc->max_d = dmax;
+  recog->gc->max_i = maxid;
 
 #ifdef CONFIDENCE_MEASURE
   /* compute CM */
   sum = 0.0;
   i = 0;
   for(d=gmm->start;d;d=d->next) {
-    sum += pow(10, recog->jconf->annotate.cm_alpha * (score[i] - maxprob));
+    //sum += pow(10, recog->jconf->annotate.cm_alpha * (score[i] - maxprob));
+    sum += pow(10, 0.05 * (score[i] - maxprob));
     i++;
   }
   recog->gc->gmm_max_cm = 1.0 / sum;
@@ -566,36 +680,61 @@ gmm_end(Recog *recog)
 /** 
  * <JA>
  * GMMの識別結果，最後の入力が音声入力として有効であったか
- * 無効であったかを返す．
+ * 無効であったかを返す. 
+ *
+ * @param recog [i/o] エンジンインスタンス
  * 
  * @return 一位のGMMの名前が gmm_reject_cmn_string 内に無ければ valid として
- * TRUE, あれば invalid として FALSE を返す．
+ * TRUE, あれば invalid として FALSE を返す. 
  * </JA>
  * <EN>
  * Return whether the last input was valid or invalid, from the result of
  * GMM computation.
+ *
+ * @param recog [i/o] engine instance
  * 
  * @return TRUE if input is valid, i.e. the name of maximum GMM is not included
  * in gmm_reject_cmn_string, or FALSE if input is invalid, i.e. the name is
  * included in that string.
  * </EN>
+ * 
+ * @callgraph
+ * @callergraph
  */
 boolean
 gmm_valid_input(Recog *recog)
 {
   if (recog->gc->max_d == NULL) return FALSE;
-  if (strstr(recog->jconf->reject.gmm_reject_cmn_string, recog->gc->max_d->name)) {
-    return FALSE;
+  if (recog->gc->is_voice[recog->gc->max_i]) {
+    return TRUE;
   }
-  return TRUE;
+  return FALSE;
 }
 
+/** 
+ * <EN>
+ * Free work area used for GMM calculation.
+ * </EN>
+ * <JA>
+ * GMM計算に用いたワークエリアを開放する. 
+ * </JA>
+ * 
+ * @param recog [i/o] engine instance
+ * 
+ * @callgraph
+ * @callergraph
+ * 
+ */
 void
 gmm_free(Recog *recog)
 {
   if (recog->gc) {
     free(recog->gc->OP_calced_score);
     free(recog->gc->OP_calced_id);
+    free(recog->gc->is_voice);
+#ifdef GMM_VAD
+    free(recog->gc->rates);
+#endif
     free(recog->gc->gmm_score);
     free(recog->gc);
     recog->gc = NULL;
@@ -603,33 +742,117 @@ gmm_free(Recog *recog)
 }
 
 #ifdef GMM_VAD
-boolean
-gmm_is_valid_frame(Recog *recog, VECT *vec, short veclen)
+
+/** 
+ * <EN>
+ * Compute score of voice activity from the last (jconf->detect.gmm_margin)
+ * frames.  Positive value designates speech, and negative means noise.
+ * </EN>
+ * <JA>
+ * 直前の (jconf->detect.gmm_margin) フレーム分のスコアから
+ * voice activity のスコアを計算する. 正の値は音声，負の値は雑音を表す. 
+ * </JA>
+ * 
+ * @param gc [i/o] work area for GMM calculation
+ * @param mean_ret [out] mean value of last (jconf->detect.gmm_margin) frames
+ * @param var_ret [out] variance of last (jconf->detect.gmm_margin) frames
+ * @param count_ret [out] count of speech frames in last (jconf->detect.gmm_margin) frames
+ * 
+ */
+static void
+voice_activity_score(GMMCalc *gc, float *mean_ret, float *var_ret, int *count_ret)
 {
-  HTK_HMM_Data *d, *max_d;
+  int i, len;
+  LOGPROB mean;
+  LOGPROB var;
+  LOGPROB x;
+  int count;
+
+  if (!gc->filled) {
+    /* cycle buffer not filled yet */
+    *mean_ret = 0.0;
+    *var_ret = 0.0;
+    *count_ret = 0;
+    return;
+  }
+
+  if (gc->filled) {
+    len = gc->nframe;
+  } else {
+    len = gc->framep;
+  }
+
+  mean = 0;
+  count = 0;
+  for(i=0;i<len;i++) {
+    mean += gc->rates[i];
+    if (gc->rates[i] > 0.0) count++;
+  }
+  mean /= (float)len;
+  var = 0.0;
+  for(i=0;i<len;i++) {
+    x = mean - gc->rates[i];
+    var += x * x;
+  }
+  var /= (float)len;
+
+  *mean_ret = mean;
+  *var_ret = var;
+  *count_ret = count;
+}
+
+/** 
+ * <EN>
+ * Check if trigger of speech / noise segment.  If we are in noise segment
+ * and some speech input begins at this frame, recog->gc->up_trigger will
+ * be set to TRUE.  If current is in speech segment and it ended at
+ * this frame, recog->gc->down_trigger will be set to FALSE.
+ * </EN>
+ * <JA>
+ * 音声/非音声区間の区切りを検知する. これまでが非音声区間でこのフレームで
+ * 音声トリガを検知したとき，recog->gc->up_trigger を TRUE にセットする. 現在
+ * 音声区間で区間終了を検知したとき，recog->gc->down_trigger を TRUE に
+ * セットする. 
+ * </JA>
+ * 
+ * @param recog [i/o] engine instance
+ * 
+ * @callgraph
+ * @callergraph
+ */
+void
+gmm_check_trigger(Recog *recog)
+{
   GMMCalc *gc;
-  LOGPROB prob, maxprob;
-
   gc = recog->gc;
+  float mean;
+  float var;
+  int count;
 
-  maxprob = LOG_ZERO;
-  max_d = NULL;
-  for(d=recog->model->gmm->start;d;d=d->next) {
-    //prob = outprob_state_nocache(gc, t, d->s[1], param);
-    gc->OP_vec = vec;
-    gc->OP_veclen = veclen;
-    prob = gmm_calc_mix(gc, d->s[1]);
-    if (maxprob < prob) {
-      maxprob = prob;
-      max_d = d;
+  gc->up_trigger = gc->down_trigger = FALSE;
+
+  voice_activity_score(gc, &mean, &var, &count);
+
+  if (gc->in_voice) {
+    if (mean < -0.2) {
+      gc->down_trigger = TRUE;
+      gc->in_voice = FALSE;
+    }
+  } else {
+    if (mean > 0.7) {
+      gc->up_trigger = TRUE;
+      gc->in_voice = TRUE;
     }
   }
-  if (strstr(recog->jconf->reject.gmm_reject_cmn_string, max_d->name)) {
-    /* reject */
-    return FALSE;
-  }
 
-  return TRUE;
-}
-  
+#ifdef GMM_VAD_DEBUG
+  printf("GMM_VAD: %s: %f %f %d", gc->in_voice ? "VOICE" : "NOISE", mean, var, count);
+  if (gc->up_trigger) printf(": BEGIN");
+  if (gc->down_trigger) printf(": END");
+  printf("\n");
 #endif
+
+}
+#endif /* GMM_VAD */
+
+/* end of file */

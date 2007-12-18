@@ -1,7 +1,5 @@
 /**
  * @file   extern.h
- * @author Akinobu LEE
- * @date   Mon Mar  7 23:19:14 2005
  * 
  * <JA>
  * @brief  外部関数宣言
@@ -11,13 +9,16 @@
  * @brief  External function declarations
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Mon Mar  7 23:19:14 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -30,9 +31,7 @@ void bt_free(BACKTRELLIS *bt);
 TRELLIS_ATOM *bt_new(BACKTRELLIS *bt);
 void bt_store(BACKTRELLIS *bt, TRELLIS_ATOM *aotm);
 void bt_relocate_rw(BACKTRELLIS *bt);
-#ifdef SP_BREAK_CURRENT_FRAME
-void set_terminal_words(Recog *recog);
-#endif
+void set_terminal_words(RecogProcess *r);
 void bt_discount_pescore(WCHMM_INFO *wchmm, BACKTRELLIS *bt, HTK_Param *param);
 void bt_discount_lm(BACKTRELLIS *bt);
 void bt_sort_rw(BACKTRELLIS *bt);
@@ -50,15 +49,32 @@ void  calc_all_unigram_factoring_values(WCHMM_INFO *wchmm);
 boolean can_succeed(WCHMM_INFO *wchmm, WORD_ID lastword, int node);
 
 /* beam.c */
-boolean get_back_trellis_init(HTK_Param *param, Recog *recog);
-boolean get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_for_multipath);
-void get_back_trellis_end(HTK_Param *param, Recog *recog);
-boolean get_back_trellis(Recog *recog);
-LOGPROB finalize_1st_pass(Recog *recog, int len);
-#ifdef SP_BREAK_CURRENT_FRAME
-boolean is_sil(WORD_ID w, WORD_INFO *winfo, HTK_HMM_INFO *hmm);
-void finalize_segment(Recog *recog, HTK_Param *param, int len);
+boolean get_back_trellis_init(HTK_Param *param, RecogProcess *r);
+boolean get_back_trellis_proceed(int t, HTK_Param *param, RecogProcess *r, boolean final_for_multipath);
+void get_back_trellis_end(HTK_Param *param, RecogProcess *r);
+void fsbeam_free(FSBeam *d);
+void finalize_1st_pass(RecogProcess *r, int len);
+
+/* pass1.c */
+#ifdef POWER_REJECT
+boolean power_reject(Recog *recog);
 #endif
+int decode_proceed(Recog *recog);
+void decode_end_segmented(Recog *recog);
+void decode_end(Recog *recog);
+boolean get_back_trellis(Recog *recog);
+
+/* spsegment.c */
+boolean is_sil(WORD_ID w, RecogProcess *r);
+void mfcc_copy_to_rest_and_shrink(MFCCCalc *mfcc, int start, int end);
+void mfcc_shrink(MFCCCalc *mfcc, int p);
+boolean detect_end_of_segment(RecogProcess *r, int time);
+void finalize_segment(Recog *recog);
+void spsegment_init(Recog *recog);
+boolean spsegment_trigger_sync(Recog *recog);
+boolean spsegment_need_restart(Recog *recog, int *rf_ret, boolean *repro_ret);
+void spsegment_restart_mfccs(Recog *recog, int rewind_frame, boolean reprocess);
+
 
 /* outprob_style.c */
 #ifdef PASS1_IWCD
@@ -73,29 +89,29 @@ void error_missing_left_triphone(HMM_Logical *base, char *lc_name);
 
 /* ngram_decode.c */
 #include "search.h"
-int ngram_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, Recog *recog);
-int ngram_nextwords(NODE *hypo, NEXTWORD **nw, int maxnw, Recog *recog);
-boolean ngram_acceptable(NODE *hypo, Recog *recog);
-int dfa_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, Recog *recog);
-int dfa_nextwords(NODE *hypo, NEXTWORD **nw, int maxnw, Recog *recog);
-boolean dfa_acceptable(NODE *hypo, Recog *recog);
-boolean dfa_look_around(NEXTWORD *nword, NODE *hypo, Recog *recog);
+int ngram_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, RecogProcess *r);
+int ngram_nextwords(NODE *hypo, NEXTWORD **nw, int maxnw, RecogProcess *r);
+boolean ngram_acceptable(NODE *hypo, RecogProcess *r);
+int dfa_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, RecogProcess *r);
+int dfa_nextwords(NODE *hypo, NEXTWORD **nw, int maxnw, RecogProcess *r);
+boolean dfa_acceptable(NODE *hypo, RecogProcess *r);
+boolean dfa_look_around(NEXTWORD *nword, NODE *hypo, RecogProcess *r);
 
 /* search_bestfirst_main.c */
-void sp_segment_set_last_nword(NODE *hypo, Recog *recog);
-void wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num);
+void segment_set_last_nword(NODE *hypo, RecogProcess *r);
+void wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num);
 
 /* search_bestfirst_v?.c */
 void clear_stocker(StackDecode *s);
 void free_node(NODE *node);
 NODE *cpy_node(NODE *dst, NODE *src);
-NODE *newnode(Recog *recog);
-void malloc_wordtrellis(Recog *recog);
+NODE *newnode(RecogProcess *r);
+void malloc_wordtrellis(RecogProcess *r);
 void free_wordtrellis();
-void scan_word(NODE *now, HTK_Param *param, Recog *recog);
-void next_word(NODE *now, NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog);
-void start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, Recog *recog);
-void last_next_word(NODE *now, NODE *new, HTK_Param *param, Recog *recog);
+void scan_word(NODE *now, HTK_Param *param, RecogProcess *r);
+void next_word(NODE *now, NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess *r);
+void start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess *r);
+void last_next_word(NODE *now, NODE *new, HTK_Param *param, RecogProcess *r);
 
 /* wav2mfcc.c */
 boolean wav2mfcc(SP16 speech[], int speechlen, Recog *recog);
@@ -110,8 +126,8 @@ void j_put_library_defs(FILE *stream);
 WCHMM_INFO *wchmm_new();
 void wchmm_free(WCHMM_INFO *w);
 void print_wchmm_info(WCHMM_INFO *wchmm);
-boolean build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf);
-boolean build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf);
+boolean build_wchmm(WCHMM_INFO *wchmm, JCONF_LM *lmconf);
+boolean build_wchmm2(WCHMM_INFO *wchmm, JCONF_LM *lmconf);
 
 /* wchmm_check.c */
 void wchmm_check_interactive(WCHMM_INFO *wchmm);
@@ -119,22 +135,22 @@ void check_wchmm(WCHMM_INFO *wchmm);
 
 /* realtime.c --- callback for adin_cut() */
 boolean RealTimeInit(Recog *recog);
-boolean RealTimePipeLinePrepare(Recog **recoglist, int recognum);
-boolean RealTimeMFCC(VECT *tmpmfcc, SP16 *window, int windowlen, Value *para, Recog *re);
-int RealTimePipeLine(SP16 *Speech, int len, Recog **recoglist, int recognum);
-int RealTimeResume(Recog **recoglist, int recognum);
-boolean RealTimeParam(Recog **recoglist, int recognum);
-void RealTimeCMNUpdate(HTK_Param *param, Recog *recog);
-void RealTimeTerminate(Recog **recoglist, int recognum);
+boolean RealTimePipeLinePrepare(Recog *recog);
+boolean RealTimeMFCC(MFCCCalc *mfcc, SP16 *window, int windowlen);
+int RealTimePipeLine(SP16 *Speech, int len, Recog *recog);
+int RealTimeResume(Recog *recog);
+boolean RealTimeParam(Recog *recog);
+void RealTimeCMNUpdate(MFCCCalc *mfcc, Recog *recog);
+void RealTimeTerminate(Recog *recog);
 void realbeam_free(Recog *recog);
 
 /* word_align.c */
-void word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Recog *recog);
-void phoneme_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Recog *recog);
-void state_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Recog *recog);
-void word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, Recog *recog);
-void phoneme_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, Recog *recog);
-void state_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, Recog *recog);
+void word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void phoneme_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void state_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void phoneme_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void state_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
 
 /* m_usage.c */
 void opt_terminate();
@@ -150,27 +166,24 @@ boolean config_file_parse(char *conffile, Jconf *jconf);
 boolean checkpath(char *filename);
 boolean j_jconf_finalize(Jconf *jconf);
 int set_beam_width(WCHMM_INFO *wchmm, int specified);
-void set_lm_weight(Jconf *jconf, Model *model);
-void set_lm_weight2(Jconf *jconf, Model *model);
 /* m_info.c */
-void print_setting(Jconf *jconf);
-void print_info(Recog *recog);
+void print_jconf_overview(Jconf *jconf);
+void print_engine_info(Recog *recog);
 /* m_bootup.c */
 void system_bootup(Recog *recog);
 /* m_adin.c */
 boolean adin_initialize(Recog *recog);
 boolean adin_initialize_user(Recog *recog, void *arg);
 /* m_fusion.c */
-boolean j_model_load_all(Model *model, Jconf *jconf);
+boolean j_load_am(Recog *recog, JCONF_AM *amconf);
+boolean j_load_lm(Recog *recog, JCONF_LM *lmconf);
+boolean j_load_all(Recog *recog, Jconf *jconf);
+boolean j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf);
 boolean j_final_fusion(Recog *recog);
-/* result_tty.c */
-void setup_result_tty();
-/* result_msock.c */
-void setup_result_msock(Recog *recog);
-void decode_output_selection(char *str);
+void create_mfcc_calc_instances(Recog *recog);
 
 /* hmm_check.c */
-void hmm_check(Jconf *jconf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);
+void hmm_check(RecogProcess *r);
 
 /* visual.c */
 void visual_init(Recog *recog);
@@ -183,12 +196,12 @@ void visual2_best(NODE *now, WORD_INFO *winfo);
 /* gmm.c */
 boolean gmm_init(Recog *recog);
 void gmm_prepare(Recog *recog);
-void gmm_proceed(Recog *recog, HTK_Param *param, int t);
+void gmm_proceed(Recog *recog);
 void gmm_end(Recog *recog);
 boolean gmm_valid_input(Recog *recog);
 void gmm_free(Recog *recog);
 #ifdef GMM_VAD
-boolean gmm_is_valid_frame(Recog *recog, VECT *vec, short veclen);
+void gmm_check_trigger(Recog *recog);
 #endif
 
 /* graphout.c */
@@ -196,59 +209,69 @@ void wordgraph_init(WCHMM_INFO *wchmm);
 void wordgraph_free(WordGraph *wg);
 void put_wordgraph(FILE *fp, WordGraph *wg, WORD_INFO *winfo);
 void wordgraph_dump(FILE *fp, WordGraph *root, WORD_INFO *winfo);
-WordGraph *wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe, int rightframe, LOGPROB fscore_head, LOGPROB fscore_tail, LOGPROB gscore_head, LOGPROB gscore_tail, LOGPROB lscore, LOGPROB cmscore, Recog *recog);
+WordGraph *wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe, int rightframe, LOGPROB fscore_head, LOGPROB fscore_tail, LOGPROB gscore_head, LOGPROB gscore_tail, LOGPROB lscore, LOGPROB cmscore, RecogProcess *r);
 boolean wordgraph_check_and_add_rightword(WordGraph *wg, WordGraph *right, LOGPROB lscore);
 boolean wordgraph_check_and_add_leftword(WordGraph *wg, WordGraph *left, LOGPROB lscore);
 void wordgraph_save(WordGraph *wg, WordGraph *right, WordGraph **root);
-WordGraph *wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolean *merged_p, Jconf *jconf);
+WordGraph *wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolean *merged_p, JCONF_SEARCH *jconf);
 WordGraph *wordgraph_dup(WordGraph *wg, WordGraph **root);
-void wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog);
-void wordgraph_depth_cut(WordGraph **rootp, Recog *recog);
-void wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog);
+void wordgraph_purge_leaf_nodes(WordGraph **rootp, RecogProcess *r);
+void wordgraph_depth_cut(WordGraph **rootp, RecogProcess *r);
+void wordgraph_adjust_boundary(WordGraph **rootp, RecogProcess *r);
 void wordgraph_clean(WordGraph **rootp);
 void wordgraph_compaction_thesame(WordGraph **rootp);
-void wordgraph_compaction_exacttime(WordGraph **rootp, Recog *recog);
-void wordgraph_compaction_neighbor(WordGraph **rootp, Recog *recog);
-int wordgraph_sort_and_annotate_id(WordGraph **rootp, Recog *recog);
-void wordgraph_check_coherence(WordGraph *rootp, Recog *recog);
-
-/* main.c */
-void main_recognition_loop(Recog *recog);
+void wordgraph_compaction_exacttime(WordGraph **rootp, RecogProcess *r);
+void wordgraph_compaction_neighbor(WordGraph **rootp, RecogProcess *r);
+int wordgraph_sort_and_annotate_id(WordGraph **rootp, RecogProcess *r);
+void wordgraph_check_coherence(WordGraph *rootp, RecogProcess *r);
+void graph_forward_backward(WordGraph *root, RecogProcess *r);
 
 /* default.c */
 void jconf_set_default_values(Jconf *j);
+void jconf_set_default_values_am(JCONF_AM *j);
+void jconf_set_default_values_lm(JCONF_LM *j);
+void jconf_set_default_values_search(JCONF_SEARCH *j);
+
 
 /* multi-gram.c */
-boolean multigram_delete(int gid, Recog *recog);
-void multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, Model *model);
-void multigram_delete_all(Recog *recog);
-boolean multigram_exec(Recog *recog);
-int multigram_activate(int gid, Recog *recog);
-int multigram_deactivate(int gid, Recog *recog);
-
-void multigram_add_gramlist(char *dfafile, char *dictfile, Jconf *jconf, int lmvar);
-void multigram_remove_gramlist(Jconf *jconf);
-boolean multigram_read_all_gramlist(Jconf *jconf, Model *model);
-boolean multigram_add_prefix_list(char *prefix_list, char *cwd, Jconf *jconf, int lmvar);
-boolean multigram_add_prefix_filelist(char *listfile, Jconf *jconf, int lmvar);
-int multigram_get_active_num(Recog *recog);
-int multigram_get_gram_from_category(int category, Recog *recog);
-int multigram_get_all_num(Recog *recog);
+void multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm);
+boolean multigram_delete(int gid, PROCESS_LM *lm);
+void multigram_delete_all(PROCESS_LM *lm);
+boolean multigram_update(PROCESS_LM *lm);
+boolean multigram_build(RecogProcess *r);
+int multigram_activate(int gid, PROCESS_LM *lm);
+int multigram_deactivate(int gid, PROCESS_LM *lm);
+boolean multigram_load_all_gramlist(PROCESS_LM *lm);
+int multigram_get_gram_from_category(int category, PROCESS_LM *lm);
+int multigram_get_all_num(PROCESS_LM *lm);
 void multigram_free_all(MULTIGRAM *root);
+
+MULTIGRAM *multigram_get_grammar_by_name(PROCESS_LM *lm, char *gramname);
+MULTIGRAM *multigram_get_grammar_by_id(PROCESS_LM *lm, unsigned short id);
+boolean multigram_add_words_to_grammar(PROCESS_LM *lm, MULTIGRAM *m, WORD_INFO *winfo);
+boolean multigram_add_words_to_grammar_by_name(PROCESS_LM *lm, char *gramname, WORD_INFO *winfo);
+boolean multigram_add_words_to_grammar_by_id(PROCESS_LM *lm, unsigned short id, WORD_INFO *winfo);
+
+
+/* gramlist.c */
+void multigram_add_gramlist(char *dfafile, char *dictfile, JCONF_LM *j, int lmvar);
+void multigram_remove_gramlist(JCONF_LM *j);
+boolean multigram_add_prefix_list(char *prefix_list, char *cwd, JCONF_LM *j, int lmvar);
+boolean multigram_add_prefix_filelist(char *listfile, JCONF_LM *j, int lmvar);
+
 
 /* adin-cut.c */
 void adin_setup_param(ADIn *adin, Jconf *jconf);
-boolean adin_thread_create(Recog **recoglist, int recognum);
-int adin_go(int (*ad_process)(SP16 *, int, Recog **, int), int (*ad_check)(Recog **, int), Recog **recoglist, int recognum);
+boolean adin_thread_create(Recog *recog);
+int adin_go(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog);
 boolean adin_standby(ADIn *a, int freq, void *arg);
 boolean adin_begin(ADIn *a);
 boolean adin_end(ADIn *a);
 void adin_free_param(Recog *recog);
 
 /* confnet.c */
-CN_CLUSTER *confnet_create(WordGraph *root, Recog *recog);
-void graph_forward_backward(WordGraph *root, Recog *recog);
-void graph_make_order(WordGraph *root, Recog *recog);
+CN_CLUSTER *confnet_create(WordGraph *root, RecogProcess *r);
+void graph_make_order(WordGraph *root, RecogProcess *r);
 void graph_free_order();
 void cn_free_all(CN_CLUSTER **croot);
 
@@ -260,5 +283,8 @@ void callback_exec(int code, Recog *recog);
 void callback_exec_adin(int code, Recog *recog, SP16 *buf, int len);
 boolean callback_exist(Recog *recog, int code);
 boolean callback_delete(Recog *recog, int id);
-void callback_multi_exec(int code, Recog **recoglist, int num);
 
+/* recogmain.c */
+void result_sentence_malloc(RecogProcess *r, int num);
+void result_sentence_free(RecogProcess *r);
+void clear_result(RecogProcess *r);

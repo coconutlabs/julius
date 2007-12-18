@@ -1,23 +1,24 @@
 /**
  * @file   graphout.c
- * @author Akinobu LEE
- * @date   Thu Mar 17 12:46:31 2005
  * 
  * <JA>
- * @brief  第2パスの結果を単語グラフ形式で出力する．
+ * @brief  単語ラティスの生成.
  * </JA>
  * 
  * <EN>
- * @brief  Output results in word graph format.
+ * @brief  Output word lattice.
  * </EN>
  * 
- * $Revision: 1.4 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 17 12:46:31 2005
+ *
+ * $Revision: 1.5 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -33,18 +34,21 @@
 static WCHMM_INFO *wchmm_local;	///< Local copy, just for debug
 #endif
 
-
 /** 
  * <JA>
- * グラフ出力を初期化する．現在はデバッグ用処理のみ．
+ * グラフ出力を初期化する. 現在はデバッグ用処理のみ. 
  * 
- * @param wchmm 
+ * @param wchmm [in] 木構造化辞書
  * </JA>
  * <EN>
  * Initialize data for graphout.
  * 
- * @param wchmm 
+ * @param wchmm [in] tree lexicon
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 wordgraph_init(WCHMM_INFO *wchmm)
@@ -55,15 +59,16 @@ wordgraph_init(WCHMM_INFO *wchmm)
 }
 
 
-
 /**************************************************************/
 /* allocation and free of a WordGraph instance */
 
 /** 
  * <JA>
- * グラフ単語を新たに生成する．
+ * グラフ単語を新たに生成し，そのポインタを返す. 
  * 
  * @param wid [in] 単語ID
+ * @param headphone [in] 単語先頭の音素
+ * @param tailphone [in] 単語末端の音素
  * @param leftframe [in] 始端時刻(フレーム)
  * @param rightframe [in] 終端時刻(フレーム)
  * @param fscore_head [in] 始端での部分文スコア (g + h)
@@ -76,9 +81,11 @@ wordgraph_init(WCHMM_INFO *wchmm)
  * @return 新たに生成されたグラフ単語へのポインタ
  * </JA>
  * <EN>
- * Allocate a new graph word.
+ * Allocate a new graph word and return a new pointer to it.
  * 
  * @param wid [in] word ID
+ * @param headphone [in] phoneme on head of word
+ * @param tailphone [in] phoneme on tail of word
  * @param leftframe [in] beginning time in frames
  * @param rightframe [in] end time in frames
  * @param fscore_head [in] sentence score on search at word head (g + h)
@@ -156,7 +163,7 @@ wordgraph_new(WORD_ID wid, HMM_Logical *headphone, HMM_Logical *tailphone, int l
 
 /** 
  * <JA>
- * グラフ単語のメモリ領域を解放する．
+ * あるグラフ単語のメモリ領域を解放する. 
  * 
  * @param wg [in] グラフ単語
  * </JA>
@@ -165,6 +172,10 @@ wordgraph_new(WORD_ID wid, HMM_Logical *headphone, HMM_Logical *tailphone, int l
  * 
  * @param wg [in] graph word to be freed.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 wordgraph_free(WordGraph *wg)
@@ -176,22 +187,23 @@ wordgraph_free(WordGraph *wg)
   free(wg);
 }
 
-
 /**************************************************************/
 /* Handling contexts */
 
 /** 
  * <JA>
- * あるグラフ単語の左コンテキストに新たなグラフ単語を追加する．
+ * あるグラフ単語の左コンテキストに新たなグラフ単語を追加する. 
  * 
  * @param wg [i/o] 追加先のグラフ単語
  * @param left [in] @a wg の左コンテキストとして追加されるグラフ単語
+ * @param lscore [in] 接続言語スコア
  * </JA>
  * <EN>
  * Add a graph word as a new left context.
  * 
  * @param wg [i/o] word graph to which the @a left word will be added as left context.
  * @param left [in] word graph which will be added to the @a wg as left context.
+ * @param lscore [in] word connection score
  * </EN>
  */
 static void
@@ -215,10 +227,11 @@ wordgraph_add_leftword(WordGraph *wg, WordGraph *left, LOGPROB lscore)
 
 /** 
  * <JA>
- * あるグラフ単語の右コンテキストに新たなグラフ単語を追加する．
+ * あるグラフ単語の右コンテキストに新たなグラフ単語を追加する. 
  * 
  * @param wg [i/o] 追加先のグラフ単語
- * @param left [in] @a wg の右コンテキストとして追加されるグラフ単語
+ * @param right [in] @a wg の右コンテキストとして追加されるグラフ単語
+ * @param lscore [in] 接続言語スコア
  * </JA>
  * <EN>
  * Add a graph word as a new right context.
@@ -227,6 +240,7 @@ wordgraph_add_leftword(WordGraph *wg, WordGraph *left, LOGPROB lscore)
  * right context.
  * @param right [in] word graph which will be added to the @a wg as right
  * context.
+ * @param lscore [in] word connection score
  * </EN>
  */
 static void
@@ -251,14 +265,15 @@ wordgraph_add_rightword(WordGraph *wg, WordGraph *right, LOGPROB lscore)
 /** 
  * <JA>
  * 左コンテキストに指定したグラフ単語が既にあるかどうかチェックし，
- * なければ追加する．
+ * なければ追加する. 
  * 
  * @param wg [i/o] 調べるグラフ単語
  * @param left [in] このグラフ単語が @a wg の左コンテキストにあるかチェックする
+ * @param lscore [in] 接続言語スコア
  * 
  * @return 同じグラフ単語が左コンテキストに存在せず新たに追加した場合は TRUE,
  * 左コンテキストとして同じグラフ単語がすでに存在しており追加しなかった場合は
- * FALSEを返す．
+ * FALSEを返す. 
  * </JA>
  * <EN>
  * Check for the left context if the specified graph already exists, and
@@ -266,10 +281,15 @@ wordgraph_add_rightword(WordGraph *wg, WordGraph *right, LOGPROB lscore)
  * 
  * @param wg [i/o] graph word whose left context will be checked 
  * @param left [in] graph word to be checked as left context of @a wg
+ * @param lscore [in] word connection score
  * 
  * @return TRUE if not exist yet and has been added, or FALSE if already
  * exist and thus not added.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 boolean
 wordgraph_check_and_add_leftword(WordGraph *wg, WordGraph *left, LOGPROB lscore)
@@ -297,14 +317,15 @@ wordgraph_check_and_add_leftword(WordGraph *wg, WordGraph *left, LOGPROB lscore)
 /** 
  * <JA>
  * 右コンテキストに指定したグラフ単語が既にあるかどうかチェックし，
- * なければ追加する．
+ * なければ追加する. 
  * 
  * @param wg [i/o] 調べるグラフ単語
- * @param left [in] このグラフ単語が @a wg の右コンテキストにあるかチェックする
+ * @param right [in] このグラフ単語が @a wg の右コンテキストにあるかチェックする
+ * @param lscore [in] 接続言語スコア
  * 
  * @return 同じグラフ単語が右コンテキストに存在せず新たに追加した場合は TRUE,
  * 右コンテキストとして同じグラフ単語がすでに存在しており追加しなかった場合は
- * FALSEを返す．
+ * FALSEを返す. 
  * </JA>
  * <EN>
  * Check for the right context if the specified graph already exists, and
@@ -312,10 +333,15 @@ wordgraph_check_and_add_leftword(WordGraph *wg, WordGraph *left, LOGPROB lscore)
  * 
  * @param wg [i/o] graph word whose right context will be checked 
  * @param right [in] graph word to be checked as right context of @a wg
+ * @param lscore [in] word connection score
  * 
  * @return TRUE if not exist yet and has been added, or FALSE if already
  * exist and thus not added.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 boolean
 wordgraph_check_and_add_rightword(WordGraph *wg, WordGraph *right, LOGPROB lscore)
@@ -343,12 +369,12 @@ wordgraph_check_and_add_rightword(WordGraph *wg, WordGraph *right, LOGPROB lscor
 /** 
  * <JA>
  * 同一グラフ単語のマージ時に,単語グラフのコンテキストを全て別の単語グラフに
- * 追加する．
+ * 追加する. 
  * 
  * @param dst [i/o] 追加先のグラフ単語
  * @param src [in] 追加元のグラフ単語
  * 
- * @return 1つでも新たに追加されれば TRUE, 1つも追加されなければ FALSE を返す．
+ * @return 1つでも新たに追加されれば TRUE, 1つも追加されなければ FALSE を返す. 
  * </JA>
  * <EN>
  * Add all the context words to other for merging the same two graph words.
@@ -452,11 +478,12 @@ merge_contexts(WordGraph *dst, WordGraph *src)
 
 /** 
  * <JA>
- * 左コンテキスト上のあるグラフ単語を別のグラフ単語に置き換える．
+ * 左コンテキスト上のあるグラフ単語を別のグラフ単語に置き換える. 
  * 
  * @param wg [i/o] 操作対象のグラフ単語
  * @param from [in] 置き換え元となる左コンテキスト上のグラフ単語
  * @param to [in] 置き換え先のグラフ単語
+ * @param lscore [in] 接続言語スコア
  * </JA>
  * <EN>
  * Substitute a word at left context of a graph word to another.
@@ -464,6 +491,7 @@ merge_contexts(WordGraph *dst, WordGraph *src)
  * @param wg [i/o] target graph word.
  * @param from [in] left context word to be substituted
  * @param to [in] substitution destination.
+ * @param lscore [in] word connection score
  * </EN>
  */
 static void
@@ -488,11 +516,12 @@ swap_leftword(WordGraph *wg, WordGraph *from, WordGraph *to, LOGPROB lscore)
 
 /** 
  * <JA>
- * 右コンテキスト上のあるグラフ単語を別のグラフ単語に置き換える．
+ * 右コンテキスト上のあるグラフ単語を別のグラフ単語に置き換える. 
  * 
  * @param wg [i/o] 操作対象のグラフ単語
  * @param from [in] 置き換え元となる右コンテキスト上のグラフ単語
  * @param to [in] 置き換え先のグラフ単語
+ * @param lscore [in] 接続言語スコア
  * </JA>
  * <EN>
  * Substitute a word at right context of a graph word to another.
@@ -500,6 +529,7 @@ swap_leftword(WordGraph *wg, WordGraph *from, WordGraph *to, LOGPROB lscore)
  * @param wg [i/o] target graph word.
  * @param from [in] right context word to be substituted
  * @param to [in] substitution destination.
+ * @param lscore [in] word connection score
  * </EN>
  */
 static void
@@ -596,7 +626,7 @@ uniq_rightword(WordGraph *wg)
 
 /** 
  * <JA>
- * 左右のグラフ単語のコンテキストリストからそのグラフ単語自身を消去する．
+ * 左右のグラフ単語のコンテキストリストからそのグラフ単語自身を消去する. 
  * 
  * @param wg [in] 操作対象のグラフ単語
  * </JA>
@@ -654,7 +684,7 @@ wordgraph_remove_context(WordGraph *wg)
 
 /** 
  * <JA>
- * グラフ単語の左右のコンテキストをリンクする．
+ * グラフ単語の左右のコンテキストをリンクする. 
  * 
  * @param wg [in] 操作対象のグラフ単語
  * </JA>
@@ -686,13 +716,12 @@ wordgraph_link_context(WordGraph *wg)
   }
 }
 
-
 /**************************************************************/
 /* Operations for organizing WordGraph set */
 
 /** 
  * <JA>
- * 単語グラフ中の削除マークの付いた単語を削除する．
+ * 単語グラフ中の削除マークの付いた単語を削除する. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
  * 
@@ -742,7 +771,7 @@ wordgraph_exec_erase(WordGraph **rootp)
  * @param x [in] 要素１
  * @param y [in] 要素２
  * 
- * @return x > y なら 1, x < y なら -1, x = y なら 0 を返す．
+ * @return x > y なら 1, x < y なら -1, x = y なら 0 を返す. 
  * </JA>
  * <EN>
  * qsort callback for word sorting.
@@ -771,18 +800,24 @@ compare_lefttime(WordGraph **x, WordGraph **y)
 
 /** 
  * <JA>
- * 単語グラフ内の全単語を開始時間順にソートし，通し番号をつける．
+ * 単語グラフ内の全単語を開始時間順にソートし，通し番号をつける. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ格納場所
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Sort words by left time and annotate sequencial id for them in a word graph.
  * 
  * @param rootp [i/o] address of pointer to root node of a word graph
+ * @param r [i/o] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 int
-wordgraph_sort_and_annotate_id(WordGraph **rootp, Recog *recog)
+wordgraph_sort_and_annotate_id(WordGraph **rootp, RecogProcess *r)
 {
   WordGraph *wg;
   int cnt;
@@ -793,7 +828,7 @@ wordgraph_sort_and_annotate_id(WordGraph **rootp, Recog *recog)
   /* count total number of words in the graph */
   cnt = 0;
   for(wg=*rootp;wg;wg=wg->next) cnt++;
-  if (cnt == 0) return;
+  if (cnt == 0) return 0;
   /* sort them by lefttime */
   wlist = (WordGraph **)mymalloc(sizeof(WordGraph *) * cnt);
   i = 0;
@@ -818,7 +853,7 @@ wordgraph_sort_and_annotate_id(WordGraph **rootp, Recog *recog)
 
 /** 
  * <JA>
- * 単語グラフ内の全単語を全て解放する．
+ * 単語グラフ内の全単語を全て解放する. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
  * </JA>
@@ -827,6 +862,10 @@ wordgraph_sort_and_annotate_id(WordGraph **rootp, Recog *recog)
  * 
  * @param rootp [i/o] pointer to root node of a word graph
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ *
  */
 void
 wordgraph_clean(WordGraph **rootp)
@@ -843,14 +882,13 @@ wordgraph_clean(WordGraph **rootp)
 
 }
 
-
 /*********************************************************************/
 /* Post-processing of generated word arcs after search has been done */
 
 /** 
  * <JA>
- * 単語グラフ深さカットのための qsort 用コールバック．fscore_head で
- * 降順にソートする．
+ * 単語グラフ深さカットのための qsort 用コールバック. fscore_head で
+ * 降順にソートする. 
  * 
  * @param x [in] 要素１
  * @param y [in] 要素２
@@ -877,12 +915,13 @@ compare_beam(WordGraph **x, WordGraph **y)
 
 /** 
  * <JA>
- * @brief  グラフ後処理その１：初期単語グラフの抽出．
+ * @brief  グラフ後処理その１：初期単語グラフの抽出. 
  * 
  * 探索中に生成された単語候補集合から，末端から始まるパス上に無いleaf単語を
- * 削除することで初期単語グラフを抽出する．
+ * 削除することで初期単語グラフを抽出する. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
+ * @param r [in] 認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Post-processing step 1: Extract initial word graph.
@@ -891,10 +930,15 @@ compare_beam(WordGraph **x, WordGraph **y)
  * purging leaf nodes and arcs that are not on the path from edge to edge.
  * 
  * @param rootp [i/o] pointer to root node of a word graph
+ * @param r [in] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog)
+wordgraph_purge_leaf_nodes(WordGraph **rootp, RecogProcess *r)
 {
   WordGraph *wg;
   int i, dst;
@@ -904,10 +948,10 @@ wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog)
   /* count whole */
   count = 0;
   for(wg=*rootp;wg;wg=wg->next) count++;
-  jlog("STAT: graphout: %d initial word arcs generated\n", count);
+  if (verbose_flag) jlog("STAT: graphout: %d initial word arcs generated\n", count);
   if (count == 0) return;
   
-  jlog("STAT: graphout: step 1: purge leaf nodes\n");
+  if (verbose_flag) jlog("STAT: graphout: step 1: purge leaf nodes\n");
 
   /* mark words to be erased */
   del_left = del_right = 0;
@@ -928,7 +972,7 @@ wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog)
 	}
       }
       /* mark if wg has no right context, or all rightwords are marked */
-      if (wg->righttime != recog->peseqlen - 1) {
+      if (wg->righttime != r->peseqlen - 1) {
 	for(i=0;i<wg->rightwordnum;i++) {
 	  if (wg->rightword[i]->mark == FALSE) break;
 	}
@@ -942,7 +986,7 @@ wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog)
     }
   } while (changed == TRUE);
 
-  jlog("STAT: graphout: %d leaf words found (left_blank=%d, right_blank=%d)\n", del_left + del_right, del_left, del_right);
+  if (verbose_flag) jlog("STAT: graphout: %d leaf words found (left_blank=%d, right_blank=%d)\n", del_left + del_right, del_left, del_right);
 
   /* do compaction of left/rightwords */
     for(wg=*rootp;wg;wg=wg->next) {
@@ -976,17 +1020,18 @@ wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog)
 
   /* execute erase of marked words */
   erased = wordgraph_exec_erase(rootp);
-  jlog("STAT: graphout: %d words purged, %d words left in lattice\n", erased, count - erased);
+  if (verbose_flag) jlog("STAT: graphout: %d words purged, %d words left in lattice\n", erased, count - erased);
 
 }
 
 /** 
  * <JA>
- * @brief  グラフ後処理その１．５：グラフの深さによる単語候補のカット
+ * @brief  グラフ後処理その１. ５：グラフの深さによる単語候補のカット
  * 
- * GRAPHOUT_DEPTHCUT 指定時，グラフの深さによる単語候補のカットを行う．
+ * GRAPHOUT_DEPTHCUT 指定時，グラフの深さによる単語候補のカットを行う. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
+ * @param r [in] 認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Post-processing step 1.5: word graph depth cutting
@@ -994,10 +1039,15 @@ wordgraph_purge_leaf_nodes(WordGraph **rootp, Recog *recog)
  * If GRAPHOUT_DEPTHCUT is defined, perform word graph depth cutting.
  * 
  * @param rootp [i/o] pointer to root node of a word graph
+ * @param r [in] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
+wordgraph_depth_cut(WordGraph **rootp, RecogProcess *r)
 {
 #ifdef GRAPHOUT_DEPTHCUT
 
@@ -1012,9 +1062,9 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
   int pruned;
 
 
-  if (recog->jconf->graph.graphout_cut_depth < 0) return;
+  if (r->config->graph.graphout_cut_depth < 0) return;
 
-  jlog("STAT: graphout: step 1.5: cut less likely hypothesis by depth of %d\n", recog->jconf->graph.graphout_cut_depth);
+  if (verbose_flag) jlog("STAT: graphout: step 1.5: cut less likely hypothesis by depth of %d\n", r->config->graph.graphout_cut_depth);
 
   /* count whole */
   count = 0;
@@ -1022,8 +1072,8 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
   if (count == 0) return;
   
   /* prepare buffer to count words per frame */
-  wc = (int *)mymalloc(sizeof(int) * recog->peseqlen);
-  for (t=0;t<recog->peseqlen;t++) wc[t] = 0;
+  wc = (int *)mymalloc(sizeof(int) * r->peseqlen);
+  for (t=0;t<r->peseqlen;t++) wc[t] = 0;
   /* sort words by fscore_head */
   wlist = (WordGraph **)mymalloc(sizeof(WordGraph *) * count);
   i = 0;
@@ -1038,7 +1088,7 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
     f = TRUE;
     for (t=wg->lefttime;t<=wg->righttime;t++) {
       wc[t]++;
-      if (wc[t] <= recog->jconf->graph.graphout_cut_depth) f = FALSE;
+      if (wc[t] <= r->config->graph.graphout_cut_depth) f = FALSE;
     }
     if (f) {
       //wordgraph_remove_context(wg);
@@ -1048,8 +1098,8 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
   }
 #ifdef GDEBUG2
   jlog("DEBUG: GRAPH DEPTH STATISTICS: NUMBER OF WORDS PER FRAME\n");
-  for(t=0;t<recog->peseqlen;t++) {
-    if (wc[t] > recog->jconf->graph.graphout_cut_depth) {
+  for(t=0;t<r->peseqlen;t++) {
+    if (wc[t] > r->config->graph.graphout_cut_depth) {
       jlog("*");
     } else {
       jlog(" ");
@@ -1057,7 +1107,7 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
     jlog("%4d: %d\n", t, wc[t]);
   }
 #endif
-  jlog("STAT: graphout: %d words out of %d are going to be pruned by depth cutting\n", pruned, count);
+  if (verbose_flag) jlog("STAT: graphout: %d words out of %d are going to be pruned by depth cutting\n", pruned, count);
   free(wlist);
   free(wc);
 
@@ -1080,7 +1130,7 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
 	}
       }
       /* mark if wg has no right context, or all rightwords are marked */
-      if (wg->righttime != recog->peseqlen - 1) {
+      if (wg->righttime != r->peseqlen - 1) {
 	for(i=0;i<wg->rightwordnum;i++) {
 	  if (wg->rightword[i]->mark == FALSE) break;
 	}
@@ -1094,7 +1144,7 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
     }
   } while (changed == TRUE);
 
-  jlog("STAT: graphout: %d new leaves found (left_blank=%d, right_blank=%d)\n", del_left + del_right, del_left, del_right);
+  if (verbose_flag) jlog("STAT: graphout: %d new leaves found (left_blank=%d, right_blank=%d)\n", del_left + del_right, del_left, del_right);
 
   /* do compaction of left/rightwords */
     for(wg=*rootp;wg;wg=wg->next) {
@@ -1128,11 +1178,11 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
 
   /* execute erase of marked words */
   erased = wordgraph_exec_erase(rootp);
-  jlog("STAT: graphout: total %d words purged, %d words left in lattice\n", erased, count - erased);
+  if (verbose_flag) jlog("STAT: graphout: total %d words purged, %d words left in lattice\n", erased, count - erased);
 
 #else  /* ~GRAPHOUT_DEPTHCUT */
 
-  jlog("STAT: graphout: step 1.5: graph depth cutting has been disabled, skipped\n");
+  if (verbose_flag) jlog("STAT: graphout: step 1.5: graph depth cutting has been disabled, skipped\n");
 
 #endif
 
@@ -1140,19 +1190,25 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
 
 /** 
  * <JA>
- * 単語間の境界情報のずれ補正を実行する．グラフ中の単語をチェックし,
- * 接続単語間で境界時間情報にずれがあるときは，そのずれを修正する．
+ * 単語間の境界情報のずれ補正を実行する. グラフ中の単語をチェックし,
+ * 接続単語間で境界時間情報にずれがあるときは，そのずれを修正する. 
  * 複数のコンテキスト間で異なる境界情報が存在する場合は,候補を
- * コピーしてそれぞれに合わせる．またアラインメントが不正な単語を除去する．
+ * コピーしてそれぞれに合わせる. またアラインメントが不正な単語を除去する. 
  * 
  * @param rootp [i/o] グラフ単語リストのルートポインタ
  * @param mov_num_ret [out] 境界時間が動いた単語数を格納する変数へのポインタ
  * @param dup_num_ret [out] コピーされた単語数を格納する変数へのポインタ
  * @param del_num_ret [out] 削除された単語数を格納する変数へのポインタ
+ * @param mod_num_ret [out] 変更された単語数を格納する変数へのポインタ
  * @param count [in] グラフ上の単語数
+ * @param maxfnum
+ * @param peseqlen
+ * @param lmtype
+ * @param p_framelist
+ * @param p_framescorelist
  * 
  * @return グラフ内の単語が１つ以上変更されれば TRUE，変更なしであれば FALSE
- * を返す．
+ * を返す. 
  * </JA>
  * <EN>
  * Execute adjustment of word boundaries.  It looks through the graph to
@@ -1168,6 +1224,11 @@ wordgraph_depth_cut(WordGraph **rootp, Recog *recog)
  * @param del_num_ret [out] pointer to hold resulted number of eliminated words
  * @param mod_num_ret [out] pointer to hold resulted number of modified words
  * @param count [in] number of words in graph
+ * @param maxfnum
+ * @param peseqlen
+ * @param lmtype
+ * @param p_framelist
+ * @param p_framescorelist
  * 
  * @return TRUE if any word has been changed, or FALSE if no word has been altered.
  * </EN>
@@ -1423,7 +1484,7 @@ wordgraph_adjust_boundary_sub(WordGraph **rootp, int *mov_num_ret, int *dup_num_
 
 /** 
  * <JA>
- * グラフ内に境界情報やスコアが全く同一の単語がある場合それらをマージする．
+ * グラフ内に境界情報やスコアが全く同一の単語がある場合それらをマージする. 
  * 
  * @param rootp [i/o] グラフ単語リストのルートポインタ
  * @param rest_ret [out] マージ後のグラフ内の単語数を返すポインタ
@@ -1490,20 +1551,21 @@ wordgraph_compaction_thesame_sub(WordGraph **rootp, int *rest_ret, int *merged_r
 
 /** 
  * <JA>
- * @brief  グラフ後処理その２：単語境界情報の調整．
+ * @brief  グラフ後処理その２：単語境界情報の調整. 
  * 
  * GRAPHOUT_PRECISE_BOUNDARY 定義時，後続単語に依存した正確な単語境界
  * を得るために，探索中において，グラフ単語を生成したあとに次回展開時に
- * 事後的に単語境界を移動させる．このため，前後の単語のもつ（移動前の）
+ * 事後的に単語境界を移動させる. このため，前後の単語のもつ（移動前の）
  * 境界情報との対応がとれなくなるので，探索終了後に各単語の前後の単語へ
- * 正しい単語境界を伝搬させることで整合性をとる．
+ * 正しい単語境界を伝搬させることで整合性をとる. 
  *
  * 単語境界のずれは単語間で伝搬するため，すべての単語境界が動かなくなるまで
- * 調整が繰り返される．巨大なグラフでは短い単語の沸きだしで処理が終わらない
+ * 調整が繰り返される. 巨大なグラフでは短い単語の沸きだしで処理が終わらない
  * 場合があるが，この場合 GRAPHOUT_LIMIT_BOUNDARY_LOOP を指定することで，
- * 繰り返す数の上限を graphout_limit_boundary_loop_num に制限できる．
+ * 繰り返す数の上限を graphout_limit_boundary_loop_num に制限できる. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Post-processing step 2: Adjust word boundaries.
@@ -1522,10 +1584,15 @@ wordgraph_compaction_thesame_sub(WordGraph **rootp, int *rest_ret, int *merged_r
  * up to the number specified by graphout_limit_bounrady_loop_num.
  * 
  * @param rootp [i/o] pointer to root node of a word graph
+ * @param r [i/o] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog)
+wordgraph_adjust_boundary(WordGraph **rootp, RecogProcess *r)
 {
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   WordGraph *wg;
@@ -1539,7 +1606,7 @@ wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog)
 
   loopcount = 0;
 
-  jlog("STAT: graphout: step 2: adjust boundaries\n");
+  if (verbose_flag) jlog("STAT: graphout: step 2: adjust boundaries\n");
   mov_num = dup_num = del_num = 0;
 
   /* count number of all words */
@@ -1549,13 +1616,13 @@ wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog)
 
   do {
     /* do adjust */
-    flag = wordgraph_adjust_boundary_sub(rootp, &mov_num, &dup_num, &del_num, &mod_num, count, &maxfnum, recog->peseqlen, recog->lmtype, &framelist, &framescorelist);
+    flag = wordgraph_adjust_boundary_sub(rootp, &mov_num, &dup_num, &del_num, &mod_num, count, &maxfnum, r->peseqlen, r->lmtype, &framelist, &framescorelist);
     /* do compaction */
     wordgraph_compaction_thesame_sub(rootp, &count, &merged);
-    jlog("STAT: graphout: #%d: %d moved, %d duplicated, %d purged, %d modified, %d idential, %d left\n", loopcount + 1, mov_num, dup_num, del_num, mod_num, merged, count);
+    if (verbose_flag) jlog("STAT: graphout: #%d: %d moved, %d duplicated, %d purged, %d modified, %d idential, %d left\n", loopcount + 1, mov_num, dup_num, del_num, mod_num, merged, count);
 #ifdef GRAPHOUT_LIMIT_BOUNDARY_LOOP
-    if (++loopcount >= recog->jconf->graph.graphout_limit_boundary_loop_num) {
-      jlog("STAT: graphout: loop count reached %d, terminate loop now\n", recog->jconf->graph.graphout_limit_boundary_loop_num);
+    if (++loopcount >= r->config->graph.graphout_limit_boundary_loop_num) {
+      if (verbose_flag) jlog("STAT: graphout: loop count reached %d, terminate loop now\n", r->config->graph.graphout_limit_boundary_loop_num);
       break;
     }
 #endif
@@ -1572,7 +1639,7 @@ wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog)
 
 #else
 
-  jlog("STAT: graphout: step 2: SKIP (adjusting boundaries)\n");
+  if (verbose_flag) jlog("STAT: graphout: step 2: SKIP (adjusting boundaries)\n");
 
 #endif /* GRAPHOUT_PRECISE_BOUNDARY */
 
@@ -1583,7 +1650,7 @@ wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog)
  * <JA>
  * @brief  グラフ後処理その３：単語の束ね（完全同一）
  * 
- * 単語境界時刻と部分文仮説スコアが完全に一致する同じ単語どうしを一つに束ねる．
+ * 単語境界時刻と部分文仮説スコアが完全に一致する同じ単語どうしを一つに束ねる. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
  * </JA>
@@ -1595,27 +1662,32 @@ wordgraph_adjust_boundary(WordGraph **rootp, Recog *recog)
  * 
  * @param rootp [i/o] pointer to root node of a word graph
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 wordgraph_compaction_thesame(WordGraph **rootp)
 {
   int rest, erased;
 
-  jlog("STAT: graphout: step 3: merge idential hypotheses (same score, boundary, context)\n");
+  if (verbose_flag) jlog("STAT: graphout: step 3: merge idential hypotheses (same score, boundary, context)\n");
   wordgraph_compaction_thesame_sub(rootp, &rest, &erased);
-  jlog("STAT: graphout: %d words merged, %d words left in lattice\n", erased, rest);
+  if (verbose_flag) jlog("STAT: graphout: %d words merged, %d words left in lattice\n", erased, rest);
 }
 
 /** 
  * <JA>
  * @brief  グラフ後処理その４：単語の束ね（区間同一）
  * 
- * 単語境界時刻が一致する同じ単語どうしを一つに束ねる．スコアが
- * 同一でなくても束ねられる．この場合，部分文スコアが最も高い候補が
- * 残る．graph_merge_neighbor_range が 負 の場合は実行されない．
+ * 単語境界時刻が一致する同じ単語どうしを一つに束ねる. スコアが
+ * 同一でなくても束ねられる. この場合，部分文スコアが最も高い候補が
+ * 残る. graph_merge_neighbor_range が 負 の場合は実行されない. 
 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Post-processing step 4: Bundle words (same boundaries)
@@ -1626,21 +1698,25 @@ wordgraph_compaction_thesame(WordGraph **rootp)
  * will not take effect when graph_merge_neightbor_range is lower than 0.
  * 
  * @param rootp [i/o] pointer to root node of a word graph
+ * @param r [i/o] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ *
  */
 void
-wordgraph_compaction_exacttime(WordGraph **rootp, Recog *recog)
+wordgraph_compaction_exacttime(WordGraph **rootp, RecogProcess *r)
 {
   WordGraph *wg, *we;
   int i, count, erased;
-  WordGraph *wtmp;
 
-  if (recog->jconf->graph.graph_merge_neighbor_range < 0) {
-    jlog("STAT: graphout: step 4: SKIP (merge the same words with same boundary to the most likely one\n");
+  if (r->config->graph.graph_merge_neighbor_range < 0) {
+    if (verbose_flag) jlog("STAT: graphout: step 4: SKIP (merge the same words with same boundary to the most likely one\n");
     return;
   }
 
-  jlog("STAT: graphout: step 4: merge same words with same boundary to the most likely one\n");
+  if (verbose_flag) jlog("STAT: graphout: step 4: merge same words with same boundary to the most likely one\n");
 
   count = 0;
   for(wg=*rootp;wg;wg=wg->next) {
@@ -1680,7 +1756,7 @@ wordgraph_compaction_exacttime(WordGraph **rootp, Recog *recog)
     }
   }
   erased = wordgraph_exec_erase(rootp);
-  jlog("STAT: graphout: %d words merged, %d words left in lattice\n", erased, count-erased);
+  if (verbose_flag) jlog("STAT: graphout: %d words merged, %d words left in lattice\n", erased, count-erased);
 
   for(wg=*rootp;wg;wg=wg->next) {
     uniq_leftword(wg);
@@ -1692,10 +1768,11 @@ wordgraph_compaction_exacttime(WordGraph **rootp, Recog *recog)
  * <JA>
  * @brief  グラフ後処理その５：単語の束ね（近傍区間）
  * 
- * 似た単語境界時刻を持つ同じ単語どうしを一つに束ねる．許すずれの幅は
- * graph_merge_neighbor_range で与え，これが 0 か負である場合は実行されない．
+ * 似た単語境界時刻を持つ同じ単語どうしを一つに束ねる. 許すずれの幅は
+ * graph_merge_neighbor_range で与え，これが 0 か負である場合は実行されない. 
  * 
  * @param rootp [i/o] 単語グラフのルートノードへのポインタ
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Post-processing step 5: Bundle words (neighbor words)
@@ -1707,20 +1784,25 @@ wordgraph_compaction_exacttime(WordGraph **rootp, Recog *recog)
  * effect.
  * 
  * @param rootp [i/o] pointer to root node of a word graph
+ * @param r [i/o] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-wordgraph_compaction_neighbor(WordGraph **rootp, Recog *recog)
+wordgraph_compaction_neighbor(WordGraph **rootp, RecogProcess *r)
 {
   WordGraph *wg, *we;
   int i, count, erased;
 
-  if (recog->jconf->graph.graph_merge_neighbor_range <= 0) {
-    jlog("STAT: graphout: step 5: SKIP (merge the same words around)\n");
+  if (r->config->graph.graph_merge_neighbor_range <= 0) {
+    if (verbose_flag) jlog("STAT: graphout: step 5: SKIP (merge the same words around)\n");
     return;
   }
 
-  jlog("STAT: graphout: step 5: merge same words around, with %d frame margin\n", recog->jconf->graph.graph_merge_neighbor_range);
+  if (verbose_flag) jlog("STAT: graphout: step 5: merge same words around, with %d frame margin\n", r->config->graph.graph_merge_neighbor_range);
 
   count = 0;
   for(wg=*rootp;wg;wg=wg->next) {
@@ -1729,8 +1811,8 @@ wordgraph_compaction_neighbor(WordGraph **rootp, Recog *recog)
     for(we=wg->next;we;we=we->next) {
       if (we->mark == TRUE) continue;
       if (wg->wid == we->wid &&
-	  abs(wg->lefttime - we->lefttime) <= recog->jconf->graph.graph_merge_neighbor_range &&
-	  abs(wg->righttime - we->righttime) <= recog->jconf->graph.graph_merge_neighbor_range) {
+	  abs(wg->lefttime - we->lefttime) <= r->config->graph.graph_merge_neighbor_range &&
+	  abs(wg->righttime - we->righttime) <= r->config->graph.graph_merge_neighbor_range) {
 	/* merge contexts */
 	merge_contexts(wg, we);
 	/* swap contexts of left / right contexts */
@@ -1759,7 +1841,7 @@ wordgraph_compaction_neighbor(WordGraph **rootp, Recog *recog)
     }
   }
   erased = wordgraph_exec_erase(rootp);
-  jlog("STAT: graphout: %d words merged, %d words left in lattice\n", erased, count-erased);
+  if (verbose_flag) jlog("STAT: graphout: %d words merged, %d words left in lattice\n", erased, count-erased);
 
   for(wg=*rootp;wg;wg=wg->next) {
     uniq_leftword(wg);
@@ -1768,22 +1850,26 @@ wordgraph_compaction_neighbor(WordGraph **rootp, Recog *recog)
  
 }
 
-
 /**************************************************************/
 /* generation of graph word candidates while search */
 
 /** 
  * <JA>
- * 新たな単語グラフ候補を生成して返す．この時点ではまだ単語グラフ中には
- * 登録されていない．
+ * 新たな単語グラフ候補を生成して返す. この時点ではまだ単語グラフ中には
+ * 登録されていない. 
  * 
  * @param wid [in] 単語ID
+ * @param wid_left [in] word ID of left context for determining head phone 
+ * @param wid_right [in] word ID of right context for determining tail phone 
  * @param leftframe [in] 始端時刻(フレーム)
  * @param rightframe [in] 終端時刻(フレーム)
  * @param fscore_head [in] 始端での部分文スコア (g + h)
  * @param fscore_tail [in] 終端での部分文スコア (g + h)
  * @param gscore_head [in] 先頭での入力末端からのViterbiスコア (g)
  * @param gscore_tail [in] 末尾での入力末端からのViterbiスコア (g)
+ * @param lscore [in] 言語スコア
+ * @param cm [in] 信頼度
+ * @param r [in] 認識処理インスタンス
  * 
  * @return 新たに生成されたグラフ単語候補へのポインタ
  * </JA>
@@ -1792,29 +1878,38 @@ wordgraph_compaction_neighbor(WordGraph **rootp, Recog *recog)
  * is not registered to the word graph yet.
  * 
  * @param wid [in] word ID
+ * @param wid_left [in] word ID of left context for determining head phone 
+ * @param wid_right [in] word ID of right context for determining tail phone 
  * @param leftframe [in] beginning time in frames
  * @param rightframe [in] end time in frames
  * @param fscore_head [in] sentence score on search at word head (g + h)
  * @param fscore_tail [in] sentence score on search at word tail (g + h)
  * @param gscore_head [in] Viterbi score accumulated from input end at word head (g)
  * @param gscore_tail [in] Viterbi score accumulated from input end at word tail (g)
+ * @param lscore [in] language score
+ * @param cm [in] confidence score
+ * @param r [in] recognition process instance
  * 
  * @return pointer to the newly created graph word candidate.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 WordGraph *
-wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe, int rightframe, LOGPROB fscore_head, LOGPROB fscore_tail, LOGPROB gscore_head, LOGPROB gscore_tail, LOGPROB lscore, LOGPROB cm, Recog *recog)
+wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe, int rightframe, LOGPROB fscore_head, LOGPROB fscore_tail, LOGPROB gscore_head, LOGPROB gscore_tail, LOGPROB lscore, LOGPROB cm, RecogProcess *r)
 {
   WordGraph *newarc;
   HMM_Logical *l, *ret, *head, *tail;
   WORD_INFO *winfo;
 
-  winfo = recog->model->winfo;
+  winfo = r->lm->winfo;
 
   /* find context dependent phones at head and tail */
   l = winfo->wseq[wid][winfo->wlen[wid]-1];
   if (wid_right != WORD_INVALID) {
-    ret = get_right_context_HMM(l, winfo->wseq[wid_right][0]->name, recog->model->hmminfo);
+    ret = get_right_context_HMM(l, winfo->wseq[wid_right][0]->name, r->am->hmminfo);
     if (ret != NULL) l = ret;
   }
   if (winfo->wlen[wid] > 1) {
@@ -1822,7 +1917,7 @@ wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe
     l = winfo->wseq[wid][0];
   }
   if (wid_left != WORD_INVALID) {
-    ret = get_left_context_HMM(l, winfo->wseq[wid_left][winfo->wlen[wid_left]-1]->name, recog->model->hmminfo);
+    ret = get_left_context_HMM(l, winfo->wseq[wid_left][winfo->wlen[wid_left]-1]->name, r->am->hmminfo);
     if (ret != NULL) l = ret;
   }
   head = l;
@@ -1838,8 +1933,8 @@ wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe
 
 /** 
  * <JA>
- * グラフ単語候補を単語グラフの一部として確定する．確定されたグラフ単語には
- * saved に TRUE がセットされる．
+ * グラフ単語候補を単語グラフの一部として確定する. 確定されたグラフ単語には
+ * saved に TRUE がセットされる. 
  * 
  * @param wg [i/o] 登録するグラフ単語候補
  * @param right [i/o] @a wg の右コンテキストとなる単語
@@ -1853,6 +1948,10 @@ wordgraph_assign(WORD_ID wid, WORD_ID wid_left, WORD_ID wid_right, int leftframe
  * @param right [i/o] right context graph word
  * @param root [i/o] pointer to root node of already registered word graph
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 wordgraph_save(WordGraph *wg, WordGraph *right, WordGraph **root)
@@ -1871,21 +1970,22 @@ wordgraph_save(WordGraph *wg, WordGraph *right, WordGraph **root)
 /** 
  * <JA>
  * ある単語グラフ候補について，既に確定したグラフ単語中に同じ位置に
- * 同じ単語があるかどうかを調べる．もしあれば，単語グラフ候補の
- * コンテキストをその確定済みグラフ単語にマージする．
+ * 同じ単語があるかどうかを調べる. もしあれば，単語グラフ候補の
+ * コンテキストをその確定済みグラフ単語にマージする. 
  *
- * GRAPHOUT_SEARCH定義時は，さらにここで探索を中止すべきかどうかも判定する．
+ * GRAPHOUT_SEARCH定義時は，さらにここで探索を中止すべきかどうかも判定する. 
  * すなわち，次単語仮説がそのグラフ単語の左コンテキストとして既に確定した
- * グラフ単語中にあれば，それ以上の展開は不要で探索を中止すべきと判定する．
+ * グラフ単語中にあれば，それ以上の展開は不要で探索を中止すべきと判定する. 
  * 
  * @param now [i/o] 単語グラフ候補
  * @param root [i/o] 確定済み単語グラフのルートノードへのポインタ
  * @param next_wid [in] 次単語仮説
  * @param merged_p [out] 探索を中止すべきなら TRUE，続行してよければ
  * FALSE が格納される (GRAPHOUT_SEARCH 定義時)
+ * @param jconf [in] 探索用設定パラメータ
  * 
  * @return 同じ位置に同じ単語があった場合，マージした先の
- * 確定済みグラフ単語へのポインタを返す．もしなかった場合，NULL を返す．
+ * 確定済みグラフ単語へのポインタを返す. もしなかった場合，NULL を返す. 
  * </JA>
  * <EN>
  * Check if a graph word with the same word ID and same position as the
@@ -1905,14 +2005,19 @@ wordgraph_save(WordGraph *wg, WordGraph *right, WordGraph **root)
  * @param next_wid [in] next word on search
  * @param merged_p [out] will be set to TRUE if search should be terminated,
  * or FALSE if search should be proceeded (when GRAPHOUT_SEARCH defined)
+ * @param jconf [in] configuration parameters for this search
  * 
  * @return the pointer to the already registered graph word when the same
  * word was found on the same position, or NULL if such word not found in
  * already registered word graph.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 WordGraph *
-wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolean *merged_p, Jconf *jconf)
+wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolean *merged_p, JCONF_SEARCH *jconf)
 {
   WordGraph *wg;
   int i;
@@ -2032,13 +2137,12 @@ wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolea
 }
 #endif /* GRAPHOUT_DYNAMIC */
 
-
 /**************************************************************/
 /* misc. functions */
 
 /** 
  * <JA>
- * グラフ単語の情報をテキストで出力する．内容は以下のとおり：
+ * グラフ単語の情報をテキストで出力する. 内容は以下のとおり：
  * <pre>
  *   ID: left=左コンテキストのID[,ID,...] right=右コンテキストID[,ID,..]
  *   [左端フレーム..右端フレーム]
@@ -2053,8 +2157,10 @@ wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolea
  *   AMavg=フレーム平均音響尤度
  *   cmscore=単語信頼度
  * </pre>
- * 
+ *
+ * @param fp [in] 出力先のファイルポインタ
  * @param wg [in] 出力するグラフ単語
+ * @param winfo [in] 単語辞書
  * </JA>
  * <EN>
  * Output information of a graph word in text in the format below:
@@ -2074,9 +2180,14 @@ wordgraph_check_merge(WordGraph *now, WordGraph **root, WORD_ID next_wid, boolea
  *   AMavg="average acoustic likelihood per frame"
  *   cmscore="confidence score"
  * </pre>
- * 
+ * @param fp [in] file pointer to which output should go
  * @param wg [in] graph word to output
+ * @param winfo [in] word dictionary
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 put_wordgraph(FILE *fp, WordGraph *wg, WORD_INFO *winfo)
@@ -2119,15 +2230,23 @@ put_wordgraph(FILE *fp, WordGraph *wg, WORD_INFO *winfo)
 
 /** 
  * <JA>
- * 生成された単語グラフ中の全単語をテキスト出力する．
+ * 生成された単語グラフ中の全単語をテキスト出力する. 
  * 
+ * @param fp [in] 出力先のファイルポインタ
  * @param root [in] 単語グラフのルートノードへのポインタ
+ * @param winfo [in] 単語辞書
  * </JA>
  * <EN>
  * Output text information of all the words in word graph.
  * 
+ * @param fp [in] file pointer to which output should go
  * @param root [in] pointer to root node of a word graph
+ * @param winfo [in] word dictionary
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 wordgraph_dump(FILE *fp, WordGraph *root, WORD_INFO *winfo)
@@ -2142,61 +2261,67 @@ wordgraph_dump(FILE *fp, WordGraph *root, WORD_INFO *winfo)
 
 /** 
  * <JA>
- * デバッグ用：単語グラフの整合性をチェックする．
+ * デバッグ用：単語グラフの整合性をチェックする. 
  * 
  * @param rootp [in] 単語グラフのルートノードへのポインタ
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * For debug: Check the coherence in word graph.
  * 
  * @param rootp [in] pointer to root node of a word graph
+ * @param r [i/o] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-wordgraph_check_coherence(WordGraph *rootp, Recog *recog)
+wordgraph_check_coherence(WordGraph *rootp, RecogProcess *r)
 {
   WordGraph *wg, *wl, *wr;
-  int l,r;
+  int nl, nr;
   WORD_INFO *winfo;
 
-  winfo = recog->model->winfo;
+  winfo = r->lm->winfo;
 
   for(wg=rootp;wg;wg=wg->next) {
     /* check ID overflow */
-    if (wg->id < 0 || wg->id >= recog->graph_totalwordnum) {
-      jlog("ERROR: invalid graph word id \"%d\" (should be [0..%d])\n", wg->id, recog->graph_totalwordnum-1);
+    if (wg->id < 0 || wg->id >= r->graph_totalwordnum) {
+      jlog("ERROR: invalid graph word id \"%d\" (should be [0..%d])\n", wg->id, r->graph_totalwordnum-1);
       put_wordgraph(jlog_get_fp(), wg, winfo);
       continue;
     }
     /* check link */
-    for(l=0;l<wg->leftwordnum;l++){
-      wl = wg->leftword[l];
-      if (wl->id < 0 || wl->id >= recog->graph_totalwordnum) {
-	jlog("ERROR: invalid graph word id \"%d\" (should be [0..%d]) in left context\n", wl->id, recog->graph_totalwordnum-1);
+    for(nl=0;nl<wg->leftwordnum;nl++){
+      wl = wg->leftword[nl];
+      if (wl->id < 0 || wl->id >= r->graph_totalwordnum) {
+	jlog("ERROR: invalid graph word id \"%d\" (should be [0..%d]) in left context\n", wl->id, r->graph_totalwordnum-1);
 	put_wordgraph(jlog_get_fp(), wg, winfo);
 	continue;
       }
-      for(r=0;r<wl->rightwordnum;r++){
-	if (wl->rightword[r] == wg) break;
+      for(nr=0;nr<wl->rightwordnum;nr++){
+	if (wl->rightword[nr] == wg) break;
       }
-      if (r >= wl->rightwordnum) {
+      if (nr >= wl->rightwordnum) {
 	jlog("ERROR: on graph, reverse link not found in left context\n");
 	put_wordgraph(jlog_get_fp(), wg, winfo);
 	put_wordgraph(jlog_get_fp(), wl, winfo);
 	continue;
       }
     }
-    for(r=0;r<wg->rightwordnum;r++){
-      wr = wg->rightword[r];
-      if (wr->id < 0 || wr->id >= recog->graph_totalwordnum) {
-	jlog("ERROR: invalid graph word id \"%d\" (should be [0..%d]) in right context\n", wr->id, recog->graph_totalwordnum-1);
+    for(nr=0;nr<wg->rightwordnum;nr++){
+      wr = wg->rightword[nr];
+      if (wr->id < 0 || wr->id >= r->graph_totalwordnum) {
+	jlog("ERROR: invalid graph word id \"%d\" (should be [0..%d]) in right context\n", wr->id, r->graph_totalwordnum-1);
 	put_wordgraph(jlog_get_fp(), wg, winfo);
 	continue;
       }
-      for(l=0;l<wr->leftwordnum;l++){
-	if (wr->leftword[l] == wg) break;
+      for(nl=0;nl<wr->leftwordnum;nl++){
+	if (wr->leftword[nl] == wg) break;
       }
-      if (l >= wr->leftwordnum) {
+      if (nl >= wr->leftwordnum) {
 	jlog("ERROR: on graph, reverse link not found in left context\n");
 	put_wordgraph(jlog_get_fp(), wg, winfo);
 	put_wordgraph(jlog_get_fp(), wr, winfo);
@@ -2207,7 +2332,22 @@ wordgraph_check_coherence(WordGraph *rootp, Recog *recog)
 }
 
 
-/* lattice-based posterior probability computation by forward-backward algorithm */
+/* lattice-based posterior probability computation by forward-backward
+   algorithm */
+/** 
+ * <EN>
+ * qsort callback function to order words from right to left.
+ * </EN>
+ * <JA>
+ * 単語を右から左へ並べるための qsort コールバック関数
+ * </JA>
+ * 
+ * @param x [in] 1st element
+ * @param y [in] 2nd element
+ * 
+ * @return value required by qsort
+ * 
+ */
 static int
 compare_forward(WordGraph **x, WordGraph **y)
 {
@@ -2215,6 +2355,21 @@ compare_forward(WordGraph **x, WordGraph **y)
   else if ((*x)->righttime > (*y)->righttime) return -1;
   else return 0;
 }
+
+/** 
+ * <EN>
+ * qsort callback function to order words from left to right.
+ * </EN>
+ * <JA>
+ * 単語を左から右へ並べるための qsort コールバック関数
+ * </JA>
+ * 
+ * @param x [in] 1st element
+ * @param y [in] 2nd element
+ * 
+ * @return value required by qsort
+ * 
+ */
 static int
 compare_backward(WordGraph **x, WordGraph **y)
 {
@@ -2223,6 +2378,20 @@ compare_backward(WordGraph **x, WordGraph **y)
   else return 0;
 }
 
+/** 
+ * <EN>
+ * 常用対数で表現されている確率の和を計算する. 
+ * </EN>
+ * <JA>
+ * compute addition of two probabilities in log10 form.
+ * </JA>
+ * 
+ * @param x [in] first value
+ * @param y [in] second value
+ * 
+ * @return value of log(10^x + 10^y)
+ * 
+ */
 static LOGPROB 
 addlog10(LOGPROB x, LOGPROB y)
 {
@@ -2234,17 +2403,31 @@ addlog10(LOGPROB x, LOGPROB y)
   }
 }
 
-/** 
- * Forward-backward parsing to get posterior probability of word edges
- * from the generated lattice.  The CM alpha value is used to get the
- * posterior probability.
+/**
+ * <JA>
+ * 生成されたラティス上において，forward-backward アルゴリズムにより
+ * 信頼度を計算する. 計算された値は各グラフ単語の graph_cm に格納される. 
+ * 事後確率の計算では，探索中の信頼度計算と同じ
+ * α値（r->config->annotate.cm_alpha）が用いられる. 
+ * </JA>
+ * <EN>
+ * Compute graph-based confidence scores by forward-backward parsing on
+ * the generated lattice.  The computed scores are stored in graph_cm of
+ * each graph words.  The same alpha value of search-time confidence scoring
+ * (r->config->annotate.cm_alpha) will be used to compute the posterior
+ * probabilities.
+ * </EN>
  * 
  * @param root [in] root graph node
- * @param recog [in] recognition instance
+ * @param r [in] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */ 
 void
-graph_forward_backward(WordGraph *root, Recog *recog)
+graph_forward_backward(WordGraph *root, RecogProcess *r)
 {
   WordGraph *wg, *left, *right;
   int i, j;
@@ -2254,7 +2437,7 @@ graph_forward_backward(WordGraph *root, Recog *recog)
   WordGraph **wlist;
   LOGPROB cm_alpha;
 
-  cm_alpha = recog->jconf->annotate.cm_alpha;
+  cm_alpha = r->config->annotate.cm_alpha;
 
   /* make a wordgraph list for frame-sorted access */
   count = 0;
@@ -2276,15 +2459,15 @@ graph_forward_backward(WordGraph *root, Recog *recog)
   sum1 = LOG_ZERO;
   for(i=0;i<count;i++) {
     wg = wlist[i];
-    if (wg->righttime == recog->peseqlen - 1) {
+    if (wg->righttime == r->peseqlen - 1) {
       /* set initial score */
       wg->forward_score = 0.0;
       //wg->forward_score += wg->lscore * cm_alpha;
     } else {
       /* (just a bogus check...) */
       if (wg->forward_score == LOG_ZERO) {
-	wordgraph_dump(stdout, root, recog->model->winfo);
-	put_wordgraph(stdout, wg, recog->model->winfo);
+	wordgraph_dump(stdout, root, r->lm->winfo);
+	put_wordgraph(stdout, wg, r->lm->winfo);
 	j_internal_error("NO CONTEXT?\n");
       }
     }
@@ -2320,7 +2503,7 @@ graph_forward_backward(WordGraph *root, Recog *recog)
     } else {
       /* (just a bogus check...) */
       if (wg->backward_score == LOG_ZERO) {
-	put_wordgraph(stdout, wg, recog->model->winfo);
+	put_wordgraph(stdout, wg, r->lm->winfo);
 	j_internal_error("NO CONTEXT?\n");
       }
     }
@@ -2328,7 +2511,7 @@ graph_forward_backward(WordGraph *root, Recog *recog)
     s = wg->amavg * (wg->righttime - wg->lefttime + 1);
     s *= cm_alpha;
     s += wg->backward_score;
-    if (wg->righttime == recog->peseqlen - 1) {
+    if (wg->righttime == r->peseqlen - 1) {
       /* add for sum */
       //sum2 = addlog10(sum2, s + wg->lscore * cm_alpha);
       sum2 = addlog10(sum2, s);
@@ -2340,7 +2523,7 @@ graph_forward_backward(WordGraph *root, Recog *recog)
     }
   }
 
-  jlog("STAT: graph_cm: forward score = %f, backward score = %f\n", sum1, sum2);
+  if (verbose_flag) jlog("STAT: graph_cm: forward score = %f, backward score = %f\n", sum1, sum2);
 
   /* compute CM */
   for(wg=root;wg;wg=wg->next) {
@@ -2354,3 +2537,4 @@ graph_forward_backward(WordGraph *root, Recog *recog)
   free(wlist);
 
 }
+/* end of file */

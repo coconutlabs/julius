@@ -1,17 +1,15 @@
 /**
  * @file   define.h
- * @author Akinobu LEE
- * @date   Mon Mar  7 15:17:26 2005
  * 
  * <JA>
  * @brief  内部処理選択のためのシンボル定義
  *
  * configure スクリプトは，システム/ユーザごとの設定を config.h に書き出し
- * ます．このファイルでは，その configure で設定された config.h 内の定義を
- * 元に，Julius/Julian のための内部シンボルの定義を行います．
+ * ます. このファイルでは，その configure で設定された config.h 内の定義を
+ * 元に，Julius/Julian のための内部シンボルの定義を行います. 
  * これらは実験用のコードの切り替えや古いオプションとの互換性のために
- * 定義されているものがほとんどです．通常のユーザはこの定義を書き換える
- * 必要はありません．
+ * 定義されているものがほとんどです. 通常のユーザはこの定義を書き換える
+ * 必要はありません. 
  * </JA>
  * 
  * <EN>
@@ -26,13 +24,16 @@
  * these definitions without knowning what to do.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Mon Mar  7 15:17:26 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -55,6 +56,15 @@
 #define LM_DFA_WORD 2		///< Isolated word recognition
 #define LM_NGRAM_USER 3		///< User-defined statistical LM
 
+/* recognition status */
+#define J_RESULT_STATUS_REJECT_POWER -6 ///< Input rejected by power
+#define J_RESULT_STATUS_TERMINATE -5 ///< Input was terminated by app. request
+#define J_RESULT_STATUS_ONLY_SILENCE -4 ///< Input contains only silence
+#define J_RESULT_STATUS_REJECT_GMM -3 ///< Input rejected by GMM
+#define J_RESULT_STATUS_REJECT_SHORT -2 ///< Input rejected by short input
+#define J_RESULT_STATUS_FAIL -1	///< Recognition ended with no candidate
+#define J_RESULT_STATUS_SUCCESS 0 ///< Recognition output some result
+
 /* delete incoherent option */
 /* CATEGORY_TREE: DFA=always on, NGRAM=always off */
 /* switch with recog->category_tree */
@@ -64,7 +74,10 @@
 /* abbreviations for verbose message output */
 #define VERMES if (verbose_flag) jlog
 
-/* define this to report memory usage on exit (Linux only) */
+/** 
+ * define this to report memory usage on exit (Linux only)
+ * 
+ */
 #undef REPORT_MEMORY_USAGE
 
 /*** N-gram tree construction ***/
@@ -118,10 +131,21 @@
 #undef FIX_PENALTY
 
 /* some definitions for short-pause segmentation */
-#ifdef SP_BREAK_CURRENT_FRAME
 #undef SP_BREAK_EVAL		/* output messages for evaluation */
 #undef SP_BREAK_DEBUG		/* output messages for debug */
 #undef SP_BREAK_RESUME_WORD_BEGIN /* resume word = maxword at beginning of sp area */
+
+#ifdef GMM_VAD
+#define DEFAULT_GMM_MARGIN 20	/* backstep margin / determine buffer length */
+#define GMM_VAD_AUTOSHRINK_LIMIT 500
+#undef GMM_VAD_DEBUG		/* output debug message */
+#endif
+
+/* default values for spseg_naist */
+#ifdef SPSEGMENT_NAIST
+#define DEFAULT_SP_MARGIN 40
+#define DEFAULT_SP_DELAY 4
+#define SPSEGMENT_NAIST_AUTOSHRINK_LIMIT 500
 #endif
 
 /* '01/10/18 by ri: enable fix for trellis lookup order */
@@ -235,18 +259,14 @@
  * Results will be shown via CALLBACK_RESULT_PASS1_DETERMINED.
  * 
  */
-#define DETERMINE
-
-/**
- * (EXPERIMENTAL) use frame-wise GMM for VAD
- * 
- */
-#undef GMM_VAD
-
-
+#undef DETERMINE
 
 #define FWD_NGRAM
 
+#define MAX_SPEECH_ALLOC_STEP 320000
+
+
+#define POWER_REJECT_DEFAULT_THRES 9.0
 
 #endif /* __J_DEFINE_H__ */
 

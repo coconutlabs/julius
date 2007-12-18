@@ -1,7 +1,5 @@
 /**
  * @file   wrsamp.c
- * @author Akinobu LEE
- * @date   Tue Feb 15 00:58:47 2005
  *
  * <JA>
  * @brief  音声波形列を big endian のバイトオーダーで書き込む
@@ -10,13 +8,16 @@
  * @brief  Write waveform data in big endian
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 15 00:58:47 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

@@ -1,22 +1,21 @@
 /**
  * @file   factoring_sub.c
- * @author Akinobu LEE
- * @date   Mon Mar  7 23:20:26 2005
  * 
  * <JA>
- * @brief  言語スコアのfactoring計算
+ * @brief  言語スコアのfactoring計算（第1パス）
  *
  * このファイルには，第１パスにおいて言語スコアの factoring を行うための
- * 関数が含まれています．木構造化辞書上でのサブツリー内の単語リスト
+ * 関数が含まれています. 木構造化辞書上でのサブツリー内の単語リスト
  * (successor list) の構築，および認識中の言語スコア計算ルーチンが
- * 含まれます．
+ * 含まれます. 
  *
  * successor list は，木構造化辞書の各ノードに割り付けられる，
- * そのノードを共有する単語のリストです．木構造化辞書において，
- * 枝部分の次のノードがこのリストを保持します．実際にはリストが変化する
- * 場所，すなわち木構造化辞書の枝の分岐点に割り付けられます．
+ * そのノードを共有する単語のリストです. 木構造化辞書において，
+ * 枝部分の次のノードがこのリストを保持します. 実際にはリストが変化する
+ * 場所，すなわち木構造化辞書の枝の分岐点に割り付けられます. 
  * 例えば，以下のような木構造化辞書の場合，数字の書いてあるノードに
- * successor list が割り付けられます．
+ * successor list が割り付けられます. 
+ * <pre>
  *
  *        2-o-o - o-o-o - o-o-o          word "A" 
  *       /
@@ -27,10 +26,12 @@
  *              \        \ 
  *               \        8-o-o          word "D"
  *                6-o-o                  word "E"
+ * </pre>
  *
- * 各 successor list はそのサブツリーに含まれる単語のリストです．
- * この例では以下のようになります．
+ * 各 successor list はそのサブツリーに含まれる単語のリストです. 
+ * この例では以下のようになります. 
  *
+ * <pre>
  *   node  | successor list (wchmm->state[node].sc)
  *   =======================
  *     1   | A B C D E
@@ -41,44 +42,45 @@
  *     6   |         E
  *     7   |     C
  *     8   |       D
+ * </pre>
  *
  * ある successor list に含まれる単語が１つになったとき，その時点で
- * 単語が確定する．上記の場合，単語 "A" はノード 2 の位置ですでに
- * その後続単語として "A" 以外無いので，そこで確定する．
- * すなわち，単語 A の正確な言語スコアは，単語終端を待たずノード 2 で決まる．
+ * 単語が確定する. 上記の場合，単語 "A" はノード 2 の位置ですでに
+ * その後続単語として "A" 以外無いので，そこで確定する. 
+ * すなわち，単語 A の正確な言語スコアは，単語終端を待たずノード 2 で決まる. 
  *
- * 第１パスにおける factoring の計算は，実際には beam.c で行なわれる．
+ * 第１パスにおける factoring の計算は，実際には beam.c で行なわれる. 
  * 2-gram factoringの場合，次ノードに successor list が存在すれば,
  * その successor list の単語の 2-gram の最大値を求め, 伝搬してきている
- * factoring 値を更新する．successor list に単語が1つのノードでは，
- * 正しい2-gramが自動的に割り当てられる．
+ * factoring 値を更新する. successor list に単語が1つのノードでは，
+ * 正しい2-gramが自動的に割り当てられる. 
  * 1-gram factoringの場合，次ノードに successor list が存在する場合，
  * その successor list の単語の 1-gram の最大値を求め，伝搬してきている
- * factoring 値を更新する．successor list に単語が１つのノードで，はじめて
- * 2-gram を計算する．
+ * factoring 値を更新する. successor list に単語が１つのノードで，はじめて
+ * 2-gram を計算する. 
  *
  * 実際では 1-gram factoring では各 successor list における factoring 値
  * は単語履歴に非依存なので，successor list 構築時に全てあらかじめ計算して
- * おく．すなわち，エンジン起動時に木構造化辞書を構築後，successor list
+ * おく. すなわち，エンジン起動時に木構造化辞書を構築後，successor list
  * を構築したら，単語を2個以上含む successor list についてはその 1-gram の
  * 最大値を計算して，それをそのノードの fscore メンバに格納しておき，その
- * successor list は free してしまえばよい．単語が１つのみの successor list
+ * successor list は free してしまえばよい. 単語が１つのみの successor list
  * についてはその単語IDを残しておき，探索時にパスがそこに到達したら
- * 正確な2-gramを計算すれば良い．
+ * 正確な2-gramを計算すれば良い. 
  *
  * DFA文法使用時は，デフォルトでは言語制約(カテゴリ対制約)を
- * カテゴリ単位で木を構築することで静的に表現する．このため，
- * これらの factoring 機構は用いられない．ただし，
+ * カテゴリ単位で木を構築することで静的に表現する. このため，
+ * これらの factoring 機構は用いられない. ただし，
  * CATEGORY_TREE が undefined であれば，決定的 factoring を用いた言語制約
- * 適用を行うことも可能である．
+ * 適用を行うことも可能である. 
  * すなわち，次ノードに successor list が存在すれば,
  * その successor list 内の各単語と直前単語の単語対制約を調べ,
  * そのうち一つでも接続可能な単語があれば，その遷移を許し，一つも
- * なければ遷移させない．この機能は技術参考のために残されているのみである．
+ * なければ遷移させない. この機能は技術参考のために残されているのみである. 
  * </JA>
  * 
  * <EN>
- * @brief  Build successor tree and compute LM factoring values.
+ * @brief  LM factoring on 1st pass.
  * </EN>
  *
  * This file contains functions to do language score factoring on the 1st
@@ -91,7 +93,8 @@
  * Actually they will be assigned to the branch node.
  * Below is the example of successor lists on a tree lexicon, in which
  * the lists is assigned to the numbered nodes.
- *
+ * 
+ * <pre>
  *         2-o-o - o-o-o - o-o-o          word "A" 
  *        /
  *   1-o-o
@@ -101,9 +104,11 @@
  *           \            \ 
  *            \            8-o-o          word "D"
  *             6-o-o                      word "E"
+ * </pre>
  *
  * The contents of the successor lists are the following:
  *
+ * <pre>
  *  node  | successor list (wchmm->state[node].sc)
  *  =======================
  *    1   | A B C D E
@@ -114,6 +119,7 @@
  *    6   |         E
  *    7   |     C
  *    8   |       D
+ * </pre>
  *
  * When the 1st pass proceeds, if the next going node has a successor list,
  * all the word 2-gram scores in the successor list on the next node
@@ -143,14 +149,17 @@
  * This enables single tree search on Julian.  This function is left
  * only for technical reference.
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Mon Mar  7 23:20:26 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -160,10 +169,10 @@
 
 /** 
  * <JA>
- * @brief  木構造化辞書上のあるノードの successor list に単語を追加する．
+ * @brief  木構造化辞書上のあるノードの successor list に単語を追加する. 
  * 
- * すでに同じ単語が登録されていれば，新たに登録はされない．
- * 単語はIDで昇順に保存される．
+ * すでに同じ単語が登録されていれば，新たに登録はされない. 
+ * 単語はIDで昇順に保存される. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * @param node [in] ノード番号
@@ -215,7 +224,7 @@ add_successor(WCHMM_INFO *wchmm, int node, WORD_ID w)
  * @param node1 [in] １つめのノードID
  * @param node2 [in] ２つめのノードID
  * 
- * @return 完全に一致すれば TRUE，一致しなければ FALSE．
+ * @return 完全に一致すれば TRUE，一致しなければ FALSE. 
  * </JA>
  * <EN>
  * Check if successor lists on two nodes are the same.
@@ -255,7 +264,7 @@ match_successor(WCHMM_INFO *wchmm, int node1, int node2)
 
 /** 
  * <JA>
- * 指定ノード上の successor list を空にする．
+ * 指定ノード上の successor list を空にする. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * @param scid [in] node id
@@ -285,7 +294,7 @@ free_successor(WCHMM_INFO *wchmm, int scid)
 /** 
  * <JA>
  * 木構造化辞書上からリンクが消された successor list について，
- * その実体を削除してリストを詰めるガーベージコレクションを行う．
+ * その実体を削除してリストを詰めるガーベージコレクションを行う. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -322,9 +331,9 @@ compaction_successor(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * successor list 用に割り付けられたメモリ領域を有効な長さに縮める．
+ * successor list 用に割り付けられたメモリ領域を有効な長さに縮める. 
  * 初期構築時や，1-gram factoring のために削除された successor list 分の
- * メモリを解放する．
+ * メモリを解放する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -352,6 +361,10 @@ shrink_successor(WCHMM_INFO *wchmm)
  * 
  * @param wchmm [i/o] tree lexicon
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 make_successor_list(WCHMM_INFO *wchmm)
@@ -447,9 +460,9 @@ make_successor_list(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 構築された factoring 情報を multipath 用に調整する．factoring 情報を,
- * モデル全体をスキップする遷移がある場合はその先の音素へコピーする．
- * また，(出力を持たない)文頭文法ノードに単語先頭ノードからコピーする．
+ * 構築された factoring 情報を multipath 用に調整する. factoring 情報を,
+ * モデル全体をスキップする遷移がある場合はその先の音素へコピーする. 
+ * また，(出力を持たない)文頭文法ノードに単語先頭ノードからコピーする. 
  * 
  * @param wchmm [in] 木構造化辞書
  * </JA>
@@ -458,6 +471,10 @@ make_successor_list(WCHMM_INFO *wchmm)
  * 
  * @param wchmm [in] tree lexicon
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 adjust_sc_index(WCHMM_INFO *wchmm)
@@ -537,8 +554,8 @@ adjust_sc_index(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 木構造化辞書用の factoring キャッシュをメモリ割り付けして初期化する．
- * この関数はプログラム開始時に一度だけ呼ばれる．
+ * 木構造化辞書用の factoring キャッシュをメモリ割り付けして初期化する. 
+ * この関数はプログラム開始時に一度だけ呼ばれる. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -548,6 +565,10 @@ adjust_sc_index(WCHMM_INFO *wchmm)
  * 
  * @param wchmm [i/o] tree lexicon
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 max_successor_cache_init(WCHMM_INFO *wchmm)
@@ -593,12 +614,14 @@ max_successor_cache_init(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 単語間の factoring cache のメモリ領域を解放する．
+ * 単語間の factoring cache のメモリ領域を解放する. 
  * 
+ * @param wchmm [i/o] 木構造化辞書
  * </JA>
  * <EN>
  * Free cross-word factoring cache.
  * 
+ * @param wchmm [i/o] tree lexicon
  * </EN>
  */
 static void
@@ -615,13 +638,19 @@ max_successor_prob_iw_free(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * factoring 用 cache のメモリ領域を全て解放する．
+ * factoring 用 cache のメモリ領域を全て解放する. 
  * 
+ * @param wchmm [i/o] 木構造化辞書
  * </JA>
  * <EN>
  * Free all memory for  factoring cache.
  * 
+ * @param wchmm [i/o] tree lexicon
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 max_successor_cache_free(WCHMM_INFO *wchmm)
@@ -640,18 +669,18 @@ max_successor_cache_free(WCHMM_INFO *wchmm)
 /** 
  * <JA>
  * @brief  単語先頭ノードのうちFactoring においてキャッシュが必要なノードの
- * リストを作成する．
+ * リストを作成する. 
  *
  * 1-gram factoring は，枝ノードにおいて直前単語に依存しない固定値
- * (unigramの最大値)を与える．このため，単語間の factoring 計算において，
+ * (unigramの最大値)を与える. このため，単語間の factoring 計算において，
  * 木構造化辞書上で複数の単語で共有されている単語先頭ノードについては，
  * その値は直前単語によらず固定値であり，認識時に単語間キャッシュを保持
- * する必要はない．
+ * する必要はない. 
  * 
  * この関数では，単語先頭ノードのリストからそのような factoring キャッシュが
  * 不要なノードを除外して，1-gram factoring 時に単語間キャッシュが必要な
  * 単語先頭ノード（＝他の単語と共有されていない独立した単語先頭ノード）の
- * リストを作成し，wchmm->start2isolate および wchmm->isolatenum に格納する．
+ * リストを作成し，wchmm->start2isolate および wchmm->isolatenum に格納する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -672,6 +701,10 @@ max_successor_cache_free(WCHMM_INFO *wchmm)
  * 
  * @param wchmm [i/o] tree lexicon
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 make_iwcache_index(WCHMM_INFO *wchmm)
@@ -694,20 +727,20 @@ make_iwcache_index(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * @brief  木構造化辞書上の 1-gram factoring 値を計算して格納する．
+ * @brief  木構造化辞書上の 1-gram factoring 値を計算して格納する. 
  *
  * 1-gram factoring では単語間で共有されている枝ノードでは 1-gram の最大値
- * を与える．単語履歴によらないため，その値は認識開始前に
- * 計算しておくことができる．この関数は木構造化辞書
+ * を与える. 単語履歴によらないため，その値は認識開始前に
+ * 計算しておくことができる. この関数は木構造化辞書
  * 全体について，共有されている（successor list に２つ以上の単語を持つノード）
- * ノードの 1-gram factoring 値を計算して格納する．1-gram factoring値を
+ * ノードの 1-gram factoring 値を計算して格納する. 1-gram factoring値を
  * 計算後は，そのノードの successor list はもはや不要であるため，ここで
- * 削除する．
+ * 削除する. 
  *
  * 実際には，factoring 値は wchmm->fscore に順次保存され，ノードの
- * scid にその保存値へのインデックス(1-)の負の値が格納される．不要になった
+ * scid にその保存値へのインデックス(1-)の負の値が格納される. 不要になった
  * successor list は，実際には compaction_successor 内で，対応するノードの
- * scid が負になっている successor list を削除することで行なわれる．
+ * scid が負になっている successor list を削除することで行なわれる. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -730,6 +763,11 @@ make_iwcache_index(WCHMM_INFO *wchmm)
  * successor's corresponding scid on tree lexicon has negative value.
  * 
  * @param wchmm [i/o] tree lexicon
+ * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
 calc_all_unigram_factoring_values(WCHMM_INFO *wchmm)
@@ -789,23 +827,24 @@ calc_all_unigram_factoring_values(WCHMM_INFO *wchmm)
 /** 
  * <JA>
  * 木構造化辞書上のあるノードについて，与えられた単語履歴に対する2-gram
- * スコアを計算する．
+ * スコアを計算する. 
  * 
  * @param wchmm [in] 木構造化辞書
- * @param last_nword [in] 直前単語のN-gramエントリID
+ * @param lastword [in] 直前単語
  * @param node [in] @a wchmm 上のノード番号
  * 
- * @return 2-gram 確率．
+ * @return 2-gram 確率. 
  * </JA>
  * <EN>
  * Compute 2-gram factoring value for the node and return the probability.
  * 
  * @param wchmm [in] tree lexicon
- * @param last_nword [in] N-gram entry ID of the last context word
+ * @param lastword [in] the last context word
  * @param node [in] node ID on @a wchmm
  * 
  * @return the log probability of 2-gram on that node.
  * </EN>
+ * 
  */
 static LOGPROB
 calc_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
@@ -842,15 +881,15 @@ calc_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
 
 /** 
  * <JA>
- * @brief  単語内のあるノードについて factoring 値を計算する．
+ * @brief  単語内のあるノードについて factoring 値を計算する. 
  *
- * 1-gram factoring で固定factoring値がある場合はその値が即座に返される．
+ * 1-gram factoring で固定factoring値がある場合はその値が即座に返される. 
  * 他の場合は，そのノードのサブツリー内の単語の 2-gram確率（の最大値）が
- * 計算される．
+ * 計算される. 
  *
- * 単語内 factoring キャッシュが考慮される．すなわち各ノードについて
+ * 単語内 factoring キャッシュが考慮される. すなわち各ノードについて
  * 直前単語が前回アクセスされたときと同じであれば，
- * 前回の値が返され，そうでなければ値を計算し，キャッシュが更新される．
+ * 前回の値が返され，そうでなければ値を計算し，キャッシュが更新される. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param lastword [in] 直前単語のID
@@ -877,6 +916,10 @@ calc_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
  * 
  * @return the LM factoring score.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 LOGPROB
 max_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
@@ -953,13 +996,13 @@ max_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
 
 /** 
  * <JA>
- * @brief  単語間の factoring 値のリストを返す．
+ * @brief  単語間の factoring 値のリストを返す. 
  *
  * 与えられた直前単語に対して，factoring値を計算すべき全ての単語先頭への
- * factoring 値を計算し，そのリストを返す．このfactoring値は
- * 直前単語ごとにリスト単位でキャッシュされる．すなわち，その直前単語が
+ * factoring 値を計算し，そのリストを返す. このfactoring値は
+ * 直前単語ごとにリスト単位でキャッシュされる. すなわち，その直前単語が
  * それまでに一度でも直前単語として出現していた場合，そのリストをそのまま
- * 返す．
+ * 返す. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param lastword [in] 直前単語
@@ -980,6 +1023,10 @@ max_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
  * 
  * @return the list of factoring LM scores for all the needed word-head nodes.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 LOGPROB *
 max_successor_prob_iw(WCHMM_INFO *wchmm, WORD_ID lastword)
@@ -1084,14 +1131,14 @@ max_successor_prob_iw(WCHMM_INFO *wchmm, WORD_ID lastword)
  *
  * Julian において CATEGORY_TREE が定義されているとき（デフォルト），
  * 木構造化辞書はカテゴリ単位（すなわち構文制約の記述単位）で構築されるため，
- * 第1パスでの言語モデルであるカテゴリ対制約は単語の始終端で適用できる．
+ * 第1パスでの言語モデルであるカテゴリ対制約は単語の始終端で適用できる. 
  * 
  * この CATEGORY_TREE が定義されていない場合，木構造化辞書は
  * 辞書全体で単一の木が作られるため，カテゴリ対制約は N-gram (Julius) と
- * 同様に単語内で factoring と同様の機構で適用される必要がある．
+ * 同様に単語内で factoring と同様の機構で適用される必要がある. 
  *
  * この関数は CATEGORY_TREE が定義されていないときに，上記の factoring
- * （決定的 factoring と呼ばれる）を行なうために提供されている．
+ * （決定的 factoring と呼ばれる）を行なうために提供されている. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param lastword [in] 直前単語
@@ -1122,6 +1169,10 @@ max_successor_prob_iw(WCHMM_INFO *wchmm, WORD_ID lastword)
  * @return TRUE if the transition to the branch is allowed on the category-pair
  * constraint, or FALSE if not allowed.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 boolean
 can_succeed(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
@@ -1144,3 +1195,5 @@ can_succeed(WCHMM_INFO *wchmm, WORD_ID lastword, int node)
     return(FALSE);
   }
 }
+
+/* end of file */

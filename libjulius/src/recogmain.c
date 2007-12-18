@@ -1,26 +1,161 @@
 /**
  * @file   recogmain.c
- * @author Akinobu Lee
- * @date   Wed Aug  8 14:53:53 2007
  * 
  * <JA>
- * @brief  認識処理のメインループ関数
+ * @brief  認識メイン関数
  * </JA>
  * 
  * <EN>
- * @brief  Main loop function to execute recognition
+ * @brief  Main function of recognition process.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Wed Aug  8 14:53:53 2007
+ *
+ * $Revision: 1.2 $
  * 
  */
 
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
+ */
+/**
+ * @mainpage
+ *
+ * <EN>
+ * This is a source code browser of Julius.
+ *
+ * - Sample code to use JuliusLib: julius-simple.c
+ * - JuliusLib API reference: @ref jfunc
+ * - List of callbacks: libjulius/include/julius/callback.h
+ *
+ * You can access documentation for files, functions and structures
+ * from the tabs at the top of this page.
+ * 
+ * </EN>
+ * <JA>
+ * これは Julius のソースコードのブラウザです．
+ *
+ * - JuliusLibを使用するサンプルコード: julius-simple/julius-simple.c
+ * - JuliusLib API リファレンス： @ref jfunc
+ * - コールバック 一覧: libjulius/include/julius/callback.h
+ *
+ * ページ上部のタブからファイル・関数・構造体等の説明を見ることが出来ます．
+ * 
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup jfunc JuliusLib API
+ *
+ * <EN>
+ * Here is a reference of all Julius library API functions.
+ * </EN>
+ * <JA>
+ * Julius ライブラリ API 関数のリファレンスです. 
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup engine Basic API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Basic functions to start-up and initialize engines.
+ * </EN>
+ * <JA>
+ * 認識エンジンの設定等
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup callback Callback API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to add callback to get results and status.
+ * </EN>
+ * <JA>
+ * 認識結果やエンジン状態を知るためのコールバック
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup pauseresume Pause and Resume API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to pause / resume engine inputs.
+ * </EN>
+ * <JA>
+ * エンジンの一時停止・再開
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup userfunc User function API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to register user function to be applied inside Julius.
+ * </EN>
+ * <JA>
+ * ユーザ関数の登録
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup jfunc_process Process API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to create / remove / (de)activate recognition process and models
+ * on live.
+ * </EN>
+ * <JA>
+ * モデルおよび認識プロセスの動的追加・削除・有効化・無効化
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup grammar Grammar / Dictionary API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to manage grammars or word dictionaries at run time.
+ * </EN>
+ * <JA>
+ * 文法・単語辞書の操作
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup jconf Jconf configuration API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to load / create configuration parameters.
+ * </EN>
+ * <JA>
+ * Jconf 構造体によるパラメータ情報の管理
+ * </JA>
+ * 
+ */
+/**
+ * @defgroup instance LM/AM/SR instance API
+ * @ingroup jfunc
+ *
+ * <EN>
+ * Functions to handle modules and processes directly.
+ * </EN>
+ * <JA>
+ * モデルモジュールやプロセスを直接扱う関数．
+ * </JA>
+ * 
  */
 
 #define GLOBAL_VARIABLE_DEFINE	///< Actually make global vars in global.h
@@ -31,12 +166,11 @@
 #include <mbstring.h>
 #endif
 
-
 /* ---------- utility functions -----------------------------------------*/
 #ifdef REPORT_MEMORY_USAGE
 /** 
  * <JA>
- * 通常終了時に使用メモリ量を調べて出力する (Linux, sol2
+ * 通常終了時に使用メモリ量を調べて出力する (Linux, sol2)
  * 
  * </JA>
  * <EN>
@@ -55,33 +189,140 @@ print_mem()
 }
 #endif
 	  
-
+
+/** 
+ * <EN>
+ * Allocate storage of recognition results.
+ * </EN>
+ * <JA>
+ * 認識結果の格納場所を確保する. 
+ * </JA>
+ * 
+ * @param r [out] recognition process instance
+ * @param num [in] number of sentences to be output
+ *
+ * @callgraph
+ * @callergraph
+ * 
+ */
+void
+result_sentence_malloc(RecogProcess *r, int num)
+{
+  int i;
+  r->result.sent = (Sentence *)mymalloc(sizeof(Sentence) * num);
+  for(i=0;i<num;i++) {
+    r->result.sent[i].align.filled = FALSE;
+    r->result.sent[i].align.w = NULL;
+    r->result.sent[i].align.ph = NULL;
+    r->result.sent[i].align.loc = NULL;
+    r->result.sent[i].align.begin_frame = NULL;
+    r->result.sent[i].align.end_frame = NULL;
+    r->result.sent[i].align.avgscore = NULL;
+    r->result.sent[i].align.is_iwsp = NULL;
+  }
+  r->result.sentnum = 0;
+}
+
+/** 
+ * <EN>
+ * Free storage of recognition results.
+ * </EN>
+ * <JA>
+ * 認識結果の格納場所を解放する. 
+ * </JA>
+ * 
+ * @param r [i/o] recognition process instance
+ * 
+ * @callgraph
+ * @callergraph
+ */
+void
+result_sentence_free(RecogProcess *r)
+{  
+  int i;
+  if (r->result.sent) {
+    for(i=0;i<r->result.sentnum;i++) {
+      if (r->result.sent[i].align.w) free(r->result.sent[i].align.w);
+      if (r->result.sent[i].align.ph) free(r->result.sent[i].align.ph);
+      if (r->result.sent[i].align.loc) free(r->result.sent[i].align.loc);
+      if (r->result.sent[i].align.begin_frame) free(r->result.sent[i].align.begin_frame);
+      if (r->result.sent[i].align.end_frame) free(r->result.sent[i].align.end_frame);
+      if (r->result.sent[i].align.avgscore) free(r->result.sent[i].align.avgscore);
+      if (r->result.sent[i].align.is_iwsp) free(r->result.sent[i].align.is_iwsp);
+    }
+    free(r->result.sent);
+    r->result.sent = NULL;
+  }
+}
+
+/** 
+ * <EN>
+ * Clear all result storages for next input.
+ * </EN>
+ * <JA>
+ * 認識結果の格納場所を全てクリアする. 
+ * </JA>
+ * 
+ * @param r [in] recognition process instance.
+ * 
+ * @callgraph
+ * @callergraph
+ */
+void
+clear_result(RecogProcess *r)
+{
+#ifdef WORD_GRAPH
+  /* clear 1st pass word graph output */
+  wordgraph_clean(&(r->result.wg1));
+#endif
+
+  if (r->lmvar == LM_DFA_WORD) {
+    if (r->result.status == J_RESULT_STATUS_SUCCESS) {
+      /* clear word recog result of first pass as in final result */
+      free(r->result.sent);
+    }
+  } else {
+    if (r->graphout) {
+      if (r->config->graph.confnet) {
+	/* free confusion network clusters */
+	cn_free_all(&(r->result.confnet));
+      } else if (r->config->graph.lattice) {
+      }
+      /* clear all wordgraph */
+      wordgraph_clean(&(r->result.wg));
+    }
+    result_sentence_free(r);
+  }
+}
+
 /* --------------------- speech buffering ------------------ */
 
 /** 
  * <JA>
- * @brief  検出区間の音声データをバッファに保存するための adin_go() callback
+ * @brief  検出された音をバッファに保存する adin_go() コールバック
  *
- * この関数は，検出された音声入力を逐次バッファ @a speech に記録して
- * いきます．バッファ処理モード（＝非リアルタイムモード）で認識を行なう
- * ときに用いられます．
+ * この関数は，検出された音声入力を順次 recog->speech に記録して
+ * いく. バッファ処理モード（＝非リアルタイムモード）で認識を行なう
+ * ときに用いられる. 
  * 
  * @param now [in] 検出された音声波形データの断片
  * @param len [in] @a now の長さ(サンプル数)
+ * @param recog [i/o] エンジンインスタンス
  * 
  * @return エラー時 -1 (adin_go は即時中断する)，通常時 0 (adin_go は
- * 続行する)，区間終了要求時 1 (adin_go は現在の音声区間を閉じる)．
+ * 続行する)，区間終了要求時 1 (adin_go は現在の音声区間を閉じる). 
  * 
  * </JA>
  * <EN>
- * @brief  adin_go() callback to score each detected speech segment to buffer.
+ * @brief  adin_go() callback to score triggered inputs to buffer.
  *
  * This function records the incomping speech segments detected in adin_go()
- * to a buffer @a speech.  This function will be used when recognition runs
+ * to recog->speech.  This function will be used when recognition runs
  * in buffered mode (= non-realtime mode).
  * 
  * @param now [in] input speech samples.
  * @param len [in] length of @a now in samples
+ * @param recog [i/o] engine instance
  * 
  * @return -1 on error (tell adin_go() to terminate), 0 on success (tell
  * adin_go() to continue recording), or 1 when this function requires
@@ -89,111 +330,92 @@ print_mem()
  * </EN>
  */
 static int
-adin_cut_callback_store_buffer(SP16 *now, int len, Recog **recoglist, int recognum)
+adin_cut_callback_store_buffer(SP16 *now, int len, Recog *recog)
 {
-  /**
-   * Temporal buffer to save the recorded-but-unprocessed samples
-   * when the length of a speech segment exceeds the limit
-   * (i.e. MAXSPEECHLEN samples).  They will be restored on the
-   * next input at the top of the recording buffer.
-   * 
-   */
-  static SP16 *overflowed_samples = NULL;
-  /**
-   * Length of above.
-   * 
-   */
-  static int overflowed_samplenum;
-  Recog *recog;
-
-  recog = recoglist[0];
-  
-  /* poll for each input fragment */
-  callback_multi_exec(CALLBACK_POLL, recoglist, recognum);
-
   if (recog->speechlen == 0) {		/* first part of a segment */
-    /* termination check */
-    if (recog->process_want_terminate ||/* TERMINATE ... force termination */
-	!recog->process_active) { /* PAUSE ... keep recording when *triggering */
-      return(-2);
+    if (!recog->process_active) {
+      return(1);
     }
-    if (overflowed_samples) {	/* last input was overflowed */
-      /* restore last overflowed samples */
-      memcpy(&(recog->speech[0]), overflowed_samples, sizeof(SP16)*overflowed_samplenum);
-      recog->speechlen += overflowed_samplenum;
-      free(overflowed_samples);
-      overflowed_samples = NULL;
-    }
-  }
-  if (recog->speechlen + len > MAXSPEECHLEN) {
-    jlog("WARNING: too long input (> %d samples), segmented now\n", MAXSPEECHLEN);
-    /* store the overflowed samples for next segment, and end segment */
-    {
-      int getlen, restlen;
-      getlen = MAXSPEECHLEN - recog->speechlen;
-      restlen = len - getlen;
-      overflowed_samples = (SP16 *)mymalloc(sizeof(SP16)*restlen);
-      memcpy(overflowed_samples, &(now[getlen]), restlen * sizeof(SP16));
-      overflowed_samplenum = restlen;
-      memcpy(&(recog->speech[recog->speechlen]), now, getlen * sizeof(SP16));
-      recog->speechlen += getlen;
-    }
-    return(1);			/* tell adin_go to end segment */
   }
 
-  /* poll module command and terminate here if requested */
-  if (recog->process_want_terminate) {/* TERMINATE ... force termination */
-    recog->speechlen = 0;
-    return(-2);
+  if (recog->speechlen + len > recog->speechalloclen) {
+    while (recog->speechlen + len > recog->speechalloclen) {
+      recog->speechalloclen += MAX_SPEECH_ALLOC_STEP;
+    }
+    if (recog->speech == NULL) {
+      recog->speech = (SP16 *)mymalloc(sizeof(SP16) * recog->speechalloclen);
+    } else {
+      if (debug2_flag) {
+	jlog("STAT: expanding recog->speech to %d samples\n", recog->speechalloclen);
+      }
+      recog->speech = (SP16 *)myrealloc(recog->speech, sizeof(SP16) * recog->speechalloclen);
+    }
   }
+
   /* store now[0..len] to recog->speech[recog->speechlen] */
   memcpy(&(recog->speech[recog->speechlen]), now, len * sizeof(SP16));
   recog->speechlen += len;
   return(0);			/* tell adin_go to continue reading */
 }
 
-
 
 /* --------------------- adin check callback --------------- */
 /** 
  * <JA>
- * @brief  音声入力待ち中のモジュールコマンド処理のためのコールバック関数．
- * 音声入力待ち中にクライアントモジュールから送られたコマンドを
- * 処理するためのコールバック関数．音声入力処理中に定期的に呼ばれる．
- * もしコマンドがある場合それを処理する．また，即時の認識中断（入力破棄）や
- * 入力の中止を求められている場合はそのようにステータスを音声入力処理関数に
- * 返す．
+ * @brief  音声入力中に定期的に実行されるコールバック. 
+ *
+ * この関数は，adin_go() にて音声入力待ち，あるいは音声認識中に
+ * 定期的に繰り返し呼び出される関数である. ユーザ定義のコールバック
+ * (CALLBACK_POLL) の呼び出し，および中断判定を行う. 
+ *
+ * @param recog [in] エンジンインスタンス
  * 
- * @return 通常時 0, 即時中断要求がある時は -2, 認識中止要求があるときは
- * -1 を返す．
+ * @return 通常時 0, 即時中断を要求時 -2, 認識中止の要求時は -1 を返す. 
  * </JA>
  * <EN>
- * @brief  callback function to process module command while input detection.
+ * @brief  callback function periodically called while input.
  *
- * This function will be called periodically from A/D-in function to check
- * and process commands from module client.  If some commands are found,
- * it will be processed here.  Also, if some termination or stop of recognition
- * process is requested, this function returns to the caller as so.
+ * This function will be called periodically from adin_go() while
+ * waiting input or processing recognition.  It will call user-defined
+ * callback registered in CALLBACK_POLL,  check for the process
+ * status and issue recognition termination request.
+ *
+ * @param recog [in] engine instance
  * 
- * @return 0 normally, -2 when there is immediate termination request, and -1
- * if there is recognition stop command.
+ * @return 0 normally, -2 for immediate termination, and -1 if requesting
+ * recognition stop.
+ * 
  * </EN>
  */
 static int
-callback_check_in_adin(Recog **recoglist, int recognum)
+callback_check_in_adin(Recog *recog)
 {
-  Recog *recog;
-
-  recog = recoglist[0];
-
   /* module: check command and terminate recording when requested */
-  callback_multi_exec(CALLBACK_POLL, recoglist, recognum);
+  callback_exec(CALLBACK_POLL, recog);
   /* With audio input via adinnet, TERMINATE command will issue terminate
      command to the adinnet client.  The client then stops recording
      immediately and return end-of-segment ack.  Then it will cause this
      process to stop recognition as normal.  So we need not to
      perform immediate termination at this callback, but just ignore the
      results in the main.c.  */
+#if 1
+/* 
+ *   if (recog->jconf->input.speech_input != SP_ADINNET) {
+ *     if (recog->process_want_terminate) {
+ *	 return(-2);
+ *     }
+ *     if (recog->process_want_reload) {
+ *	 return(-1);
+ *     }
+ *   }
+ */
+  if (recog->process_want_terminate) { /* TERMINATE ... force termination */
+    return(-2);
+  }
+  if (recog->process_want_reload) {
+    return(-1);
+  }
+#else
   if (recog->process_want_terminate /* TERMINATE ... force termination */
       && recog->jconf->input.speech_input != SP_ADINNET) {
     return(-2);
@@ -201,13 +423,30 @@ callback_check_in_adin(Recog **recoglist, int recognum)
   if (recog->process_want_reload) {
     return(-1);
   }
+#endif
   return(0);
 }
 
 /*********************/
 /* open input stream */
 /*********************/
-/* 0 on success, -1 on error, -2 on end of input recognition */
+/** 
+ * <EN>
+ * Open input stream.
+ * </EN>
+ * <JA>
+ * 音声入力ストリームを開く
+ * </JA>
+ * 
+ * @param recog [i/o] engine instance
+ * @param file_or_dev_name [in] file or device name of the device
+ * 
+ * @return 0 on success, -1 on error, -2 on decice initializatino error.
+ * 
+ * @callgraph
+ * @callergraph
+ * @ingroup engine
+ */
 int
 j_open_stream(Recog *recog, char *file_or_dev_name)
 {
@@ -217,14 +456,14 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
 
   if (jconf->input.speech_input == SP_MFCFILE) {
     /* read parameter file */
-    param_init_content(recog->param);
-    if (rdparam(file_or_dev_name, recog->param) == FALSE) {
+    param_init_content(recog->mfcclist->param);
+    if (rdparam(file_or_dev_name, recog->mfcclist->param) == FALSE) {
       jlog("ERROR: error in reading parameter file: %s\n", file_or_dev_name);
       return -1;
     }
     /* check and strip invalid frames */
-    if (jconf->frontend.strip_zero_sample) {
-      param_strip_zero(recog->param);
+    if (jconf->preprocess.strip_zero_sample) {
+      param_strip_zero(recog->mfcclist->param);
     }
 
     /* output frame length */
@@ -250,29 +489,111 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
 /**********************************************************************/
 /**********************************************************************/
 
-/* 1 on stop by callback (stream still continues) */
-/* -1 on error, 0 on end of stream */
+/** 
+ * <EN>
+ * Recognition error handling.
+ * </EN>
+ * <JA>
+ * エラーによる認識終了時の処理. 
+ * </JA>
+ * 
+ * @param recog [in] engine instance
+ * @param status [in] error status to be set
+ * 
+ */
+static void
+result_error(Recog *recog, int status)
+{
+  MFCCCalc *mfcc;
+  RecogProcess *r;
+  boolean ok_p;
+
+  for(r=recog->process_list;r;r=r->next) r->result.status = status;
+
+  ok_p = FALSE;
+  for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+    if (mfcc->f > 0) {
+      ok_p = TRUE;
+      break;
+    }
+  }
+  if (ok_p) {			/* had some input */
+    /* output as rejected */
+    callback_exec(CALLBACK_RESULT, recog);
+  }
+}
+
+/** 
+ * <EN>
+ * @brief  Execute recognition.
+ *
+ * This function repeats recognition sequences until the input stream
+ * reached its end.  It detects speech segment (if needed), recognize
+ * the detected segment, output result, and go back to the first.
+ *
+ * This function will be stopped and exited if reached end of stream
+ * (mostly in case of file input), some error has been occured, or
+ * termination requested from application by calling
+ * j_request_pause() and j_request_terminate().
+ * 
+ * </EN>
+ * <JA>
+ * @brief  音声認識の実行. 
+ *
+ * この関数は入力ストリームが終わるまで音声認識を繰り返す. 
+ * 必要であれば入力待ちを行って区間を検出し，音声認識を行い，結果を
+ * 出力してふたたび入力待ちに戻る. 
+ *
+ * 入力ストリームを終わりまで認識するか，エラーが生じたときに終了する. 
+ *
+ * あるいは，認識処理中に，j_request_pause() や j_request_terminate() が
+ * アプリから呼ばれた場合，認識処理の切れ目で終了する. 
+ * 
+ * </JA>
+ * 
+ * @param recog [i/o] engine instance
+ * 
+ * @return 1 when stopped by application request, 0 when reached end of stream,
+ * or -1 when an error occured.  Note that the input stream can still continues
+ * when 1 is returned.
+ * 
+ */
 static int
-j_recognize_stream_main(Recog **recoglist, int recognum)
+j_recognize_stream_core(Recog *recog)
 {
   Jconf *jconf;
   int ret;
   float seclen, mseclen;
-  Recog *recog;
-  int ir;
+  RecogProcess *r;
+  MFCCCalc *mfcc;
+  PROCESS_AM *am;
+  PROCESS_LM *lm;
   boolean ok_p;
-
-  /* assume [0] is primary */
-  recog = recoglist[0];
+  boolean process_segment_last;
 
   jconf = recog->jconf;
 
   if (jconf->input.speech_input != SP_MFCFILE) {
-    param_init_content(recog->param);
+    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+      param_init_content(mfcc->param);
+    }
   }
 
-  /* make the current status to be active */
-  j_request_resume(recog);
+  /* if no process instance exist, start with terminated */
+  if (recog->process_list == NULL) {
+    jlog("STAT: no recog process, engine inactive\n");
+    j_request_pause(recog);
+  }
+
+  /* update initial recognition process status */
+  for(r=recog->process_list;r;r=r->next) {
+    if (r->active > 0) {
+      r->live = TRUE;
+    } else if (r->active < 0) {
+      r->live = FALSE;
+    }
+    r->active = 0;
+  }
 
   /******************************************************************/
   /* do recognition for each incoming segment from the input stream */
@@ -281,31 +602,49 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
     
   start_recog:
 
-    /* make sure that all instances share ad-in and controll related data */
-    for(ir=0;ir<recognum;ir++) {
-      recoglist[ir]->param = recog->param;
+    /*************************************/
+    /* Update recognition process status */
+    /*************************************/
+    for(r=recog->process_list;r;r=r->next) {
+      if (r->active > 0) {
+	r->live = TRUE;
+	jlog("STAT: SR%02d %s now active\n", r->config->id, r->config->name);
+      } else if (r->active < 0) {
+	r->live = FALSE;
+	jlog("STAT: SR%02d %s now inactive\n", r->config->id, r->config->name);
+      }
+      r->active = 0;
     }
-    
-    /*****************************/
-    /* module command processing */
-    /*****************************/
-    /* If recognition is running (active), commands are polled only once
-       here, and if any, process the command, and continue the recognition.
-       If recognition is sleeping (inactive), wait here for any command to
-       come, and process them until recognition is activated by the
-       commands
-    */
-    /* Output process status when status change occured by module command */
+    if (debug2_flag) {
+      for(r=recog->process_list;r;r=r->next) {
+	jlog("DEBUG: %s: SR%02d %s\n", r->live ? "live" : "dead", r->config->id, r->config->name);
+      }
+    }
+    /* check if any process is live */
+    if (recog->process_active) {
+      ok_p = FALSE;
+      for(r=recog->process_list;r;r=r->next) {
+	if (r->live) ok_p = TRUE;
+      }
+      if (!ok_p) {		/* no process is alive */
+	/* make whole process as inactive */
+	jlog("STAT: all recog process inactive, pause engine now\n");
+	j_request_pause(recog);
+      }
+    }
+
+    /* Check whether process status was changed while in the last run */
     if (recog->process_online != recog->process_active) {
       recog->process_online = recog->process_active;
-      if (recog->process_online) callback_multi_exec(CALLBACK_EVENT_PROCESS_ONLINE, recoglist, recognum);
-      else callback_multi_exec(CALLBACK_EVENT_PROCESS_OFFLINE, recoglist, recognum);
+      if (recog->process_online) callback_exec(CALLBACK_EVENT_PROCESS_ONLINE, recog);
+      else callback_exec(CALLBACK_EVENT_PROCESS_OFFLINE, recog);
     }
+    /* execute poll callback */
     if (recog->process_active) {
-      /* process is now active: check a command in buffer and process if any */
-      callback_multi_exec(CALLBACK_POLL, recoglist, recognum);
+      callback_exec(CALLBACK_POLL, recog);
     }
-    j_reset_reload(recog);	/* reset reload flag here */
+    /* reset reload flag here */
+    j_reset_reload(recog);
 
     if (!recog->process_active) {
       /* now sleeping, return */
@@ -315,28 +654,47 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
     /* update process status */
     if (recog->process_online != recog->process_active) {
       recog->process_online = recog->process_active;
-      if (recog->process_online) callback_multi_exec(CALLBACK_EVENT_PROCESS_ONLINE, recoglist, recognum);
-      else callback_multi_exec(CALLBACK_EVENT_PROCESS_OFFLINE, recoglist, recognum);
+      if (recog->process_online) callback_exec(CALLBACK_EVENT_PROCESS_ONLINE, recog);
+      else callback_exec(CALLBACK_EVENT_PROCESS_OFFLINE, recog);
     }
-    for(ir=0;ir<recognum;ir++) {
-      if (recoglist[ir]->lmtype == LM_DFA) {
-	/*********************************************************/
-	/* check for grammar to change, and rebuild if necessary */
-	/*********************************************************/
-	multigram_exec(recoglist[ir]); /* some modification occured if return TRUE*/
+
+    /*********************************************************/
+    /* check for grammar to change, and rebuild if necessary */
+    /*********************************************************/
+    for(lm=recog->lmlist;lm;lm=lm->next) {
+      if (lm->lmtype == LM_DFA) {
+	multigram_update(lm); /* some modification occured if return TRUE*/
       }
     }
-    for(ir=0;ir<recognum;ir++) {
-      if (recoglist[ir]->lmtype == LM_DFA) {
-	if (recoglist[ir]->model->winfo == NULL ||
-	    (recoglist[ir]->lmvar == LM_DFA_GRAMMAR && recoglist[ir]->model->dfa == NULL)) {
-	  /* stop when no grammar found */
-	  j_request_pause(recog);
-	  goto start_recog;
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      if (r->lmtype == LM_DFA && r->lm->global_modified) {
+	multigram_build(r);
+      }
+    }
+    for(lm=recog->lmlist;lm;lm=lm->next) {
+      if (lm->lmtype == LM_DFA) lm->global_modified = FALSE;
+    }
+
+    ok_p = FALSE;
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      if (r->lmtype == LM_DFA) {
+	if (r->lm->winfo == NULL ||
+	    (r->lmvar == LM_DFA_GRAMMAR && r->lm->dfa == NULL)) {
+	  /* make this instance inactive */
+	  r->active = -1;
+	  ok_p = TRUE;
 	}
       }
     }
+    if (ok_p) {			/* at least one instance has no grammar */
+      goto start_recog;
+    }
 
+    /**************************************/
+    /* getting input and perform 1st pass */
+    /**************************************/
     if (jconf->input.speech_input == SP_MFCFILE) {
       /************************/
       /* parameter file input */
@@ -346,14 +704,18 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
       /********************************/
       /* parameter type check --- compare the type to that of HMM,
 	 and adjust them if necessary */
-      if (jconf->analysis.paramtype_check_flag) {
-	/* return param itself or new malloced param */
-	if (param_check_and_adjust(recog->model->hmminfo, recog->param, verbose_flag) == -1) {	/* failed */
-	  param_init_content(recog->param);
-	  /* tell failure */
-	  for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -1;
-	  callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
-	  goto end_recog;
+      if (jconf->input.paramtype_check_flag) {
+	for(am=recog->amlist;am;am=am->next) {
+	  /* return param itself or new malloced param */
+	  if (param_check_and_adjust(am->hmminfo, am->mfcc->param, verbose_flag) == -1) {	/* failed */
+	    
+	    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	      param_init_content(mfcc->param);
+	    }
+	    /* tell failure */
+	    result_error(recog, J_RESULT_STATUS_FAIL);
+	    goto end_recog;
+	  }
 	}
       }
       /* whole input is already read, so set input status to end of stream */
@@ -363,7 +725,7 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
       /****************************************************/
       /* raw wave data input (mic, file, adinnet, etc...) */
       /****************************************************/
-      if (jconf->search.pass1.realtime_flag) {
+      if (jconf->decodeopt.realtime_flag) {
 	/********************************************/
 	/* REALTIME ON-THE-FLY DECODING OF 1ST-PASS */
 	/********************************************/
@@ -373,17 +735,18 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 	   from the AD-in function adin_go().  RealTimePipeLine() will be
 	   called as a callback function from adin_go() */
 	/* after this part, directly jump to the beginning of the 2nd pass */
-#ifdef SP_BREAK_CURRENT_FRAME
-	//	if (recog->rest_param) {
+
 	if (recog->process_segment) {
 	  /*****************************************************************/
 	  /* short-pause segmentation: process last remaining frames first */
 	  /*****************************************************************/
 	  /* last was segmented by short pause */
-	  /* the margin segment in the last input should be re-processed first */
-	  callback_multi_exec(CALLBACK_EVENT_SEGMENT_BEGIN, recoglist, recognum);
+	  /* the margin segment in the last input will be re-processed first,
+	     and then the speech input will be processed */
+	  /* output listening start message */
+	  callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	  /* process the last remaining parameters */
-	  ret = RealTimeResume(recoglist, recognum);
+	  ret = RealTimeResume(recog);
 	  if (ret < 0) {		/* error end in the margin */
 	    jlog("ERROR: failed to process last remaining samples on RealTimeResume\n"); /* exit now! */
 	    return -1;
@@ -391,19 +754,21 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 	  if (ret != 1) {	/* if segmented again in the margin, not process the rest */
 	    /* last parameters has been processed, so continue with the
 	       current input as normal */
-	    /* output listening start message */
-	    //callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	    /* process the incoming input */
-	    ret = adin_go(RealTimePipeLine, callback_check_in_adin, recoglist, recognum);
+	    ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
 	    if (ret < 0) {		/* error end in adin_go */
 	      if (ret == -2 || recog->process_want_terminate) {
 		/* terminated by callback */
-		RealTimeTerminate(recoglist, recognum);
-		param_init_content(recog->param);
-		if (ret == -2) {
-		  /* output fail */
-		  for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -1;
-		  callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
+		RealTimeTerminate(recog);
+		/* reset param */
+		for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+		  param_init_content(mfcc->param);
+		}
+		/* execute callback at end of pass1 */
+		if (recog->triggered) {
+		  callback_exec(CALLBACK_EVENT_PASS1_END, recog);
+		  /* output result terminate */
+		  result_error(recog, J_RESULT_STATUS_TERMINATE);
 		}
 		goto end_recog; /* cancel this recognition */
 	      }
@@ -413,88 +778,106 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 	  }
 	  
 	} else {
-	  /* last was not segmented, process the incoming input  */
-#endif
-	  /**********************************/
-	  /* process incoming speech stream */
-	  /**********************************/
+
+	  /***********************************************************/
+	  /* last was not segmented, process the new incoming input  */
+	  /***********************************************************/
 	  /* end of this input will be determined by either end of stream
 	     (in case of file input), or silence detection by adin_go(), or
 	     'TERMINATE' command from module (if module mode) */
 	  /* prepare work area for on-the-fly processing */
-	  if (RealTimePipeLinePrepare(recoglist, recognum) == FALSE) {
+	  if (RealTimePipeLinePrepare(recog) == FALSE) {
 	    jlog("ERROR: failed to prepare for on-the-fly 1st pass decoding");
 	    return (-1);
 	  }
 	  /* output 'listening start' message */
-	  callback_multi_exec(CALLBACK_EVENT_SPEECH_READY, recoglist, recognum);
+	  callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	  /* process the incoming input */
-	  ret = adin_go(RealTimePipeLine, callback_check_in_adin, recoglist, recognum);
+	  ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
 	  if (ret < 0) {		/* error end in adin_go */
 	    if (ret == -2 || recog->process_want_terminate) {	
-	    /* terminated by callback */
-	      RealTimeTerminate(recoglist, recognum);
-	      param_init_content(recog->param);
-	      if (ret == -2) {
-		/* output fail */
-		for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -1;
-		callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
+	      /* terminated by callback */
+	      RealTimeTerminate(recog);
+	      /* reset param */
+	      for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+		param_init_content(mfcc->param);
+	      }
+	      /* execute callback at end of pass1 */
+	      if (recog->triggered) {
+		callback_exec(CALLBACK_EVENT_PASS1_END, recog);
+		/* output result terminate */
+		result_error(recog, J_RESULT_STATUS_TERMINATE);
 	      }
 	      goto end_recog;
 	    }
 	    jlog("ERROR: an error occured at on-the-fly 1st pass decoding\n");          /* exit now! */
 	    return(-1);
 	  }
-#ifdef SP_BREAK_CURRENT_FRAME
 	}
-#endif
 	/******************************************************************/
 	/* speech stream has been processed on-the-fly, and 1st pass ends */
 	/******************************************************************/
 	/* last procedure of 1st-pass */
-	if (RealTimeParam(recoglist, recognum) == FALSE) {
+	if (RealTimeParam(recog) == FALSE) {
 	  jlog("ERROR: fatal error occured, program terminates now\n");
 	  return -1;
 	}
+
+#ifdef BACKEND_VAD
+	/* if not triggered, skip this segment */
+	if (recog->jconf->decodeopt.segment && ! recog->triggered) {
+	  goto end_recog;
+	}
+#endif
+
+	/* execute callback for 1st pass result */
+	/* result.status <0 must be skipped inside callback */
+	callback_exec(CALLBACK_RESULT_PASS1, recog);
+#ifdef WORD_GRAPH
+	/* result.wg1 == NULL should be skipped inside callback */
+	callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
+#endif
+	/* execute callback at end of pass1 */
+	callback_exec(CALLBACK_EVENT_PASS1_END, recog);
 	/* output frame length */
-	callback_multi_exec(CALLBACK_STATUS_PARAM, recoglist, recognum);
+	callback_exec(CALLBACK_STATUS_PARAM, recog);
 	/* if terminate signal has been received, discard this input */
-	if (recog->process_want_terminate) goto end_recog;
+	if (recog->process_want_terminate) {
+	  result_error(recog, J_RESULT_STATUS_TERMINATE);
+	  goto end_recog;
+	}
 
 	/* end of 1st pass, jump to 2nd pass */
 	goto end_1pass;
 	
       } /* end of realtime_flag && speech stream input */
       
-	/******************************************/
-	/* buffered speech input (not on-the-fly) */
-	/******************************************/
-#ifdef SP_BREAK_CURRENT_FRAME
-      //if (recog->rest_param == NULL) { /* no segment left */
+      /******************************************/
+      /* buffered speech input (not on-the-fly) */
+      /******************************************/
       if (!recog->process_segment) { /* no segment left */
-#endif
+
 	/****************************************/
 	/* store raw speech samples to speech[] */
 	/****************************************/
 	recog->speechlen = 0;
-	param_init_content(recog->param);
+	for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	  param_init_content(mfcc->param);
+	}
 	/* output 'listening start' message */
-	callback_multi_exec(CALLBACK_EVENT_SPEECH_READY, recoglist, recognum);
+	callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	/* tell module to start recording */
 	/* the "adin_cut_callback_store_buffer" simply stores
 	   the input speech to a buffer "speech[]" */
 	/* end of this input will be determined by either end of stream
 	   (in case of file input), or silence detection by adin_go(), or
 	   'TERMINATE' command from module (if module mode) */
-	ret = adin_go(adin_cut_callback_store_buffer, callback_check_in_adin, recoglist, recognum);
+	ret = adin_go(adin_cut_callback_store_buffer, callback_check_in_adin, recog);
 	if (ret < 0) {		/* error end in adin_go */
 	  if (ret == -2 || recog->process_want_terminate) {
 	    /* terminated by module */
-	    if (ret == -2) {
-	      /* output fail */
-	      for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -1;
-	      callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
-	    }
+	    /* output fail */
+	    result_error(recog, J_RESULT_STATUS_TERMINATE);
 	    goto end_recog;
 	  }
 	  jlog("ERROR: an error occured while recording input\n");
@@ -502,7 +885,7 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 	}
 	
 	/* output recorded length */
-	seclen = (float)recog->speechlen / (float)jconf->analysis.para.smp_freq;
+	seclen = (float)recog->speechlen / (float)jconf->input.sfreq;
 	jlog("STAT: %d samples (%.2f sec.)\n", recog->speechlen, seclen);
 	
 	/* -rejectshort 指定時, 入力が指定時間以下であれば
@@ -511,8 +894,7 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 	   specified, reject the input here */
 	if (jconf->reject.rejectshortlen > 0) {
 	  if (seclen * 1000.0 < jconf->reject.rejectshortlen) {
-	    for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -2;
-	    callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
+	    result_error(recog, J_RESULT_STATUS_REJECT_SHORT);
 	    goto end_recog;
 	  }
 	}
@@ -526,21 +908,20 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 	  /* error end, end stream */
 	  ret = -1;
 	  /* tell failure */
-	  for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -1;
-	  callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
-
+	  result_error(recog, J_RESULT_STATUS_FAIL);
 	  goto end_recog;
 	}
 	
 	/* if terminate signal has been received, cancel this input */
-	if (recog->process_want_terminate) goto end_recog;
+	if (recog->process_want_terminate) {
+	  result_error(recog, J_RESULT_STATUS_TERMINATE);
+	  goto end_recog;
+	}
 	
 	/* output frame length */
-	callback_multi_exec(CALLBACK_STATUS_PARAM, recoglist, recognum);
+	callback_exec(CALLBACK_STATUS_PARAM, recog);
 	
-#ifdef SP_BREAK_CURRENT_FRAME
       }
-#endif
     }	/* end of data input */
     /* parameter has been got in 'param' */
     
@@ -548,32 +929,46 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
     /* 1st-pass --- backward search to compute heuristics */
     /******************************************************/
     /* (for buffered speech input and HTK parameter file input) */
-    if (!jconf->search.pass1.realtime_flag) {
+    if (!jconf->decodeopt.realtime_flag) {
       /* prepare for outprob cache for each HMM state and time frame */
-      for(ir=0;ir<recognum;ir++) {
-	outprob_prepare(&(recoglist[ir]->hmmwrk), recog->param->samplenum);
+      /* assume all MFCCCalc has params of the same sample num */
+      for(am=recog->amlist;am;am=am->next) {
+	outprob_prepare(&(am->hmmwrk), am->mfcc->param->samplenum);
       }
     }
 
     /* if terminate signal has been received, cancel this input */
-    if (recog->process_want_terminate) goto end_recog;
+    if (recog->process_want_terminate) {
+      result_error(recog, J_RESULT_STATUS_TERMINATE);
+      goto end_recog;
+    }
+    
 
-#ifdef SP_BREAK_CURRENT_FRAME
-    if (!recog->process_segment) {
-      callback_multi_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recoglist, recognum);
-    }
-    callback_multi_exec(CALLBACK_EVENT_SEGMENT_BEGIN, recoglist, recognum);
-#else
-    callback_multi_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recoglist, recognum);
-#endif
+    /****************************************************/
     /* execute computation of left-to-right backtrellis */
-    ok_p = TRUE;
-    for(ir=0;ir<recognum;ir++) {
-      if (get_back_trellis(recoglist[ir]) == FALSE) ok_p = FALSE;
-    }
-    if (! ok_p) {
+    /****************************************************/
+    if (get_back_trellis(recog) == FALSE) {
       jlog("ERROR: fatal error occured, program terminates now\n");
       return -1;
+    }
+#ifdef BACKEND_VAD
+    /* if not triggered, skip this segment */
+    if (recog->jconf->decodeopt.segment && ! recog->triggered) {
+      goto end_recog;
+    }
+#endif
+
+    /* execute callback for 1st pass result */
+    /* result.status <0 must be skipped inside callback */
+    callback_exec(CALLBACK_RESULT_PASS1, recog);
+#ifdef WORD_GRAPH
+    /* result.wg1 == NULL should be skipped inside callback */
+    callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
+#endif
+
+    /* execute callback at end of pass1 */
+    if (recog->triggered) {
+      callback_exec(CALLBACK_EVENT_PASS1_END, recog);
     }
 
   end_1pass:
@@ -588,40 +983,31 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
     /* when using "-rejectshort", and input was shorter than the specified
        length, terminate search here and output recognition failure */
     if (jconf->reject.rejectshortlen > 0) {
-      mseclen = (float)recog->param->samplenum * (float)jconf->analysis.para.smp_period * (float)jconf->analysis.para.frameshift / 10000.0;
+      mseclen = (float)recog->mfcclist->param->samplenum * (float)jconf->input.period * (float)jconf->input.frameshift / 10000.0;
       if (mseclen < jconf->reject.rejectshortlen) {
-	for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -2;
-	callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
+	result_error(recog, J_RESULT_STATUS_REJECT_SHORT);
 	goto end_recog;
       }
     }
-    
-    /* if backtrellis function returns with bad status, terminate search */
-    if (recog->backmax == LOG_ZERO) {
-      for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -1;
-      callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
+#ifdef POWER_REJECT
+    if (power_reject(recog)) {
+      result_error(recog, J_RESULT_STATUS_REJECT_POWER);
       goto end_recog;
     }
+#endif
     
     /* if terminate signal has been received, cancel this input */
-    if (recog->process_want_terminate) goto end_recog;
+    if (recog->process_want_terminate) {
+      result_error(recog, J_RESULT_STATUS_TERMINATE);
+      goto end_recog;
+    }
     
     /* if GMM is specified and result are to be rejected, terminate search here */
     if (jconf->reject.gmm_reject_cmn_string != NULL) {
-      ok_p = TRUE;
-      for(ir=0;ir<recognum;ir++) {
-	if (! gmm_valid_input(recoglist[ir])) ok_p = FALSE;
-      }
-      if (! ok_p) {
-	for(ir=0;ir<recognum;ir++) recoglist[ir]->result.status = -3;
-	callback_multi_exec(CALLBACK_RESULT, recoglist, recognum);
+      if (! gmm_valid_input(recog)) {
+	result_error(recog, J_RESULT_STATUS_REJECT_GMM);
 	goto end_recog;
       }
-    }
-
-    /* if [-1pass] is specified, terminate search here */
-    if (jconf->sw.compute_only_1pass) {
-      goto end_recog;
     }
 
     /***********************************************/
@@ -629,80 +1015,140 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
     /***********************************************/
 #if !defined(PASS2_STRICT_IWCD) || defined(FIX_35_PASS2_STRICT_SCORE)    
     /* adjust trellis score not to contain outprob of the last frames */
-    for(ir=0;ir<recognum;ir++) {
-      if (!recoglist[ir]->model->hmminfo->multipath) {
-	bt_discount_pescore(recoglist[ir]->wchmm, recoglist[ir]->backtrellis, recoglist[ir]->param);
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      /* if [-1pass] is specified, skip 2nd pass */
+      if (r->config->compute_only_1pass) continue;
+      /* if search already failed on 1st pass, skip 2nd pass */
+      if (r->result.status < 0) continue;
+      if (! r->am->hmminfo->multipath) {
+	bt_discount_pescore(r->wchmm, r->backtrellis, r->am->mfcc->param);
       }
 #ifdef LM_FIX_DOUBLE_SCORING
-      if (recoglist[ir]->lmtype == LM_PROB) {
-	bt_discount_lm(recoglist[ir]->backtrellis);
+      if (r->lmtype == LM_PROB) {
+	bt_discount_lm(r->backtrellis);
       }
 #endif
     }
 #endif
     
     /* execute stack-decoding search */
-    for(ir=0;ir<recognum;ir++) {
-      if (recoglist[ir]->lmtype == LM_PROB) {
-	wchmm_fbs(recog->param, recoglist[ir], 0, 0);
-      } else if (recoglist[ir]->lmtype == LM_DFA) {
-	if (jconf->output.multigramout_flag) {
+    callback_exec(CALLBACK_EVENT_PASS2_BEGIN, recog);
+
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      /* if [-1pass] is specified, skip 2nd pass */
+      if (r->config->compute_only_1pass) continue;
+      /* if search already failed on 1st pass, skip 2nd pass */
+      if (r->result.status < 0) continue;
+      if (r->lmtype == LM_PROB) {
+	wchmm_fbs(r->am->mfcc->param, r, 0, 0);
+      } else if (r->lmtype == LM_DFA) {
+	if (r->config->output.multigramout_flag) {
 	  /* execute 2nd pass multiple times for each grammar sequencially */
 	  /* to output result for each grammar */
 	  MULTIGRAM *m;
-	  for(m = recoglist[ir]->model->grammars; m; m = m->next) {
+	  for(m = r->lm->grammars; m; m = m->next) {
 	    if (m->active) {
 	      jlog("STAT: execute 2nd pass limiting words for gram #%d\n", m->id);
-	      wchmm_fbs(recog->param, recoglist[ir], m->cate_begin, m->dfa->term_num);
+	      wchmm_fbs(r->am->mfcc->param, r, m->cate_begin, m->dfa->term_num);
 	    }
 	  }
 	} else {
 	  /* only the best among all grammar will be output */
-	  wchmm_fbs(recog->param, recoglist[ir], 0, recoglist[ir]->model->dfa->term_num);
+	  wchmm_fbs(r->am->mfcc->param, r, 0, r->lm->dfa->term_num);
 	}
       }
     }
+
+    /* output result */
+    callback_exec(CALLBACK_RESULT, recog);
+    /* output graph */
+    /* r->result.wg == NULL should be skipped inside the callback */
+    ok_p = FALSE;
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      if (r->config->graph.lattice) ok_p = TRUE;
+    }
+    if (ok_p) callback_exec(CALLBACK_RESULT_GRAPH, recog);
+    /* output confnet */
+    /* r->result.confnet == NULL should be skipped inside the callback */
+    ok_p = FALSE;
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      if (r->config->graph.confnet) ok_p = TRUE;
+    }
+    if (ok_p) callback_exec(CALLBACK_RESULT_CONFNET, recog);
+
+    /* clear work area for output */
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      clear_result(r);
+    }
+    
+    /* output end of 2nd pass */
+    callback_exec(CALLBACK_EVENT_PASS2_END, recog);
 
   end_recog:
     /**********************/
     /* end of recognition */
     /**********************/
 
-#ifdef SP_BREAK_CURRENT_FRAME
-    callback_multi_exec(CALLBACK_EVENT_SEGMENT_END, recoglist, recognum);
-    if (recog->rest_param == NULL) callback_multi_exec(CALLBACK_EVENT_RECOGNITION_END, recoglist, recognum);
+    process_segment_last = recog->process_segment;
+    if (jconf->decodeopt.segment) { /* sp-segment mode */
+      /* param is now shrinked to hold only the processed input, and */
+      /* the rests are holded in (newly allocated) "rest_param" */
+      /* if this is the last segment, rest_param is NULL */
+      /* assume all segmentation are synchronized */
+      recog->process_segment = FALSE;
+      for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	if (mfcc->rest_param != NULL) {
+	  /* process the rest parameters in the next loop */
+	  recog->process_segment = TRUE;
+	  free_param(mfcc->param);
+	  mfcc->param = mfcc->rest_param;
+	  mfcc->rest_param = NULL;
+	}
+      }
+    }
+
+    /* callback of recognition end */
+    if (jconf->decodeopt.segment) {
+#ifdef BACKEND_VAD
+      if (recog->triggered) callback_exec(CALLBACK_EVENT_SEGMENT_END, recog);
+      if (process_segment_last && !recog->process_segment) callback_exec(CALLBACK_EVENT_RECOGNITION_END, recog);
 #else
-    callback_multi_exec(CALLBACK_EVENT_RECOGNITION_END, recoglist, recognum);
+      callback_exec(CALLBACK_EVENT_SEGMENT_END, recog);
+      if (!recog->process_segment) callback_exec(CALLBACK_EVENT_RECOGNITION_END, recog);
 #endif
+    } else {
+      callback_exec(CALLBACK_EVENT_RECOGNITION_END, recog);
+    }
+
 
     /* update CMN info for next input (in case of realtime wave input) */
-    if (jconf->input.speech_input != SP_MFCFILE && jconf->search.pass1.realtime_flag && recog->param->samplenum > 0) {
-      RealTimeCMNUpdate(recog->param, recog);
+    if (jconf->input.speech_input != SP_MFCFILE && jconf->decodeopt.realtime_flag) {
+      for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	if (mfcc->param->samplenum > 0) {
+	  RealTimeCMNUpdate(mfcc, recog);
+	}
+      }
     }
     
-    jlog("\n");
+    if (verbose_flag) jlog("\n");
     jlog_flush();
 
-#ifdef SP_BREAK_CURRENT_FRAME
-    /* param is now shrinked to hold only the processed input, and */
-    /* the rests are holded in (newly allocated) "rest_param" */
-    /* if this is the last segment, rest_param is NULL */
-    if (recog->rest_param != NULL) {
-      /* process the rest parameters in the next loop */
-      recog->process_segment = TRUE;
-      jlog("STAT: <<<restart the rest>>>\n\n");
-      free_param(recog->param);
-      recog->param = recog->rest_param;
-      recog->rest_param = NULL;
-    } else {
-      recog->process_segment = FALSE;
+    if (jconf->decodeopt.segment) { /* sp-segment mode */
+      if (recog->process_segment == TRUE) {
+	if (verbose_flag) jlog("STAT: <<<restart the rest>>>\n\n");
+      } else {
+	/* input has reached end of stream, terminate program */
+	if (ret <= 0 && ret != -2) break;
+      }
+    } else {			/* not sp-segment mode */
       /* input has reached end of stream, terminate program */
       if (ret <= 0 && ret != -2) break;
     }
-#else
-    /* input has reached end of stream, terminate program */
-    if (ret <= 0 && ret != -2) break;
-#endif
 
     /* recognition continues for next (silence-aparted) segment */
       
@@ -726,65 +1172,58 @@ j_recognize_stream_main(Recog **recoglist, int recognum)
 
 }
 
-/* returns -1 on error, 0 on end of stream */
-/* when pause requested by any callback, recognition stops here and
-   call callbacks for it */
-int
-j_recognize_stream_multi(Recog **recoglist, int num)
-{
-  int ret;
-  int i;
-  int n;
-
-  do {
-    
-    ret = j_recognize_stream_main(recoglist, num);
-
-    switch(ret) {
-    case 1:	      /* paused by a callback (stream will continue) */
-      /* call pause event callbacks */
-      callback_multi_exec(CALLBACK_EVENT_PAUSE, recoglist, num);
-      /* call pause functions */
-      /* block until all pause functions exits */
-      n = 0;
-      for (i = 0; i < num; i++) {
-	if (callback_exist(recoglist[i], CALLBACK_PAUSE_FUNCTION)) {
-	  callback_exec(CALLBACK_PAUSE_FUNCTION, recoglist[i]);
-	  n++;
-	}
-      }
-      if (n == 0) {
-	jlog("WARNING: pause requested but no pause function specified\n");
-	jlog("WARNING: engine will resume now immediately\n");
-      }
-      /* after here, recognition will restart for the rest input */
-      /* call resume event callbacks */
-      callback_multi_exec(CALLBACK_EVENT_RESUME, recoglist, num);
-      break;
-    case 0:			/* end of stream */
-      /* go on to the next input */
-      break;
-    case -1: 		/* error */
-      jlog("ERROR: an error occured while recognition, terminate stream\n");
-      return -1;
-    }
-  } while (ret == 1);		/* loop when paused by callback */
-
-  return 0;
-}
-
-/* returns -1 on error, 0 on end of stream */
-/* when pause requested by any callback, recognition stops here and
-   call callbacks for it */
+/** 
+ * <EN>
+ * @brief  Recognize an input stream.
+ *
+ * This function repeat recognition process for the whole input stream,
+ * using segmentation and detection if required.  It ends when the
+ * whole input has been processed.
+ *
+ * When a recognition stop is requested from application, the following
+ * callbacks will be called in turn: CALLBACK_EVENT_PAUSE,
+ * CALLBACK_PAUSE_FUNCTION, CALLBACK_EVENT_RESUME.  After finishing executing
+ * all functions in these callbacks, recognition will restart.
+ * If you have something to be processed while recognition stops,
+ * you should write the function as callback to CALLBACK_PAUSE_FUNCTION.
+ * Note that recognition will restart immediately after all functions
+ * registered in CALLBACK_PAUSE_FUNCTION has been finished.
+ * 
+ * </EN>
+ * <JA>
+ * @brief  入力ストリームの認識を行う
+ *
+ * 入力ストリームに対して
+ * （必要であれば）区間検出やVADを行いながら認識を繰り返し行っていく. 
+ * 入力が終端に達するかあるいはエラーで終了する. 
+ *
+ * アプリケーションから認識の中断をリクエストされたときは，
+ * CALLBACK_EVENT_PAUSE，CALLBACK_PAUSE_FUNCTION,
+ * CALLBACK_EVENT_RESUME の順に呼んだあと認識に戻る. このため，
+ * 認識を中断させている間に行う処理は，CALLBACK_PAUSE_FUNCTION
+ * に登録しておく必要がある. CALLBACK_PAUSE_FUNCTION に
+ * 登録されている全ての処理が終了したら認識を自動的に再開するので
+ * 注意すること. 
+ * 
+ * </JA>
+ * 
+ * @param recog [i/o] engine instance
+ * 
+ * @return 0 when finished recognizing all the input stream to the end,
+ * or -1 on error.
+ * 
+ * @callgraph
+ * @callergraph
+ * @ingroup engine
+ */
 int
 j_recognize_stream(Recog *recog)
 {
   int ret;
-  int i;
 
   do {
     
-    ret = j_recognize_stream_main(&recog, 1);
+    ret = j_recognize_stream_core(recog);
 
     switch(ret) {
     case 1:	      /* paused by a callback (stream will continue) */
@@ -813,3 +1252,4 @@ j_recognize_stream(Recog *recog)
   return 0;
 }
 
+/* end of file */

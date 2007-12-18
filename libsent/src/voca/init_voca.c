@@ -1,7 +1,5 @@
 /**
  * @file   init_voca.c
- * @author Akinobu LEE
- * @date   Fri Feb 18 19:41:12 2005
  * 
  * <JA>
  * @brief  単語辞書ファイルをメモリに読み込む
@@ -11,13 +9,16 @@
  * @brief  Load a word dictionary into memory
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 18 19:41:12 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -41,7 +42,6 @@ init_voca(WORD_INFO *winfo, char *filename, HTK_HMM_INFO *hmminfo, boolean not_c
 {
   FILE *fd;
 
-  jlog("Stat: init_voca: reading in word dictionary\n");
   if ((fd = fopen_readfile(filename)) == NULL) {
     jlog("Error: init_voca: failed to open %s\n",filename);
     return(FALSE);
@@ -70,7 +70,9 @@ init_voca(WORD_INFO *winfo, char *filename, HTK_HMM_INFO *hmminfo, boolean not_c
  * @param winfo [out] pointer to a word dictionary data to store the read data
  * @param filename [in] file name of the word dictionary to read
  * @param hmminfo [in] %HMM definition data, needed for triphone conversion.
- * @param not_conv_tri [in] TRUE if not converting monophone to triphone.
+ * @param headphone [in] word head silence phone name
+ * @param tailphone [in] word tail silence phone name
+ * @param conextphone [in] silence context name at head and tail phoneme
  * @param force_dict [in] TRUE if want to ignore the error words in the dictionary
  * 
  * @return TRUE on success, FALSE on failure.

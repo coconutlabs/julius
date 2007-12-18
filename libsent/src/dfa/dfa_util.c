@@ -1,7 +1,5 @@
 /**
  * @file   dfa_util.c
- * @author Akinobu LEE
- * @date   Tue Feb 15 14:18:36 2005
  * 
  * <JA>
  * @brief  文法の情報をテキストで出力
@@ -11,13 +9,16 @@
  * @brief  Output text informations about the grammar
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 15 14:18:36 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -26,23 +27,25 @@
 
 /** 
  * Output overall grammar information to stdout.
- * 
+ *
+ * @param fp [in] file pointer
  * @param dinfo [in] DFA grammar
  */
 void
 print_dfa_info(FILE *fp, DFA_INFO *dinfo)
 {
   if (fp == NULL) return;
-  fprintf(fp, "DFA grammar info:\n");
+  fprintf(fp, " DFA grammar info:\n");
   fprintf(fp, "      %d nodes, %d arcs, %d terminal(category) symbols\n",
 	 dinfo->state_num, dinfo->arc_num, dinfo->term_num);
-  fprintf(fp, "      category-pair matrix size is %d bytes\n",
+  fprintf(fp, "      size of category-pair matrix is %d bytes\n",
 	 sizeof(unsigned char) * dinfo->term_num * dinfo->term_num / 8);
 }
 
 /** 
  * Output the category-pair matrix in text format to stdout
  * 
+ * @param fp [in] file pointer
  * @param dinfo [in] DFA grammar that holds category pair matrix
  */
 void

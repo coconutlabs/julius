@@ -1,7 +1,5 @@
 /**
  * @file   ngram_access.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 07:46:18 2005
  * 
  * <JA>
  * @brief  単語列・クラス列の N-gram 確率を求める
@@ -12,13 +10,16 @@
  * @brief  Get N-gram probability of a word/class sequence.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 07:46:18 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -31,8 +32,9 @@
  * Search for n-gram tuple.
  * 
  * @param ndata [in] word/class N-gram
- * @param w_l [in] left word/class ID in N-gram
- * @param w_r [in] right word/class ID in N-gram
+ * @param n [in] N of N-gram
+ * @param nid_prev [in] context (N-1)-gram tuple ID
+ * @param wkey [in] the target word ID
  * 
  * @return corresponding index to the 2-gram data part if found, or
  * NNID_INVALID if the tuple does not exist in 2-gram.
@@ -212,7 +214,6 @@ ngram_prob(NGRAM_INFO *ndata, int n, WORD_ID *w)
   return(p);
 }
 
-
 /* ---------------------------------------------------------------------- */
 /* separate access functions for the 1st pass */
 
@@ -234,6 +235,16 @@ uni_prob(NGRAM_INFO *ndata, WORD_ID w)
   }
 }
 
+/**
+ * Find bi-gram entry.  Assumes ct_compaction and is24bit is FALSE on 2-gram
+ * 
+ * @param ndata [in] N-gram data that holds the 2-gram
+ * @param w_context [in] context word ID
+ * @param w [in] target word ID
+ * 
+ * @return the ID of N-gram tuple entry ID where the (w_context, w) exists.
+ * 
+ */
 static NNID
 search_bigram(NGRAM_INFO *ndata, WORD_ID w_context, WORD_ID w)
 {
@@ -262,6 +273,17 @@ search_bigram(NGRAM_INFO *ndata, WORD_ID w_context, WORD_ID w)
   }
 }
 
+/** 
+ * Get LR bi-gram prob: for LR N-gram
+ * 
+ * @param ndata [in] N-gram data that holds the 2-gram
+ * @param w1 [in] left context word
+
+ * @param w2 [in] right target word
+ * 
+ * @return the log N-gram probability P(w2|w1)
+ * 
+ */
 static LOGPROB
 bi_prob_normal(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 {
@@ -282,6 +304,18 @@ bi_prob_normal(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
   }
 }
 
+/** 
+ * Get LR bi-gram prob: for RL N-gram with additional LR 2-gram, in
+ * old bingram format.  The old format has 2-gram index in reversed
+ * orfer, so this function is for old bingram formats.
+ * 
+ * @param ndata [in] N-gram data that holds the 2-gram
+ * @param w1 [in] left context word
+ * @param w2 [in] right target word
+ * 
+ * @return the log N-gram probability P(w2|w1)
+ * 
+ */
 static LOGPROB
 bi_prob_additional_oldbin(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 {
@@ -303,6 +337,16 @@ bi_prob_additional_oldbin(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 }
 
 
+/** 
+ * Get LR bi-gram prob: for RL N-gram with additional LR 2-gram.
+ * 
+ * @param ndata [in] N-gram data that holds the 2-gram
+ * @param w1 [in] left context word
+ * @param w2 [in] right target word
+ * 
+ * @return the log N-gram probability P(w2|w1)
+ * 
+ */
 static LOGPROB
 bi_prob_additional(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 {
@@ -324,6 +368,17 @@ bi_prob_additional(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 }
 
 
+/** 
+ * Get LR bi-gram prob: for RL N-gram with no LR 2-gram.
+ * This function will compute the LR 2-gram from the RL 2-gram.
+ * 
+ * @param ndata [in] N-gram data that holds the 2-gram
+ * @param w1 [in] left context word
+ * @param w2 [in] right target word
+ * 
+ * @return the log N-gram probability P(w2|w1)
+ * 
+ */
 static LOGPROB
 bi_prob_compute(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 {
@@ -347,6 +402,19 @@ bi_prob_compute(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
   }
 }
 
+
+/** 
+ * Get 2-gram probability
+ * This function is not used in Julius, since each function of bi_prob_*
+ * will be called directly from the search.
+ * 
+ * @param ndata [in] N-gram data that holds the 2-gram
+ * @param w1 [in] left context word
+ * @param w2 [in] right target word
+ * 
+ * @return the log N-gram probability P(w2|w1)
+ * 
+ */
 LOGPROB
 bi_prob(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
 {
@@ -368,7 +436,15 @@ bi_prob(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
   }
   return p;
 }
-    
+
+/** 
+ * Determinte which bi-gram computation function to be used according to
+ * the N-gram type, and set pointer to the proper function into the
+ * N-gram data.
+ * 
+ * @param ndata [i/o] N-gram information to use
+ * 
+ */    
 void
 bi_prob_func_set(NGRAM_INFO *ndata)
 {

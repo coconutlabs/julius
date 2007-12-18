@@ -1,7 +1,5 @@
 /**
  * @file   dfa.h
- * @author Akinobu LEE
- * @date   Thu Feb 10 18:21:27 2005
  *
  * <EN>
  * @brief  Definitions for DFA grammar and category-pair information
@@ -28,13 +26,16 @@
  * 単語対情報も保持します．これは文法を読みだし後に内部でDFAから抽出されます．
  * </JA>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 10 18:21:27 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -94,7 +95,6 @@ typedef struct {
   WORD_ID sp_id;		///< Word ID of short pause word
 } DFA_INFO;
 
-
 DFA_INFO *dfa_info_new();
 void dfa_info_free(DFA_INFO *dfa);
 void dfa_state_init(DFA_INFO *dinfo);
@@ -127,6 +127,7 @@ void free_dfa_cp(DFA_INFO *dfa);
 #include <sent/vocabulary.h>
 boolean make_dfa_voca_ref(DFA_INFO *dinfo, WORD_INFO *winfo);
 void make_terminfo(TERM_INFO *tinfo, DFA_INFO *dinfo, WORD_INFO *winfo);
+void free_terminfo(TERM_INFO *tinfo);
 void terminfo_append(TERM_INFO *dst, TERM_INFO *src, int coffset, int woffset);
 #include <sent/htk_hmm.h>
 void dfa_find_pause_word(DFA_INFO *dfa, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);

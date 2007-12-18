@@ -1,18 +1,16 @@
 /**
  * @file   search.h
- * @author Akinobu Lee
- * @date   Wed Sep 07 07:40:11 2005
  * 
  * <JA>
  * @brief  第2パスで使用する仮説候補を扱う構造体
  *
  * ここでは，第2パスのスタックデコーディングで用いられる仮説候補の構造体
- * が定義されています．NODE は部分文候補を保持し，合計スコアや現在のViterbi
+ * が定義されています. NODE は部分文候補を保持し，合計スコアや現在のViterbi
  * スコア，言語スコア，信頼度スコア，推定された終端フレームなどの様々な仮説
- * 情報を保持します．WordGraph は単語グラフ生成時にグラフ中の単語をあらわす
- * のに用いられます．NEXTWORD は単語展開時に次単語候補を表現します．POPNODE
+ * 情報を保持します. WordGraph は単語グラフ生成時にグラフ中の単語をあらわす
+ * のに用いられます. NEXTWORD は単語展開時に次単語候補を表現します. POPNODE
  * は探索空間可視化機能 (--enable-visualize) 指定時に，探索の過程を残しておく
- * のに使われます．
+ * のに使われます. 
  * </JA>
  * 
  * <EN>
@@ -28,13 +26,16 @@
  * hypothesis expantion stage. POPNODE will be used when Visualization is
  * enabled to store the search trail.
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Wed Sep 07 07:40:11 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -43,8 +44,8 @@
 
 /**
  * <JA>
- * 第2パスの次単語候補．ある仮説から次に接続しうる単語の集合をあらわすのに
- * 用いられる．
+ * 第2パスの次単語候補. ある仮説から次に接続しうる単語の集合をあらわすのに
+ * 用いられる. 
  * </JA>
  * <EN>
  * Next word candidate in the 2nd pass.  This will be used to hold word
@@ -62,7 +63,7 @@ typedef struct __nextword__ {
 #ifdef VISUALIZE
 /**
  * <JA>
- * 可視化機能用に，第2パスでpopされたトレリス単語の情報を保持する．
+ * 可視化機能用に，第2パスでpopされたトレリス単語の情報を保持する. 
  * </JA>
  * <EN>
  * Store popped trellis words on the 2nd pass for visualization.
@@ -127,7 +128,7 @@ typedef struct __node__ {
   LOGPROB tail_g_score;		///< forward g score for later score adjustment
 #endif
 
-  struct __Recog__ *region;		///> Where this node belongs to
+  struct __recogprocess__ *region;		///> Where this node belongs to
 
 } NODE;
 

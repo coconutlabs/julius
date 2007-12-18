@@ -1,7 +1,5 @@
 /**
  * @file   gms_gprune.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 15:05:08 2005
  * 
  * <JA>
  * @brief  Gaussian Mixture Selection のための Gaussian pruning を用いたモノフォンHMMの計算
@@ -11,13 +9,16 @@
  * @brief  Calculate the GMS monophone %HMM for Gaussian Mixture Selection using Gaussian pruning
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 15:05:08 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -35,8 +36,8 @@
 /** 
  * Initialization of GMS %HMM likelihood computation.
  * 
- * @param hmminfo [in] GMS %HMM definition
- * @param gsset_num [in] number of states in GMS %HMM
+ * @param wrk [i/o] HMM computation work area
+ *
  */
 void
 gms_gprune_init(HMMWork *wrk)
@@ -46,6 +47,8 @@ gms_gprune_init(HMMWork *wrk)
 
 /** 
  * Prepare GMS %HMM computation for the next speech input.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  */
 void
@@ -60,6 +63,8 @@ gms_gprune_prepare(HMMWork *wrk)
 /**
  * Free GMS related work area.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 void
 gms_gprune_free(HMMWork *wrk)
@@ -72,6 +77,7 @@ gms_gprune_free(HMMWork *wrk)
 /** 
  * Compute only max by safe pruning
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param binfo [in] Gaussian density
  * @param thres [in] constant pruning threshold
  * 
@@ -108,6 +114,7 @@ calc_contprob_with_safe_pruning(HMMWork *wrk, HTK_HMM_Dens *binfo, LOGPROB thres
  * Compute log output likelihood of a state.  Only maximum Gaussian will be
  * computed.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param stateinfo [in] %HMM state to compute
  * @param last_maxi [in] the mixture id that got the maximum value at the previous frame, or -1 if not exist.
  * @param maxi_ret [out] tue mixture id that get the maximum value at this call.
@@ -156,6 +163,7 @@ compute_g_max(HMMWork *wrk, HTK_HMM_State *stateinfo, int last_maxi, int *maxi_r
  * Compute log output likelihood of a state.  Only maximum Gaussian will be
  * computed.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param stateinfo [in] %HMM state to compute
  * 
  * @return the log likelihood.
@@ -189,9 +197,8 @@ compute_g_max(HMMWork *wrk, HTK_HMM_State *stateinfo)
  * that this will be called for sequencial frame, since it utilizes the
  * result of previous frame for faster pruning.
  * 
- * @param gsset [in] list of GMS %HMM state set.
- * @param gsset_num [in] length of above
- * @param scores_ret [out] array of scores for each GMS %HMM state
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 void
 compute_gs_scores(HMMWork *wrk)

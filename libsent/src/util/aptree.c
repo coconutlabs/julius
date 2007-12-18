@@ -1,7 +1,5 @@
 /**
  * @file   aptree.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 15:21:53 2005
  * 
  * <JA>
  * @brief  パトリシア検索木を用いた名前検索：データ型がポインタの場合
@@ -11,13 +9,16 @@
  * @brief  Patricia index tree for name lookup: data type = pointer
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 15:21:53 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

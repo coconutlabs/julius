@@ -6,31 +6,52 @@
 #
 # argument: any configure options except "--enable-setup=..." is allowed.
 # 
-JULIUS_VERSION=4.0RC1
+JULIUS_VERSION=4.0
 
 ######################################################################
 
-mkdir build-bin
+mkdir build
 dir=`pwd`
 
 # make julius and other tools with default setting
-./configure $* --bindir=${dir}/build-bin
+./configure --prefix=${dir}/build $*
 make
-make install.bin
+make install
 
-# make julius/julian with another setting
-rm ${dir}/build-bin/julius
+# make julius with another setting
+rm ${dir}/build/bin/julius
 cd julius
-make install.bin INSTALLTARGET=julius-${VERSION}
+make install.bin INSTALLTARGET=julius-${JULIUS_VERSION}
 
-# julius-standard
+# standard
+cd ../libjulius
 make distclean
-./configure $* --bindir=${dir}/build-bin --enable-setup=standard
-make install.bin INSTALLTARGET=julius-${VERSION}-std
+./configure --prefix=${dir}/build --enable-setup=standard $*
+make
+cd ../julius
+make clean
+make install.bin INSTALLTARGET=julius-${JULIUS_VERSION}-std
+
+# GMM-VAD
+cd ../libjulius
+make distclean
+./configure --prefix=${dir}/build --enable-gmm-vad $*
+make
+cd ../julius
+make clean
+make install.bin INSTALLTARGET=julius-${JULIUS_VERSION}-gmm-vad
+
+# Decoder-VAD
+cd ../libjulius
+make distclean
+./configure --prefix=${dir}/build --enable-decoder-vad --enable-power-reject $*
+make
+cd ../julius
+make clean
+make install.bin INSTALLTARGET=julius-${JULIUS_VERSION}-decoder-vad
 
 # finished
 cd ..
 make distclean
-strip build-bin/*
-ls build-bin
+strip build/bin/*
 echo '###### FINISHED ######'

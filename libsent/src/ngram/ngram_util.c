@@ -1,7 +1,5 @@
 /**
  * @file   ngram_util.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 17:18:55 2005
  * 
  * <JA>
  * @brief  N-gramの情報をテキスト出力する
@@ -11,19 +9,30 @@
  * @brief  Output some N-gram information to stdout
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 17:18:55 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include <sent/stddefs.h>
 #include <sent/ngram2.h>
 
+/**
+ * Get the work area size of an N-gram tuple.
+ * 
+ * @param t [in] N-gram tuple structure
+ * 
+ * @return the size in bytes
+ * 
+ */
 static int
 get_ngram_tuple_bytes(NGRAM_TUPLE_INFO *t)
 {
@@ -62,24 +71,20 @@ get_ngram_tuple_bytes(NGRAM_TUPLE_INFO *t)
 
 /** 
  * Output misccelaneous information of N-gram to standard output.
- * 
+ *
+ * @param fp [in] file pointer
  * @param ndata [in] N-gram data
  */
 void
 print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
 {
   int i;
-  fprintf(fp, "N-gram info:\n");
+  fprintf(fp, " N-gram info:\n");
   //fprintf(fp, "\t  struct version = %d\n", ndata->version);
 
-  fprintf(fp, "\t            type = %d-gram", ndata->n);
+  fprintf(fp, "\t            spec = %d-gram", ndata->n);
   if (ndata->dir == DIR_RL) {
-    fprintf(fp, ", backward (right-to-left)");
-    if (ndata->bo_wt_1) {
-      fprintf(fp, " with additional forward 2-gram for pass1\n");
-    } else {
-      fprintf(fp, ", use estimated 2-gram for pass1\n");
-    }
+    fprintf(fp, ", backward (right-to-left)\n");
   } else {
     fprintf(fp, ", forward (left-to-right)\n");
   }
@@ -101,5 +106,15 @@ print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
   if (ndata->bo_wt_1) {
     fprintf(fp, "\tLR 2-gram entries= %8d  (%5.1f MB)\n", ndata->d[1].totalnum,
 	    (sizeof(LOGPROB) * ndata->d[1].totalnum + sizeof(LOGPROB) * ndata->d[0].context_num) / 1048576.0);
+  }
+  fprintf(fp, "\t           pass1 = ");
+  if (ndata->dir == DIR_RL) {
+    if (ndata->bo_wt_1) {
+      fprintf(fp, "given additional forward 2-gram\n");
+    } else {
+      fprintf(fp, "estimate 2-gram from the backward 2-gram\n");
+    }
+  } else {
+    fprintf(fp, "2-gram in the forward n-gram\n");
   }
 }

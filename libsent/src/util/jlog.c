@@ -1,7 +1,5 @@
 /**
  * @file   jlog.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 16:02:41 2005
  * 
  * <JA>
  * @brief  メッセージテキスト出力とエラー終了
@@ -21,13 +19,16 @@
  * The character set conversion will also be performed here.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 16:02:41 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -40,6 +41,13 @@ static boolean initialized = FALSE;
 
 #define MAX_PRINTF_LEN 4096	///< Maximum string length at one printf call
 
+/** 
+ * Set file pointer to output the log.  Set to NULL to totally disable
+ * the log outputs.
+ * 
+ * @param fp [in] file pointer or NULL to disable
+ * 
+ */
 void
 jlog_set_output(FILE *fp)
 {
@@ -47,6 +55,12 @@ jlog_set_output(FILE *fp)
   initialized = TRUE;
 }
 
+/** 
+ * Return the current file pointer to output log.
+ * 
+ * @return the file pointer.
+ * 
+ */
 FILE *
 jlog_get_fp()
 {

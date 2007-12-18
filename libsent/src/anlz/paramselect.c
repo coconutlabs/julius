@@ -1,7 +1,5 @@
 /**
  * @file   paramselect.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 20:46:39 2005
  *
  * <JA>
  * @brief  パラメータベクトルの型のチェックと調整
@@ -35,13 +33,16 @@
  *    -# Allocate a new parameter area and copy needed (=NOT marked) element.
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 20:46:39 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -55,6 +56,8 @@
  * 
  * @param loc [in] beginning dimension to mark
  * @param len [in] number of dimension to mark from @a loc
+ * @param vmark [in] mark buffer
+ * @param vlen [in] length of vmark
  */
 static void
 mark_exclude_vector(int loc, int len, int *vmark, int vlen)
@@ -92,6 +95,7 @@ mark_exclude_vector(int loc, int len, int *vmark, int vlen)
  * Execute vector element exclusion will be done inline.
  * 
  * @param p [i/o] parameter
+ * @param vmark [in] mark buffer
  */
 static void
 exec_exclude_vectors(HTK_Param *p, int *vmark)
@@ -154,6 +158,9 @@ guess_basenum(HTK_Param *p, short qualtype)
  * 
  * @param src [in] input parameter
  * @param dst_type_arg [in] required parameter type
+ * @param vmark [in] mark buffer
+ * @param vlen [in] length of vmark
+ * @param new_type [out] return the new type
  * 
  * @return TRUE on success, FALSE on failure.
  */

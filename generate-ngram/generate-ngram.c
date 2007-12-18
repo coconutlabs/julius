@@ -53,7 +53,6 @@ s1(void *p, void *q)
 int
 main(int argc, char *argv[])
 {
-  FILE *fp;
   char *binfile;
   char *bos_str = NULL, *eos_str = NULL, *ignore_str = NULL;
   int i;
@@ -137,7 +136,6 @@ main(int argc, char *argv[])
   /* generate */
   {
     int sent;
-    WORD_ID w;
     WORD_ID w_start, w_end;
     WORD_ID *windex;
     int i, j, ntmp;
@@ -155,12 +153,12 @@ main(int argc, char *argv[])
     /* first word */
     if ((w_start = ngram_lookup_word(ngram, bos_str)) == WORD_INVALID) {
       printf("Error: word \"%s\" not found as beginning-of-sentence\n", bos_str);
-      return;
+      return -1;
     }
     if (verbose) printf("BOS = %s\n", ngram->wname[w_start]);
     if ((w_end = ngram_lookup_word(ngram, eos_str)) == WORD_INVALID) {
       printf("Error: word \"%s\" not found as end-of-sentence\n", eos_str);
-      return;
+      return -1;
     }
     if (verbose) printf("EOS = %s\n", ngram->wname[w_end]);
 

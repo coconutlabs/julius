@@ -15,8 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
-#include <jlib.h>
-#include <jlibconfig.h>
+#include "jlib.h"
+#include "jlibconfig.h"
 
 #include <sent/stddefs.h>
  

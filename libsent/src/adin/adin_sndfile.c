@@ -1,7 +1,5 @@
 /**
  * @file   adin_sndfile.c
- * @author Akinobu LEE
- * @date   Mon Feb 14 12:13:27 2005
  * 
  * <JA>
  * @brief  ファイル入力：libsndfile を用いた音声ファイル読み込み
@@ -60,13 +58,16 @@
  * @sa http://www.mega-nerd.com/libsndfile/
  * </EN>
  *
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Mon Feb 14 12:13:27 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -336,6 +337,19 @@ adin_sndfile_end()
     return FALSE;
   }
   return TRUE;
+}
+
+/** 
+ * 
+ * A tiny function to get current input raw speech file name.
+ * 
+ * @return string of current input speech file.
+ * 
+ */
+char *
+adin_sndfile_get_current_filename()
+{
+  return(speechfilename);
 }
 
 #endif /* ~HAVE_LIBSNDFILE */

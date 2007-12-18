@@ -1,7 +1,5 @@
 /**
  * @file   ptree.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 15:34:39 2005
  * 
  * <JA>
  * @brief  パトリシア検索木を用いた名前検索：データ型が int の場合
@@ -11,13 +9,16 @@
  * @brief  Patricia index tree for name lookup: data type = int
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 15:34:39 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -47,7 +48,9 @@ testbit(char *str, int bitplace)
 /** 
  * Local bit test function for search.
  * 
+ * @param str [in] key string
  * @param bitplace [in] bit place to test.
+ * @param maxbitplace [in] maximum number of bitplace
  * 
  * @return the content of tested bit in @a tmp_str, either 0 or 1.
  */
@@ -80,7 +83,6 @@ where_the_bit_differ(char *str1, char *str2)
   return(bitloc);
 }
 
-
 /** 
  * Allocate a new node.
  * 
@@ -198,6 +200,8 @@ disp_ptree(PATNODE *node, int level)
  * Recursive function to search the data in the tree
  * 
  * @param node [in] current node.
+ * @param str [in] key string
+ * @param maxbitplace [in] maximum number of bitplace
  * 
  * @return the found integer value.
  */

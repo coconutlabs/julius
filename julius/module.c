@@ -5,7 +5,9 @@
 #define DEFAULT_MODULEPORT 10500
 
 static int module_mode = FALSE;
+static int module_port = DEFAULT_MODULEPORT;
 int module_sd = -1;
+static RecogProcess *cur = NULL;
 
 #define MAXBUFLEN 4096 ///< Maximum line length of a message sent from a client
 static char mbuf[MAXBUFLEN];	///< Work buffer for message output
@@ -54,16 +56,46 @@ module_send(int sd, char *fmt, ...)
   return(ret);
 }
 
+static void
+send_process_stat(RecogProcess *r)
+{
+  module_send(module_sd, "<SR ID=\"%d\" NAME=\"%s\"", r->config->id, r->config->name);
+  switch(r->lmtype) {
+  case LM_PROB: module_send(module_sd, " LMTYPE=\"PROB\""); break;
+  case LM_DFA: module_send(module_sd, " LMTYPE=\"DFA\""); break;
+  }
+  switch(r->lmvar) {
+  case LM_NGRAM: module_send(module_sd, " LMVAR=\"NGRAM\""); break;
+  case LM_DFA_GRAMMAR: module_send(module_sd, " LMVAR=\"GRAMMAR\""); break;
+  case LM_DFA_WORD: module_send(module_sd, " LMVAR=\"WORD\""); break;
+  case LM_NGRAM_USER: module_send(module_sd, " LMVAR=\"USER\""); break;
+  }
+  if (r->live) {
+    module_send(module_sd, " LIVE=\"ACTIVE\"");
+  } else {
+    module_send(module_sd, " LIVE=\"INACTIVE\"");
+  }
+  module_send(module_sd, "/>\n.\n");
+}
+
+static void
+send_current_process(RecogProcess *r)
+{
+  module_send(module_sd, "<RECOGPROCESS INFO=\"CURRENT\">\n");
+  send_process_stat(r);
+  module_send(module_sd, "</RECOGPROCESS>\n.\n");
+}
+
 /** 
  * <JA>
- * @brief  モジュールコマンドを処理する．
+ * @brief  モジュールコマンドを処理する. 
  *
- * クライアントより与えられたコマンドを処理する．この関数はクライアントから
- * コマンドが送られてくるたびに音声認識処理に割り込んで呼ばれる．
+ * クライアントより与えられたコマンドを処理する. この関数はクライアントから
+ * コマンドが送られてくるたびに音声認識処理に割り込んで呼ばれる. 
  * ステータス等についてはここですぐに応答メッセージを送るが，
  * 文法の追加や削除などは，ここでは受信のみ行い，実際の変更処理
- * （各文法からのグローバル文法の再構築など）は認識処理の合間に実行される．
- * この文法再構築処理を実際に行うのは multigram_exec() である．
+ * （各文法からのグローバル文法の再構築など）は認識処理の合間に実行される. 
+ * この文法再構築処理を実際に行うのは multigram_update() である. 
  * 
  * @param command [in] コマンド文字列
  * </JA>
@@ -76,7 +108,7 @@ module_send(int sd, char *fmt, ...)
  * at this function immediately.  On the whole, grammar modification
  * (add/delete/(de)activation) will not be performed here.  The received
  * data are just stored in this function, and they will be processed later
- * by calling multigram_exec() between the recognition process.
+ * by calling multigram_update() between the recognition process.
  * 
  * @param command [in] command string
  * </EN>
@@ -88,11 +120,15 @@ msock_exec_command(char *command, Recog *recog)
   WORD_INFO *new_winfo;
   static char *p, *q;
   int gid;
-  char namebuf[MAXGRAMNAMELEN];
   int ret;
+  RecogProcess *r;
 
   /* prompt the received command string */
   printf("[[%s]]\n",command);
+
+  if (cur == NULL) {
+    cur = recog->process_list;
+  }
 
   if (strmatch(command, "STATUS")) {
     /* return status */
@@ -132,20 +168,17 @@ msock_exec_command(char *command, Recog *recog)
 	getl_fd(buf, MAXBUFLEN, module_sd)
 #endif
 	== NULL) {
-      fprintf(stderr, "Error: msock(INPUTONCHANGE): no argument\n"); exit(-1);
+      fprintf(stderr, "Error: msock(INPUTONCHANGE): no argument\n");
+      return;
     }
-    if (recog->lmtype == LM_DFA) {
-      if (strmatch(buf, "TERMINATE")) {
-	recog->gram_switch_input_method = SM_TERMINATE;
-      } else if (strmatch(buf, "PAUSE")) {
-	recog->gram_switch_input_method = SM_PAUSE;
-      } else if (strmatch(buf, "WAIT")) {
-	recog->gram_switch_input_method = SM_WAIT;
-      } else {
-	fprintf(stderr, "Error: msock(INPUTONCHANGE): unknown method [%s]\n", buf); exit(-1);
-      }
+    if (strmatch(buf, "TERMINATE")) {
+      recog->gram_switch_input_method = SM_TERMINATE;
+    } else if (strmatch(buf, "PAUSE")) {
+      recog->gram_switch_input_method = SM_PAUSE;
+    } else if (strmatch(buf, "WAIT")) {
+      recog->gram_switch_input_method = SM_WAIT;
     } else {
-      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+      fprintf(stderr, "Error: msock(INPUTONCHANGE): unknown method [%s]\n", buf); exit(-1);
     }
   } else if (strnmatch(command, "CHANGEGRAM", strlen("CHANGEGRAM"))) {
     /* receive grammar (DFA + DICT) from the socket, and swap the whole grammar  */
@@ -161,22 +194,22 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar_from_socket(module_sd, &new_dfa, &new_winfo, recog->model->hmminfo) == FALSE) {
+    if (read_grammar_from_socket(module_sd, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
-      if (recog->lmtype == LM_DFA) {
+      if (cur->lmtype == LM_DFA) {
 	/* delete all existing grammars */
-	multigram_delete_all(recog);
+	multigram_delete_all(cur->lm);
 	/* register the new grammar to multi-gram tree */
-	multigram_add(new_dfa, new_winfo, p, recog->model);
+	multigram_add(new_dfa, new_winfo, p, cur->lm);
 	/* need to rebuild the global lexicon */
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(recog);
 	/* tell module client  */
 	module_send(module_sd, "<GRAMMAR STATUS=\"RECEIVED\"/>\n.\n");
-	send_gram_info(recog);
+	send_gram_info(cur);
       } else {
-	module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+	module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
       }
     }
   } else if (strnmatch(command, "ADDGRAM", strlen("ADDGRAM"))) {
@@ -193,20 +226,20 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar_from_socket(module_sd, &new_dfa, &new_winfo, recog->model->hmminfo) == FALSE) {
+    if (read_grammar_from_socket(module_sd, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
-      if (recog->lmtype == LM_DFA) {
+      if (cur->lmtype == LM_DFA) {
 	/* add it to multi-gram tree */
-	multigram_add(new_dfa, new_winfo, p, recog->model);
+	multigram_add(new_dfa, new_winfo, p, cur->lm);
 	/* need to rebuild the global lexicon */
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(recog);
 	/* tell module client  */
 	module_send(module_sd, "<GRAMMAR STATUS=\"RECEIVED\"/>\n.\n");
-	send_gram_info(recog);
+	send_gram_info(cur);
       } else {
-	module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+	module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
       }
     }
   } else if (strmatch(command, "DELGRAM")) {
@@ -219,15 +252,16 @@ msock_exec_command(char *command, Recog *recog)
 	getl_fd(buf, MAXBUFLEN, module_sd)
 #endif
 	== NULL) {
-      fprintf(stderr, "Error: msock(DELGRAM): no argument\n"); exit(-1);
+      fprintf(stderr, "Error: msock(DELGRAM): no argument\n");
+      return;
     }
     /* extract IDs and mark them as delete
        (actual deletion will be performed on the next 
     */
-    if (recog->lmtype == LM_DFA) {
+    if (cur->lmtype == LM_DFA) {
       for(p=strtok(buf," ");p;p=strtok(NULL," ")) {
 	gid = atoi(p);
-	if (multigram_delete(gid, recog) == FALSE) { /* deletion marking failed */
+	if (multigram_delete(gid, cur->lm) == FALSE) { /* deletion marking failed */
 	  fprintf(stderr, "Warning: msock(DELGRAM): gram #%d failed to delete, ignored\n", gid);
 	  /* tell module */
 	  module_send(module_sd, "<ERROR MESSAGE=\"Gram #%d not found\"/>\n.\n", gid);
@@ -237,7 +271,7 @@ msock_exec_command(char *command, Recog *recog)
       /* tell engine to update at requested timing */
       schedule_grammar_update(recog);
     } else {
-      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
     }
   } else if (strmatch(command, "ACTIVATEGRAM")) {
     /* activate grammar in this engine */
@@ -249,13 +283,14 @@ msock_exec_command(char *command, Recog *recog)
 	getl_fd(buf, MAXBUFLEN, module_sd)
 #endif
 	== NULL) {
-      fprintf(stderr, "Error: msock(ACTIVATEGRAM): no argument\n"); exit(-1);
+      fprintf(stderr, "Error: msock(ACTIVATEGRAM): no argument\n");
+      return;
     }
     /* mark them as active */
-    if (recog->lmtype == LM_DFA) {
+    if (cur->lmtype == LM_DFA) {
       for(p=strtok(buf," ");p;p=strtok(NULL," ")) {
 	gid = atoi(p);
-	ret = multigram_activate(gid, recog);
+	ret = multigram_activate(gid, cur->lm);
 	if (ret == 1) {
 	  /* already active */
 	  module_send(module_sd, "<WARN MESSAGE=\"Gram #%d already active\"/>\n.\n", gid);
@@ -267,7 +302,7 @@ msock_exec_command(char *command, Recog *recog)
       /* tell engine to update at requested timing */
       schedule_grammar_update(recog);
     } else {
-      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
     }
   } else if (strmatch(command, "DEACTIVATEGRAM")) {
     /* deactivate grammar in this engine */
@@ -279,13 +314,14 @@ msock_exec_command(char *command, Recog *recog)
 	getl_fd(buf, MAXBUFLEN, module_sd)
 #endif
 	== NULL) {
-      fprintf(stderr, "Error: msock(DEACTIVATEGRAM): no argument\n"); exit(-1);
+      fprintf(stderr, "Error: msock(DEACTIVATEGRAM): no argument\n");
+      return;
     }
-    if (recog->lmtype == LM_DFA) {
+    if (cur->lmtype == LM_DFA) {
       /* mark them as not active */
       for(p=strtok(buf," ");p;p=strtok(NULL," ")) {
 	gid = atoi(p);
-	ret = multigram_deactivate(gid, recog);
+	ret = multigram_deactivate(gid, cur->lm);
 	if (ret == 1) {
 	  /* already inactive */
 	  module_send(module_sd, "<WARN MESSAGE=\"Gram #%d already inactive\"/>\n.\n", gid);
@@ -296,23 +332,284 @@ msock_exec_command(char *command, Recog *recog)
       }
       schedule_grammar_update(recog);
     } else {
-      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
     }
   } else if (strmatch(command, "SYNCGRAM")) {
     /* update grammar if necessary */
-    if (recog->lmtype == LM_DFA) {
-      multigram_exec(recog);  /* some modification occured if return TRUE */
+    if (cur->lmtype == LM_DFA) {
+      multigram_update(cur->lm);  /* some modification occured if return TRUE */
+      for(r=recog->process_list;r;r=r->next) {
+	if (r->lmtype == LM_DFA && r->lm->global_modified) {
+	  multigram_build(r);
+	}
+      }
+      cur->lm->global_modified = FALSE;
       module_send(module_sd, "<GRAMMAR STATUS=\"READY\"/>\n.\n");
     } else {
-      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"INVALID COMMAND\"/>\n.\n");
+      module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
     }
+  } else if (strmatch(command, "CURRENTPROCESS")) {
+    JCONF_SEARCH *sconf;
+    RecogProcess *r;
+    if (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	== NULL) {
+      /* when no argument, just return current process */
+      send_current_process(cur);
+      return;
+    }
+    if (buf[0] == '\0') {
+      /* when no argument, just return current process */
+      send_current_process(cur);
+      return;
+    }
+    sconf = j_get_searchconf_by_name(recog->jconf, buf);
+    if (sconf == NULL) {
+      fprintf(stderr, "Error: msock(CURRENTPROCESS): no such process \"%s\"\n", buf);
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO SUCH PROCESS\"/>\n.\n");
+      return;
+    }
+    for(r=recog->process_list;r;r=r->next) {
+      if (r->config == sconf) {
+	cur = r;
+	break;
+      }
+    }
+    if (!r) {
+      fprintf(stderr, "Error: msock(CURRENTPROCESS): no process assigned to searchconf \"%s\"??\n", buf);
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO SUCH PROCESS\"/>\n.\n");
+      return;
+    }
+    send_current_process(cur);
+  }
+
+  else if (strmatch(command, "SHIFTPROCESS")) {
+    cur = cur->next;
+    if (cur == NULL) {
+      fprintf(stderr, "SHIFTPROCESS: reached end, rotated to first\n");
+      cur = recog->process_list;
+    }
+    send_process_stat(cur);
+  }
+
+  else if (strmatch(command, "ADDPROCESS")) {
+    Jconf *jconf;
+    JCONF_LM *lmconf;
+    JCONF_AM *amconf;
+    JCONF_SEARCH *sconf;
+    RecogProcess *r;
+
+    if (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	== NULL) {
+      fprintf(stderr, "Error: msock(ADDPROCESS): no argument\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
+      return;
+    }
+    /* load specified jconf file and use its last LM conf as new */
+    jconf = j_jconf_new();
+    j_config_load_file(jconf, buf);
+    lmconf = jconf->lmnow;
+
+    /* create a search instance */
+    sconf = j_jconf_search_new();
+    /* all the parameters are defaults */
+
+    /* create process instance with new LM and SR */
+    if (j_process_add_lm(recog, lmconf, sconf, buf) == FALSE) {
+      fprintf(stderr, "Error: failed to regist new process \"%s\"\n", buf);
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"FAILED TO REGISTER\"/>\n.\n");
+      j_jconf_search_free(sconf);
+      return;
+    }
+    printf("added process: SR%02d %s\n", sconf->id, sconf->name);
+    module_send(module_sd, "<RECOGPROCESS INFO=\"ADDED\">\n");
+    for(r=recog->process_list;r;r=r->next) {
+      if (r->config == sconf) {
+	send_process_stat(r);
+      }
+    }
+    module_send(module_sd, "</RECOGPROCESS>\n.\n");
+  }
+
+  else if (strmatch(command, "DELPROCESS")) {
+    JCONF_LM *lmconf;
+    JCONF_AM *amconf;
+    JCONF_SEARCH *sconf;
+    RecogProcess *r;
+
+    if (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	== NULL) {
+      fprintf(stderr, "Error: msock(DELPROCESS): no argument\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
+      return;
+    }
+
+    lmconf = j_get_lmconf_by_name(recog->jconf, buf);
+    if (lmconf == NULL) {
+      fprintf(stderr, "Error: msock(DELPROCESS): no lmconf named %s\n", buf);
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO LM PROCESS OF THE NAME\"/>\n.\n");
+      return;
+    }
+    sconf =  j_get_searchconf_by_name(recog->jconf, buf);
+    if (sconf == NULL) {
+      fprintf(stderr, "Error: msock(DELPROCESS): no searchconf named %s\n", buf);
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO RECOGPROCESS OF THE NAME\"/>\n.\n");
+      return;
+    }
+    printf("remove process: SR%02d %s, LM%02d %s\n", sconf->id, sconf->name, lmconf->id, lmconf->name);
+    module_send(module_sd, "<RECOGPROCESS INFO=\"DELETE\">\n");
+    for(r=recog->process_list;r;r=r->next) {
+      if (r->config == sconf) send_process_stat(r);
+    }
+    module_send(module_sd, "</RECOGPROCESS>\n.\n");
+    j_process_remove(recog, sconf);
+    j_process_lm_remove(recog, lmconf);
+    /* change current */
+    for(r=recog->process_list;r;r=r->next) {
+      if (r == cur) break;
+    }
+    if (!r) {
+      cur = recog->process_list;
+      printf("now current moved to SR%02d %s\n", cur->config->id, cur->config->name);
+      send_current_process(cur);
+    }
+    
+  }
+
+  else if (strmatch(command, "LISTPROCESS")) {
+    RecogProcess *r;
+    
+    module_send(module_sd, "<RECOGPROCESS INFO=\"STATUS\">\n");
+    for(r=recog->process_list;r;r=r->next) {
+      send_process_stat(r);
+    }
+    module_send(module_sd, "</RECOGPROCESS>\n.\n");
+  }
+
+  else if (strmatch(command, "ACTIVATEPROCESS")) {
+    if (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	== NULL) {
+      fprintf(stderr, "Error: msock(ACTIVATEPROCESS): no argument\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
+      return;
+    }
+    if (j_process_activate(recog, buf) == FALSE) {
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"ACTIVATION FAILED\"/>\n.\n");
+    } else {
+      module_send(module_sd, "<RECOGPROCESS INFO=\"ACTIVATED\" NAME=\"%s\"/>\n.\n", buf);
+    }
+  }
+  else if (strmatch(command, "DEACTIVATEPROCESS")) {
+    if (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	== NULL) {
+      fprintf(stderr, "Error: msock(DEACTIVATEPROCESS): no argument\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
+      return;
+    }
+    if (j_process_deactivate(recog, buf) == FALSE) {
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"DEACTIVATION FAILED\"/>\n.\n");
+    } else {
+      module_send(module_sd, "<RECOGPROCESS INFO=\"DEACTIVATED\" NAME=\"%s\"/>\n.\n", buf);
+    }
+    module_send(module_sd, ".\n");
+  }
+  else if (strmatch(command, "ADDWORD")) {
+    WORD_INFO *words;
+    boolean ret;
+    int id;
+
+    /* get gramamr ID to add */
+    if (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	== NULL) {
+      fprintf(stderr, "Error: msock(DEACTIVATEPROCESS): no argument\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
+      return;
+    }
+    id = atoi(buf);
+
+    /* read list of word entries, will stop by "DICEND" */
+    words = word_info_new();
+    voca_load_start(words, cur->am->hmminfo, FALSE);
+    while (
+#ifdef WINSOCK
+	getl_sd(buf, MAXBUFLEN, module_sd)
+#else
+	getl_fd(buf, MAXBUFLEN, module_sd)
+#endif
+	!= NULL) {
+      if (cur->lmvar == LM_DFA_WORD) {
+	ret = voca_load_word_line(buf, words, cur->am->hmminfo, 
+				  cur->lm->config->wordrecog_head_silence_model_name,
+				  cur->lm->config->wordrecog_tail_silence_model_name,
+				  (cur->lm->config->wordrecog_silence_context_name[0] == '\0') ? NULL : cur->lm->config->wordrecog_silence_context_name);
+      } else {
+	ret = voca_load_line(buf, words, cur->am->hmminfo);
+      }
+      if (ret == FALSE) break;
+    }
+    ret = voca_load_end(words);
+    if (ret == FALSE) {
+      fprintf(stderr, "Error: msock(ADDWORD): error in reading word entries\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"ERROR IN READING WORD ENTRIES\"/>\n.\n");
+      word_info_free(words);
+      return;
+    }
+    if (words->num == 0) {
+      fprintf(stderr, "Error: msock(ADDWORD): no word specified\n");
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO WORD SPECIFIED\"/>\n.\n");
+      word_info_free(words);
+      return;
+    }
+    printf("%d words read\n", words->num);
+    /* add the words to the grammar */
+    if (multigram_add_words_to_grammar_by_id(cur->lm, id, words) == FALSE) {
+      fprintf(stderr, "Error: msock(ADDWORD): failed to add words to grammar #%d\n", id);
+      module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"FAILED\"/>\n.\n");
+      word_info_free(words);
+      return;
+    }
+    /* book for update */
+    schedule_grammar_update(recog);
+    module_send(module_sd, "%d words added to grammar #%d\n.\n", words->num, id);
+    module_send(module_sd, "<RECOGPROCESS INFO=\"ADDEDWORD\" GRAMMARID=\"%d\" NUM=\"%d\"/>\n.\n", id, words->num);
+
+    word_info_free(words);
   }
 }
 
 /** 
  * <JA>
  * 現在クライアントモジュールからの命令がバッファにあるか調べ，
- * もしあれば処理する．なければそのまま終了する．
+ * もしあれば処理する. なければそのまま終了する. 
  * 
  * </JA>
  * <EN>
@@ -354,11 +651,11 @@ msock_check_and_process_command(Recog *recog, void *dummy)
 
 /** 
  * <JA>
- * クライアントモジュールからの命令を読み込んで処理する．
- * 命令が無い場合，次のコマンドが来るまで待つ．
+ * クライアントモジュールからの命令を読み込んで処理する. 
+ * 命令が無い場合，次のコマンドが来るまで待つ. 
  * msock_exec_command() 内で j_request_resume() が呼ばれて
- * recog->process_active が TRUE になるまで繰り返す．
- * この関数が終わったときプロセスは resume |!する．|
+ * recog->process_active が TRUE になるまで繰り返す. 
+ * この関数が終わったときプロセスは resume |!する. |
  * 
  * </JA>
  * <EN>
@@ -396,13 +693,24 @@ static boolean
 opt_module(Jconf *jconf, char *arg[], int argnum)
 {
   module_mode = TRUE;
+  if (argnum > 0) {
+    module_port = atoi(arg[0]);
+  }
+  return TRUE;
+}
+
+static boolean
+opt_outcode(Jconf *jconf, char *arg[], int argnum)
+{
+  decode_output_selection(arg[0]);
   return TRUE;
 }
 
 void
 module_add_option()
 {
-  j_add_option("-module", 0, "run as a server module", opt_module);
+  j_add_option("-module", 1, 0, "run as a server module", opt_module);
+  j_add_option("-outcode", 1, 1, "select info to output to the module: WLPSCwlps", opt_outcode);
 }
 
 boolean
@@ -417,18 +725,12 @@ module_setup(Recog *recog, void *data)
   /* register result output callback functions */
   module_regist_callback(recog, data);
   setup_output_msock(recog, data);
-  //decode_output_selection("WLPSwlpsC");
-  decode_output_selection("WSC");
 }
   
 void
-module_recognition_stream_loop(Recog **recoglist, int recognum)
+module_server()
 {
   int listen_sd;	///< Socket to listen to a client
-  pid_t cid;
-  int module_port;
-  
-  module_port = DEFAULT_MODULEPORT;
   
   /* prepare socket to listen */
   if ((listen_sd = ready_as_server(module_port)) < 0) {
@@ -447,10 +749,11 @@ module_recognition_stream_loop(Recog **recoglist, int recognum)
     fprintf(stderr, "Error: failed to accept connection\n");
     return;
   }
+}
 
-  /* call main recognition loop here */
-  main_recognition_stream_loop(recoglist, recognum);
-  
+void
+module_disconnect()
+{
   /* disconnect control module */
   if (module_sd >= 0) { /* connected now */
     module_send(module_sd, "<SYSINFO PROCESS=\"ERREXIT\"/>\n.\n");
@@ -458,5 +761,3 @@ module_recognition_stream_loop(Recog **recoglist, int recognum)
     module_sd = -1;
   }
 }
-
-  

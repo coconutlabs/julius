@@ -1,7 +1,5 @@
 /**
  * @file   rddfa.c
- * @author Akinobu LEE
- * @date   Tue Feb 15 14:54:40 2005
  * 
  * <JA>
  * @brief  DFA文法の読み込み
@@ -11,13 +9,16 @@
  * @brief  Read DFA grammar from a file
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 15 14:54:40 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

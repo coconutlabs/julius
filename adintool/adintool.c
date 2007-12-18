@@ -1,7 +1,5 @@
 /**
  * @file   adintool.c
- * @author Akinobu LEE
- * @date   Wed Mar 23 20:43:32 2005
  * 
  * <JA>
  * @brief  音声入力を記録/分割/送受信する汎用音声入力ツール
@@ -34,18 +32,23 @@
  * segment detection.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Mar 23 20:43:32 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2001-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include <julius/juliuslib.h>
 #include <signal.h>
+
+#define MAXCONNECTION 10	///< Maximum number of server connection
 
 /* input */
 static int file_counter = 0;	///< num of input files (for SP_RAWFILE)
@@ -60,16 +63,24 @@ static char *filename = NULL;	///< Output file name
 static int fd = -1;		///< File descriptor for output
 static FILE *fp = NULL;		///< File pointer for WAV output
 static int  size;		///< Output file size
-static boolean stout = FALSE;	///< True if output to stdout
 static boolean use_raw = FALSE;	///< Output in RAW format if TRUE
 static boolean continuous_segment = TRUE; ///< enable/disable successive output
 static int startid = 0;		///< output file numbering variable
 static int sid = 0;		///< current file ID (for SPOUT_FILE)
 static char *outpath = NULL;	///< work space for output file name formatting
-static char *adinnet_serv = NULL; ///< Server name to send recorded data
-static boolean writing_file = FALSE;
-
+static int adinnet_port_in = ADINNET_PORT; ///< Input server port
+static int adinnet_port[MAXCONNECTION]; ///< Output server ports
+static char *adinnet_serv[MAXCONNECTION]; ///< Server name to send recorded data
+static int sd[MAXCONNECTION];	///< Output socket descriptors
+static int adinnet_servnum = 0; ///< Number of server to connect
+static int adinnet_portnum = 0; ///< Number of server to connect
+static boolean writing_file = FALSE; ///< TRUE if writing to a file
 static boolean stop_at_next = FALSE; ///< TRUE if need to stop at next input by server command.  Will be set when PAUSE or TERMINATE command received while input.
+
+/* switch */
+static boolean pause_each = FALSE; ///< If set to TRUE, adintool will pause automatically at each input end and wait for resume command
+static boolean loose_sync = FALSE; ///< If set to TRUE, adintool will do loose synchronization for resume among servers
+static int rewind_msec = 0;
 
 /** 
  * <JA>ヘルプを表示して終了する</JA>
@@ -99,15 +110,16 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 #ifdef USE_NETAUDIO
   fprintf(stderr, "    -NA             (netaudio) NetAudio server host:unit\n");
 #endif
-  fprintf(stderr, "    -server host    (adinnet-out) server hostname\n");
-  fprintf(stderr, "    -port number    (adinnet-in/out) port number (%d)\n", jconf->input.adinnet_port);
+  fprintf(stderr, "    -server host[,host,...] (adinnet-out) server hostnames\n");
+  fprintf(stderr, "    -port num[,num,...]     (adinnet-out) port numbers (%d)\n", ADINNET_PORT);
+  fprintf(stderr, "    -inport num     (adinnet-in) port number (%d)\n", ADINNET_PORT);
   fprintf(stderr, "    -filename foo   (file-out) filename to record\n");
   fprintf(stderr, "    -startid id     (file-out) recording start id (%04d)\n", startid);
 
   fprintf(stderr, "Recording and Pause segmentation options:\n");
   fprintf(stderr, "  [-nosegment]          not segment input speech\n");
   fprintf(stderr, "  [-oneshot]            record only the first segment\n");
-  fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%d)\n", jconf->analysis.para_default.smp_freq);
+  fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "  [-48]                 48000Hz recording with down sampling (16kHz only)\n");
   fprintf(stderr, "  [-lv unsignedshort]   silence cut level threshold (%d)\n", jconf->detect.level_thres);
   fprintf(stderr, "  [-zc zerocrossnum]    silence cut zerocross num   (%d)\n", jconf->detect.zero_cross_num);
@@ -116,6 +128,9 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "  [-nostrip]            do not strip zero samples\n");
   fprintf(stderr, "  [-zmean]              remove DC by zero mean\n");
   fprintf(stderr, "  [-raw]                output in RAW format\n");
+  fprintf(stderr, "  [-autopause]          automatically pause at each input end\n");
+  fprintf(stderr, "  [-loosesync]          loose sync of resume among servers\n");
+  fprintf(stderr, "  [-rewind msec]        rewind input if spoken while pause at resume\n");
   fprintf(stderr, "\nLibrary configuration: ");
   confout_version(stderr);
   confout_audio(stderr);
@@ -182,8 +197,20 @@ opt_out(Jconf *jconf, char *arg[], int argnum)
 static boolean
 opt_server(Jconf *jconf, char *arg[], int argnum)
 {
+  char *p, *q;
   if (speech_output == SPOUT_ADINNET) {
-    adinnet_serv = arg[0];
+    p = (char *)malloc(strlen(arg[0] + 1));
+    strcpy(p, arg[0]);
+    for (q = strtok(p, ","); q; q = strtok(NULL, ",")) {
+      if (adinnet_servnum >= MAXCONNECTION) {
+	fprintf(stderr, "Error: too many servers (> %d): %s\n", MAXCONNECTION, arg[0]);
+	return FALSE;
+      }
+      adinnet_serv[adinnet_servnum] = (char *)malloc(strlen(q + 1));
+      strcpy(adinnet_serv[adinnet_servnum], q);
+      adinnet_servnum++;
+    }
+    free(p);
   } else {
     fprintf(stderr, "Warning: server [%s] should be with adinnet\n", arg[0]);
     return FALSE;
@@ -207,11 +234,30 @@ opt_NA(Jconf *jconf, char *arg[], int argnum)
 #endif
 }
 static boolean
-opt_port(Jconf *jconf, char *arg[], int argnum)
+opt_inport(Jconf *jconf, char *arg[], int argnum)
 {
-  jconf->input.adinnet_port = atoi(arg[0]);
+  adinnet_port_in = atoi(arg[0]);
   return TRUE;
 }
+static boolean
+opt_port(Jconf *jconf, char *arg[], int argnum)
+{
+  char *p, *q;
+
+  p = (char *)malloc(strlen(arg[0] + 1));
+  strcpy(p, arg[0]);
+  for (q = strtok(p, ","); q; q = strtok(NULL, ",")) {
+    if (adinnet_portnum >= MAXCONNECTION) {
+      fprintf(stderr, "Error: too many server ports (> %d): %s\n", MAXCONNECTION, arg[0]);
+      return FALSE;
+    }
+    adinnet_port[adinnet_portnum] = atoi(q);
+    adinnet_portnum++;
+  }
+  free(p);
+  return TRUE;
+}
+
 static boolean
 opt_filename(Jconf *jconf, char *arg[], int argnum)
 {
@@ -227,8 +273,8 @@ opt_startid(Jconf *jconf, char *arg[], int argnum)
 static boolean
 opt_freq(Jconf *jconf, char *arg[], int argnum)
 {
-  jconf->analysis.para.smp_freq = atoi(arg[0]);
-  jconf->analysis.para.smp_period = freq2period(jconf->analysis.para.smp_freq);
+  jconf->amnow->analysis.para.smp_freq = atoi(arg[0]);
+  jconf->amnow->analysis.para.smp_period = freq2period(jconf->amnow->analysis.para.smp_freq);
   return TRUE;
 }
 static boolean
@@ -249,6 +295,24 @@ opt_raw(Jconf *jconf, char *arg[], int argnum)
   use_raw = TRUE;
   return TRUE;
 }
+static boolean
+opt_autopause(Jconf *jconf, char *arg[], int argnum)
+{
+  pause_each = TRUE;
+  return TRUE;
+}
+static boolean
+opt_loosesync(Jconf *jconf, char *arg[], int argnum)
+{
+  loose_sync = TRUE;
+  return TRUE;
+}
+static boolean
+opt_rewind(Jconf *jconf, char *arg[], int argnum)
+{
+  rewind_msec = atoi(arg[0]);
+  return TRUE;
+}
 
 /** 
  * <JA>
@@ -263,6 +327,7 @@ opt_raw(Jconf *jconf, char *arg[], int argnum)
 void
 put_status(Recog *recog)
 {
+  int i;
   Jconf *jconf = recog->jconf;
 
   fprintf(stderr,"----\n");
@@ -276,7 +341,7 @@ put_status(Recog *recog)
   case SP_NETAUDIO: fprintf(stderr,"NetAudio(DatLink) server on %s\n", jconf->input.netaudio_devname); break;
 #endif
   case SP_STDIN: fprintf(stderr,"Standard Input\n"); break;
-  case SP_ADINNET: fprintf(stderr,"adinnet client (port %d)\n", jconf->input.adinnet_port); break;
+  case SP_ADINNET: fprintf(stderr,"adinnet client (port %d)\n", adinnet_port_in); break;
   }
   fprintf(stderr,"Segmentation: ");
   if (jconf->detect.silence_cut) {
@@ -297,17 +362,32 @@ put_status(Recog *recog)
   } else {
     fprintf(stderr,"OFF\n");
   }
-  if (jconf->frontend.strip_zero_sample) {
+  if (jconf->preprocess.strip_zero_sample) {
     fprintf(stderr,"  ZeroFrames: drop\n");
   } else {
     fprintf(stderr,"  ZeroFrames: keep\n");
   }
-  if (jconf->frontend.use_zmean) {
+  if (jconf->preprocess.use_zmean) {
     fprintf(stderr,"   remove DC: on\n");
   } else {
     fprintf(stderr,"   remove DC: off\n");
   }
-  fprintf(stderr,"   Recording: ");
+  if (pause_each) {
+    fprintf(stderr,"   Autopause: on\n");
+  } else {
+    fprintf(stderr,"   Autopause: off\n");
+  }
+  if (loose_sync) {
+    fprintf(stderr,"   LooseSync: on\n");
+  } else {
+    fprintf(stderr,"   LooseSync: off\n");
+  }
+  if (rewind_msec > 0) {
+    fprintf(stderr,"      Rewind: %d msec\n", rewind_msec);
+  } else {
+    fprintf(stderr,"      Rewind: no\n");
+  }
+  fprintf(stderr,"   Output to: ");
   switch(speech_output) {
   case SPOUT_FILE:
     if (jconf->detect.silence_cut) {
@@ -329,7 +409,11 @@ put_status(Recog *recog)
     use_raw = TRUE;
     break;
   case SPOUT_ADINNET:
-    fprintf(stderr,"(adinnet server [%s %d])\n", adinnet_serv, jconf->input.adinnet_port);
+    fprintf(stderr, "adinnet server");
+    for(i=0;i<adinnet_servnum;i++) {
+      fprintf(stderr, " (%s:%d)", adinnet_serv[i], adinnet_port[i]);
+    }
+    fprintf(stderr, "\n");
     break;
   }
   fprintf(stderr,"----\n");
@@ -377,16 +461,39 @@ new_output_filename(char *filename, char *suffix)
  * </EN>
  */
 static int
-adin_callback_file(SP16 *now, int len, Recog **recoglist, int recognum)
+adin_callback_file(SP16 *now, int len, Recog *recog)
 {
   int count;
-  Recog *recog;
+  int start;
+  int w;
 
-  recog = recoglist[0];
+  start = 0;
 
-  /* erase "<<<please speak>>>" text on tty at trigger up */
   if (recog->jconf->input.speech_input == SP_MIC && speechlen == 0) {
+    /* this is first up-trigger */
+    if (rewind_msec > 0 && !recog->adin->is_valid_data) {
+      /* not spoken currently but has data to process at first trigger */
+      /* it means that there are old spoken segments */
+      /* disgard them */
+      printf("disgard already recorded %d samples\n", len);
+      return 0;
+    }
+    /* erase "<<<please speak>>>" text on tty */
     fprintf(stderr, "\r                    \r");
+    if (rewind_msec > 0) {
+      /* when -rewind value set larger than 0, the speech data spoken
+	 while pause will be considered back to the specified msec.
+	 */
+      printf("buffered samples=%d\n", len);
+      w = rewind_msec * sfreq / 1000;
+      if (len > w) {
+	start = len - w;
+	len = w;
+      } else {
+	start = 0;
+      }
+      printf("will process from %d\n", start);
+    }
   }
 
   /* open files for recording at first trigger */
@@ -423,7 +530,7 @@ adin_callback_file(SP16 *now, int len, Recog **recoglist, int recognum)
 
   /* write recorded sample to file */
   if (use_raw) {
-    count = wrsamp(fd, now, len);
+    count = wrsamp(fd, &(now[start]), len);
     if (count < 0) {
       perror("adinrec: cannot write");
       return -1;
@@ -433,7 +540,7 @@ adin_callback_file(SP16 *now, int len, Recog **recoglist, int recognum)
       return -1;
     }
   } else {
-    if (wrwav_data(fp, now, len) == FALSE) {
+    if (wrwav_data(fp, &(now[start]), len) == FALSE) {
       fprintf(stderr, "adinrec: cannot write\n");
       return -1;
     }
@@ -441,6 +548,13 @@ adin_callback_file(SP16 *now, int len, Recog **recoglist, int recognum)
   
   /* accumulate sample num of this segment */
   speechlen += len;
+
+  /* if input length reaches limit, rehash the ad-in buffer */
+  if (recog->jconf->input.speech_input == SP_MIC) {
+    if (speechlen > MAXSPEECHLEN - 16000) {
+      recog->adin->rehash = TRUE;
+    }
+  }
   
   /* progress bar in dots */
   fprintf(stderr, ".");
@@ -472,28 +586,66 @@ adin_callback_file(SP16 *now, int len, Recog **recoglist, int recognum)
  * </EN>
  */
 static int
-adin_callback_adinnet(SP16 *now, int len, Recog **recoglist, int recognum)
+adin_callback_adinnet(SP16 *now, int len, Recog *recog)
 {
   int count;
-  Recog *recog;
+  int start, w;
+  int i;
 
-  recog = recoglist[0];
+  start = 0;
 
-  /* erase "<<<please speak>>>" text on tty at trigger up */
-  /* (moved from adin-cut.c) */
   if (recog->jconf->input.speech_input == SP_MIC && speechlen == 0) {
+    /* this is first up-trigger */
+    if (rewind_msec > 0 && !recog->adin->is_valid_data) {
+      /* not spoken currently but has data to process at first trigger */
+      /* it means that there are old spoken segments */
+      /* disgard them */
+      printf("disgard already recorded %d samples\n", len);
+      return 0;
+    }
+    /* erase "<<<please speak>>>" text on tty */
     fprintf(stderr, "\r                    \r");
+    if (rewind_msec > 0) {
+      /* when -rewind value set larger than 0, the speech data spoken
+	 while pause will be considered back to the specified msec.
+	 */
+      printf("buffered samples=%d\n", len);
+      w = rewind_msec * sfreq / 1000;
+      if (len > w) {
+	start = len - w;
+	len = w;
+      } else {
+	start = 0;
+      }
+      printf("will process from %d\n", start);
+    }
+  }
+
+#ifdef WORDS_BIGENDIAN
+  swap_sample_bytes(&(now[start]), len);
+#endif
+  for (i=0;i<adinnet_servnum;i++) {
+    count = wt(sd[i], (char *)&(now[start]), len * sizeof(SP16));
+    if (count < 0) {
+      perror("adintool: cannot write");
+      fprintf(stderr, "failed to send data to %s:%d\n", adinnet_serv[i], adinnet_port[i]);
+    }
   }
 #ifdef WORDS_BIGENDIAN
-  swap_sample_bytes(now, len);
+  swap_sample_bytes(&(now[start]), len);
 #endif
-  count = wt(fd, (char *)now, len * sizeof(SP16));
-#ifdef WORDS_BIGENDIAN
-  swap_sample_bytes(now, len);
-#endif
-  if (count < 0) perror("adintool: cannot write");
   /* accumulate sample num of this segment */
   speechlen += len;
+#ifdef HAVE_PTHREAD
+  if (recog->adin->enable_thread) {
+    /* if input length reaches limit, rehash the ad-in buffer */
+    if (recog->adin->speechlen > MAXSPEECHLEN - 16000) {
+      recog->adin->rehash = TRUE;
+      fprintf(stderr, "+");
+    }
+  }
+#endif
+  
   /* display progress in dots */
   fprintf(stderr, ".");
   return(0);
@@ -514,7 +666,14 @@ static void
 adin_send_end_of_segment()
 {
   char p;
-  if (wt(fd, &p,  0) < 0) perror("adintool: cannot write");
+  int i;
+
+  for(i=0;i<adinnet_servnum;i++) {
+    if (wt(sd[i], &p,  0) < 0) {
+      perror("adintool: cannot write");
+      fprintf(stderr, "failed to send EOS to %s:%d\n", adinnet_serv[i], adinnet_port[i]);
+    }
+  }
 }
 
 /**********************************************************************/
@@ -523,6 +682,7 @@ adin_send_end_of_segment()
 /*'1' ... resume  '0' ... pause */
 
 static int unknown_command_counter = 0;	///< Counter to detect broken connection
+
 /** 
  * <JA>
  * 音声取り込み中にサーバからの中断/再開コマンドを受け取るための
@@ -548,50 +708,59 @@ adinnet_check_command()
   int status;
   int cnt, ret;
   char com;
+  int i, max_sd;
   
   /* check if some commands are waiting in queue */
   FD_ZERO(&rfds);
-  FD_SET(fd, &rfds);
+  max_sd = 0;
+  for(i=0;i<adinnet_servnum;i++) {
+    if (max_sd < sd[i]) max_sd = sd[i];
+    FD_SET(sd[i], &rfds);
+  }
   tv.tv_sec = 0;
   tv.tv_usec = 1;
-  status = select(fd+1, &rfds, NULL, NULL, &tv);
+  status = select(max_sd+1, &rfds, NULL, NULL, &tv);
   if (status < 0) {           /* error */
     fprintf(stderr, "adintool: cannot check command from adinnet server\n");
     return -2;                        /* error return */
   }
   if (status > 0) {           /* there are some data */
-    if (FD_ISSET(fd, &rfds)) {
-      ret = rd(fd, &com, &cnt, 1); /* read in command */
-      switch (com) {
-      case '0':                       /* pause */
-	fprintf(stderr, "<PAUSE>");
-	stop_at_next = TRUE;	/* mark to pause at the end of this input */
-	/* tell caller to stop recording */
-	return -1;
-      case '1':                       /* resume */
-	fprintf(stderr, "<RESUME - already running>");
-	/* we are already running, so just continue */
-	break;
-      case '2':                       /* terminate */
-	fprintf(stderr, "<TERMINATE>");
-	stop_at_next = TRUE;	/* mark to pause at the end of this input */
-	/* tell caller to stop recording immediately */
-	return -2;
-	break;
-      default:
-	fprintf(stderr, "adintool: unknown command: %d\n", com);
-	unknown_command_counter++;
-	/* avoid infinite loop in that case... */
-	/* this may happen when connection is terminated from server side  */
-	if (unknown_command_counter > 100) {
-	  fprintf(stderr, "killed by unknown command flood\n");
-	  exit(1);
+    for (i=0;i<adinnet_servnum;i++) {
+      if (FD_ISSET(sd[i], &rfds)) {
+	ret = rd(sd[i], &com, &cnt, 1); /* read in command */
+	switch (com) {
+	case '0':                       /* pause */
+	  fprintf(stderr, "<#%d: PAUSE>\n", i+1);
+	  stop_at_next = TRUE;	/* mark to pause at the end of this input */
+	  /* tell caller to stop recording */
+	  return -1;
+	case '1':                       /* resume */
+	  fprintf(stderr, "<#%d: RESUME - already running, ignored>\n", i+1);
+	  /* we are already running, so just continue */
+	  break;
+	case '2':                       /* terminate */
+	  fprintf(stderr, "<#%d: TERMINATE>\n", i+1);
+	  stop_at_next = TRUE;	/* mark to pause at the end of this input */
+	  /* tell caller to stop recording immediately */
+	  return -2;
+	  break;
+	default:
+	  fprintf(stderr, "adintool: unknown command from #%d: %d\n", i+1,com);
+	  unknown_command_counter++;
+	  /* avoid infinite loop in that case... */
+	  /* this may happen when connection is terminated from server side  */
+	  if (unknown_command_counter > 100) {
+	    fprintf(stderr, "killed by a flood of unknown commands from server\n");
+	    exit(1);
+	  }
 	}
       }
     }
   }
   return 0;			/* continue ad-in */
 }
+
+static int resume_count[MAXCONNECTION];       ///< Number of incoming resume commands for resume synchronization
 
 /** 
  * <JA>
@@ -613,41 +782,86 @@ adinnet_wait_command()
   int status;
   int cnt, ret;
   char com;
+  int i, count, max_sd;
 
   fprintf(stderr, "<<< waiting RESUME >>>");
 
   while(1) {
+    /* check for synchronized resume */
+    if (loose_sync) {
+      for(i=0;i<adinnet_servnum;i++) {
+	if (resume_count[i] == 0) break;
+      }
+      if (i >= adinnet_servnum) { /* all count > 0 */
+	for(i=0;i<adinnet_servnum;i++) resume_count[i] = 0;
+	fprintf(stderr, ">>RESUME\n");
+	return 1;                       /* restart recording */
+      }
+    } else {
+      /* force same resume count among servers */
+      count = resume_count[0];
+      for(i=1;i<adinnet_servnum;i++) {
+	if (count != resume_count[i]) break;
+      }
+      if (i >= adinnet_servnum && count > 0) {
+	/* all resume counts are the same, actually resume */
+	for(i=0;i<adinnet_servnum;i++) resume_count[i] = 0;
+	fprintf(stderr, ">>RESUME\n");
+	return 1;                       /* restart recording */
+      }
+    }
+    /* not all host send me resume command */
     FD_ZERO(&rfds);
-    FD_SET(fd, &rfds);
-    FD_SET(fd, &rfds);
-    status = select(fd+1, &rfds, NULL, NULL, NULL); /* brock if no command */
+    max_sd = 0;
+    for(i=0;i<adinnet_servnum;i++) {
+      if (max_sd < sd[i]) max_sd = sd[i];
+      FD_SET(sd[i], &rfds);
+    }
+    status = select(max_sd+1, &rfds, NULL, NULL, NULL); /* block when no command */
     if (status < 0) {         /* error */
       fprintf(stderr, "adintool: cannot check command from adinnet server\n");
       return -1;                      /* error return */
     } else {                  /* there are some data */
-      if (FD_ISSET(fd, &rfds)) {
-	ret = rd(fd, &com, &cnt, 1);
-	switch (com) {
-	case '0':                       /* pause */
-	  /* already paused, so just wait for next command */
-	  fprintf(stderr, "<PAUSE - already paused>");
-	  break;
-	case '1':                       /* resume */
-	  /* do resume */
-	  fprintf(stderr, "<RESUME>\n");
-	  return 1;		/* tell caller to restart */
-	case '2':                       /* terminate */
-	  /* already paused, so just wait for next command */
-	  fprintf(stderr, "<TERMINATE - already paused>");
-	  break;
-	default:
-	  fprintf(stderr, "adintool: unknown command: %d\n", com);
-	  unknown_command_counter++;
-	  /* avoid infinite loop in that case... */
-	  /* this may happen when connection is terminated from server side  */
-	  if (unknown_command_counter > 100) {
-	    fprintf(stderr, "killed by unknown command flood\n");
-	    exit(1);
+      for(i=0;i<adinnet_servnum;i++) {
+	if (FD_ISSET(sd[i], &rfds)) {
+	  ret = rd(sd[i], &com, &cnt, 1);
+	  switch (com) {
+	  case '0':                       /* pause */
+	    /* already paused, so just wait for next command */
+	    if (loose_sync) {
+	      fprintf(stderr, "<#%d: PAUSE - already paused, reset sync>\n", i+1);
+	      for(i=0;i<adinnet_servnum;i++) resume_count[i] = 0;
+	    } else {
+	      fprintf(stderr, "<#%d: PAUSE - already paused, ignored>\n", i+1);
+	    }
+	    break;
+	  case '1':                       /* resume */
+	    /* do resume */
+	    resume_count[i]++;
+	    if (loose_sync) {
+	      fprintf(stderr, "<#%d: RESUME>\n", i+1);
+	    } else {
+	      fprintf(stderr, "<#%d: RESUME @%d>\n", i+1, resume_count[i]);
+	    }
+	    break;
+	  case '2':                       /* terminate */
+	    /* already paused, so just wait for next command */
+	    if (loose_sync) {
+	      fprintf(stderr, "<#%d: TERMINATE - already paused, reset sync>\n", i+1);
+	      for(i=0;i<adinnet_servnum;i++) resume_count[i] = 0;
+	    } else {
+	      fprintf(stderr, "<#%d: TERMINATE - already paused, ignored>\n", i+1);
+	    }
+	    break;
+	  default:
+	    fprintf(stderr, "adintool: unknown command from #%d: %d\n", i+1, com);
+	    unknown_command_counter++;
+	    /* avoid infinite loop in that case... */
+	    /* this may happen when connection is terminated from server side  */
+	    if (unknown_command_counter > 100) {
+	      fprintf(stderr, "killed by a flood of unknown commands from server\n");
+	      exit(1);
+	    }
 	  }
 	}
       }
@@ -718,39 +932,47 @@ int
 main(int argc, char *argv[])
 {
   Recog *recog;
+  Jconf *jconf;
   int ret;
+  int i;
+  boolean is_continues;
 
   /* create instance */
   recog = j_recog_new();
-  recog->jconf = j_jconf_new();
+  jconf = j_jconf_new();
+  recog->jconf = jconf;
 
   /********************/
   /* setup parameters */
   /********************/
   /* register additional options */
-  j_add_option("-in", 1, "input from", opt_in);
-  j_add_option("-out", 1, "output to", opt_out);
-  j_add_option("-server", 1, "hostname (-out adinnet)", opt_server);
-  j_add_option("-NA", 1, "NetAudio server host:unit (-in netaudio)", opt_NA);
-  j_add_option("-port", 1, "port number (-in/-out adinnet)", opt_port);
-  j_add_option("-filename", 1, "(base) filename to record (-out file)", opt_filename);
-  j_add_option("-startid", 1, "recording start id (-out file)", opt_startid);
-  j_add_option("-freq", 1, "sampling frequency in Hz", opt_freq);
-  j_add_option("-nosegment", 0, "not segment input speech, record all", opt_nosegment);
-  j_add_option("-oneshot", 0, "exit after the first input", opt_oneshot);
-  j_add_option("-raw", 0, "save in raw (BE) format", opt_raw);
-  j_add_option("-h", 0, "display this help", opt_help);
-  j_add_option("-help", 0, "display this help", opt_help);
-  j_add_option("--help", 0, "display this help", opt_help);
+  j_add_option("-in", 1, 1, "input from", opt_in);
+  j_add_option("-out", 1, 1, "output to", opt_out);
+  j_add_option("-server", 1, 1, "hostname (-out adinnet)", opt_server);
+  j_add_option("-NA", 1, 1, "NetAudio server host:unit (-in netaudio)", opt_NA);
+  j_add_option("-port", 1, 1, "port number (-out adinnet)", opt_port);
+  j_add_option("-inport", 1, 1, "port number (-in adinnet)", opt_inport);
+  j_add_option("-filename", 1, 1, "(base) filename to record (-out file)", opt_filename);
+  j_add_option("-startid", 1, 1, "recording start id (-out file)", opt_startid);
+  j_add_option("-freq", 1, 1, "sampling frequency in Hz", opt_freq);
+  j_add_option("-nosegment", 0, 0, "not segment input speech, record all", opt_nosegment);
+  j_add_option("-oneshot", 0, 0, "exit after the first input", opt_oneshot);
+  j_add_option("-raw", 0, 0, "save in raw (BE) format", opt_raw);
+  j_add_option("-autopause", 0, 0, "automatically pause at each input end", opt_autopause);
+  j_add_option("-loosesync", 0, 0, "loose sync of resume among servers", opt_loosesync);
+  j_add_option("-rewind", 1, 1, "rewind to the msec", opt_rewind);
+  j_add_option("-h", 0, 0, "display this help", opt_help);
+  j_add_option("-help", 0, 0, "display this help", opt_help);
+  j_add_option("--help", 0, 0, "display this help", opt_help);
 
   /* when no argument, output help and exit */
   if (argc <= 1) {
-    opt_help(recog->jconf, NULL, 0);
+    opt_help(jconf, NULL, 0);
     return 0;
   }
 
   /* read arguments and set parameters */
-  if (j_config_load_args(recog->jconf, argc, argv) == -1) {
+  if (j_config_load_args(jconf, argc, argv) == -1) {
     fprintf(stderr, "Error reading arguments\n");
     return -1;
   }
@@ -760,23 +982,52 @@ main(int argc, char *argv[])
     fprintf(stderr, "Error: output filename not specified\n");
     return(-1);
   }
-  if (speech_output == SPOUT_ADINNET && adinnet_serv == NULL) {
+  if (speech_output == SPOUT_ADINNET && adinnet_servnum < 1) {
     fprintf(stderr, "Error: adinnet server name for output not specified\n");
     return(-1);
   }
+  if (jconf->input.speech_input == SP_ADINNET &&
+      speech_output != SPOUT_ADINNET &&
+      adinnet_servnum >= 1) {
+    fprintf(stderr, "Warning: you specified port num by -port, but it's for output\n");
+    fprintf(stderr, "Warning: you may specify input port by -inport instead.\n");
+    fprintf(stderr, "Warning: now the default value (%d) will be used\n", ADINNET_PORT);
+  }
 #ifdef USE_NETAUDIO
-  if (recog->jconf->input.speech_input == SP_NETAUDIO && recog->jconf->input.netaudio_devname == NULL) {
+  if (jconf->input.speech_input == SP_NETAUDIO && jconf->input.netaudio_devname == NULL) {
     fprintf(stderr, "Error: NetAudio server name not specified\n");
     return(-1);
   }
 #endif
+  if (adinnet_portnum != adinnet_servnum) {
+    /* if only one server, use default */
+    if (adinnet_servnum == 1) {
+      adinnet_port[0] = ADINNET_PORT;
+      adinnet_portnum = 1;
+    } else {
+      fprintf(stderr, "Error: you should specify both server names and different port for each!\n");
+      fprintf(stderr, "\tserver:");
+      for(i=0;i<adinnet_servnum;i++) fprintf(stderr, " %s", adinnet_serv[i]);
+      fprintf(stderr, "\n\tport  :");
+      for(i=0;i<adinnet_portnum;i++) fprintf(stderr, " %d", adinnet_port[i]);
+      fprintf(stderr, "\n");
+      return(-1);
+    }
+  }
 
   /* set Julius default parameters for unspecified acoustic parameters */
-  apply_para(&(recog->jconf->analysis.para), &(recog->jconf->analysis.para_default));
+  apply_para(&(jconf->am_root->analysis.para), &(jconf->am_root->analysis.para_default));
+
+  /* set some values */
+  jconf->input.sfreq = jconf->am_root->analysis.para.smp_freq;
+  jconf->input.period = jconf->am_root->analysis.para.smp_period;
+  jconf->input.frameshift = jconf->am_root->analysis.para.frameshift;
+  jconf->input.framesize = jconf->am_root->analysis.para.framesize;
+
   /* disable successive segmentation when no segmentation available */
-  if (!recog->jconf->detect.silence_cut) continuous_segment = FALSE;
+  if (!jconf->detect.silence_cut) continuous_segment = FALSE;
   /* store sampling rate locally */
-  sfreq = recog->jconf->analysis.para.smp_freq;
+  sfreq = jconf->am_root->analysis.para.smp_freq;
 
   /********************/
   /* setup for output */
@@ -793,11 +1044,13 @@ main(int argc, char *argv[])
       }
     }
   } else if (speech_output == SPOUT_ADINNET) {
-    /* connect to adinnet server */
-    fprintf(stderr, "connecting to %s:%d...", adinnet_serv, recog->jconf->input.adinnet_port);
-    fd = make_connection(adinnet_serv, recog->jconf->input.adinnet_port);
-    if (fd < 0) return 1;	/* on error */
-    fprintf(stderr, "connected\n");
+    /* connect to adinnet server(s) */
+    for(i=0;i<adinnet_servnum;i++) {
+      fprintf(stderr, "connecting to #%d (%s:%d)...", i+1, adinnet_serv[i], adinnet_port[i]);
+      sd[i] = make_connection(adinnet_serv[i], adinnet_port[i]);
+      if (sd[i] < 0) return 1;	/* on error */
+      fprintf(stderr, "connected\n");
+    }
   } else if (speech_output == SPOUT_STDOUT) {
     /* output to stdout */
     fd = 1;
@@ -814,10 +1067,22 @@ main(int argc, char *argv[])
   /***************************/
   /* initialize input device */
   /***************************/
+  if (jconf->input.speech_input == SP_ADINNET) {
+    jconf->input.adinnet_port = adinnet_port_in;
+  }
   if (j_adin_init(recog) == FALSE) {
     fprintf(stderr, "Error in initializing adin device\n");
     return -1;
   }
+  if (rewind_msec > 0) {
+    /* allow adin module to keep triggered speech while pausing */
+#ifdef HAVE_PTHREAD
+    if (recog->adin->enable_thread) {
+      recog->adin->ignore_speech_while_recog = FALSE;
+    }
+#endif
+  }
+
 
   /**************************************/
   /* display input/output configuration */
@@ -832,8 +1097,7 @@ main(int argc, char *argv[])
     sid = startid;
   }
   fprintf(stderr,"[start recording]\n");
-  if (recog->jconf->input.speech_input == SP_RAWFILE) file_counter = 0;
-
+  if (jconf->input.speech_input == SP_RAWFILE) file_counter = 0;
 
   /*********************/
   /* input stream loop */
@@ -849,7 +1113,7 @@ main(int argc, char *argv[])
       /* go on to next input */
       continue;
     case -2:			/* end of recognition process */
-      switch(recog->jconf->input.speech_input) {
+      switch(jconf->input.speech_input) {
       case SP_RAWFILE:
 	fprintf(stderr, "%d files processed\n", file_counter);
 	break;
@@ -874,13 +1138,13 @@ main(int argc, char *argv[])
       /* adin_go() return when input segmented by long silence, or input stream reached to the end */
       speechlen = 0;
       stop_at_next = FALSE;
-      if (recog->jconf->input.speech_input == SP_MIC) {
+      if (jconf->input.speech_input == SP_MIC) {
 	fprintf(stderr, "<<< please speak >>>");
       }
       if (speech_output == SPOUT_ADINNET) {
-	ret = adin_go(adin_callback_adinnet, adinnet_check_command, &recog, 1);
+	ret = adin_go(adin_callback_adinnet, adinnet_check_command, recog);
       } else {
-	ret = adin_go(adin_callback_file, NULL, &recog, 1);
+	ret = adin_go(adin_callback_file, NULL, recog);
       }
       /* return value of adin_go:
 	 -2: input terminated by pause command from adinnet server
@@ -903,7 +1167,7 @@ main(int argc, char *argv[])
 	fprintf(stderr, "[eof]\n");
 	break;
       default:	  /* input segmented by silence or callback process */
-	fprintf(stderr, "[segmented]\n", ret);
+	fprintf(stderr, "[segmented]\n");
 	break;
       }
       
@@ -941,14 +1205,37 @@ main(int argc, char *argv[])
       /* with adinnet server, if terminated by           */
       /* server-side PAUSE command, wait for RESUME here */
       /***************************************************/
-      if (speech_output == SPOUT_ADINNET && stop_at_next) {
-	if (adinnet_wait_command() < 0) {
-	  /* command error: terminate program here */
-	  return 1;
+      if (pause_each) {
+	/* pause at each end */
+	//if (speech_output == SPOUT_ADINNET && speechlen > 0) {
+	if (speech_output == SPOUT_ADINNET) {
+	  if (adinnet_wait_command() < 0) {
+	    /* command error: terminate program here */
+	    return 1;
+	  }
+	}
+      } else {
+	if (speech_output == SPOUT_ADINNET && stop_at_next) {
+	  if (adinnet_wait_command() < 0) {
+	    /* command error: terminate program here */
+	    return 1;
+	  }
+	}
+      }
+
+      /* loop condition check */
+      is_continues = FALSE;
+      if (pause_each) {
+	if (continuous_segment && (ret > 0 || ret == -2)) {
+	  is_continues = TRUE;
+	}
+      } else {
+	if (continuous_segment && ret > 0) {
+	  is_continues = TRUE;
 	}
       }
       
-    } while (continuous_segment && ret > 0); /* to the next segment in this input stream */
+    } while (is_continues); /* to the next segment in this input stream */
 
     /***********************/
     /* end of input stream */

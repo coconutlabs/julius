@@ -1,42 +1,40 @@
 /**
  * @file   outprob_style.c
- * @author Akinobu Lee
- * @date   Mon Aug 22 17:14:26 2005
  * 
  * <JA>
- * @brief  木構造化辞書上の状態の出力確率計算を行う
+ * @brief  状態の出力確率計算（第1パス）
  *
  * 第1パスで，木構造化辞書上のノードの，入力ベクトルに対する HMM の
- * 出力対数確率を計算する．
+ * 出力対数確率を計算する. 
  *
  * トライフォン使用時は，単語内の音素環境依存については辞書読み込み時に
  * 考慮されて対応するトライフォンがすでに割り当てられているので，ここで
- * 特別な処理は行われない．単語先頭および末尾の音素は，木構造化辞書上では
+ * 特別な処理は行われない. 単語先頭および末尾の音素は，木構造化辞書上では
  * pseudo triphone が割り当たっており，これらについては，以下のように
- * 単語間を音素環境依存性を考慮した計算が行われる．
- *  -# 単語内音素: 通常通り計算する．
+ * 単語間を音素環境依存性を考慮した計算が行われる. 
+ *  -# 単語内音素: 通常通り計算する. 
  *  -# 単語の先頭音素: 直前単語の情報から，pseudo triphone を正しい
- *     トライフォンに動的に切り替えて計算．
+ *     トライフォンに動的に切り替えて計算. 
  *  -# 単語の末尾音素: その pseudo triphone に含まれる（同じ左コンテキストを
  *     持つトライフォンの）状態集合中のすべての状態について尤度を計算し，
  *      - "-iwcd1 max" 指定時は最大値
  *      - "-iwcd1 avg" 指定時は平均値(default)
  *      - "-iwcd1 best N" 指定時は上位N個の平均値
- *     をその状態の尤度として採用する．(これは outprob_cd() 内で自動的に選択
- *     され計算される．
- *  -# 1音素からなる単語の場合: 上記を両方とも考慮する．
+ *     をその状態の尤度として採用する. (これは outprob_cd() 内で自動的に選択
+ *     され計算される. 
+ *  -# 1音素からなる単語の場合: 上記を両方とも考慮する. 
  *
  * 上記の処理を行うには，木構造化辞書の状態ごとに，それぞれが単語内でどの
- * 位置の音素に属する状態であるかの情報が必要である．木構造化辞書では，
- * 状態ごとに上記のどの処理を行えば良いかを AS_Style であらかじめ保持している．
+ * 位置の音素に属する状態であるかの情報が必要である. 木構造化辞書では，
+ * 状態ごとに上記のどの処理を行えば良いかを AS_Style であらかじめ保持している. 
  *
  * また，上記の 2 と 4 の状態では，コンテキストに伴うtriphone変化を，
- * 直前単語ID とともに状態ごとにフレーム単位でキャッシュしている．これにより
- * 計算量の増大を防ぐ．
+ * 直前単語ID とともに状態ごとにフレーム単位でキャッシュしている. これにより
+ * 計算量の増大を防ぐ. 
  * </JA>
  * 
  * <EN>
- * @brief  Compute output probability of a state on lexicon tree.
+ * @brief  Compute output probability of a state (1st pass)
  *
  * These functions compute the output probability of an input vector
  * from a state on the lexicon tree.
@@ -67,13 +65,16 @@
  *   
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Mon Aug 22 17:14:26 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -83,15 +84,17 @@
 
 /** 
  * <JA>
- * 単語先頭のトライフォン変化用キャッシュを初期化
+ * 語頭トライフォン変化用キャッシュの初期化
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
  * <EN>
- * Initialize cache for triphone alternation on word head.
+ * Initialize cache for triphone changing on every word head.
  * 
  * @param wchmm [i/o] tree lexicon
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 outprob_style_cache_init(WCHMM_INFO *wchmm)
@@ -107,7 +110,6 @@ outprob_style_cache_init(WCHMM_INFO *wchmm)
   }
 }
 
-
 /**********************************************************************/
 
 static char lccbuf[MAX_HMMNAME_LEN+7]; ///< work area for HMM name conversion
@@ -115,25 +117,31 @@ static char lccbuf2[MAX_HMMNAME_LEN+7]; ///< work area for HMM name conversion
 
 /** 
  * <JA>
- * Julian 用の単語末用カテゴリ付き pseudo phone set を検索する．
+ * @brief  単語末尾のトライフォンセット (pseudo phone set) を検索する. 
+ *
+ * 文法認識では，各カテゴリごとに独立した pseudo phone set を用いる. 
+ * ここでは単語末用カテゴリ付き pseudo phone set を検索する. 
  * 
  * @param wchmm [in] 木構造化辞書
- * @param hmm [in] 論理 HMM
- * @param category [in] 属する単語カテゴリ
+ * @param hmm [in] 単語の末尾の HMM
+ * @param category [in] 単語の属するカテゴリ
  * 
  * @return 該当 set が見つかればそこへのポインタ，あるいは見つからなければ
- * NULL を返す．
+ * NULL を返す. 
  * </JA>
  * <EN>
- * Lookup an pseudo phone set with category number (for Julian).
+ * Lookup a word-end triphone set (aka pseudo phone set) with
+ * category id for grammar recognition.
  * 
  * @param wchmm [in] word lexicon tree
- * @param hmm [in] logical HMM
- * @param category [in] belonging category
+ * @param hmm [in] logical HMM of word end phone
+ * @param category [in] belonging category id of the word
  * 
  * @return pointer to the corresponding phone set if found, or NULL if
  * not found.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 CD_Set *
 lcdset_lookup_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID category)
@@ -154,30 +162,28 @@ lcdset_lookup_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categor
 
 /** 
  * <JA>
- * @brief  ある単語末の音素について，カテゴリ付き pseudo phone set を生成する．
+ * @brief  単語末用カテゴリ付き pseudo phone set を生成する. 
  *
- * Julian では，ある単語に後続可能な単語集合は文法によって制限される．よって，
+ * Julian では，ある単語に後続可能な単語集合は文法によって制限される. よって，
  * 単語末尾から次に後続しうる単語先頭音素の種類も文法によって限定
- * される．そこで，与えられた辞書上で，単語のカテゴリごとに，後続しうる先頭音素
+ * される. そこで，与えられた辞書上で，単語のカテゴリごとに，後続しうる先頭音素
  * をカテゴリ対情報から作成し，それらをカテゴリ付き pseudo phone set として
  * 定義して単語終端に用いることで，Julian における単語間トライフォンの
- * 近似誤差を小さくすることができる．
+ * 近似誤差を小さくすることができる. 
  * 
  * この phone set の名前は通常の "a-k" などと異なり "a-k::38" となる
- * (数字はカテゴリID)．ここでは，辞書を検索して可能なすべてのカテゴリ付き
- * pseudo phone set を，生成する．これは通常の pseudo phone set とは別に
- * 保持され，単語末端のみで使用される．
+ * (数字はカテゴリID). ここでは，辞書を検索して可能なすべてのカテゴリ付き
+ * pseudo phone set を，生成する. これは通常の pseudo phone set とは別に
+ * 保持され，単語末端のみで使用される. 
  * 
  * @param wchmm [i/o] 木構造化辞書
- * @param hmminfo [in] 音素HMM定義構造体
- * @param dfa [in] DFA文法情報
  * @param hmm [in] これから登録する単語の終端の論理HMM
  * @param category [in] これから登録する単語の文法カテゴリID
  * 
  * </JA>
  * <EN>
- * @brief  Make a category-indexed context-dependent (pseudo) state set for the
- * given logical HMM.
+ * @brief  Make a category-indexed context-dependent (pseudo) state set
+ * for word ends.
  *
  * In Julian, the word-end pseudo triphone set can be shrinked by using the
  * category-pair constraint, since the number of possible right-context
@@ -193,8 +199,6 @@ lcdset_lookup_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categor
  * pseudo phone set.
  * 
  * @param wchmm [i/o] tree lexicon
- * @param hmminfo [in] HMM definition data
- * @param dfa [in] DFA grammar information
  * @param hmm [in] logical HMM at the end of a word, of which the
  * category-indexed pseudo state set will be generated.
  * @param category [in] category ID of the word.
@@ -204,7 +208,6 @@ lcdset_lookup_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categor
 static void
 lcdset_register_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID category)
 {
-  CD_Set *ret;
   WORD_ID c2, i, w;
   HMM_Logical *ltmp;
 
@@ -241,29 +244,27 @@ lcdset_register_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categ
       cnt_w += wchmm->dfa->term.wnum[c2];
     }
     if (debug2_flag) {
-      jlog("DEBUG: %d categories (%d words) can follow, %d HMMs registered\n", cnt_c, cnt_w, cnt_p);
+      jlog("%d categories (%d words) can follow, %d HMMs registered\n", cnt_c, cnt_w, cnt_p);
     }
   }
 }
 
 /** 
  * <JA>
+ * 全ての単語末用カテゴリ付き pseudo phone set を生成する. 
  * 辞書上のすべての単語について，その末尾に登場しうるカテゴリ付き pseudo phone
- * set を生成する（Julian用）．
+ * set を生成する（文法認識用）. 
  * 
  * @param wchmm [i/o] 木構造化辞書情報
- * @param hmminfo [in] HMM定義構造体
- * @param winfo [in] 単語辞書情報
- * @param dfa [in] DFA文法情報
  * </JA>
  * <EN>
- * Generate all possible category-indexed pseudo phone sets for Julian.
+ * Generate all possible category-indexed pseudo phone sets for
+ * grammar recognition.
  * 
  * @param wchmm [i/o] tree lexicon
- * @param hmminfo [in] HMM definition
- * @param winfo [in] word dictionary
- * @param dfa [in] DFA grammar
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 lcdset_register_with_category_all(WCHMM_INFO *wchmm)
@@ -300,8 +301,8 @@ lcdset_register_with_category_all(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * カテゴリ付き pseudo phone set をすべて消去する．この関数は Julian で文法が
- * 変更された際に，カテゴリ付き pseudo phone set を再構築するのに用いられる．
+ * カテゴリ付き pseudo phone set をすべて消去する. この関数は Julian で文法が
+ * 変更された際に，カテゴリ付き pseudo phone set を再構築するのに用いられる. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -312,6 +313,8 @@ lcdset_register_with_category_all(WCHMM_INFO *wchmm)
  * 
  * @param wchmm [i/o] lexicon tree information
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 lcdset_remove_with_category_all(WCHMM_INFO *wchmm)
@@ -323,7 +326,7 @@ lcdset_remove_with_category_all(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 木構造化辞書中のある状態(ノード)について対数出力確率を計算する．
+ * 木構造化辞書上の状態の出力確率を計算する. 
  * 
  * @param wchmm [in] 木構造化辞書情報
  * @param node [in] ノード番号
@@ -331,10 +334,11 @@ lcdset_remove_with_category_all(WCHMM_INFO *wchmm)
  * @param t [in] 時間フレーム
  * @param param [in] 特徴量パラメータ構造体 (@a t 番目のベクトルについて計算する)
  * 
- * @return 出力確率の対数値を返す．
+ * @return 出力確率の対数値を返す. 
  * </JA>
  * <EN>
- * Calculate output log probability of an input vector on time frame @a t
+ * Calculate output probability on a tree lexion node.  This function
+ * calculates log output probability of an input vector on time frame @a t
  * in input paramter @a param at a node on tree lexicon.
  * 
  * @param wchmm [in] tree lexicon structure
@@ -346,6 +350,8 @@ lcdset_remove_with_category_all(WCHMM_INFO *wchmm)
  * 
  * @return the computed log probability.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 LOGPROB
 outprob_style(WCHMM_INFO *wchmm, int node, int last_wid, int t, HTK_Param *param)
@@ -493,19 +499,25 @@ outprob_style(WCHMM_INFO *wchmm, int node, int last_wid, int t, HTK_Param *param
 
 /** 
  * <JA>
+ * @brief  トライフォンエラーメッセージ：右コンテキスト用
+ * 
  * 指定した右コンテキストを持つトライフォンが
- * 見つからなかった場合にエラーメッセージを出力する関数．
+ * 見つからなかった場合にエラーメッセージを出力する関数. 
  * 
  * @param base [in] ベースのトライフォン
  * @param rc_name [in] 右コンテキストの音素名
  * </JA>
  * <EN>
+ * @brief  Triphone error message for right context.
+ * 
  * Output error message when a triphone with the specified right context is
  * not defined.
  * 
  * @param base [in] base triphone
  * @param rc_name [in] name of right context phone 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 error_missing_right_triphone(HMM_Logical *base, char *rc_name)
@@ -519,19 +531,25 @@ error_missing_right_triphone(HMM_Logical *base, char *rc_name)
 
 /** 
  * <JA>
+ * @brief  トライフォンエラーメッセージ：左コンテキスト用
+ * 
  * 指定した左コンテキストを持つトライフォンが
- * 見つからなかった場合にエラーメッセージを出力する関数．
+ * 見つからなかった場合にエラーメッセージを出力する関数. 
  * 
  * @param base [in] ベースのトライフォン
  * @param lc_name [in] 左コンテキストの音素名
  * </JA>
  * <EN>
+ * @brief  Triphone error message for left context.
+ * 
  * Output error message when a triphone with the specified right context is
  * not defined.
  * 
  * @param base [in] base triphone
  * @param lc_name [in] name of left context phone 
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 error_missing_left_triphone(HMM_Logical *base, char *lc_name)
@@ -542,3 +560,5 @@ error_missing_left_triphone(HMM_Logical *base, char *lc_name)
   add_left_context(rbuf, lc_name);
   jlog("WARNING: IW-triphone for word head \"%s\" not found, fallback to pseudo {%s}\n", rbuf, base->name);
 }
+
+/* end of file */

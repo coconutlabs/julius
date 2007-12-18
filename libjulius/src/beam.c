@@ -1,58 +1,54 @@
 /**
  * @file   beam.c
- * @author Akinobu LEE
- * @date   Tue Feb 22 17:00:45 2005
  * 
  * <JA>
- * @brief  第１パス：フレーム同期ビーム探索
+ * @brief  フレーム同期ビーム探索の実行（第1パス）
  *
- * 静的木構造辞書を用いて，入力特徴量ベクトル列に対して，Juliusの第１パス
- * であるフレーム同期ビーム探索を行います．
+ * 第1パスのフレーム同期ビーム探索を実際に実行する関数群です. 
+ * 認識処理インスタンスごとに実行されます. 
+ * 初期化，1フレームの認識処理，終了処理，第1パスの結果決定，セグメント
+ * 終了の検知などの処理が含まれています. 
  *
- * 入力データ全体があらかじめ得られている場合は，一括で計算を
- * 行う関数 get_back_trellis() がメインから呼ばれます．オンライン認識
- * の場合は realtime_1stpass.c から get_back_trellis_init(),
- * get_back_trellis_proceed(), get_back_trellis_end() などがそれぞれ
- * 入力の進行状況にあわせて個別に呼ばれます．
- *
- * 単語履歴近似は 1-best 近似がデフォルトですが，単語対近似も使用可能です．
- *
- * Julius では単語間の接続制約は 1-gram factoring (2-gram factoring も
- * 選択可)を用いて計算されます．Julianの場合，木構造化辞書は文法の
- * カテゴリ単位で作成され，単語間の接続(単語対制約)は単語間遷移で
- * 適用されます．
+ * アルゴリズムについては，単語履歴近似は 1-best 近似がデフォルトです
+ * が，単語対近似も使用可能です. 単語N-gram では単語間の接続制約は 1-gram
+ * factoring (2-gram factoring も選択可)を用いて計算されます. 文法の
+ * 場合，木構造化辞書は文法のカテゴリ単位で作成され，単語間の接続(単語
+ * 対制約)は単語間遷移で適用されます. 単語認識モードでは単語間接続は
+ * 考慮されません. 
  * </JA>
  * 
  * <EN>
- * @brief  The first pass: frame-synchronous beam search
+ * @brief  Frame-synchronous beam search for the 1st pass
  *
- * These functions perform a frame-synchronous beam search using a static
- * lexicon tree, as the first pass of Julius/Julian.
+ * These are core functions of frame-synchronous beam search using a
+ * static lexicon tree, as the first pass of Julius.  These functions
+ * will be called from pass1.c, to execute for each recognition
+ * process instance in turn.  Functions for initialization, frame-wise
+ * recognition processing, end procedure, finding best path, detecting
+ * end of segment on short-pause segmentation mode, are defined here.
  *
- * When the whole input is already obtained, get_back_trellis() simply does
- * all the processing of the 1st pass.  When performing online
- * real-time recognition with concurrent speech input, get_bcak_trellis_init(),
- * get_back_trellis_proceed(), get_back_trellis_end() will be called
- * separately from realtime_1stpass.c according on the basis of
- * input processing.
+ * About algorithm: 1-best approximation will be performed for word
+ * context approximation, but normal word-pair approximation is also
+ * supported. With word/class N-gram, Julius computes the language
+ * score using 1-gram factoring (can be changed to 2-gram factoring if
+ * you want).  With DFA grammar, Julius can compute the connection
+ * constraint of words using the category-pair constraint on the
+ * beginning of the words, since Julian makes a per-category tree
+ * lexicon.  On isolated word recognition mode, the cross-word transitions
+ * are ignored.
  *
- * 1-best approximation will be performed for word context approximation,
- * but normal word-pair approximation is also supported.
- *
- * With word/class N-gram, Julius computes the language score using 1-gram
- * factoring (can be changed to 2-gram factoring if you want).  With
- * DFA grammar, Julian can compute the connection constraint of words
- * using the category-pair constraint on the beginning of the words, since
- * Julian makes a per-category tree lexicon.
  * </EN>
  * 
- * $Revision: 1.5 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 22 17:00:45 2005
+ *
+ * $Revision: 1.6 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -61,27 +57,26 @@
 #undef DEBUG
 
 
-/* -------------------------------------------------------------------- */
-/*                     第１パスの結果出力と終了処理                     */
-/*              result output and end procedure of 1st pass             */
-/* -------------------------------------------------------------------- */
+/* ---------------------------------------------------------- */
+/*                     第１パスの結果処理                     */
+/*              end procedure to get result of 1st pass       */
+/* ---------------------------------------------------------- */
 
 #ifdef WORD_GRAPH
-/* 第１パス結果から単語グラフを生成 */
-/* generate word graphs from result of 1st pass (=backtrellis) */
 /** 
  * <JA>
  * @brief  認識結果の単語トレリスから単語グラフを抽出する
  *
  * (WORD_GRAPH 指定時)
  * この関数は第１パスの結果の単語トレリスを終端からバックトレースし，
- * パス上にあるトレリス単語を単語グラフとして抽出する．実際には，
+ * パス上にあるトレリス単語を単語グラフとして抽出する. 実際には，
  * 単語トレリス上でグラフ上に残るもののみにマークを付け，
- * 第2パスでは，マークのついた単語のみを展開する．
+ * 第2パスでは，マークのついた単語のみを展開する. 
+ *
+ * グラフは r->result.wg1 に格納される. 
  * 
- * @param endtime [in] 単語トレリス上で単語末端を検索するフレーム
- * @param bt [i/o] 単語トレリス構造体(グラフ上の単語がマークされる)
- * @param winfo [in] 単語辞書
+ * @param frame [in] 単語トレリス上で単語末端を検索するフレーム
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Extract word graph from the resulting word trellis
@@ -91,14 +86,15 @@
  * the path as a word graph.  Actually, this function only marks
  * which trellis words are included in the word graph.  On the 2nd pass,
  * only the words in the word graph will be expanded.
+ *
+ * The generated word graph will be stored to r->result.wg1.
  * 
- * @param endtime [in] frame to lookup for word ends in the word trellis
- * @param bt [i/o] word trellis structure, the words on the graph will be marked
- * @param winfo [in] word dictionary
+ * @param frame [in] frame to lookup for word ends in the word trellis
+ * @param r [i/o] recognition process instance
  * </EN>
  */
 static void
-generate_lattice(int frame, Recog *recog)
+generate_lattice(int frame, RecogProcess *r)
 {
   BACKTRELLIS *bt;
   WORD_INFO *winfo;
@@ -107,8 +103,8 @@ generate_lattice(int frame, Recog *recog)
   LOGPROB l;
   WordGraph *new;
 
-  bt = recog->backtrellis;
-  winfo = recog->model->winfo;
+  bt = r->backtrellis;
+  winfo = r->lm->winfo;
 
   if (frame >= 0) {
     for (i=0;i<bt->num[frame];i++) {
@@ -159,16 +155,32 @@ generate_lattice(int frame, Recog *recog)
       new->graph_cm = 0.0;
       new->mark = FALSE;
 
-      new->next = recog->result.wg1;
-      recog->result.wg1 = new;
+      new->next = r->result.wg1;
+      r->result.wg1 = new;
 
       /* recursive call */
-      generate_lattice(ta->last_tre->endtime, recog);
+      generate_lattice(ta->last_tre->endtime, r);
     }
   }
 }
 
-void
+/** 
+ * <EN>
+ * Link all words in 1st pass word graph extracted by
+ * generate_lattice() by their boundary frame.  All words with the
+ * same boundary frame will be connected.
+ * 
+ * </EN>
+ * <JA>
+ * generate_lattice() で生成した第1パスグラフ中の単語どうしを境界時間
+ * に従って連結する. 同じ境界時間を持つすべての単語が接続される. 
+ * 
+ * </JA>
+ * 
+ * @param root [in] pointer to the root of lattice words.
+ * 
+ */
+static void
 link_lattice_by_time(WordGraph *root)
 {
   WordGraph *wg;
@@ -191,8 +203,20 @@ link_lattice_by_time(WordGraph *root)
 
 }
 
-/* re-compute 2-gram prob for all link */
-void
+/** 
+ * <EN>
+ * re-compute 2-gram prob for all link in 1st pass word graph mode.
+ * </EN>
+ * <JA>
+ * 第1パスで単語グラフを生成するモードにおいて，生成後に単語グラフ上の
+ * 正確な2-gram言語確立を再計算する. 
+ * </JA>
+ * 
+ * @param root [in] pointer to root node of word graph
+ * @param wchmm [in] tree lexicon used for the word graph generation
+ * 
+ */
+static void
 re_compute_lattice_lm(WordGraph *root, WCHMM_INFO *wchmm)
 {
   int i;
@@ -240,13 +264,12 @@ put_atom(TRELLIS_ATOM *atom, WORD_INFO *winfo)
  * @brief 認識結果の単語トレリス上の最尤単語系列を求める
  * 
  * 与えられたトレリス単語から入力始端に向かって単語トレリス上を
- * トレースバックし, その最尤単語系列候補およびその言語スコアを返す．
- * 起点となる最初のトレリス単語が与えられる必要がある．
+ * トレースバックし, その最尤単語系列候補およびその言語スコアを返す. 
+ * 起点となる最初のトレリス単語が与えられる必要がある. 
  * 
  * @param wordseq_rt [out] 結果の最尤単語系列が格納されるバッファ
  * @param rt_wordlen [out] @a wordseq_rt の長さ
  * @param atom [in] バックトレースの起点となるトレリス単語
- * @param backtrellis [in] 単語トレリス構造体
  * @param winfo [in] 単語辞書
  * 
  * @return 得られた最尤単語系列の言語スコア.
@@ -261,14 +284,13 @@ put_atom(TRELLIS_ATOM *atom, WORD_INFO *winfo)
  * @param wordseq_rt [out] buffer to store the best word sequence as result
  * @param rt_wordlen [out] length of @a wordseq_rt
  * @param atom [in] a trellis word as the starting point of the traceback
- * @param backtrellis [in] word trellis structure
  * @param winfo [in] word dictionary
  * 
  * @return the total N-gram language score of the word sequence.
  * </EN>
  */
 static LOGPROB
-trace_backptr(WORD_ID wordseq_rt[MAXSEQNUM], int *rt_wordlen, TRELLIS_ATOM *atom, Recog *recog)
+trace_backptr(WORD_ID wordseq_rt[MAXSEQNUM], int *rt_wordlen, TRELLIS_ATOM *atom, WORD_INFO *winfo)
 {
   int wordlen = 0;		/* word length of best sentence hypothesis */
   TRELLIS_ATOM *tretmp;
@@ -282,7 +304,7 @@ trace_backptr(WORD_ID wordseq_rt[MAXSEQNUM], int *rt_wordlen, TRELLIS_ATOM *atom
   tretmp = atom;
   langscore += tretmp->lscore;
   if (debug2_flag) {
-    put_atom(tretmp, recog->model->winfo);
+    put_atom(tretmp, winfo);
   }
   
   /* trace the backtrellis */
@@ -297,7 +319,7 @@ trace_backptr(WORD_ID wordseq_rt[MAXSEQNUM], int *rt_wordlen, TRELLIS_ATOM *atom
     wordseq[wordlen] = tretmp->wid;
     wordlen++;
     if (debug2_flag) {
-      put_atom(tretmp, recog->model->winfo);
+      put_atom(tretmp, winfo);
     }
     if (wordlen >= MAXSEQNUM) {
       j_internal_error("trace_backptr: sentence length exceeded ( > %d)\n",MAXSEQNUM);
@@ -311,55 +333,42 @@ trace_backptr(WORD_ID wordseq_rt[MAXSEQNUM], int *rt_wordlen, TRELLIS_ATOM *atom
 
 /** 
  * <JA>
- * @brief  第１パスの認識処理結果を出力する
+ * @brief  第１パスの認識処理結果から認識結果を判定し，最尤単語系列を見つける. 
  *
- * 第１パスの計算結果である単語トレリスから，第１パスでの最尤候補を求めて
- * 出力する．内部では，最終フレームに残った中から起点となるトレリス単語
- * を求め，trace_backptr() を呼び出して第1パスの尤仮説系列を求めて
- * その結果を出力する．
+ * 第１パスの計算結果である単語トレリスから，第１パスでの最尤候補を求
+ * め，インスタンス内の result.pass1 に保存する. 候補が得られない場合
+ * はエラー（探索誤り：コード -1）となる. 
  *
- * この第１パスの最尤仮説列は
- * 大域変数 pass1_wseq, pass1_wnum, pass1_scoreにも保存される．
- * これらは第２パスで探索が失敗したときに第１パスの結果を最終結果として
- * 出力する際に参照される．
+ * ショートポーズセグメンテーション時は，認識結果が無音単語のみからなる場合，
+ * エラー（デコーダによる棄却：コード -4）となる. 
  *
- * またWORD_GRAPH 定義時は，この関数内でさらに generate_lattice() を呼び出し
- * 単語グラフの抽出を行う．
+ * また，WORD_GRAPH 定義時は，この関数内でさらに generate_lattice() を
+ * 呼び出し，単語グラフの抽出を行う. 
  * 
- * 
- * @param backtrellis [i/o] 単語トレリス構造体
  * @param framelen [in] 第１パスで処理が到達したフレーム数
- * @param winfo [in] 単語辞書
+ * @param r [in] 認識処理インスタンス
  * 
- * @return 第１パスの最尤仮説系列のスコア，あるいは第１パスで有効な仮説系列が
- * 見つからなければ NULL.
  * </JA>
  * <EN>
- * @brief  Output the result of the first pass
+ * @brief  Find best path from the first pass result and set result status.
  *
- * This function output the best word sequence on the 1st pass.  The last
- * trellis word will be determined by linguistic property or scores from
- * words on the last frame, and trace_backptr() will be called to find
- * the best path from the word.  The resulting word sequence will be output
- * as a result of the 1st pass.
+ * This function find the best word sequence from the resulting word
+ * trellis of the 1st pass, and store them to result.pass1 in the
+ * recognition process instance.  If no candidate was found, it sets
+ * error code -1 (recognition failure) and exit.
  *
- * The informations of the resulting best word sequence will also be stored
- * to global variables such as pass1_wseq, pass1_wnum, pass1_score.  They will
- * be referred on the 2nd pass as a fallback result when the 2nd pass failed
- * with no sentence hypothesis found.
- *
- * Also, if WORD_GRAPH is defined, this function also calls generate_lattice() to
- * extract word graph in the word trellis.
+ * On short-pause segmentation, it sets error code -4 (decoder rejection)
+ * if the found best path consists of only silence words.
  * 
- * @param backtrellis [i/o] word trellis structure
+ * Also, if WORD_GRAPH is defined, this function also calls
+ * generate_lattice() to extract word graph from the word trellis.
+ * 
  * @param framelen [in] frame length that has been processed
- * @param winfo [in] word dictionary
- * 
- * @return the best score of the resulting word sequence on the 1st pass.
+ * @param r [in] recognition process instance
  * </EN>
  */
-static LOGPROB
-print_1pass_result(int framelen, Recog *recog)
+static void
+find_1pass_result(int framelen, RecogProcess *r)
 {
   BACKTRELLIS *backtrellis;
   WORD_INFO *winfo;
@@ -371,18 +380,19 @@ print_1pass_result(int framelen, Recog *recog)
   LOGPROB total_lscore;
   LOGPROB maxscore;
   TRELLIS_ATOM *tmp;
+#ifdef SPSEGMENT_NAIST
+  boolean ok_p;
+#endif
 
-  backtrellis = recog->backtrellis;
-  winfo = recog->model->winfo;
+  backtrellis = r->backtrellis;
+  winfo = r->lm->winfo;
 
   /* look for the last trellis word */
 
-  if (recog->lmtype == LM_PROB) {
+  if (r->lmtype == LM_PROB) {
 
     for (last_time = framelen - 1; last_time >= 0; last_time--) {
-#ifdef SP_BREAK_CURRENT_FRAME	/*  in case of sp segmentation */
-      /* 最終フレームに残った最大スコアの単語 */
-      /* it should be the best trellis word on the last frame */
+
       maxscore = LOG_ZERO;
       for (i=0;i<backtrellis->num[last_time];i++) {
 	tmp = backtrellis->rw[last_time][i];
@@ -390,42 +400,38 @@ print_1pass_result(int framelen, Recog *recog)
 	/* treat only words on a graph path */
 	if (!tmp->within_context) continue;
 #endif
-	if (maxscore < tmp->backscore) {
-	  maxscore = tmp->backscore;
-	  best = tmp;
+	if (r->config->successive.enabled) {
+	  /* short-pause segmentation mode */
+	  /* 最終フレームに残った最大スコアの単語 */
+	  /* it should be the best trellis word on the last frame */
+	  if (maxscore < tmp->backscore) {
+	    maxscore = tmp->backscore;
+	    best = tmp;
+	  }
+	} else {
+	  /* not segmentation mode */
+	  /* 最終単語は winfo->tail_silwid に固定 */
+	  /* it is fixed to the tail silence model (winfo->tail_silwid) */
+	  if (tmp->wid == winfo->tail_silwid && maxscore < tmp->backscore) {
+	    maxscore = tmp->backscore;
+	    best = tmp;
+	    break;
+	  }
 	}
       }
       if (maxscore != LOG_ZERO) break;
-#else  /* normal mode */
-      /* 最終単語は winfo->tail_silwid に固定 */
-      /* it is fixed to the tail silence model (winfo->tail_silwid) */
-      maxscore = LOG_ZERO;
-      for (i=0;i<backtrellis->num[last_time];i++) {
-	tmp = backtrellis->rw[last_time][i];
-#ifdef WORD_GRAPH
-	/* treat only words on a graph path */
-	if (!tmp->within_context) continue;
-#endif
-	if (tmp->wid == winfo->tail_silwid && maxscore < tmp->backscore) {
-	  maxscore = tmp->backscore;
-	  best = tmp;
-	  break;
-	}
-      }
-      if (maxscore != LOG_ZERO) break;
-#endif
     }
 
     if (last_time < 0) {		/* not found */
-      jlog("WARNING: no tail silence word survived on the last frame, search failed\n");
-      recog->result.status = -1;
-      callback_exec(CALLBACK_RESULT, recog);
-      return(LOG_ZERO);
+      jlog("WARNING: %02d %s: no tail silence word survived on the last frame, search failed\n", r->config->id, r->config->name);
+      r->result.status = J_RESULT_STATUS_FAIL;
+      //callback_exec(CALLBACK_RESULT, r);
+      return;
     }
   
   }
 
-  if (recog->lmtype == LM_DFA) {
+  if (r->lmtype == LM_DFA) {
 
     for (last_time = framelen - 1; last_time >= 0; last_time--) {
 
@@ -448,17 +454,31 @@ print_1pass_result(int framelen, Recog *recog)
       if (maxscore != LOG_ZERO) break;
     }
 
-  if (last_time < 0) {		/* not found */
-    jlog("WARNING: no sentence-end word survived on last beam]\n");
-    recog->result.status = -1;
-    callback_exec(CALLBACK_RESULT, recog);
-    return(LOG_ZERO);
-  }
+    if (last_time < 0) {		/* not found */
+      jlog("WARNING: %02d %s: no sentence-end word survived on last beam\n", r->config->id, r->config->name);
+      r->result.status = J_RESULT_STATUS_FAIL;
+      //callback_exec(CALLBACK_RESULT, r);
+      return;
+    }
   
   }
 
   /* traceback word trellis from the best word */
-  total_lscore = trace_backptr(wordseq, &wordlen, best, recog);
+  total_lscore = trace_backptr(wordseq, &wordlen, best, r->lm->winfo);
+#ifdef SPSEGMENT_NAIST
+  if (r->config->successive.enabled) {
+    /* on segmentation mode, recognition result that only consists of
+       short-pause words will be treated as recognition rejection */
+    ok_p = FALSE;
+    for(i=0;i<wordlen;i++) {
+      if (! is_sil(wordseq[i], r)) ok_p = TRUE;
+    }
+    if (ok_p == FALSE) {
+      r->result.status = J_RESULT_STATUS_ONLY_SILENCE;
+      return;
+    }
+  }
+#endif
 
   /* just flush last progress output */
   /*
@@ -469,87 +489,105 @@ print_1pass_result(int framelen, Recog *recog)
     recog->result.pass1.word_num = wordlen;
     recog->result.pass1.score = best->backscore;
     recog->result.pass1.score_lm = total_lscore;
-    callback_exec(CALLBACK_RESULT_PASS1_INTERIM, recog);
+    recog->result.pass1.score_am = best->backscore - total_lscore;
+    //callback_exec(CALLBACK_RESULT_PASS1_INTERIM, recog);
     }*/
 
   /* output 1st pass result */    
-  if (verbose_flag || !recog->jconf->output.progout_flag) {
-    recog->result.status = 0;
-    recog->result.num_frame = framelen;
-    recog->result.pass1.word = wordseq;
-    recog->result.pass1.word_num = wordlen;
-    recog->result.pass1.score = best->backscore;
-    recog->result.pass1.score_lm = total_lscore;
-    callback_exec(CALLBACK_RESULT_PASS1, recog);
+  if (verbose_flag || ! r->config->output.progout_flag) {
+    r->result.status = J_RESULT_STATUS_SUCCESS;
+    r->result.num_frame = framelen;
+    for(i=0;i<wordlen;i++) r->result.pass1.word[i] = wordseq[i];
+    r->result.pass1.word_num = wordlen;
+    r->result.pass1.score = best->backscore;
+    r->result.pass1.score_lm = total_lscore;
+    r->result.pass1.score_am = best->backscore - total_lscore;
+    //callback_exec(CALLBACK_RESULT_PASS1, r);
   }
 
   /* store the result to global val (notice: in reverse order) */
-  for(i=0;i<wordlen;i++) recog->pass1_wseq[i] = wordseq[i];
-  recog->pass1_wnum = wordlen;
-  recog->pass1_score = best->backscore;
+  for(i=0;i<wordlen;i++) r->pass1_wseq[i] = wordseq[i];
+  r->pass1_wnum = wordlen;
+  r->pass1_score = best->backscore;
 
 #ifdef WORD_GRAPH
   /* 単語トレリスから，ラティスを生成する */
   /* generate word graph from the word trellis */
-  recog->result.wg1 = NULL;
-  recog->peseqlen = backtrellis->framelen;
-  generate_lattice(last_time, recog);
-  link_lattice_by_time(recog->result.wg1);
-  if (recog->lmtype == LM_PROB) re_compute_lattice_lm(recog->result.wg1, recog->wchmm);
-  recog->result.wg1_num = wordgraph_sort_and_annotate_id(&(recog->result.wg1), recog);
+  r->peseqlen = backtrellis->framelen;
+  r->result.wg1 = NULL;
+  generate_lattice(last_time, r);
+  link_lattice_by_time(r->result.wg1);
+  if (r->lmtype == LM_PROB) re_compute_lattice_lm(r->result.wg1, r->wchmm);
+  r->result.wg1_num = wordgraph_sort_and_annotate_id(&(r->result.wg1), r);
   /* compute graph CM by forward-backward processing */
-  graph_forward_backward(recog->result.wg1, recog);
-  callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
-  wordgraph_clean(&(recog->result.wg1));
+  graph_forward_backward(r->result.wg1, r);
+  //callback_exec(CALLBACK_RESULT_PASS1_GRAPH, r);
+  //wordgraph_clean(&(r->result.wg1));
 #endif
 
-  /* return maximum score */
-  return(best->backscore);
 }
 
 /** 
  * <JA>
- * 単語認識モード時の第1パス認識結果出力．
- * 通常の第２パスと同じ，最終出力として出力する．
+ * トレリス単語をスコアでソートするqsort関数. 
  * 
- * @param framelen [in] 第１パスで処理が到達したフレーム数
- * @param winfo [in] 単語辞書
+ * @param x1 [in] 要素1へのポインタ
+ * @param x2 [in] 要素2へのポインタ
  * 
- * @return 第１パスの最尤仮説系列のスコア，あるいは第１パスで有効な仮説系列が
- * 見つからなければ NULL.
+ * @return qsort の値
  * </JA>
  * <EN>
- * Output result of 1st pass in isolated word recognition mode.
- * The output functions for 2nd pass will be used here.
+ * qsort function to sort trellis words by their score.
  * 
- * @param backtrellis [i/o] word trellis structure
- * @param framelen [in] frame length that has been processed
- * @param winfo [in] word dictionary
+ * @param x1 [in] pointer to element #1
+ * @param x2 [in] pointer to element #2
  * 
- * @return the best score of the resulting word sequence on the 1st pass.
+ * @return value required for qsort.
  * </EN>
  */
-static LOGPROB
-print_1pass_result_word(int framelen, Recog *recog)
+static int
+compare_backscore(TRELLIS_ATOM **x1, TRELLIS_ATOM **x2)
+{
+  return((*x1)->backscore < (*x2)->backscore);
+}
+
+/** 
+ * <JA>
+ * find_1pass_result() の単語認識モード版. 単語認識モードでは第1パスで
+ * 認識を終了するので，得られた候補は通常の第２パスと同じ場所に格納する. 
+ * 
+ * @param framelen [in] 第１パスで処理が到達したフレーム数
+ * @param r [i/o] 認識処理インスタンス
+ * 
+ * </JA>
+ * <EN>
+ * Isolated word recognition version of find_1pass_result().
+ * Since Julius executes only the 1st pass on Isolated word recognition
+ * mode, the result candidate will be stored as the final result.
+ * 
+ * @param framelen [in] frame length that has been processed
+ * @param r [i/o] recognition process instance
+ * 
+ * </EN>
+ */
+static void
+find_1pass_result_word(int framelen, RecogProcess *r)
 {
   BACKTRELLIS *bt;
   TRELLIS_ATOM *best, *tmp;
   int last_time;
-  int num;
   Sentence *s;
 #ifdef CONFIDENCE_MEASURE
   LOGPROB sum;
 #endif
   LOGPROB maxscore;
   int i;
-  
-  if (recog->lmvar != LM_DFA_WORD) return LOG_ZERO;
+  TRELLIS_ATOM **idx;
 
-  bt = recog->backtrellis;
+  if (r->lmvar != LM_DFA_WORD) return;
 
+  bt = r->backtrellis;
   for (last_time = framelen - 1; last_time >= 0; last_time--) {
-    /* 最終フレームに残った最大スコアの単語 */
-    /* it should be the best trellis word on the last frame */
     maxscore = LOG_ZERO;
     for (i=0;i<bt->num[last_time];i++) {
       tmp = bt->rw[last_time][i];
@@ -566,10 +604,10 @@ print_1pass_result_word(int framelen, Recog *recog)
   }
 
   if (last_time < 0) {		/* not found */
-    jlog("WARNING: no tail silence word survived on the last frame, search failed\n");
-    recog->result.status = -1;
-    callback_exec(CALLBACK_RESULT, recog);
-    return(LOG_ZERO);
+    jlog("WARNING: %02d %s: no word survived on the last frame, search failed\n", r->config->id, r->config->name);
+    r->result.status = J_RESULT_STATUS_FAIL;
+    //callback_exec(CALLBACK_RESULT, r);
+    return;
   }
 
 #ifdef CONFIDENCE_MEASURE
@@ -580,22 +618,60 @@ print_1pass_result_word(int framelen, Recog *recog)
     /* treat only words on a graph path */
     if (!tmp->within_context) continue;
 #endif
-    sum += pow(10, recog->jconf->annotate.cm_alpha * (tmp->backscore - maxscore));
+    sum += pow(10, r->config->annotate.cm_alpha * (tmp->backscore - maxscore));
   }
 #endif
 
-  /* prepare result storage */
-  recog->result.status = 0;
-  num = 1;
-  recog->result.sent = (Sentence *)mymalloc(sizeof(Sentence) * num);
-  recog->result.sentnum = num;
-  for(i=0;i<num;i++) {
-    s = &(recog->result.sent[i]);
+  /* set recognition result status to normal */
+  r->result.status = J_RESULT_STATUS_SUCCESS;
+
+  if (r->config->output.output_hypo_maxnum > 1) {
+    /* more than one candidate is requested */
+
+    /* get actual number of candidates to output */
+    r->result.sentnum = r->config->output.output_hypo_maxnum;
+    if (r->result.sentnum > bt->num[last_time]) {
+      r->result.sentnum = bt->num[last_time];
+    }
+
+    /* prepare result storage */
+    r->result.sent = (Sentence *)mymalloc(sizeof(Sentence)* r->result.sentnum);
+
+    /* sort by score */
+    idx = (TRELLIS_ATOM **)mymalloc(sizeof(TRELLIS_ATOM *)*bt->num[last_time]);
+    for (i=0;i<bt->num[last_time];i++) {
+      idx[i] = bt->rw[last_time][i];
+    }
+    qsort(idx, bt->num[last_time], sizeof(TRELLIS_ATOM *),
+	  (int (*)(const void *,const void *))compare_backscore);
+    
+    /* store to result storage */
+    for(i=0;i<r->result.sentnum;i++) {
+      s = &(r->result.sent[i]);
+      tmp = idx[i];
+      s->word_num = 1;
+      s->word[0] = tmp->wid;
+#ifdef CONFIDENCE_MEASURE
+      s->confidence[0] = pow(10, r->config->annotate.cm_alpha * (tmp->backscore - maxscore)) / sum;
+#endif
+      s->score = tmp->backscore;
+      s->score_lm = 0.0;
+      s->score_am = tmp->backscore;
+      s->gram_id = 0;
+      s->align.filled = FALSE;
+    }
+    /* free work area for sort */
+    free(idx);
+
+  } else {			/* only max is needed */
+
+    /* prepare result storage */
+    r->result.sent = (Sentence *)mymalloc(sizeof(Sentence));
+    r->result.sentnum = 1;
+    s = &(r->result.sent[0]);
     s->word_num = 1;
-    s->word = (WORD_ID *)mymalloc(sizeof(WORD_ID));
     s->word[0] = best->wid;
 #ifdef CONFIDENCE_MEASURE
-    s->confidence = (LOGPROB *)mymalloc(sizeof(LOGPROB));
     s->confidence[0] = 1.0 / sum;
 #endif
     s->score = best->backscore;
@@ -604,17 +680,12 @@ print_1pass_result_word(int framelen, Recog *recog)
     s->gram_id = 0;
     s->align.filled = FALSE;
   }
-  callback_exec(CALLBACK_RESULT, recog);
-  for(i=0;i<num;i++) {
-    s = &(recog->result.sent[i]);
-    free(s->word);
-#ifdef CONFIDENCE_MEASURE
-    free(s->confidence);
-#endif
-  }
-  free(recog->result.sent);
-  
-  return maxscore;
+
+  /* copy as 1st pass result */
+  memcpy(&(r->result.pass1), &(r->result.sent[0]), sizeof(Sentence));
+
+  //callback_exec(CALLBACK_RESULT, r);
+  //free(r->result.sent);
 }
 
 
@@ -622,42 +693,51 @@ print_1pass_result_word(int framelen, Recog *recog)
 
 /** 
  * <JA>
- * 単語認識用に，第１パスの処理中にCMから早期確定する（実験）
- * 
- * @param recog [in] 音声認識インスタンス
+ * 第１パスの途中データから早期確定可能かどうか判定する（実験）. tremax が
+ * NULL のときは初期化する. 確定時は r->have_determine を TRUE にする. 
+ *
+ * @param r [i/o] 音声認識処理インスタンス
  * @param t [in] フレーム
+ * @param tremax [in] 現在のフレーム上で最尤のトレリス単語
+ * @param thres [in] 確定用のスコア閾値
+ * @param countthres [in] 確定用の持続フレーム数の閾値
+ *
+ * @return 確定時は tremax を返す. 未確定時は NULL を返す. 
  * </JA>
  * <EN>
- * Determine word hypothesis before end of input (EXPERIMENT)
+ * Try to Determine a word hypothesis before end of input on isolated
+ * word recognition mode (EXPERIMENT).  Initialize if tremax is NULL.
+ * Set r->have_determine to TRUE if determined.
  * 
- * @param recog [in] recognition instance
- * @param t [in] frame
+ * @param r [i/o] recognition process instance
+ * @param t [in] current frame
+ * @param tremax [in] maximum scored trellis word on the current frame
+ * @param thres [in] score threshold for determinization
+ * @param countthres [in] frame duration threshold for determinization
+ *
+ * @return the tremax if determined, or NULL if not determined yet., 
  * </EN>
  */
 static TRELLIS_ATOM *
-determine_word(Recog *recog, int t, TRELLIS_ATOM *tremax, LOGPROB thres, int countthres)
+determine_word(RecogProcess *r, int t, TRELLIS_ATOM *tremax, LOGPROB thres, int countthres)
 {
-  TRELLIS_ATOM *tre;
   TRELLIS_ATOM *ret;
   WORD_ID w;
 
-  static LOGPROB last_wid;
-  static int count;
-  static boolean determined;
   //LOGPROB sum;
   //LOGPROB cm;
 
   int j;
   FSBeam *d;
   TOKEN2 *tk;
-  static LOGPROB maxnodescore;
     
-  if (recog == NULL) {
+  if (tremax == NULL) {
     /* initialize */
-    count = 0;
-    maxnodescore = LOG_ZERO;
-    determined = FALSE;
-    last_wid = WORD_INVALID;
+    r->determine_count = 0;
+    r->determine_maxnodescore = LOG_ZERO;
+    r->determined = FALSE;
+    r->determine_last_wid = WORD_INVALID;
+    r->have_determine = FALSE;
     return NULL;
   }
 
@@ -677,64 +757,32 @@ determine_word(Recog *recog, int t, TRELLIS_ATOM *tremax, LOGPROB thres, int cou
   /* determinization decision */
   w = tremax->wid;
 
+  r->have_determine = FALSE;
+
   /* determine by score threshold from maximum node score to maximum word end node score */
-  if (last_wid == w && maxnodescore - tremax->backscore <= thres) {
-    count++;
-    if (count > countthres) {
-      if (determined == FALSE) {
+  if (r->determine_last_wid == w && r->determine_maxnodescore - tremax->backscore <= thres) {
+    r->determine_count++;
+    if (r->determine_count > countthres) {
+      if (r->determined == FALSE) {
 	ret = tremax;
-	determined = TRUE;
+	r->determined = TRUE;
+	r->have_determine = TRUE;
       }
     }
   } else {
-    count = 0;
+    r->determine_count = 0;
   }
 
-  /* by cm threshold, delta and duration count  */
-/* 
- *   switch(phase) {
- *   case 0:
- *     phase = 1;
- *     determined = FALSE;
- *     break;
- *   case 1:
- *     if (last_cm < cm) {
- *	 phase = 2;
- *	 count = 0;
- *     }
- *     break;
- *   case 2:
- *     if (last_wid != w) {
- *	 count = 0;
- *	 determined = FALSE;
- *	 phase = 1;
- *     } else {
- *	 if ((cm >= last_cm || fabs(cm - last_cm) < 0.001) && cm >= cmthres) {
- *	   count++;
- *	   if (count > countthres) {
- *	     if (determined == FALSE) {
- *	       ret = tremax;
- *	       determined = TRUE;
- *	     }
- *	   }
- *	 } else {
- *	   count = 0;
- *	 }
- *     }
- *     break;
- *   }
- */
-
-  //printf("determine: %d: %s: cm=%f, relscore=%f, count=%d, phase=%d\n", t, recog->model->winfo->woutput[w], cm, maxnodescore - tremax->backscore, count, phase);
-  last_wid = w;
+  //printf("determine: %d: %s: cm=%f, relscore=%f, count=%d, phase=%d\n", t, recog->model->winfo->woutput[w], cm, determine_maxnodescore - tremax->backscore, count, phase);
+  r->determine_last_wid = w;
 
   /* update maximum node score here for next call, since
      the word path determination is always one frame later */
-  d = &(recog->pass1);
-  maxnodescore = LOG_ZERO;
+  d = &(r->pass1);
+  r->determine_maxnodescore = LOG_ZERO;
   for (j = d->n_start; j <= d->n_end; j++) {
     tk = &(d->tlist[d->tn][d->tindex[d->tn][j]]);
-    if (maxnodescore < tk->score) maxnodescore = tk->score;
+    if (r->determine_maxnodescore < tk->score) r->determine_maxnodescore = tk->score;
   }
 
   return(ret);
@@ -742,26 +790,26 @@ determine_word(Recog *recog, int t, TRELLIS_ATOM *tremax, LOGPROB thres, int cou
 
 /** 
  * <JA>
- * 第１パスの処理中に，あるフレームまでのベストパスを表示する．
+ * 単語認識時に，第１パスの処理中に早期確定する（実験）. 確定できた場合，
+ * 第1パスの結果格納用エリア (r->result.pass1) に確定結果を格納する. 
+ * また確定時は r->have_determine に TRUE が入る. 
  * 
- * @param bt [in] 単語トレリス構造体
- * @param t [in] フレーム
- * @param winfo [in] 単語辞書
+ * @param r [in] 認識処理インスタンス
+ * @param t [in] 現在の入力フレーム
  * </JA>
  * <EN>
- * Output the current best word sequence ending
- * at a specified time frame in the course of the 1st pass.
+ * Determine word hypothesis before end of input (EXPERIMENT).  When
+ * determined, the determined word will be stored to the result area
+ * for the 1st pass (r->result.pass1).  r->have_determine will be
+ * set to TRUE when determinized.
  * 
- * @param bt [in] word trellis structure
- * @param t [in] frame
- * @param winfo [in] word dictionary
+ * @param r [in] recognition process instance
+ * @param t [in] current input frame
  * </EN>
  */
 static void
-check_determine_word(Recog *recog, int t)
+check_determine_word(RecogProcess *r, int t)
 {
-  static WORD_ID wordseq[MAXSEQNUM];
-  int wordlen;
   TRELLIS_ATOM *tre;
   TRELLIS_ATOM *tremax;
   LOGPROB maxscore;
@@ -769,7 +817,7 @@ check_determine_word(Recog *recog, int t)
   /* bt->list is ordered by time frame */
   maxscore = LOG_ZERO;
   tremax = NULL;
-  tre = recog->backtrellis->list;
+  tre = r->backtrellis->list;
   while (tre != NULL && tre->endtime == t) {
     if (maxscore < tre->backscore) {
       maxscore = tre->backscore;
@@ -778,19 +826,19 @@ check_determine_word(Recog *recog, int t)
     tre = tre->next;
   }
 
-  recog->result.status = 0;
-  recog->result.num_frame = t;
+  r->result.status = J_RESULT_STATUS_SUCCESS;
+  r->result.num_frame = t;
 
   if (maxscore != LOG_ZERO) {
     //    if ((tre = determine_word(recog, t, tremax, 0.9, 17)) != NULL) {
-    if ((tre = determine_word(recog, t, tremax, recog->jconf->search.pass1.determine_score_thres, recog->jconf->search.pass1.determine_duration_thres)) != NULL) {
-      wordseq[0] = tremax->wid;
-      recog->result.pass1.word = wordseq;
-      recog->result.pass1.word_num = 1;
-      recog->result.pass1.score = tremax->backscore;
-      recog->result.pass1.score_lm = 0.0;
-      recog->result.num_frame = t;
-      callback_exec(CALLBACK_RESULT_PASS1_DETERMINED, recog);
+    if ((tre = determine_word(r, t, tremax, r->config->pass1.determine_score_thres, r->config->pass1.determine_duration_thres)) != NULL) {
+      r->result.pass1.word[0] = tremax->wid;
+      r->result.pass1.word_num = 1;
+      r->result.pass1.score = tremax->backscore;
+      r->result.pass1.score_lm = 0.0;
+      r->result.pass1.score_am = tremax->backscore;
+      r->result.num_frame = t;
+      //callback_exec(CALLBACK_RESULT_PASS1_DETERMINED, r);
     }
   }
 
@@ -801,25 +849,22 @@ check_determine_word(Recog *recog, int t)
 
 /** 
  * <JA>
- * 第１パスの処理中に，あるフレームまでのベストパスを表示する．
+ * 第１パスの処理中に，あるフレームまでのベストパスを表示する. 
  * 
- * @param bt [in] 単語トレリス構造体
- * @param t [in] フレーム
- * @param winfo [in] 単語辞書
+ * @param r [i/o] 認識処理インスタンス
+ * @param t [in] 現在の入力フレーム
  * </JA>
  * <EN>
  * Output the current best word sequence ending
  * at a specified time frame in the course of the 1st pass.
  * 
- * @param bt [in] word trellis structure
- * @param t [in] frame
- * @param winfo [in] word dictionary
+ * @param r [i/o] recognition process instance
+ * @param t [in] current input frame
  * </EN>
  */
 static void
-bt_current_max(Recog *recog, int t)
+bt_current_max(RecogProcess *r, int t)
 {
-  static WORD_ID wordseq[MAXSEQNUM];
   int wordlen;
   TRELLIS_ATOM *tre;
   TRELLIS_ATOM *tremax;
@@ -829,7 +874,7 @@ bt_current_max(Recog *recog, int t)
   /* bt->list is ordered by time frame */
   maxscore = LOG_ZERO;
   tremax = NULL;
-  tre = recog->backtrellis->list;
+  tre = r->backtrellis->list;
   while (tre != NULL && tre->endtime == t) {
     if (maxscore < tre->backscore) {
       maxscore = tre->backscore;
@@ -838,47 +883,46 @@ bt_current_max(Recog *recog, int t)
     tre = tre->next;
   }
 
-  recog->result.status = 0;
-  recog->result.num_frame = t;
+  r->result.status = J_RESULT_STATUS_SUCCESS;
+  r->result.num_frame = t;
 
   if (maxscore == LOG_ZERO) {
-    recog->result.pass1.word = wordseq;
-    recog->result.pass1.word_num = 0;
+    r->result.pass1.word_num = 0;
   } else {
-    if (recog->lmvar == LM_DFA_WORD) {
-      wordseq[0] = tremax->wid;
-      recog->result.pass1.word = wordseq;
-      recog->result.pass1.word_num = 1;
-      recog->result.pass1.score = tremax->backscore;
-      recog->result.pass1.score_lm = 0.0;
+    if (r->lmvar == LM_DFA_WORD) {
+      r->result.pass1.word[0] = tremax->wid;
+      r->result.pass1.word_num = 1;
+      r->result.pass1.score = tremax->backscore;
+      r->result.pass1.score_lm = 0.0;
+      r->result.pass1.score_am = tremax->backscore;
     } else {
-      lscore = trace_backptr(wordseq, &wordlen, tremax, recog);
-      recog->result.pass1.word = wordseq;
-      recog->result.pass1.word_num = wordlen;
-      recog->result.pass1.score = tremax->backscore;
-      recog->result.pass1.score_lm = lscore;
+      lscore = trace_backptr(r->result.pass1.word, &wordlen, tremax, r->lm->winfo);
+      r->result.pass1.word_num = wordlen;
+      r->result.pass1.score = tremax->backscore;
+      r->result.pass1.score_lm = lscore;
+      r->result.pass1.score_am = tremax->backscore;
     }
   }
-  callback_exec(CALLBACK_RESULT_PASS1_INTERIM, recog);
+  //callback_exec(CALLBACK_RESULT_PASS1_INTERIM, r);
 }
 
 /** 
  * <JA>
  * 第１パスの処理中に，あるフレーム上の最尤単語を表示する(デバッグ用)
  * 
- * @param recog [in] 認識インスタンス
- * @param t [in] フレーム
+ * @param r [i/o] 認識処理インスタンス
+ * @param t [in] 現在の入力フレーム
  * </JA>
  * <EN>
  * Output the current best word on a specified time frame in the course
  * of the 1st pass.
  * 
- * @param recog [in] recognition data instance
- * @param t [in] frame
+ * @param r [i/o] recognition process instance
+ * @param t [in] current input frame
  * </EN>
  */
 static void
-bt_current_max_word(Recog *recog, int t)
+bt_current_max_word(RecogProcess *r, int t)
 {
 
   TRELLIS_ATOM *tre;
@@ -890,7 +934,7 @@ bt_current_max_word(Recog *recog, int t)
   /* bt->list is order by time */
   maxscore = LOG_ZERO;
   tremax = NULL;
-  tre = recog->backtrellis->list;
+  tre = r->backtrellis->list;
   while (tre != NULL && tre->endtime == t) {
     if (maxscore < tre->backscore) {
       maxscore = tre->backscore;
@@ -903,12 +947,12 @@ bt_current_max_word(Recog *recog, int t)
     jlog("DEBUG: %3d: ",t);
     w = tremax->wid;
     jlog("\"%s [%s]\"(id=%d)",
-	 recog->model->winfo->wname[w], recog->model->winfo->woutput[w], w);
+	 r->lm->winfo->wname[w], r->lm->winfo->woutput[w], w);
     jlog(" [%d-%d] %f", tremax->begintime, t, tremax->backscore);
     w = tremax->last_tre->wid;
     if (w != WORD_INVALID) {
       jlog(" <- \"%s [%s]\"(id=%d)\n",
-	       recog->model->winfo->wname[w], recog->model->winfo->woutput[w], w);
+	       r->lm->winfo->wname[w], r->lm->winfo->woutput[w], w);
     } else {
       jlog(" <- bgn\n");
     }
@@ -918,25 +962,25 @@ bt_current_max_word(Recog *recog, int t)
 
 /* -------------------------------------------------------------------- */
 /*                 ビーム探索中のトークンを扱うサブ関数                 */
-/*                functions to handle hypothesis tokens                  */
+/*                functions to handle hypothesis tokens                 */
 /* -------------------------------------------------------------------- */
 
 /** 
  * <JA>
- * 第１パスのビーム探索用の初期ワークエリアを確保する．
- * 足りない場合は探索中に動的に伸長される．
- * 
+ * 第１パスのビーム探索用の初期ワークエリアを確保する. 
+ * 足りない場合は探索中に動的に伸長される. 
+ *
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param n [in] 木構造化辞書のノード数
  * @param ntoken_init [in] 最初に確保するトークンの数
- * @param ntoken_step [in] トークン不足で伸長する場合の1回あたりの伸長数
  * </JA>
  * <EN>
  * Allocate initial work area for beam search on the 1st pass.
  * If filled while search, they will be expanded on demand.
  * 
- * @param n [in] number of nodes in the tree lexicon
+ * @param d [i/o] work area for 1st pass recognition processing
+ * @param n [in] number of nodes in lexicon tree
  * @param ntoken_init [in] number of token space to be allocated at first
- * @param ntoken_step [in] number of token space to be increased for each expansion
  * </EN>
  */
 static void
@@ -957,10 +1001,14 @@ malloc_nodes(FSBeam *d, int n, int ntoken_init)
 
 /** 
  * <JA>
- * 第１パスのビーム探索用のワークエリアを伸ばして再確保する．
+ * 第１パスのビーム探索用のワークエリアを伸ばして再確保する. 
+ *
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * </JA>
  * <EN>
  * Re-allocate work area for beam search on the 1st pass.
+ * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * </EN>
  */
 static void
@@ -975,6 +1023,23 @@ expand_tlist(FSBeam *d)
   d->expanded = TRUE;
 }
 
+/** 
+ * <EN>
+ * Clear nodes for the next input.  Julius will call this function for
+ * each input to re-set the work area for the beam search.  If the size
+ * of tree lexicon has been changed since the last input, Julius will
+ * free and re-allocate the work area.
+ * </EN>
+ * <JA>
+ * ノード情報を初期化する. Julius は，木構造化辞書のサイズが直前の入力
+ * 時と変化がないときは，この関数によってノード情報を初期化するだけで
+ * よい. サイズが変更されているときはノードを開放・再確保する. 
+ * </JA>
+ * 
+ * @param d [i/o] work area for 1st pass recognition processing
+ * @param ntoken_step [in] required token step
+ * 
+ */
 static void
 prepare_nodes(FSBeam *d, int ntoken_step)
 {
@@ -984,10 +1049,16 @@ prepare_nodes(FSBeam *d, int ntoken_step)
 
 /** 
  * <JA>
- * 第１パスのビーム探索用のワークエリアを全て解放する．
+ * 第１パスのビーム探索用のワークエリアを全て解放する. 
+ *
+ * @param d [i/o] 第1パス探索処理用ワークエリア
+ * 
  * </JA>
  * <EN>
  * Free all the work area for beam search on the 1st pass.
+ * 
+ * @param d [i/o] work area for 1st pass recognition processing
+ * 
  * </EN>
  */
 static void
@@ -1005,13 +1076,15 @@ free_nodes(FSBeam *d)
 
 /** 
  * <JA>
- * トークンスペースをリセットする．
+ * トークンスペースをリセットする. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param tt [in] ワークエリアID (0 または 1)
  * </JA>
  * <EN>
  * Reset the token space.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param tt [in] work area id (0 or 1)
  * </EN>
  */
@@ -1023,13 +1096,15 @@ clear_tlist(FSBeam *d, int tt)
 
 /** 
  * <JA>
- * アクティブトークンリストをクリアする．
+ * アクティブトークンリストをクリアする. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param tt [in] 直前のワークエリアID (0 または 1)
  * </JA>
  * <EN>
  * Clear the active token list.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param tt [in] work area id of previous frame (0 or 1)
  * </EN>
  */
@@ -1045,13 +1120,17 @@ clear_tokens(FSBeam *d, int tt)
 
 /** 
  * <JA>
- * トークンスペースから新たなトークンを取りだす．
+ * トークンスペースから新たなトークンを取りだす. 
+ * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * 
  * @return 新たに取り出されたトークンのID
  * </JA>
  * <EN>
  * Assign a new token from token space.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
+ 
  * @return the id of the newly assigned token.
  * </EN>
  */
@@ -1074,14 +1153,15 @@ create_token(FSBeam *d)
 
 /** 
  * <JA>
- * @brief  木構造化辞書のノードにトークンを割り付ける．
+ * @brief  木構造化辞書のノードにトークンを割り付ける. 
  *
- * 木構造化辞書のノードのアクティブトークンリストにトークンを保存する．
- * またトークンスペースにおいてトークンからノード番号へのリンクを保存する．
+ * 木構造化辞書のノードのアクティブトークンリストにトークンを保存する. 
+ * またトークンスペースにおいてトークンからノード番号へのリンクを保存する. 
  * 
- * 既にトークンがある場合は，新たなトークンによって上書きされる．なお
- * WPAIR 指定時はそのリストに新たなトークンを追加する．
+ * 既にトークンがある場合は，新たなトークンによって上書きされる. なお
+ * WPAIR 指定時はそのリストに新たなトークンを追加する. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param node [in] 木構造化辞書のノード番号
  * @param tkid [in] トークン番号
  * </JA>
@@ -1095,6 +1175,7 @@ create_token(FSBeam *d)
  * If WPAIR is defined, the new token will be simply added to the list of
  * active tokens on the node.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param node [in] node id on the tree lexicon
  * @param tkid [in] token id to be assigned
  * </EN>
@@ -1113,19 +1194,20 @@ node_assign_token(FSBeam *d, int node, TOKENID tkid)
 /** 
  * <JA>
  * @brief  木構造化辞書上のあるノードが，現在なんらかのトークンを
- * 保持しているかをチェックする．
+ * 保持しているかをチェックする. 
  *
  * WPAIR が定義されている場合，ノードは直前単語ごとに異なるトークンを複数
- * 保持する．この場合, 指定された単語IDを直前単語とするトークンが
- * そのノードに保持されているかどうかがチェックされる．すなわち，既にトークン
+ * 保持する. この場合, 指定された単語IDを直前単語とするトークンが
+ * そのノードに保持されているかどうかがチェックされる. すなわち，既にトークン
  * が存在しても，そのトークンの表すパスの直前単語が指定した単語と異なって
- * いれば未保持 (TOKENID_UNDEFINED) を返す．
+ * いれば未保持 (TOKENID_UNDEFINED) を返す. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param tt [in] 直前のワークエリアID (0 または 1)
  * @param node [in] ノード番号
  * @param wid [in] 直前単語のID (WPAIR定義時のみ有効, 他では無視される)
  *
- * @return そのノードが既に保持するトークン番号，無ければ TOKENID_UNDEFINED．
+ * @return そのノードが既に保持するトークン番号，無ければ TOKENID_UNDEFINED. 
  * </JA>
  * <EN>
  * @brief  Check if a node holds any token
@@ -1136,6 +1218,7 @@ node_assign_token(FSBeam *d, int node, TOKENID tkid)
  * word context.  In this case, only token with the same previous word will be
  * checked.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param tt [in] work area id (0 or 1)
  * @param node [in] node id of lexicon tree
  * @param wid [in] word id of previous word (ignored if WPAIR is not defined)
@@ -1223,11 +1306,12 @@ node_check_token(FSBeam *d, int tt)
 
 /** 
  * <JA>
- * @brief  トークンスペースをスコアの大きい順にソートする．
+ * @brief  トークンスペースをスコアの大きい順にソートする. 
  *
- * heap sort を用いて現在のトークン集合をスコアの大きい順にソートする．
- * 上位 @a neednum 個のトークンがソートされればそこで処理を終了する．
+ * heap sort を用いて現在のトークン集合をスコアの大きい順にソートする. 
+ * 上位 @a neednum 個のトークンがソートされればそこで処理を終了する. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param neednum [in] 上位 @a neednum 個が得られるまでソートする
  * @param totalnum [in] トークンスペース内の有効なトークン数
  * </JA>
@@ -1239,6 +1323,7 @@ node_check_token(FSBeam *d, int tt)
  * This function terminates sort as soon as the top
  * @a neednum tokens has been found.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param neednum [in] sort until top @a neednum tokens has been found
  * @param totalnum [in] total number of assigned tokens in the token space
  * </EN>
@@ -1291,12 +1376,13 @@ sort_token_upward(FSBeam *d, int neednum, int totalnum)
 
 /** 
  * <JA>
- * @brief  トークンスペースをスコアの小さい順にソートする．
+ * @brief  トークンスペースをスコアの小さい順にソートする. 
  *
  * ビームのしきい値決定のために，heap sort を用いて
- * 現在のトークン集合をスコアの小さい順にソートする．
- * 下位 @a neednum 個のトークンがソートされればそこで処理を終了する．
+ * 現在のトークン集合をスコアの小さい順にソートする. 
+ * 下位 @a neednum 個のトークンがソートされればそこで処理を終了する. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param neednum [in] 下位 @a neednum 個が得られるまでソートする
  * @param totalnum [in] トークンスペース内の有効なトークン数
  * </JA>
@@ -1309,6 +1395,7 @@ sort_token_upward(FSBeam *d, int neednum, int totalnum)
  * This function terminates sort as soon as the bottom
  * @a neednum tokens has been found.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param neednum [in] sort until bottom @a neednum tokens has been found
  * @param totalnum [in] total number of assigned tokens in the token space
  * </EN>
@@ -1364,12 +1451,13 @@ sort_token_downward(FSBeam *d, int neednum, int totalnum)
  * @brief トークンスペースをソートしてビーム内に残るトークンを決定する
  * 
  * heap sort を用いて現在のトークン集合をソートし，上位スコアのトークン
- * 集合を求める．上位 @a neednum 個のトークン集合が得られれば良いので，
- * 全体が完全にソートされている必要はない．よって
- * 上位 @a neednum 個のトークンのみをソートする．実際には，全体のトークン
+ * 集合を求める. 上位 @a neednum 個のトークン集合が得られれば良いので，
+ * 全体が完全にソートされている必要はない. よって
+ * 上位 @a neednum 個のトークンのみをソートする. 実際には，全体のトークン
  * 数と必要なトークン数から sort_token_upward()
- * と sort_token_downward() の早い方が用いられる．
+ * と sort_token_downward() の早い方が用いられる. 
  * 
+ * @param d [i/o] 第1パス探索処理用ワークエリア
  * @param neednum [in] 求める上位トークンの数
  * @param start [out] 上位 @a neednum のトークンが存在するトークンスペースの最初のインデックス番号
  * @param end [out] 上位 @a neednum のトークンが存在するトークンスペースの最後のインデックス番号
@@ -1384,6 +1472,7 @@ sort_token_downward(FSBeam *d, int neednum, int totalnum)
  * sort_token_upward() or sort_token_downward() will be used depending of
  * the number of needed tokens and total tokens.
  * 
+ * @param d [i/o] work area for 1st pass recognition processing
  * @param neednum [in] number of top tokens to be found
  * @param start [out] start index of the top @a neednum nodes
  * @param end [out] end index of the top @a neednum nodes
@@ -1415,213 +1504,7 @@ sort_token_no_order(FSBeam *d, int neednum, int *start, int *end)
     *end = neednum - 1;
   }
 }
-    
-
-#ifdef SP_BREAK_CURRENT_FRAME
-/* -------------------------------------------------------------------- */
-/*                     ショートポーズ・セグメンテーション               */
-/*                     short pause segmentation                         */
-/* -------------------------------------------------------------------- */
-/* ====================================================================== */
-/* sp segmentation */
-/*
-  |---************-----*********************-------*******--|
-[input segments]
-  |-------------------|
-                  |-------------------------------|
-		                            |---------------|
 
-		     
-  |-------------------|t-2
-                       |t-1 ... token processed (= lastlen)
-		        |t  ... outprob computed
-		       
-*/
-
-/** 
- * <JA>
- * @brief  与えられた単語がショートポーズ単語であるかどうか調べる
- *
- * ショートポーズ単語は，無音部(ショートポーズ)の%HMM１つのみを読みとする
- * 単語である．
- * 
- * @param w [in] 単語ID
- * @param winfo [in] 単語辞書
- * @param hmm [in] 音響モデル
- * 
- * @return ショートポーズ単語であれば TRUE，そうでなければ FALSE．
- * </JA>
- * <EN>
- * @brief  check if the fiven word is a short-pause word.
- *
- * "Short-pause word" means a word whose pronunciation consists of
- * only one short-pause %HMM (ex. "sp").
- * 
- * @param w [in] word id
- * @param winfo [in] word dictionary
- * @param hmm [in] acoustic %HMM
- * 
- * @return TRUE if it is short pause word, FALSE if not.
- * </EN>
- */
-boolean
-is_sil(WORD_ID w, WORD_INFO *winfo, HTK_HMM_INFO *hmm)
-{
-  /* num of phones should be 1 */
-  if (winfo->wlen[w] > 1) return FALSE;
-
-  /* short pause (specified by "-spmodel") */
-  if (winfo->wseq[w][0] == hmm->sp) return TRUE;
-
-  /* head/tail sil */
-  if (w == winfo->head_silwid || w == winfo->tail_silwid) return TRUE;
-
-  /* otherwise */
-  return FALSE;
-}
-
-/** 
- * <JA>
- * 発話区間の終了を検出する．
- * ショートポーズ単語が連続して最尤候補になっている区間を発見し,
- * 入力の切目を検出する．第１パスにおいて１フレーム進むごとに呼ばれる．
- * 
- * @param backtrellis [in] 単語トレリス構造体(構築途中)
- * @param time [in] 現在のフレーム
- * @param wchmm [in] 木構造辞書
- * 
- * @return TRUE (このフレームでの終了を検出したら), FALSE (終了でない場合)
- * </JA>
- * <EN>
- * Detect end-of-input by duration of short-pause words.
- * This function will be called for every frame at the 1st pass.
- * 
- * @param backtrellis [in] word trellis structure being built
- * @param time [in] current frame
- * @param wchmm [in] tree lexicon
- * 
- * @return TRUE if end-of-input detected at this frame, FALSE if not.
- * </EN>
- */
-static boolean
-detect_end_of_segment(Recog *recog, int time)
-{
-  FSBeam *d;
-  TRELLIS_ATOM *tre;
-  LOGPROB maxscore = LOG_ZERO;
-  TRELLIS_ATOM *tremax = NULL;
-  int count = 0;
-  boolean detected = FALSE;
-
-  d = &(recog->pass1);
-
-  /* look for the best trellis word on the given time frame */
-  for(tre = recog->backtrellis->list; tre != NULL && tre->endtime == time; tre = tre->next) {
-    if (maxscore < tre->backscore) {
-      maxscore = tre->backscore;
-      tremax = tre;
-    }
-    count++;
-  }
-  if (tremax == NULL) {	/* no word end: possible in the very beggining of input*/
-    detected = TRUE;		/* assume it's in the short-pause duration */
-  } else if (count > 0) {	/* many words found --- check if maximum is sp */
-    if (is_sil(tremax->wid, recog->wchmm->winfo, recog->wchmm->hmminfo)) {
-      detected = TRUE;
-    }
-  }
-  
-  /* sp区間持続チェック */
-  /* check sp segment duration */
-  if (d->in_sparea && detected) {	/* we are already in sp segment and sp continues */
-    d->sp_duration++;		/* increment count */
-#ifdef SP_BREAK_RESUME_WORD_BEGIN
-    /* resume word at the "beggining" of sp segment */
-    /* if this segment has triggered by (tremax == NULL) (in case the first
-       several frame of input), the sp word (to be used as resuming
-       word in the next segment) is not yet set. it will be detected here */
-    if (d->tmp_sp_break_last_word == WORD_INVALID) {
-      if (tremax != NULL) d->tmp_sp_break_last_word = tremax->wid;
-    }
-#else
-    /* resume word at the "end" of sp segment */
-    /* simply update the best sp word */
-    if (tremax != NULL) d->last_tre_word = tremax->wid;
-#endif
-  }
-
-  /* sp区間開始チェック */
-  /* check if sp segment begins at this frame */
-  else if (!d->in_sparea && detected) {
-    /* 一時的に開始フレームとしてマーク */
-    /* mark this frame as "temporal" begging of short-pause segment */
-    d->tmp_sparea_start = time;
-#ifdef SP_BREAK_RESUME_WORD_BEGIN
-    /* sp 区間開始時点の最尤単語を保存 */
-    /* store the best word in this frame as resuming word */
-    d->tmp_sp_break_last_word = tremax ? tremax->wid : WORD_INVALID;
-#endif
-    d->in_sparea = TRUE;		/* yes, we are in sp segment */
-    d->sp_duration = 1;		/* initialize duration count */
-#ifdef SP_BREAK_DEBUG
-    jlog("DEBUG: sp start %d\n", time);
-#endif /* SP_BREAK_DEBUG */
-  }
-  
-  /* sp 区間終了チェック */
-  /* check if sp segment ends at this frame */
-  else if (d->in_sparea && !detected) {
-    /* (time-1) is end frame of pause segment */
-    d->in_sparea = FALSE;		/* we are not in sp segment */
-#ifdef SP_BREAK_DEBUG
-    jlog("DEBUG: sp end %d\n", time);
-#endif /* SP_BREAK_DEBUG */
-    /* sp 区間長チェック */
-    /* check length of the duration*/
-    if (d->sp_duration < recog->jconf->successive.sp_frame_duration) {
-      /* 短すぎる: 第１パスを中断せず続行 */
-      /* too short segment: not break, continue 1st pass */
-#ifdef SP_BREAK_DEBUG
-      jlog("DEBUG: too short (%d<%d), ignored\n", d->sp_duration, recog->jconf->successive.sp_frame_duration);
-#endif /* SP_BREAK_DEBUG */
-    } else if (d->first_sparea) {
-      /* 最初のsp区間は silB にあたるので,第１パスを中断せず続行 */
-      /* do not break at first sp segment: they are silB */
-      d->first_sparea = FALSE;
-#ifdef SP_BREAK_DEBUG
-      jlog("DEBUG: first silence, ignored\n");
-#endif /* SP_BREAK_DEBUG */
-    } else {
-      /* 区間終了確定, 第１パスを中断して第2パスへ */
-      /* break 1st pass */
-#ifdef SP_BREAK_DEBUG
-      jlog("DEBUG: >> segment [%d..%d]\n", d->sparea_start, time-1);
-#endif /* SP_BREAK_DEBUG */
-      /* store begging frame of the segment */
-      d->sparea_start = d->tmp_sparea_start;
-#ifdef SP_BREAK_RESUME_WORD_BEGIN
-      /* resume word = most likely sp word on beginning frame of the segment */
-      recog->sp_break_last_word = d->tmp_sp_break_last_word;
-#else
-      /* resume word = most likely sp word on end frame of the segment */
-      recog->sp_break_last_word = d->last_tre_word;
-#endif
-
-      /*** segment: [sparea_start - time-1] ***/
-      return(TRUE);
-    }
-  }
-    
-#ifdef SP_BREAK_EVAL
-  jlog("DEBUG: [%d %d %d]\n", time, count, (detected) ? 50 : 0);
-#endif
-  return (FALSE);
-}
-
-#endif /* SP_BREAK_CURRENT_FRAME */
-
-
-
 /* -------------------------------------------------------------------- */
 /*             第１パス(フレーム同期ビームサーチ) メイン                */
 /*           main routines of 1st pass (frame-synchronous beam search)  */
@@ -1629,24 +1512,34 @@ detect_end_of_segment(Recog *recog, int time)
 
 /** 
  * <JA>
- * ビームサーチ用の初期化を行う．出力確率キャッシュの
- * 初期化および初期仮説の生成を行う．初期仮説の初期スコア設定のため,
- * 最初の１フレーム目の入力が得られている必要がある．
+ * @brief  初期仮説の生成
+ *
+ * 初期仮説は，N-gramでは winfo->head_silwid に固定されている. DFA では
+ * 文法上文頭にきうる単語すべてが初期仮説となる. 単語認識モードでは
+ * 全ての単語が初期仮説となる. 
+ *
+ * 音響モデルが非multipathの場合，ここで最初のフレームの出力確率
+ * 計算まで行われる. 
  * 
  * @param param [in] 入力ベクトル列情報(最初のフレームのみ必要)
- * @param wchmm [in] 木構造化辞書
+ * @param r [in] 音声認識処理インスタンス
  * </JA>
  * <EN>
- * Initialize work areas, prepare output probability cache, and
- * set initial hypotheses.  The first frame of input parameter
- * should be specified to compute the scores of the initial hypotheses.
+ * @brief  Generate initial hypotheses
+ *
+ * The initial hypothesis is: 1) winfo->head_silwid for N-gram, 2) all words
+ * that can be at beginning of sentence for DFA, or 3) all words in dictionary
+ * for isolated word recognition mode.
+ *
+ * If acoustic model is NOT a multi-path model, the output probabilities for
+ * the first frame (t=0) will also be computed in this function.
  * 
  * @param param [in] input vectors (only the first frame will be used)
- * @param wchmm [in] tree lexicon
+ * @param r [in] recognition process instance
  * </EN>
  */
 static boolean
-init_nodescore(HTK_Param *param, Recog *recog)
+init_nodescore(HTK_Param *param, RecogProcess *r)
 {
   WCHMM_INFO *wchmm;
   FSBeam *d;
@@ -1656,22 +1549,27 @@ init_nodescore(HTK_Param *param, Recog *recog)
   int node;
   int i;
 
-  wchmm = recog->wchmm;
-  d = &(recog->pass1);
+  wchmm = r->wchmm;
+  d = &(r->pass1);
 
   /* 初期仮説用単語履歴 */
   /* setup initial word context */
-#ifdef SP_BREAK_CURRENT_FRAME
-  /* initial word context = last non-sp word of previous 2nd pass at last segment*/
-  if (recog->sp_break_last_nword == wchmm->winfo->tail_silwid) {
-    /* if end with silE, initialize as normal start of sentence */
-    d->bos.wid = WORD_INVALID;
-  } else {
-    d->bos.wid = recog->sp_break_last_nword;
+  if (r->config->successive.enabled) { /* sp segment mode */
+    /* initial word context = last non-sp word of previous 2nd pass at last segment*/
+    if (r->lmtype == LM_PROB) {
+      if (r->sp_break_last_nword == wchmm->winfo->tail_silwid) {
+	/* if end with silE, initialize as normal start of sentence */
+	d->bos.wid = WORD_INVALID;
+      } else {
+	d->bos.wid = r->sp_break_last_nword;
+      }
+    } else {
+      d->bos.wid = WORD_INVALID;
+    }
+  } else {			/* not sp segment mode */
+    d->bos.wid = WORD_INVALID;	/* no context */
   }
-#else
-  d->bos.wid = WORD_INVALID;	/* no context */
-#endif
+
   d->bos.begintime = d->bos.endtime = -1;
 
   /* ノード・トークンを初期化 */
@@ -1690,29 +1588,30 @@ init_nodescore(HTK_Param *param, Recog *recog)
   /* 初期仮説の作成: 初期単語の決定と初期トークンの生成 */
   /* initial word hypothesis */
 
-  if (recog->lmtype == LM_PROB) {
+  if (r->lmtype == LM_PROB) {
 
-#ifdef SP_BREAK_CURRENT_FRAME
-    if (recog->sp_break_last_word != WORD_INVALID) { /* last segment exist */
-      /* 開始単語＝前のセグメント計算時の最後の最尤単語 */
-      /* 文終了単語(silE,句点(IPAモデル))なら，silB で開始 */
-      /* initial word = best last word hypothesis on the last segment */
-      /* if silE or sp, begin with silB */
-      /*if (is_sil(recog.sp_break_last_word, wchmm->winfo, wchmm->hmminfo)) {*/
-      if (recog->sp_break_last_word == wchmm->winfo->tail_silwid) {
-	beginword = wchmm->winfo->head_silwid;
-	d->bos.wid = WORD_INVALID;	/* reset initial word context */
+    if (r->config->successive.enabled) { /* sp segment mode */
+      if (r->sp_break_last_word != WORD_INVALID) { /* last segment exist */
+	/* 開始単語＝前のセグメント計算時の最後の最尤単語 */
+	/* 文終了単語(silE,句点(IPAモデル))なら，silB で開始 */
+	/* initial word = best last word hypothesis on the last segment */
+	/* if silE or sp, begin with silB */
+	/*if (is_sil(recog.sp_break_last_word, wchmm->winfo, wchmm->hmminfo)) {*/
+	if (r->sp_break_last_word == wchmm->winfo->tail_silwid) {
+	  beginword = wchmm->winfo->head_silwid;
+	  d->bos.wid = WORD_INVALID;	/* reset initial word context */
+	} else {
+	  beginword = r->sp_break_last_word;
+	}
       } else {
-	beginword = recog->sp_break_last_word;
+	/* initial segment: initial word set to silB */
+	beginword = wchmm->winfo->head_silwid;
       }
-    } else {
+    } else {			/* not sp segment mode */
       /* initial word fixed to silB */
       beginword = wchmm->winfo->head_silwid;
     }
-#else
-    /* initial word fixed to silB */
-    beginword = wchmm->winfo->head_silwid;
-#endif
+
 #ifdef SP_BREAK_DEBUG
     jlog("DEBUG: startword=[%s], last_nword=[%s]\n",
 	   (beginword == WORD_INVALID) ? "WORD_INVALID" : wchmm->winfo->wname[beginword],
@@ -1757,7 +1656,7 @@ init_nodescore(HTK_Param *param, Recog *recog)
 
   }
 
-  if (recog->lmtype == LM_DFA && recog->lmvar == LM_DFA_GRAMMAR) {
+  if (r->lmtype == LM_DFA && r->lmvar == LM_DFA_GRAMMAR) {
   
     /* 初期仮説: 文法上文頭に接続しうる単語集合 */
     /* initial words: all words that can be begin of sentence grammatically */
@@ -1769,11 +1668,11 @@ init_nodescore(HTK_Param *param, Recog *recog)
     boolean flag;
     DFA_INFO *gdfa;
 
-    gdfa = recog->model->dfa;
+    gdfa = r->lm->dfa;
 
     flag = FALSE;
     /* for all active grammar */
-    for(m = recog->model->grammars; m; m = m->next) {
+    for(m = r->lm->grammars; m; m = m->next) {
       if (m->active) {
 	tb = m->cate_begin;
 	te = tb + m->dfa->term_num;
@@ -1808,12 +1707,12 @@ init_nodescore(HTK_Param *param, Recog *recog)
       }
     }
     if (!flag) {
-      jlog("ERROR: no initial state found in active DFA grammar\n");
+      jlog("ERROR: init_nodescore: no initial state found in active DFA grammar\n");
       return FALSE;
     }
   }
 
-  if (recog->lmtype == LM_DFA && recog->lmvar == LM_DFA_WORD) {
+  if (r->lmtype == LM_DFA && r->lmvar == LM_DFA_WORD) {
     /* all words can appear at start */
     for (i=0;i<wchmm->winfo->num;i++) {
       if (wchmm->hmminfo->multipath) {
@@ -1846,40 +1745,39 @@ init_nodescore(HTK_Param *param, Recog *recog)
 
 /** 
  * <JA>
- * @brief  フレーム同期ビーム探索：最初の１フレーム目
+ * @brief  フレーム同期ビーム探索の初期化
  *
- * ここではビームサーチに用いるノードやトークン，単語トレリス構造体などの
- * 初期化，および最初のフレームの計算を行う．2フレーム目以降は
- * get_back_trellis_proceed() を用いる．
+ * ここではビームサーチに用いるワークエリアの確保と初期化を行う. 
+ * 初期化説の生成は init_nodescore() で行われる. 
  * 
  * @param param [in] 入力ベクトル列情報 (最初の１フレーム目のみ用いられる)
- * @param wchmm [in] 木構造化辞書
- * @param backtrellis [i/o] 単語トレリス構造体 (この関数内で初期化される)
+ * @param r [i/o] 音声認識処理インスタンス
  * </JA>
  * <EN>
- * @brief  Frame synchronous beam search: the fist frame
+ * @brief  Initialization of the frame synchronous beam search
  *
- * This function will initialize nodes, tokens and the resulting word trellis
- * for the 1st pass, and then compute for the 1st frame by setting the
- * initial hypotheses.  For later frames other than the first one,
- * get_back_trellis_proceed() should be called instead.
+ * This function will initialize work area for the 1st pass.
+ * Generation of initial hypotheses will be performed in init_nodescore().
  * 
- * @param param [in] input vectors (onlyt the first frame will be used)
- * @param wchmm [in] tree lexicon
- * @param backtrellis [i/o] word trellis structure (will be initialized)
+ * @param param [in] input vectors (only the first frame will be used)
+ * @param r [i/o] recognition process instance
  * </EN>
+ *
+ * @callergraph
+ * @callgraph
+ * 
  */
 boolean
-get_back_trellis_init(HTK_Param *param,	Recog *recog)
+get_back_trellis_init(HTK_Param *param,	RecogProcess *r)
 {
   WCHMM_INFO *wchmm;
   BACKTRELLIS *backtrellis;
   FSBeam *d;
 
-  wchmm = recog->wchmm;
-  backtrellis = recog->backtrellis;
-  d = &(recog->pass1);
-  
+  wchmm = r->wchmm;
+  backtrellis = r->backtrellis;
+  d = &(r->pass1);
+
   /* Viterbi演算用ワークエリアのスイッチャー tl,tn の初期値設定 */
   /* tn: このフレーム用ID   tl: １フレーム前のID */
   /* initialize switch tl, tn for Viterbi computation */
@@ -1894,15 +1792,15 @@ get_back_trellis_init(HTK_Param *param,	Recog *recog)
   /* 計算用ワークエリアを初期化 */
   /* initialize some data on work area */
 
-  if (recog->lmtype == LM_PROB) {
-    d->lm_weight  = recog->jconf->lm.lm_weight;
-    d->lm_penalty = recog->jconf->lm.lm_penalty;
+  if (r->lmtype == LM_PROB) {
+    d->lm_weight  = r->config->lmp.lm_weight;
+    d->lm_penalty = r->config->lmp.lm_penalty;
   }
-  if (recog->lmtype == LM_DFA) {
-    d->penalty1 = recog->jconf->lm.penalty1;
+  if (r->lmtype == LM_DFA) {
+    d->penalty1 = r->config->lmp.penalty1;
   }
 #if defined(WPAIR) && defined(WPAIR_KEEP_NLIMIT)
-  d->wpair_keep_nlimit = recog->jconf->search.pass1.wpair_keep_nlimit;
+  d->wpair_keep_nlimit = r->config->pass1.wpair_keep_nlimit;
 #endif
 
   /* ワークエリアを確保 */
@@ -1917,46 +1815,43 @@ get_back_trellis_init(HTK_Param *param,	Recog *recog)
     free_nodes(d);
   }
   if (d->nodes_malloced == FALSE) {
-    malloc_nodes(d, wchmm->n, recog->trellis_beam_width * 2 + wchmm->startnum);
+    malloc_nodes(d, wchmm->n, r->trellis_beam_width * 2 + wchmm->startnum);
   }
-  prepare_nodes(d, recog->trellis_beam_width);
+  prepare_nodes(d, r->trellis_beam_width);
   
   /* 初期スコアを nodescore[tn] にセット */
   /* set initial score to nodescore[tn] */
-  if (init_nodescore(param, recog) == FALSE) {
-    jlog("ERROR: failed to set initial node scores\n");
+  if (init_nodescore(param, r) == FALSE) {
+    jlog("ERROR: get_back_trellis_init: failed to set initial node scores\n");
     return FALSE;
   }
 
-  sort_token_no_order(d, recog->trellis_beam_width, &(d->n_start), &(d->n_end));
+  sort_token_no_order(d, r->trellis_beam_width, &(d->n_start), &(d->n_end));
 
-  /* テキスト出力を初期化 */
-  /* initialize message output */
-  callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
   /* 漸次出力を行なう場合のインターバルを計算 */
   /* set interval frame for progout */
-  recog->jconf->output.progout_interval_frame = (int)((float)recog->jconf->output.progout_interval / ((float)param->header.wshift / 10000.0));
+  r->config->output.progout_interval_frame = (int)((float)r->config->output.progout_interval / ((float)param->header.wshift / 10000.0));
 
-#ifdef SP_BREAK_CURRENT_FRAME
-  /* ショートポーズセグメンテーション用パラメータの初期化 */
-  /* initialize parameter for short pause segmentation */
-  d->in_sparea = TRUE;		/* assume beginning is silence */
-  d->sparea_start = d->tmp_sparea_start = 0; /* set start frame to 0 */
+  if (r->config->successive.enabled) {
+    /* ショートポーズセグメンテーション用パラメータの初期化 */
+    /* initialize parameter for short pause segmentation */
+    d->in_sparea = TRUE;		/* assume beginning is silence */
+    r->am->mfcc->sparea_start = d->tmp_sparea_start = 0; /* set start frame to 0 */
 #ifdef SP_BREAK_RESUME_WORD_BEGIN
-  d->tmp_sp_break_last_word = WORD_INVALID;
+    d->tmp_sp_break_last_word = WORD_INVALID;
 #endif
-  recog->sp_break_last_word = WORD_INVALID;
-  /* 最初のセグメント: 次の非ポーズフレームで第2パスへ移行しない */
-  /* the first end of pause segment should be always silB, so
-     skip the first segment */
-  d->first_sparea = TRUE;
-  recog->sp_break_2_begin_word = WORD_INVALID;
-#endif
+    r->sp_break_last_word = WORD_INVALID;
+    /* 最初のセグメント: 次の非ポーズフレームで第2パスへ移行しない */
+    /* the first end of pause segment should be always silB, so
+       skip the first segment */
+    d->first_sparea = TRUE;
+    r->sp_break_2_begin_word = WORD_INVALID;
+  }
 
 #ifdef DETERMINE
-  if (recog->lmvar == LM_DFA_WORD) {
+  if (r->lmvar == LM_DFA_WORD) {
     /* initialize */
-    determine_word(NULL, 0, NULL, 0, 0);
+    determine_word(r, 0, NULL, 0, 0);
   }
 #endif
 
@@ -1968,6 +1863,24 @@ get_back_trellis_init(HTK_Param *param,	Recog *recog)
 /* フレーム同期ビーム探索の実行 --- 1フレーム進める  */
 /*****************************************************/
 
+/** 
+ * <EN>
+ * Propagate a token to next node.
+ * 
+ * </EN>
+ * <JA>
+ * トークンを次ノードに伝搬する. 
+ * 
+ * </JA>
+ * 
+ * @param d [i/o] work area for 1st pass recognition processing
+ * @param next_node [in] next node id
+ * @param next_score [in] score when transmitted to the next node
+ * @param last_tre [in] previous word context for the next node
+ * @param last_cword [in] previous context-valid word for the next node
+ * @param last_lscore [in] LM score to be propagated
+ * 
+ */
 static void
 propagate_token(FSBeam *d, int next_node, LOGPROB next_score, TRELLIS_ATOM *last_tre, WORD_ID last_cword, LOGPROB last_lscore)
 {
@@ -2000,22 +1913,28 @@ propagate_token(FSBeam *d, int next_node, LOGPROB next_score, TRELLIS_ATOM *last
     node_assign_token(d, next_node, tknextid); /* assign this new token to the next node */
   }
 }
+
 /** 
  * <JA>
- * 与えられたトークンからの単語内遷移を処理する。
+ * 単語内のあるノード間の遷移を行う. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param d [i/o] 第1パスワークエリア
- * @param tk [in] 伝搬元のトークン
- * @param j [in] @a tk の元のトークンリストのID
+ * @param tk_ret [i/o] 伝搬元のトークン（内部でポインタ更新時は上書き）
+ * @param j [in] @a tk_ret の元のトークンリストのID
+ * @param next_node [in] 遷移先のノード番号
+ * @param next_a [in] 遷移確率
  * </JA>
  * <EN>
- * Word-internal transition from the token.
+ * Word-internal transition for a set of nodes.
  * 
  * @param wchmm [in] tree lexicon
  * @param d [i/o] work area for the 1st pass
- * @param tk [in] source token where the propagation is from
- * @param j [in] the token ID of @a tk
+ * @param tk_ret [in] source token (if pointer updated, overwrite this)
+ * @param j [in] the token ID of @a tk_ret
+ * @param next_node [in] id of next node
+ * @param next_a [in] transition probability
+ * 
  * </EN>
  */
 static void
@@ -2057,7 +1976,7 @@ beam_intra_word_core(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, int j, int n
 	  /* 1-gram factoring 使用時は, 複数で共有される枝では
 	     wchmm->state[node].scid は負の値となり，その絶対値を
 	     添字として wchmm->fscore[] に単語集合の1-gramの最大値が格納
-	     されている．末端の枝(複数単語で共有されない)では，
+	     されている. 末端の枝(複数単語で共有されない)では，
 	     wchmm->state[node].scid は正の値となり，
 	     １単語を sc として持つのでそこで正確な2-gramを計算する */
 	  /* When uni-gram factoring,
@@ -2098,9 +2017,9 @@ beam_intra_word_core(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, int j, int n
 	
 	if (wchmm->lmtype == LM_DFA && wchmm->lmvar == LM_DFA_GRAMMAR) {
 	  /* 文法を用いる場合, カテゴリ単位の木構造化がなされていれば,
-	     接続制約は単語間遷移のみで扱われるので，factoring は必要ない．
+	     接続制約は単語間遷移のみで扱われるので，factoring は必要ない. 
 	     カテゴリ単位木構造化が行われない場合, 文法間の接続制約はここ
-	     で factoring で行われることになる．*/
+	     で factoring で行われることになる. */
 	  /* With DFA, we use category-pair constraint extracted from the DFA
 	     at this 1st pass.  So if we compose a tree lexicon per word's
 	     category, the each category tree has the same connection
@@ -2139,7 +2058,7 @@ beam_intra_word_core(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, int j, int n
   
   if (d->expanded) {
     /* if work area has been expanded at 'create_token()' above,
-       the inside 'remalloc()' will destroy the pointers.
+       the inside 'realloc()' will destroy the pointers.
        so, reset local pointers from token index */
     tk = &(d->tlist[d->tl][d->tindex[d->tl][j]]);
     d->expanded = FALSE;
@@ -2149,13 +2068,31 @@ beam_intra_word_core(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, int j, int n
 
 }
 
+/** 
+ * <JA>
+ * 単語内遷移を行う. 
+ * 
+ * @param wchmm [in] 木構造化辞書
+ * @param d [i/o] 第1パスワークエリア
+ * @param tk_ret [i/o] 伝搬元のトークン（内部でポインタ更新時は上書き）
+ * @param j [in] @a tk_ret の元のトークンリストのID
+ * </JA>
+ * <EN>
+ * Word-internal transition.
+ * 
+ * @param wchmm [in] tree lexicon
+ * @param d [i/o] work area for the 1st pass
+ * @param tk_ret [in] source token (if pointer updated, overwrite this)
+ * @param j [in] the token ID of @a tk_ret
+ * 
+ * </EN>
+ */
 static void
 beam_intra_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, int j)
 {
   A_CELL2 *ac; ///< Temporal work to hold the next states of a node
   TOKEN2 *tk;
   int node;
-  LOGPROB a;
   int k;
 
   tk = *tk_ret;
@@ -2183,28 +2120,29 @@ beam_intra_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, int j)
 /**************************/
 /** 
  * <JA>
- * 与えられたトークンからの単語内遷移を生成・保存する。
+ * トークンからトレリス単語を保存する. 
  * 
  * @param bt [i/o] バックトレリス構造体
  * @param wchmm [in] 木構造化辞書
  * @param tk [in] 単語末端に到達しているトークン
  * @param t [in] 現在の時間フレーム
- * @param final_for_multipath [in] multipath モードで入力最後の１回処理時 TRUE
+ * @param final_for_multipath [in] 入力最後の１回処理時 TRUE
  * 
- * @return 新規に生成されバックトレリス内に格納されたトレリス単語
+ * @return 新たに格納されたトレリス単語へのポインタ
  * </JA>
  * <EN>
- * Generate a new trellis word from the token and save it to backtrellis.
+ * Store a new trellis word on the token.
  *
  * @param bt [i/o] backtrellis data to save it
  * @param wchmm [in] tree lexicon
  * @param tk [in] source token at word edge
  * @param t [in] current time frame
+ * @param final_for_multipath [in] TRUE if this is final frame
  *
- * @return the newly allocated and stored trellis word.
+ * @return pointer to the newly stored trellis word.
  * </EN>
  */
-TRELLIS_ATOM *
+static TRELLIS_ATOM *
 save_trellis(BACKTRELLIS *bt, WCHMM_INFO *wchmm, TOKEN2 *tk, int t, boolean final_for_multipath)
 {
   TRELLIS_ATOM *tre;
@@ -2212,10 +2150,10 @@ save_trellis(BACKTRELLIS *bt, WCHMM_INFO *wchmm, TOKEN2 *tk, int t, boolean fina
  
   sword = wchmm->stend[tk->node];
 
-  /* この遷移元の単語終端ノードは「直前フレームで」生き残ったノード．
+  /* この遷移元の単語終端ノードは「直前フレームで」生き残ったノード. 
      (「このフレーム」でないことに注意！！)
      よってここで, 時間(t-1) を単語終端とするトレリス上の単語仮説
-     (TRELLIS_ATOM)として，単語トレリス構造体に保存する．*/
+     (TRELLIS_ATOM)として，単語トレリス構造体に保存する. */
   /* This source node (= word end node) has been survived in the
      "last" frame (notice: not "this" frame!!).  So this word end
      is saved here to the word trellis structure (BACKTRELLIS) as a
@@ -2251,22 +2189,22 @@ save_trellis(BACKTRELLIS *bt, WCHMM_INFO *wchmm, TOKEN2 *tk, int t, boolean fina
 
 /** 
  * <JA>
- * 与えられた単語末トークンから単語間遷移を処理する。
+ * 単語末トークンからの単語間遷移. 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param d [i/o] 第1パスワークエリア
- * @param tk [in] 伝搬元の単語末トークン
- * @param tre [in] @a tk から生成されたトレリス単語
- * @param j [in] @a tk の元のトークンリストのID
+ * @param tk_ret [in] 伝搬元の単語末トークン
+ * @param tre [in] @a tk_ret から生成されたトレリス単語
+ * @param j [in] @a tk_ret の元のトークンリストのID
  * </JA>
  * <EN>
- * Cross-word transition processing from the word-end token.
+ * Cross-word transition processing from word-end token.
  * 
  * @param wchmm [in] tree lexicon
  * @param d [i/o] work area for the 1st pass
- * @param tk [in] source token where the propagation is from
- * @param tre [in] the trellis word generated from @a tk
- * @param j [in] the token ID of @a tk
+ * @param tk_ret [in] source token where the propagation is from
+ * @param tre [in] the trellis word generated from @a tk_ret
+ * @param j [in] the token ID of @a tk_ret
  * </EN>
  */
 static void
@@ -2283,11 +2221,13 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
 #endif
   LOGPROB tmpprob, tmpsum, ngram_score_cache;
   int k;
+  WORD_ID last_word;
 
   tk = *tk_ret;
  
   node = tk->node;
   sword = wchmm->stend[node];
+  last_word = wchmm->winfo->is_transparent[sword] ? tk->last_cword : sword;
 
   if (wchmm->lmtype == LM_PROB) {
 
@@ -2312,8 +2252,8 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
 #endif
     
     /* N-gramにおいては常に全単語の接続を考慮する必要があるため，
-       ここで単語間の言語確率値をすべて計算しておく．
-       キャッシュは max_successor_prob_iw() 内で考慮．*/
+       ここで単語間の言語確率値をすべて計算しておく. 
+       キャッシュは max_successor_prob_iw() 内で考慮. */
     /* As all words are possible to connect in N-gram, we first compute
        all the inter-word LM probability here.
        Cache is onsidered in max_successor_prob_iw(). */
@@ -2349,9 +2289,9 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
       /* 1-gram factoring における単語間言語確率キャッシュの効率化:
 	 1-gram factoring は単語履歴に依存しないので，
 	 ここで参照する factoring 値の多くは
-	 wchmm->fscore[] に既に格納され, 探索中も不変である．
+	 wchmm->fscore[] に既に格納され, 探索中も不変である. 
 	 よって計算が必要な単語(どの単語ともノードを共有しない単語)
-	 についてのみ iwparray[] で計算・キャッシュする． */
+	 についてのみ iwparray[] で計算・キャッシュする.  */
       /* Efficient cross-word LM cache:
 	 As 1-gram factoring values are independent of word context,
 	 they remain unchanged while search.  So, in cross-word LM
@@ -2379,7 +2319,7 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
 #endif
     }
 
-    /* 遷移先の単語が先頭単語なら遷移させない．
+    /* 遷移先の単語が先頭単語なら遷移させない. 
        これは wchmm.c で該当単語に stid を割り振らないことで対応
        しているので，ここでは何もしなくてよい */
     /* do not allow transition if the destination word is
@@ -2436,20 +2376,20 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
     if (wchmm->hmminfo->multipath) {
       /* since top node has no ouput, we should go one more step further */
       if (wchmm->self_a[next_node] != LOG_ZERO) {
-	propagate_token(d, next_node, tmpsum + wchmm->self_a[next_node], tre, wchmm->winfo->is_transparent[sword] ? tk->last_cword : sword, ngram_score_cache);
+	propagate_token(d, next_node, tmpsum + wchmm->self_a[next_node], tre, last_word, ngram_score_cache);
 	if (d->expanded) {
 	  /* if work area has been expanded at 'create_token()' above,
-	     the inside 'remalloc()' will destroy the pointers.
+	     the inside 'realloc()' will destroy the pointers.
 	     so, reset local pointers from token index */
 	  tk = &(d->tlist[d->tn][d->tindex[d->tn][j]]);
 	  d->expanded = FALSE;
 	}
       }
       if (wchmm->next_a[next_node] != LOG_ZERO) {
-	propagate_token(d, next_node+1, tmpsum + wchmm->next_a[next_node], tre, wchmm->winfo->is_transparent[sword] ? tk->last_cword : sword, ngram_score_cache);
+	propagate_token(d, next_node+1, tmpsum + wchmm->next_a[next_node], tre, last_word, ngram_score_cache);
 	if (d->expanded) {
 	  /* if work area has been expanded at 'create_token()' above,
-	     the inside 'remalloc()' will destroy the pointers.
+	     the inside 'realloc()' will destroy the pointers.
 	     so, reset local pointers from token index */
 	  tk = &(d->tlist[d->tn][d->tindex[d->tn][j]]);
 	  d->expanded = FALSE;
@@ -2457,10 +2397,10 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
       }
       for(ac=wchmm->ac[next_node];ac;ac=ac->next) {
 	for(k=0;k<ac->n;k++) {
-	  propagate_token(d, ac->arc[k], tmpsum + ac->a[k], tre, wchmm->winfo->is_transparent[sword] ? tk->last_cword : sword, ngram_score_cache);
+	  propagate_token(d, ac->arc[k], tmpsum + ac->a[k], tre, last_word, ngram_score_cache);
 	  if (d->expanded) {
 	    /* if work area has been expanded at 'create_token()' above,
-	       the inside 'remalloc()' will destroy the pointers.
+	       the inside 'realloc()' will destroy the pointers.
 	       so, reset local pointers from token index */
 	    tk = &(d->tlist[d->tn][d->tindex[d->tn][j]]);
 	    d->expanded = FALSE;
@@ -2468,10 +2408,10 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
 	}
       }
     } else {
-      propagate_token(d, next_node, tmpsum, tre, wchmm->winfo->is_transparent[sword] ? tk->last_cword : sword, ngram_score_cache);
+      propagate_token(d, next_node, tmpsum, tre, last_word, ngram_score_cache);
       if (d->expanded) {
 	/* if work area has been expanded at 'create_token()' above,
-	   the inside 'remalloc()' will destroy the pointers.
+	   the inside 'realloc()' will destroy the pointers.
 	   so, reset local pointers from token index */
 	tk = &(d->tlist[d->tl][d->tindex[d->tl][j]]);
 	d->expanded = FALSE;
@@ -2523,9 +2463,12 @@ beam_inter_word_factoring(WCHMM_INFO *wchmm, FSBeam *d)
   LOGPROB tmpprob, tmpsum, ngram_score_cache;
   A_CELL2 *ac;
   int j;
+  WORD_ID last_word;
 
   node = d->wordend_best_node;
   sword = wchmm->stend[node];
+  last_word = wchmm->winfo->is_transparent[sword] ? d->wordend_best_last_cword : sword;
+
   for (stid = wchmm->startnum - 1; stid >= 0; stid--) {
     next_node = wchmm->startnode[stid];
     /* compute transition from 'node' at end of word 'sword' to 'next_node' */
@@ -2546,20 +2489,20 @@ beam_inter_word_factoring(WCHMM_INFO *wchmm, FSBeam *d)
     if (wchmm->hmminfo->multipath) {
       /* since top node has no ouput, we should go one more step further */
       if (wchmm->self_a[next_node] != LOG_ZERO) {
-	propagate_token(d, next_node, tmpsum + wchmm->self_a[next_node], d->wordend_best_tre, wchmm->winfo->is_transparent[sword] ? d->wordend_best_last_cword : sword, ngram_score_cache);
+	propagate_token(d, next_node, tmpsum + wchmm->self_a[next_node], d->wordend_best_tre, last_word, ngram_score_cache);
 	if (d->expanded) {
 	  d->expanded = FALSE;
 	}
       }
       if (wchmm->next_a[next_node] != LOG_ZERO) {
-	propagate_token(d, next_node+1, tmpsum + wchmm->next_a[next_node], d->wordend_best_tre, wchmm->winfo->is_transparent[sword] ? d->wordend_best_last_cword : sword, ngram_score_cache);
+	propagate_token(d, next_node+1, tmpsum + wchmm->next_a[next_node], d->wordend_best_tre, last_word, ngram_score_cache);
 	if (d->expanded) {
 	  d->expanded = FALSE;
 	}
       }
       for(ac=wchmm->ac[next_node];ac;ac=ac->next) {
 	for(j=0;j<ac->n;j++) {
-	  propagate_token(d, ac->arc[j], tmpsum + ac->a[j], d->wordend_best_tre, wchmm->winfo->is_transparent[sword] ? d->wordend_best_last_cword : sword, ngram_score_cache);
+	  propagate_token(d, ac->arc[j], tmpsum + ac->a[j], d->wordend_best_tre, last_word, ngram_score_cache);
 	  if (d->expanded) {
 	    d->expanded = FALSE;
 	  }
@@ -2567,7 +2510,7 @@ beam_inter_word_factoring(WCHMM_INFO *wchmm, FSBeam *d)
       }
       
     } else {
-      propagate_token(d, next_node, tmpsum, d->wordend_best_tre, wchmm->winfo->is_transparent[sword] ? d->wordend_best_last_cword : sword, ngram_score_cache);
+      propagate_token(d, next_node, tmpsum, d->wordend_best_tre, last_word, ngram_score_cache);
       if (d->expanded) {
 	d->expanded = FALSE;
       }
@@ -2581,17 +2524,16 @@ beam_inter_word_factoring(WCHMM_INFO *wchmm, FSBeam *d)
 
 /** 
  * <JA>
- * @brief  フレーム同期ビーム探索：２フレーム目以降
+ * @brief  フレーム同期ビーム探索を進行する. 
  *
- * フレーム同期ビーム探索のメイン部分です．与えられた１フレーム分計算を
- * 進め，そのフレーム内に残った単語を単語トレリス構造体の中に保存する．
- * 第1フレームに対しては get_back_trellis_init() を用いる．
- * 詳細は関数内のコメントを参照のこと．
+ * 与えられた１フレーム分，探索処理を進める. また，フレーム内に残った
+ * 単語を単語トレリス構造体に保存する. ショートポーズセグメンテーション時
+ * はセグメント終了の判断もこの中から呼び出される. 
  * 
  * @param t [in] 現在のフレーム (このフレームについて計算が進められる)
  * @param param [in] 入力ベクトル列構造体 (@a t 番目のフレームのみ用いられる)
- * @param wchmm [in] 木構造化辞書
- * @param backtrellis [i/o] 単語トレリス構造体 (@a t 番目のフレーム上に残った単語が追加される)
+ * @param r [in] 認識処理インスタンス
+ * @param final_for_multipath [i/o] 入力最後のフレームを処理するときに TRUE
  * 
  * @return TRUE (通常どおり終了) あるいは FALSE (ここで探索を中断する
  * 場合: 逐次デコーディング時にショートポーズ区間を検出したか，ビーム内の
@@ -2609,17 +2551,20 @@ beam_inter_word_factoring(WCHMM_INFO *wchmm, FSBeam *d)
  * 
  * @param t [in] current frame to be computed in @a param
  * @param param [in] input vector structure (only the vector at @a t will be used)
- * @param wchmm [in] tree lexicon
- * @param backtrellis [i/o] word trellis structure to hold the survived words
- * on the @a t frame.
+ * @param r [in] recognition process instance
+ * @param final_for_multipath [i/o] TRUE if this is last frame of an input
  * 
  * @return TRUE if processing ended normally, or FALSE if the search was
  * terminated (in case of short pause segmentation in successive decoding
  * mode, or active nodes becomes zero).
  * </EN>
+ *
+ * @callergraph
+ * @callgraph
+ * 
  */
 boolean
-get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_for_multipath)
+get_back_trellis_proceed(int t, HTK_Param *param, RecogProcess *r, boolean final_for_multipath)
 {
   /* local static work area for get_back_trellis_proceed() */
   /* these are local work area and need not to be kept for another call */
@@ -2636,12 +2581,12 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
   int tn, tl;
 
   /* store pointer to local for rapid access */
-  wchmm = recog->wchmm;
-  d = &(recog->pass1);
+  wchmm = r->wchmm;
+  d = &(r->pass1);
   
 
-  lmtype = recog->lmtype;
-  lmvar  = recog->lmvar;
+  lmtype = r->lmtype;
+  lmvar  = r->lmvar;
 
   /*********************/
   /* 1. 初期化         */
@@ -2661,10 +2606,10 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
 
 #ifdef UNIGRAM_FACTORING
   /* 1-gram factoring では単語先頭での言語確率が一定で直前単語に依存しない
-     ため，単語間 Viterbi において選ばれる直前単語は,次単語によらず共通である．
-     よって単語終端からfactoring値のある単語先頭への遷移は１つにまとめられる．
+     ため，単語間 Viterbi において選ばれる直前単語は,次単語によらず共通である. 
+     よって単語終端からfactoring値のある単語先頭への遷移は１つにまとめられる. 
      ただし，木から独立した単語については, 単語先頭で履歴に依存した2-gramが
-     与えられるため, 最尤の単語間 Viterbi パスは次単語ごとに異なる．
+     与えられるため, 最尤の単語間 Viterbi パスは次単語ごとに異なる. 
      よってそれらについてはまとめずに別に計算する */
   /* In 1-gram factoring, the language score on the word-head node is constant
      and independent of the previous word.  So, the same word hypothesis will
@@ -2721,7 +2666,7 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
     /* 2.2. スコアでトークンをソートしビーム幅分の上位を決定 */
     /*    sort tokens by score up to beam width            */
     /*******************************************************/
-    sort_token_no_order(d, recog->trellis_beam_width, &(d->n_start), &(d->n_end));
+    sort_token_no_order(d, r->trellis_beam_width, &(d->n_start), &(d->n_end));
   
     /*************************/
     /* 2.3. 単語間Viterbi計算  */
@@ -2739,7 +2684,15 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
 	/* 2.4. トレリス単語保存  */
 	/*      save trellis word */
 	/**************************/
-	tre = save_trellis(recog->backtrellis, wchmm, tk, t, final_for_multipath);
+#ifdef SPSEGMENT_NAIST
+ 	if (r->config->successive.enabled && !d->after_trigger) {
+ 	  tre = tk->last_tre;	/* dummy */
+ 	} else {
+ 	  tre = save_trellis(r->backtrellis, wchmm, tk, t, final_for_multipath);
+	}
+#else
+	tre = save_trellis(r->backtrellis, wchmm, tk, t, final_for_multipath);
+#endif
 	/* 最終フレームであればここまで：遷移はさせない */
 	/* If this is a final frame, does not do cross-word transition */
 	if (final_for_multipath) continue;
@@ -2793,7 +2746,15 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
 	/* 2.2. トレリス単語保存  */
 	/*      save trellis word */
 	/**************************/
-	tre = save_trellis(recog->backtrellis, wchmm, tk, t, final_for_multipath);
+#ifdef SPSEGMENT_NAIST
+ 	if (r->config->successive.enabled && !d->after_trigger) {
+ 	  tre = tk->last_tre;	/* dummy */
+ 	} else {
+ 	  tre = save_trellis(r->backtrellis, wchmm, tk, t, final_for_multipath);
+	}
+#else
+	tre = save_trellis(r->backtrellis, wchmm, tk, t, final_for_multipath);
+#endif
 	/* 単語認識モードでは単語間遷移は必要ない */
 	if (lmvar == LM_DFA_WORD) continue;
 
@@ -2870,48 +2831,48 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
 
   /* ヒープソートを用いてこの段のノード集合から上位(bwidth)個を得ておく */
   /* (上位内の順列は必要ない) */
-  sort_token_no_order(d, recog->trellis_beam_width, &(d->n_start), &(d->n_end));
+  sort_token_no_order(d, r->trellis_beam_width, &(d->n_start), &(d->n_end));
   /***************/
   /* 5. 終了処理 */
   /*    finalize */
   /***************/
 
-  d->current_frame_num = t;
-  /* call frame-wise callback */
-  if (t > 0) {
-    callback_exec(CALLBACK_EVENT_PASS1_FRAME, recog);
-    if (recog->jconf->output.progout_flag) {
-      /* 漸次出力: 現フレームのベストパスを一定時間おきに上書き出力 */
-      /* progressive result output: output current best path in certain time interval */
-      if (((t-1) % recog->jconf->output.progout_interval_frame) == 0) {
-	bt_current_max(recog, t-1);
+#ifdef SPSEGMENT_NAIST
+  if (!r->config->successive.enabled || d->after_trigger) {
+#endif
+
+    /* call frame-wise callback */
+    r->have_interim = FALSE;
+    if (t > 0) {
+      if (r->config->output.progout_flag) {
+	/* 漸次出力: 現フレームのベストパスを一定時間おきに上書き出力 */
+	/* progressive result output: output current best path in certain time interval */
+	if (((t-1) % r->config->output.progout_interval_frame) == 0) {
+	  r->have_interim = TRUE;
+	  bt_current_max(r, t-1);
+	}
       }
     }
-  }
-
-  /* jlog("DEBUG: %d: %d\n",t,tnum[tn]); */
-  /* for debug: output current max word */
-  if (debug2_flag) {
-    bt_current_max_word(recog, t-1);
-  }
+    
+    /* jlog("DEBUG: %d: %d\n",t,tnum[tn]); */
+    /* for debug: output current max word */
+    if (debug2_flag) {
+      bt_current_max_word(r, t-1);
+    }
 
 #ifdef DETERMINE
-  if (lmvar == LM_DFA_WORD) {
-    check_determine_word(recog, t-1);
-  }
+    if (lmvar == LM_DFA_WORD) {
+      check_determine_word(r, t-1);
+    }
 #endif
 
-#ifdef SP_BREAK_CURRENT_FRAME
-  /* ショートポーズセグメンテーション: 直前フレームでセグメントが切れたかどうかチェック */
-  if (detect_end_of_segment(recog, t-1)) {
-    /* セグメント終了検知: 第１パスここで中断 */
-    return FALSE;		/* segment: [sparea_start..t-2] */
+#ifdef SPSEGMENT_NAIST
   }
 #endif
-
+    
   /* ビーム内ノード数が 0 になってしまったら，強制終了 */
   if (d->tnum[tn] == 0) {
-    jlog("ERROR: frame %d: no nodes left in beam, now terminates search\n", t);
+    jlog("ERROR: get_back_trellis_proceed: %02d %s: frame %d: no nodes left in beam, now terminates search\n", r->config->id, r->config->name, t);
     return(FALSE);
   }
 
@@ -2929,12 +2890,11 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
  * @brief  フレーム同期ビーム探索：最終フレーム
  *
  * 第１パスのフレーム同期ビーム探索を終了するために，
- * (param->samplenum -1) の最終フレームに対する終了処理を行う．
+ * (param->samplenum -1) の最終フレームに対する終了処理を行う. 
  * 
  * 
  * @param param [in] 入力ベクトル列 (param->samplenum の値のみ用いられる)
- * @param wchmm [in] 木構造化辞書
- * @param backtrellis [i/o] 単語トレリス構造体 (最終フレームの単語候補が格納される)
+ * @param r [in] 音声認識処理インスタンス
  * </JA>
  * <EN>
  * @brief  Frame synchronous beam search: last frame
@@ -2943,31 +2903,34 @@ get_back_trellis_proceed(int t, HTK_Param *param, Recog *recog, boolean final_fo
  * The last procedure will be done for the (param->samplenum - 1) frame.
  * 
  * @param param [in] input vectors (only param->samplenum is referred)
- * @param wchmm [in] tree lexicon
- * @param backtrellis [i/o] word trellis structure (the last survived words will be stored to this)
+ * @param r [in] recognition process instance
  * </EN>
+ *
+ * @callergraph
+ * @callgraph
+ * 
  */
 void
-get_back_trellis_end(HTK_Param *param, Recog *recog)
+get_back_trellis_end(HTK_Param *param, RecogProcess *r)
 {
   WCHMM_INFO *wchmm;
   FSBeam *d;
   int j;
   TOKEN2 *tk;
 
-  wchmm = recog->wchmm;
-  d = &(recog->pass1);
+  wchmm = r->wchmm;
+  d = &(r->pass1);
 
   /* 最後にビーム内に残った単語終端トークンを処理する */
   /* process the last wordend tokens */
 
 
-  if (recog->model->hmminfo->multipath) {
+  if (r->am->hmminfo->multipath) {
     /* MULTI-PATH VERSION */
 
     /* 単語末ノードへの遷移のみ計算 */
     /* only arcs to word-end node is calculated */
-    get_back_trellis_proceed(param->samplenum, param, recog, TRUE);
+    get_back_trellis_proceed(param->samplenum, param, r, TRUE);
 
   } else {
     /* NORMAL VERSION */
@@ -2979,20 +2942,12 @@ get_back_trellis_end(HTK_Param *param, Recog *recog)
     for (j = d->n_start; j <= d->n_end; j++) {
       tk = &(d->tlist[d->tl][d->tindex[d->tl][j]]);
       if (wchmm->stend[tk->node] != WORD_INVALID) {
-	save_trellis(recog->backtrellis, wchmm, tk, param->samplenum, TRUE);
+	save_trellis(r->backtrellis, wchmm, tk, param->samplenum, TRUE);
       }
     }
 
   }
     
-  d->current_frame_num = param->samplenum;
-  callback_exec(CALLBACK_EVENT_PASS1_FRAME, recog);
-
-#ifdef SP_BREAK_CURRENT_FRAME
-  /*if (detect_end_of_segment(recog, param->samplenum-1)) {
-    return;
-    }*/
-#endif
 }
 
 /*************************/
@@ -3001,19 +2956,18 @@ get_back_trellis_end(HTK_Param *param, Recog *recog)
 /*************************/
 /** 
  * <JA>
- * @brief  第１パスの終了処理を行う．
+ * @brief  第１パスの終了処理を行う. 
  *
  * この関数は get_back_trellis_end() の直後に呼ばれ，第１パスの終了処理を
- * 行う．生成した単語トレリス構造体の最終的な後処理を行い第２パスで
- * アクセス可能な形に内部を変換する．また，
- * 仮説のバックトレースを行い第１パスのベスト仮説を出力する．
+ * 行う. 生成した単語トレリス構造体の最終的な後処理を行い第２パスで
+ * アクセス可能な形に内部を変換する. また，
+ * 仮説のバックトレースを行い第１パスのベスト仮説を出力する. 
  * 
- * @param backtrellis [i/o] 単語トレリス構造体 (後処理が行われる)
- * @param winfo [in] 単語辞書
+ * @param r [in] 認識処理インスタンス
  * @param len [in] 第１パスで処理された最終的なフレーム長
  * 
  * @return 第１パスの最尤仮説の累積尤度，あるいは仮説が見つからない場合
- * は LOG_ZERO．
+ * は LOG_ZERO. 
  * </JA>
  * <EN>
  * @brief  Finalize the 1st pass.
@@ -3023,285 +2977,71 @@ get_back_trellis_end(HTK_Param *param, Recog *recog)
  * to be accessible from the 2nd pass, and output the best sentence hypothesis
  * by backtracing the word trellis.
  * 
- * @param backtrellis [i/o] word trellis structure (will be reconstructed internally
- * @param winfo [in] word dictionary
+ * @param r [in] recoginirion process instance
  * @param len [in] total number of processed frames
  * 
  * @return the maximum score of the best hypothesis, or LOG_ZERO if search
  * failed.
  * </EN>
+ *
+ * @callergraph
+ * @callgraph
+ * 
  */
-LOGPROB
-finalize_1st_pass(Recog *recog, int len)
+void
+finalize_1st_pass(RecogProcess *r, int len)
 {
   BACKTRELLIS *backtrellis;
-  LOGPROB lastscore;
-  int mseclen;
-  boolean ok_p;
 
-  backtrellis = recog->backtrellis;
+  backtrellis = r->backtrellis;
  
   backtrellis->framelen = len;
 
-  /* rejectshort 指定時, 入力が短ければここで第1パス結果を出力しない */
-  /* ここでは reject はまだ行わず, 後で reject する */
-  /* suppress 1st pass output if -rejectshort and input shorter than specified */
-  /* the actual rejection will be done later at main */
-  ok_p = TRUE;
-  if (recog->jconf->reject.rejectshortlen > 0) {
-    mseclen = (float)len * (float)recog->jconf->analysis.para.smp_period * (float)recog->jconf->analysis.para.frameshift / 10000.0;
-    if (mseclen < recog->jconf->reject.rejectshortlen) {
-      ok_p = FALSE;
-    }
-  }
-  
   /* 単語トレリス(backtrellis) を整理: トレリス単語の再配置とソート */
   /* re-arrange backtrellis: index them by frame, and sort by word ID */
-  if (ok_p) {
-    bt_relocate_rw(backtrellis);
-    bt_sort_rw(backtrellis);
-    if (backtrellis->num == NULL) {
-      if (backtrellis->framelen > 0) {
-	jlog("WARNING: input processed, but no survived word found\n");
-      }
-      ok_p = FALSE;
+
+  bt_relocate_rw(backtrellis);
+  bt_sort_rw(backtrellis);
+  if (backtrellis->num == NULL) {
+    if (backtrellis->framelen > 0) {
+      jlog("WARNING: %02d %s: input processed, but no survived word found\n", r->config->id, r->config->name);
     }
+    /* reognition failed */
+    r->result.status = J_RESULT_STATUS_FAIL;
+    return;
   }
 
-  /* 結果を表示する (best 仮説)*/
-  /* output 1st pass result (best hypothesis) */
-  if (ok_p) {
-    if (recog->lmvar == LM_DFA_WORD) {
-      lastscore = print_1pass_result_word(len, recog);
-    } else {
-      lastscore = print_1pass_result(len, recog);
-    }
+  /* 第1パスのベストパスを結果に格納する */
+  /* store 1st pass result (best hypothesis) to result */
+  if (r->lmvar == LM_DFA_WORD) {
+    find_1pass_result_word(len, r);
   } else {
-    lastscore = LOG_ZERO;
+    find_1pass_result(len, r);
   }
-
-  /* execute callback at end of pass1 */
-  callback_exec(CALLBACK_EVENT_PASS1_END, recog);
-
-  /* free succesor cache */
-  /* 次の認識でwchmm->winfoともに無変更の場合 free する必要なし */
-  /* no need to free if wchmm and wchmm are not changed in the next recognition */
-  /* max_successor_cache_free(recog->wchmm); */
-
-  /* return the best score */
-  return(lastscore);
 }
 
-#ifdef SP_BREAK_CURRENT_FRAME
-/*******************************************************************/
-/* 第１パスセグメント終了処理 (ショートポーズセグメンテーション用) */
-/* end of 1st pass for a segment (for short pause segmentation)    */
-/*******************************************************************/
 /** 
- * <JA>
- * @brief  逐次デコーディングのための第１パス終了時の追加処理
- *
- * 逐次デコーディング使用時，この関数は finalize_1st_pass() 後に呼ばれ，
- * そのセグメントの第１パスの終了処理を行う．具体的には，
- * 続く第２パスのための始終端単語のセット，および
- * 次回デコーディングを再開するときのために，入力ベクトル列の未処理部分の
- * コピーを rest_param に残す．
- * 
- * @param backtrellis [in] 単語トレリス構造体
- * @param param [i/o] 入力ベクトル列．頭から @a len フレームだけが切り出される．
- * @param len [in] セグメント長
- * </JA>
  * <EN>
- * @brief  Additional finalize procedure for successive decoding
- *
- * When successive decoding mode is enabled, this function will be
- * called just after finalize_1st_pass() to finish the beam search
- * of the last segment.  The beginning and ending words for the 2nd pass
- * will be set according to the 1st pass result.  Then the current
- * input will be shrinked to the segmented length and the unprocessed
- * region are copied to rest_param for the next decoding.
- * 
- * @param backtrellis [in] word trellis structure
- * @param param [in] input vectors (will be shrinked to @a len frames)
- * @param len [in] length of the last segment
+ * Free work area for the first pass
  * </EN>
+ * <JA>
+ * 第1パスのためのワークエリア領域を開放する
+ * </JA>
+ * 
+ * @param d [in] work are for 1st pass input handling
+ * 
+ * @callergraph
+ * @callgraph
+ * 
  */
 void
-finalize_segment(Recog *recog, HTK_Param *param, int len)
+fsbeam_free(FSBeam *d)
 {
-  int t;
-  BACKTRELLIS *backtrellis;
-  FSBeam *d;
-
-  backtrellis = recog->backtrellis;
-  d = &(recog->pass1);
-
-  /* トレリス始終端における最尤単語を第2パスの始終端単語として格納 */
-  /* fix initial/last word hypothesis of the next 2nd pass to the best
-     word hypothesis at the first/last frame in backtrellis*/
-  set_terminal_words(recog);
-
-  /* パラメータを, 今第１パスが終了したセグメント区間と残りの区間に分割する．
-     ただし接続部のsp区間部分(sparea_start..len-1)は「のりしろ」として両方に
-     コピーする */
-  /* Divide input parameter into two: the last segment and the rest.
-     The short-pause area (sparea_start..len-1) is considered as "tab",
-     copied in both parameters
-   */
-  /* param[sparea_start..framelen] -> rest_param
-     param[0..len-1] -> param
-     [sparea_start...len-1] overlapped
-  */
-
-  if (len != param->samplenum) {
-
-    jlog("STAT: segmented: processed length=%d\n", len);
-    jlog("STAT: segmented: next decoding will restart from %d\n", d->sparea_start);
-    
-    /* copy rest parameters for next process */
-    recog->rest_param = new_param();
-    memcpy(&(recog->rest_param->header), &(param->header), sizeof(HTK_Param_Header));
-    recog->rest_param->samplenum = param->samplenum - d->sparea_start;
-    recog->rest_param->header.samplenum = recog->rest_param->samplenum;
-    recog->rest_param->veclen = param->veclen;
-    if (param_alloc(recog->rest_param, recog->rest_param->samplenum, recog->rest_param->veclen) == FALSE) {
-      j_internal_error("ERROR: segmented: failed to allocate memory for rest param\n");
-    }
-    /* copy data */
-    for(t=d->sparea_start;t<param->samplenum;t++) {
-      memcpy(recog->rest_param->parvec[t-d->sparea_start], param->parvec[t], sizeof(VECT) * recog->rest_param->veclen);
-    }
-
-    /* shrink original param to [0..len-1] */
-    /* just shrink the length */
-    param->samplenum = len;
-    recog->sp_break_last_nword_allow_override = TRUE;
-    
-  } else {
-    
-    /* last segment is on end of input: no rest parameter */
-    recog->rest_param = NULL;
-    /* reset last_word info */
-    recog->sp_break_last_word = WORD_INVALID;
-    recog->sp_break_last_nword = WORD_INVALID;
-    recog->sp_break_last_nword_allow_override = FALSE;
+  free_nodes(d);
+  if (d->pausemodelnames != NULL) {
+    free(d->pausemodelnames);
+    free(d->pausemodel);
   }
-}
-#endif /* SP_BREAK_CURRENT_FRAME */
-  
-/********************************************************************/
-/* 第１パスを実行するメイン関数                                     */
-/* 入力をパイプライン処理する場合は realtime_1stpass.c を参照のこと */
-/* main function to execute 1st pass                                */
-/* the pipeline processing is not here: see realtime_1stpass.c      */
-/********************************************************************/
-
-/** 
- * <JA>
- * @brief  フレーム同期ビーム探索：メイン
- *
- * 与えられた入力ベクトル列に対して第１パス(フレーム同期ビーム探索)を
- * 行い，その結果を出力する．また全フレームに渡る単語終端を，第２パス
- * のために単語トレリス構造体に格納する．
- * 
- * この関数は入力ベクトル列があらかじめ得られている場合に用いられる．
- * 第１パスが入力と並列して実行されるオンライン認識の場合，
- * この関数は用いられず，代わりにこのファイルで定義されている各サブ関数が
- * 直接 realtime-1stpass.c 内から呼ばれる．
- * 
- * @param param [in] 入力ベクトル列
- * @param wchmm [in] 木構造化辞書
- * @param backtrellis [out] 単語トレリス情報が書き込まれる構造体へのポインタ
- * </JA>
- * <EN>
- * @brief  Frame synchronous beam search: the main
- *
- * This function perform the 1st recognition pass of frame-synchronous beam
- * search and output the result.  It also stores all the word ends in every
- * input frame to word trellis structure.
- *
- * This function will be called if the whole input vector is already given
- * to the end.  When online recognition, where the 1st pass will be
- * processed in parallel with input, this function will not be used.
- * In that case, functions defined in this file will be directly called
- * from functions in realtime-1stpass.c.
- * 
- * @param param [in] input vectors
- * @param wchmm [in] tree lexicon
- * @param backtrellis [out] pointer to structure in which the resulting word trellis data should be stored
- * </EN>
- */
-boolean
-get_back_trellis(Recog *recog)
-{
-  HTK_Param *param;
-  int t;
-
-  param = recog->param;
-
-  /* 初期化, multipath じゃない場合は 0 フレーム目も計算 */
-  /* initialize, compute 0 frame in it if not multipath mode */
-  if (get_back_trellis_init(param, recog) == FALSE) {
-    jlog("ERROR: failed to initialize the 1st pass\n");
-    return FALSE;
-  }
-
-  if (recog->model->gmm != NULL) {
-    /* GMM 計算の初期化 */
-    gmm_prepare(recog);
-
-    if (! recog->model->hmminfo->multipath) {
-      /* get_back_trellis_init() に追いつくために最初のフレームの計算を行う */
-      gmm_proceed(recog, param, 0);
-    }
-  }
-
-  /* メインループ */
-  /* main loop */
-  for (t = (recog->model->hmminfo->multipath) ? 0 : 1; t < param->samplenum; t++) {
-    if (get_back_trellis_proceed(t, param, recog, FALSE) == FALSE
-	|| recog->process_want_terminate) {
-      /* 探索中断: 処理された入力は 0 から t-2 まで */
-      /* search terminated: processed input = [0..t-2] */
-      /* この時点で第1パスを終了する */
-      /* end the 1st pass at this point */
-      recog->backmax = finalize_1st_pass(recog, t-1);
-#ifdef SP_BREAK_CURRENT_FRAME
-      /* ショートポーズセグメンテーションの場合,
-	 入力パラメータ分割などの最終処理も行なう */
-      /* When short-pause segmentation enabled */
-      finalize_segment(recog, param, t-1);
-#endif
-      if (recog->model->gmm != NULL) {
-	/* GMM 計算の終了 */
-	gmm_end(recog);
-      }
-      /* terminate 1st pass here */
-      return TRUE;
-    }
-    if (recog->model->gmm != NULL) {
-      /* GMM 計算を行う */
-      gmm_proceed(recog, param, t);
-    }
-  }
-  /* 最終フレームを計算 */
-  /* compute the last frame of input */
-  get_back_trellis_end(param, recog);
-  /* 第1パス終了処理 */
-  /* end of 1st pass */
-  recog->backmax = finalize_1st_pass(recog, param->samplenum);
-#ifdef SP_BREAK_CURRENT_FRAME
-  /* ショートポーズセグメンテーションの場合,
-     入力パラメータ分割などの最終処理も行なう */
-  /* When short-pause segmentation enabled */
-  finalize_segment(recog, param, param->samplenum);
-#endif
-  if (recog->model->gmm != NULL) {
-    /* GMM 計算の終了 */
-    gmm_end(recog);
-  }
-
-  return TRUE;
 }
 
 /* end of file */

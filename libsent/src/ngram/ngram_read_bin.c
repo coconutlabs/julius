@@ -1,7 +1,5 @@
 /**
  * @file   ngram_read_bin.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 17:12:08 2005
  * 
  * <JA>
  * @brief  バイナリ形式のN-gramファイルを読み込む
@@ -47,13 +45,16 @@
  * binary N-gram still can be used among different machines.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 17:12:08 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -67,6 +68,10 @@ static boolean need_conv;	///< TRUE if need conversion of word ID from 2 bytes t
 static boolean words_int_retry = FALSE; ///< TRUE if retrying with conversion
 #endif
 
+/**
+ * 
+ * 
+ */
 #define rdn(A,B,C,D) if (rdnfunc(A,B,C,D) == FALSE) return FALSE
 #define rdn_wordid(A,B,C,D) if (rdn_wordid_func(A,B,C,D) == FALSE) return FALSE
 /** 

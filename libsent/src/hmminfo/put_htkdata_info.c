@@ -1,7 +1,5 @@
 /**
  * @file   put_htkdata_info.c
- * @author Akinobu LEE
- * @date   Tue Feb 15 23:36:00 2005
  * 
  * <JA>
  * @brief  %HMM 定義や特徴パラメータの情報をテキスト出力する
@@ -11,13 +9,16 @@
  * @brief  Output %HMM and parameter information to standard out
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Tue Feb 15 23:36:00 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -33,6 +34,7 @@ static char buf[512];		///< Local work area for text handling
 /** 
  * Output transition matrix.
  * 
+ * @param fp [in] file descriptor
  * @param t [in] pointer to a transion matrix
  */
 void
@@ -56,6 +58,7 @@ put_htk_trans(FILE *fp, HTK_HMM_Trans *t)
 /** 
  * Output variance vector (diagonal).
  * 
+ * @param fp [in] file descriptor
  * @param v [in] pointer to a variance data
  */
 void
@@ -78,6 +81,7 @@ put_htk_var(FILE *fp, HTK_HMM_Var *v)
 /** 
  * Output a density information, mean and variance.
  * 
+ * @param fp [in] file descriptor
  * @param d [in] pointer to a density data
  */
 void
@@ -102,6 +106,7 @@ put_htk_dens(FILE *fp, HTK_HMM_Dens *d)
 /** 
  * Output mixture component of a state.
  * 
+ * @param fp [in] file descriptor
  * @param s [in] pointer to %HMM state
  */
 void
@@ -124,6 +129,7 @@ put_htk_state(FILE *fp, HTK_HMM_State *s)
 /** 
  * Output %HMM model, number of states and information for each state.
  * 
+ * @param fp [in] file descriptor
  * @param h [in] pointer to %HMM model
  */
 void
@@ -144,6 +150,7 @@ put_htk_hmm(FILE *fp, HTK_HMM_Data *h)
 /** 
  * Output logical %HMM data and its mapping status.
  * 
+ * @param fp [in] file descriptor
  * @param logical [in] pointer to a logical %HMM
  */
 void
@@ -160,7 +167,8 @@ put_logical_hmm(FILE *fp, HMM_Logical *logical)
 
 /** 
  * Output transition arcs of an HMM instance.
- * 
+ *
+ * @param fp [in] file descriptor
  * @param d [in] pointer to a HMM instance.
  */
 void
@@ -185,6 +193,7 @@ put_hmm_arc(FILE *fp, HMM *d)
 /** 
  * Output output probability information of an HMM instance.
  * 
+ * @param fp [in] file descriptor
  * @param d [in] pointer to a HMM instance.
  */
 void
@@ -207,6 +216,7 @@ put_hmm_outprob(FILE *fp, HMM *d)
 /** 
  * Output an HMM instance.
  * 
+ * @param fp [in] file descriptor
  * @param d [in] pointer to a HMM instance.
  */
 void
@@ -220,6 +230,7 @@ put_hmm(FILE *fp, HMM *d)
 /** 
  * Output parameter header.
  * 
+ * @param fp [in] file descriptor
  * @param h [in] pointer to a parameter header information
  */
 void
@@ -235,6 +246,7 @@ put_param_head(FILE *fp, HTK_Param_Header *h)
 /** 
  * Output array of vectors.
  * 
+ * @param fp [in] file descriptor
  * @param p [in] pointer to vector array represented as [0..num-1][0...veclen-1]
  * @param num [in] number of vectors in @a p
  * @param veclen [in] length of each vector
@@ -258,6 +270,7 @@ put_vec(FILE *fp, VECT **p, int num, short veclen)
 /** 
  * Output the whole parameter information, including header and all vectors.
  * 
+ * @param fp [in] file descriptor
  * @param pinfo [in] pointer to parameter structure.
  */
 void
@@ -271,6 +284,7 @@ put_param(FILE *fp, HTK_Param *pinfo)
 /** 
  * Output the length of an input parameter by number of frames and seconds.
  * 
+ * @param fp [in] file descriptor
  * @param pinfo [in] pointer to parameter structure.
  */
 void
@@ -308,35 +322,42 @@ get_max_mixture_num(HTK_HMM_INFO *hmminfo)
 /** 
  * Output total statistic informations of the %HMM definition data.
  * 
+ * @param fp [in] file descriptor
  * @param hmminfo [in] %HMM definition data.
  */
 void
 print_hmmdef_info(FILE *fp, HTK_HMM_INFO *hmminfo)
 {
   if (fp == NULL) return;
-  fprintf(fp, "HMM Info:\n");
+  fprintf(fp, " HMM Info:\n");
   fprintf(fp, "    %d models, %d states, %d mixtures are defined\n",
 	   hmminfo->totalhmmnum, hmminfo->totalstatenum, hmminfo->totalmixnum);
+  fprintf(fp, "\t      model type = ");
+  if (hmminfo->is_tied_mixture) fprintf(fp, "tied-mixture, ");
+  fprintf(fp, "context dependency handling %s\n",
+	     (hmminfo->is_triphone) ? "ON" : "OFF");
+
+  fprintf(fp, "      training parameter = %s\n",param_code2str(buf, hmminfo->opt.param_type, FALSE));
+  fprintf(fp, "\t   vector length = %d\n", hmminfo->opt.vec_size);
+  fprintf(fp, "\tcov. matrix type = %s\n", get_cov_str(hmminfo->opt.cov_type));
+  fprintf(fp, "\t   duration type = %s\n", get_dur_str(hmminfo->opt.dur_type));
+
+  if (hmminfo->is_tied_mixture) {
+    fprintf(fp, "\t    codebook num = %d\n", hmminfo->codebooknum);
+    fprintf(fp, "       max codebook size = %d\n", hmminfo->maxcodebooksize);
+  }
+  fprintf(fp, "\t max mixture num = %d\n", get_max_mixture_num(hmminfo));
+  fprintf(fp, "\t   max state num = %d\n", hmminfo->maxstatenum);
+
+  fprintf(fp, "     logical base phones = %d\n", hmminfo->basephone.num);
+
   fprintf(fp, "\t   skipping path = ");
   if (hmminfo->need_multipath) {
     fprintf(fp, "exist, multi-path handling needed\n");
   } else {
     fprintf(fp, "not exist\n");
   }
-  fprintf(fp, "\t      model type = ");
-  if (hmminfo->is_tied_mixture) fprintf(fp, "tied-mixture, ");
-  fprintf(fp, "context dependency handling %s\n",
-	     (hmminfo->is_triphone) ? "ON" : "OFF");
-  if (hmminfo->is_tied_mixture) {
-    fprintf(fp, "\t    codebook num = %d\n", hmminfo->codebooknum);
-    fprintf(fp, "\tmax codebook size= %d\n", hmminfo->maxcodebooksize);
-  }
-  fprintf(fp, "      training parameter = %s\n",param_code2str(buf, hmminfo->opt.param_type, FALSE));
-  fprintf(fp, "\t   vector length = %d\n", hmminfo->opt.vec_size);
-  fprintf(fp, "\tcov. matrix type = %s\n", get_cov_str(hmminfo->opt.cov_type));
-  fprintf(fp, "\t   duration type = %s\n", get_dur_str(hmminfo->opt.dur_type));
-  fprintf(fp, "\t     mixture num = %d\n", get_max_mixture_num(hmminfo));
-  fprintf(fp, "\t   max state num = %d\n", hmminfo->maxstatenum);
+
   if (hmminfo->need_multipath) {
     fprintf(fp, "      skippable models =");
     {

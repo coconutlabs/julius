@@ -1,7 +1,5 @@
 /**
  * @file   wav2mfcc-pipe.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 18:12:30 2005
  * 
  * <JA>
  * @brief  音声波形から MFCC 特徴量へ変換する (フレーム単位)
@@ -19,13 +17,16 @@
  * these functions will be used instead of ones in wav2mfcc.c
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 18:12:30 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -234,26 +235,6 @@ WMP_deltabuf_flush(DeltaBuf *db)
 /* MAP-CMN */
 /***********************************************************************/
 
-#define CPMAX 500		///< Maximum number of frames to store ceptral mean for CMN update
-
-/**
- * Hold sentence sum of MFCC
- * 
- */
-typedef struct {
-  float *mfcc_sum;		///< values of sum of MFCC parameters
-  int framenum;			///< summed number of frames
-} CMEAN;
-#define CPSTEP 5		///< clist allocate step
-static CMEAN *clist;		///< List of MFCC sum for previous inputs
-static int clist_max;		///< Allocated number of CMEAN in clist
-static int clist_num;		///< Currentlly filled CMEAN in clist
-static int dim;			///< Local workarea to store the number of MFCC dimension.
-static float cweight;		///< Weight of initial cepstral mean
-static float *cmean_init;	///< Initial cepstral mean for each input
-static boolean cmean_init_set;	///< TRUE if cmean_init was set
-static CMEAN now;		///< Work area to hold current cepstral mean
-
 /**
  * Initialize MAP-CMN at startup.
  * 
@@ -261,68 +242,94 @@ static CMEAN now;		///< Work area to hold current cepstral mean
  * @param weight [in] initial cepstral mean weight
  * 
  */
-void
-CMN_realtime_init(int dimension, float weight)
+CMNWork *
+CMN_realtime_new(int dimension, float weight)
 {
   int i;
 
-  dim = dimension;
-  cweight = weight;
+  CMNWork *c;
 
-  clist_max = CPSTEP;
-  clist_num = 0;
-  clist = (CMEAN *)mymalloc(sizeof(CMEAN) * clist_max);
-  for(i=0;i<clist_max;i++) {
-    clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*dim);
-    clist[i].framenum = 0;
+  c = (CMNWork *)mymalloc(sizeof(CMNWork));
+
+  c->dim = dimension;
+  c->cweight = weight;
+
+  c->clist_max = CPSTEP;
+  c->clist_num = 0;
+  c->clist = (CMEAN *)mymalloc(sizeof(CMEAN) * c->clist_max);
+  for(i=0;i<c->clist_max;i++) {
+    c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->dim);
+    c->clist[i].framenum = 0;
   }
+  c->now.mfcc_sum = (float *)mymalloc(sizeof(float) * c->dim);
 
-  now.mfcc_sum = (float *)mymalloc(sizeof(float) * dim);
+  c->cmean_init = (float *)mymalloc(sizeof(float) * c->dim);
+  c->cmean_init_set = FALSE;
 
-  cmean_init = (float *)mymalloc(sizeof(float) * dim);
-  cmean_init_set = FALSE;
+  return c;
+}
 
+/** 
+ * Free work area for real-time CMN.
+ * 
+ * @param c [i/o] CMN calculation work area
+ * 
+ */
+void
+CMN_realtime_free(CMNWork *c)
+{
+  int i;
+
+  free(c->cmean_init);
+  free(c->now.mfcc_sum);
+  for(i=0;i<c->clist_max;i++) {
+    free(c->clist[i].mfcc_sum);
+  }
+  free(c->clist);
+  free(c);
 }
 
 /**
  * Prepare for MAP-CMN at start of each input
  * 
+ * @param c [i/o] CMN calculation work area
  */
 void
-CMN_realtime_prepare()
+CMN_realtime_prepare(CMNWork *c)
 {
   int d;
-  for(d=0;d<dim;d++) now.mfcc_sum[d] = 0.0;
-  now.framenum = 0;
+  
+  for(d=0;d<c->dim;d++) c->now.mfcc_sum[d] = 0.0;
+  c->now.framenum = 0;
 }
 
 /**
  * Perform MAP-CMN for incoming MFCC vectors
  * 
+ * @param c [i/o] CMN calculation work area
  * @param mfcc [in] MFCC vector
- * @param dim [in] dimension
  * 
  */
 void
-CMN_realtime(float *mfcc, int dim)
+CMN_realtime(CMNWork *c, float *mfcc)
 {
   int d;
   double x, y;
 
-  now.framenum++;
-  if (cmean_init_set) {
-    for(d=0;d<dim;d++) {
+  c->now.framenum++;
+  if (c->cmean_init_set) {
+    for(d=0;d<c->dim;d++) {
       /* accumulate value of given MFCC to sum */
-      now.mfcc_sum[d] += mfcc[d];
+      c->now.mfcc_sum[d] += mfcc[d];
       /* calculate map-cmn and perform subtraction to the given vector */
-      x = now.mfcc_sum[d] + cweight * cmean_init[d];
-      y = (double)now.framenum + cweight;
+      x = c->now.mfcc_sum[d] + c->cweight * c->cmean_init[d];
+      y = (double)c->now.framenum + c->cweight;
       mfcc[d] -= x / y;
     }
   } else {
-    for(d=0;d<dim;d++) {
-      now.mfcc_sum[d] += mfcc[d];
-      mfcc[d] -= now.mfcc_sum[d] / now.framenum;
+    for(d=0;d<c->dim;d++) {
+      c->now.mfcc_sum[d] += mfcc[d];
+      mfcc[d] -= c->now.mfcc_sum[d] / c->now.framenum;
     }
   }
 }
@@ -330,9 +337,10 @@ CMN_realtime(float *mfcc, int dim)
 /**
  * Update initial cepstral mean from previous utterances for next input.
  * 
+ * @param c [i/o] CMN calculation work area
  */
 void
-CMN_realtime_update()
+CMN_realtime_update(CMNWork *c)
 {
   float *tmp;
   int i, d;
@@ -340,38 +348,38 @@ CMN_realtime_update()
 
   /* if CMN_realtime was never called before this, return immediately */
   /* this may occur by pausing just after startup */
-  if (now.framenum == 0) return;
+  if (c->now.framenum == 0) return;
 
   /* compute cepstral mean from now and previous sums up to CPMAX frames */
-  for(d=0;d<dim;d++) cmean_init[d] = now.mfcc_sum[d];
-  frames = now.framenum;
-  for(i=0;i<clist_num;i++) {
-    for(d=0;d<dim;d++) cmean_init[d] += clist[i].mfcc_sum[d];
-    frames += clist[i].framenum;
+  for(d=0;d<c->dim;d++) c->cmean_init[d] = c->now.mfcc_sum[d];
+  frames = c->now.framenum;
+  for(i=0;i<c->clist_num;i++) {
+    for(d=0;d<c->dim;d++) c->cmean_init[d] += c->clist[i].mfcc_sum[d];
+    frames += c->clist[i].framenum;
     if (frames >= CPMAX) break;
   }
-  for(d=0;d<dim;d++) cmean_init[d] /= (float) frames;
-  cmean_init_set = TRUE;
+  for(d=0;d<c->dim;d++) c->cmean_init[d] /= (float) frames;
+  c->cmean_init_set = TRUE;
 
   /* expand clist if neccessary */
-  if (clist_num == clist_max && frames < CPMAX) {
-    clist_max += CPSTEP;
-    clist = (CMEAN *)myrealloc(clist, sizeof(CMEAN) * clist_max);
-    for(i=clist_num;i<clist_max;i++) {
-      clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*dim);
-      clist[i].framenum = 0;
+  if (c->clist_num == c->clist_max && frames < CPMAX) {
+    c->clist_max += CPSTEP;
+    c->clist = (CMEAN *)myrealloc(c->clist, sizeof(CMEAN) * c->clist_max);
+    for(i=c->clist_num;i<c->clist_max;i++) {
+      c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->dim);
+      c->clist[i].framenum = 0;
     }
   }
   
   /* shift clist */
-  tmp = clist[clist_max-1].mfcc_sum;
-  memcpy(&(clist[1]), &(clist[0]), sizeof(CMEAN) * (clist_max - 1));
-  clist[0].mfcc_sum = tmp;
+  tmp = c->clist[c->clist_max-1].mfcc_sum;
+  memmove(&(c->clist[1]), &(c->clist[0]), sizeof(CMEAN) * (c->clist_max - 1));
+  c->clist[0].mfcc_sum = tmp;
   /* copy now to clist[0] */
-  memcpy(clist[0].mfcc_sum, now.mfcc_sum, sizeof(float) * dim);
-  clist[0].framenum = now.framenum;
+  memcpy(c->clist[0].mfcc_sum, c->now.mfcc_sum, sizeof(float) * c->dim);
+  c->clist[0].framenum = c->now.framenum;
 
-  if (clist_num < clist_max) clist_num++;
+  if (c->clist_num < c->clist_max) c->clist_num++;
 
 }
 
@@ -426,16 +434,17 @@ mywrite(void *buf, size_t unitbyte, size_t unitnum, int fd)
  * Load CMN parameter from file.  If the number of MFCC dimension in the
  * file does not match the specified one, an error will occur.
  * 
+ * @param c [i/o] CMN calculation work area
  * @param filename [in] file name
- * @param dim [in] required number of MFCC dimensions
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-CMN_load_from_file(char *filename, int dim)
+CMN_load_from_file(CMNWork *c, char *filename)
 {
   FILE *fp;
   int veclen;
+
   jlog("Stat: wav2mfcc-pipe: reading initial CMN from file \"%s\"\n", filename);
   if ((fp = fopen_readfile(filename)) == NULL) {
     jlog("Error: wav2mfcc-pipe: failed to open\n");
@@ -448,13 +457,13 @@ CMN_load_from_file(char *filename, int dim)
     return(FALSE);
   }
   /* check length */
-  if (veclen != dim) {
+  if (veclen != c->dim) {
     jlog("Error: wav2mfcc-pipe: vector dimension mismatch\n");
     fclose_readfile(fp);
     return(FALSE);
   }
   /* read body */
-  if (myread(cmean_init, sizeof(float), dim, fp) == FALSE) {
+  if (myread(c->cmean_init, sizeof(float), c->dim, fp) == FALSE) {
     jlog("Error: wav2mfcc-pipe: failed to read\n");
     fclose_readfile(fp);
     return(FALSE);
@@ -464,7 +473,7 @@ CMN_load_from_file(char *filename, int dim)
     return(FALSE);
   }
 
-  cmean_init_set = TRUE;
+  c->cmean_init_set = TRUE;
   jlog("Stat: wav2mfcc-pipe: read CMN parameter\n");
 
   return(TRUE);
@@ -473,12 +482,13 @@ CMN_load_from_file(char *filename, int dim)
 /** 
  * Save the current CMN vector to a file.
  * 
+ * @param c [i/o] CMN calculation work area
  * @param filename [in] filename to save the data.
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-CMN_save_to_file(char *filename)
+CMN_save_to_file(CMNWork *c, char *filename)
 {
   int fd;
 
@@ -489,13 +499,13 @@ CMN_save_to_file(char *filename)
     return(FALSE);
   }
   /* write header */
-  if (mywrite(&dim, sizeof(int), 1, fd) == FALSE) {
+  if (mywrite(&(c->dim), sizeof(int), 1, fd) == FALSE) {
     jlog("Error: wav2mfcc-pipe: failed to write header\n");
     close(fd);
     return(FALSE);
   }
   /* write body */
-  if (mywrite(cmean_init, sizeof(float), dim, fd) == FALSE) {
+  if (mywrite(c->cmean_init, sizeof(float), c->dim, fd) == FALSE) {
     jlog("Error: wav2mfcc-pipe: failed to write header\n");
     close(fd);
     return(FALSE);
@@ -511,49 +521,48 @@ CMN_save_to_file(char *filename)
 /***********************************************************************/
 /* energy normalization and scaling on live input */
 /***********************************************************************/
-static LOGPROB energy_max_last;	///< Maximum energy value of last input
-static LOGPROB energy_min_last;	///< Minimum floored energy value of last input
-static LOGPROB energy_max;	///< Maximum energy value of current input
 
 /** 
  * Initialize work area for energy normalization on live input.
  * This should be called once on startup.
  * 
+ * @param energy [in] energy normalization work area
+ * 
  */
 void
-energy_max_init()
+energy_max_init(ENERGYWork *energy)
 {
-  energy_max = 5.0;
+  energy->max = 5.0;
 }
 
 /**
  * Prepare values for energy normalization on live input.
  * This should be called before each input segment.
  * 
+ * @param energy [in] energy normalization work area
  * @param para [in] MFCC computation configuration parameter
  */
 void
-energy_max_prepare(Value *para)
+energy_max_prepare(ENERGYWork *energy, Value *para)
 {
-  energy_max_last = energy_max;
-  energy_min_last = energy_max - (para->silFloor * LOG_TEN) / 10.0;
-  energy_max = 0.0;
+  energy->max_last = energy->max;
+  energy->min_last = energy->max - (para->silFloor * LOG_TEN) / 10.0;
+  energy->max = 0.0;
 }
 
 /** 
  * Peform energy normalization using maximum of last input.
  * 
+ * @param energy [in] energy normalization work area
  * @param f [in] raw energy
  * @param para [in] MFCC computation configuration parameter
  * 
  * @return value of the normalized log energy.
  */
 LOGPROB
-energy_max_normalize(LOGPROB f, Value *para)
+energy_max_normalize(ENERGYWork *energy, LOGPROB f, Value *para)
 {
-  if (energy_max < f) energy_max = f;
-  if (f < energy_min_last) f = energy_min_last;
-  return(1.0 - (energy_max_last - f) * para->escale);
+  if (energy->max < f) energy->max = f;
+  if (f < energy->min_last) f = energy->min_last;
+  return(1.0 - (energy->max_last - f) * para->escale);
 }
-
-  

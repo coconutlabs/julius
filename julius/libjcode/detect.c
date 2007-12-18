@@ -13,7 +13,7 @@
  */
 
 #include <stdio.h>
-#include <jlibconfig.h>
+#include "jlibconfig.h"
 
 static int _detect(unsigned char *str, int expected);
 static int _detect_euc_or_sjis(unsigned char *str);

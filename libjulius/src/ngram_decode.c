@@ -1,26 +1,23 @@
 /**
  * @file   ngram_decode.c
- * @author Akinobu Lee
- * @date   Fri Jul  8 14:57:51 2005
  * 
  * <JA>
- * @brief  N-gram確率とトレリス上の単語から次単語を予測する(第2パス)．
+ * @brief  N-gram確率に基づく次単語予測（第2パス） 
  *
  * Julius のN-gramを用いたスタックデコーディング(第2パス)において，
- * 次に接続しうる単語の集合を決定する．
+ * 次に接続しうる単語の集合を決定する. 
  * 
  * 与えられた展開元仮説の始端フレームを予測し，単語トレリス上で
  * その予測フレーム周辺に終端が存在する単語の集合を，
- * そのN-gram出現確率とともに返す．
+ * そのN-gram出現確率とともに返す. 
  *
  * Julius では ngram_firstwords(), ngram_nextwords(), ngram_acceptable() が
- * それぞれ第2パスのメイン関数 wchmm_fbs() から呼び出される．なお，
- * Julian ではこれらの関数の代わりに dfa_decode.c の関数が用いられる．
+ * それぞれ第2パスのメイン関数 wchmm_fbs() から呼び出される. なお，
+ * Julian ではこれらの関数の代わりに dfa_decode.c の関数が用いられる. 
  * </JA>
  * 
  * <EN>
- * @brief  Word prediction based on N-gram probability and word trellis index
- * for 2nd pass of Julius.
+ * @brief N-gram based word prediction for the 2nd pass.
  *
  * These functions returns next word candidates in the 2nd recognition
  * pass of Julius, i.e. N-gram based stack decoding.
@@ -35,13 +32,16 @@
  * corresponding functions in dfa_decode.c will be used instead.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Fri Jul  8 14:57:51 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
    
@@ -49,12 +49,12 @@
 
 /** 
  * <JA>
- * 次単語候補を単語IDで昇順ソートするための qsort コールバック関数．
+ * 次単語候補ソート用 qsort コールバック関数. 
  * 
  * @param a [in] 要素1
  * @param b [in] 要素2
  * 
- * @return aの単語ID > bの単語ID なら1, 逆なら -1, 同じなら 0 を返す．
+ * @return aの単語ID > bの単語ID なら1, 逆なら -1, 同じなら 0 を返す. 
  * </JA>
  * <EN>
  * qsort callback function to sort next word candidates by their word ID.
@@ -75,14 +75,14 @@ compare_nw(NEXTWORD **a, NEXTWORD **b)
 
 /** 
  * <JA>
- * 指定された単語を次単語候補リスト内から検索する．
+ * 次単語候補リスト内から単語を検索する. 
  * 
  * @param nw [in] 次単語候補リスト
  * @param w [in] 検索する単語のID
  * @param num [in] 次単語候補リストの長さ
  * 
  * @return 見つかった場合その次単語候補構造体へのポインタ，見つからなければ
- * NULL を返す．
+ * NULL を返す. 
  * </JA>
  * <EN>
  * Find a word from list of next word candidates.
@@ -120,13 +120,26 @@ search_nw(NEXTWORD **nw, WORD_ID w, int num)
   }
 }
 
-/*************************************************************/
+/** 
+ * <EN>
+ * Compute backward N-gram score from forward N-gram.
+ * </EN>
+ * <JA>
+ * 後向きの N-gram スコアを前向き N-gram から算出する. 
+ * </JA>
+ * 
+ * @param ngram [in] N-gram data structure
+ * @param w [in] word sequence
+ * @param wlen [in] length of @a w
+ * 
+ * @return the backward probability of the word w[0].
+ * 
+ */
 static LOGPROB
 ngram_forw2back(NGRAM_INFO *ngram, WORD_ID *w, int wlen)
 {
   int i;
   LOGPROB p1, p2;
-  int k;
 
   p1 = 0.0;
   for(i = 1; i < ngram->n; i++) {
@@ -142,27 +155,21 @@ ngram_forw2back(NGRAM_INFO *ngram, WORD_ID *w, int wlen)
   return(p2 - p1);
 }
 
-/*************************************************************/
-
-/* lookup survived words on specified frame in backtrellis, 
-   compute their N-gram probabilities, and add them to NEXTWORD data */
 /** 
  * <JA>
- * @brief  単語トレリス上の次単語を取り出す．
+ * @brief  単語トレリスから次単語候補を抽出する. 
  *
  * 単語トレリス上の指定したフレーム上に終端が存在するトレリス単語
- * のリストを抽出し，それらの次単語としての N-gram 接続確率を計算する．
- * そのリストを次単語情報構造体に追加して返す．
+ * のリストを抽出し，それらの次単語としての N-gram 接続確率を計算する. 
+ * そのリストを次単語情報構造体に追加して返す. 
  * 
- * @param bt [in] 単語トレリス構造体
- * @param winfo [in] 単語辞書構造体
- * @param ngram [in] N-gram構造体
+ * @param r [in] 認識処理インスタンス
  * @param nw [i/o] 次単語候補リスト（抽出結果は @a oldnum 以降に追加される）
  * @param oldnum [in] @a nw にすでに格納されている次単語の数
  * @param hypo [in] 展開元の文仮説
  * @param t [in] 指定フレーム
  * 
- * @return 抽出リストを追加したあとの @a nw に含まれる次単語の総数．
+ * @return 抽出リストを追加したあとの @a nw に含まれる次単語の総数. 
  * </JA>
  * <EN>
  * @brief  Extract next word candidates from word trellis.
@@ -172,9 +179,7 @@ ngram_forw2back(NGRAM_INFO *ngram, WORD_ID *w, int wlen)
  * The N-gram probabilities of them are then computed and added to
  * the current next word candidates data.
  * 
- * @param bt [in] word trellis structure
- * @param winfo [in] word dictionary structure
- * @param ngram [in] N-gram data structure
+ * @param r [in] recognition process instance
  * @param nw [in] list of next word candidates (new words will be appended at @a oldnum)
  * @param oldnum [in] number of words already stored in @a nw
  * @param hypo [in] the source sentence hypothesis
@@ -184,7 +189,7 @@ ngram_forw2back(NGRAM_INFO *ngram, WORD_ID *w, int wlen)
  * </EN>
  */
 static int
-pick_backtrellis_words(Recog *recog, NEXTWORD **nw, int oldnum, NODE *hypo, short t)
+pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, short t)
 {
   int i;
   WORD_ID w;
@@ -204,12 +209,12 @@ pick_backtrellis_words(Recog *recog, NEXTWORD **nw, int oldnum, NODE *hypo, shor
   LOGPROB lm_weight2, lm_penalty2, lm_penalty_trans;
 
   num = oldnum;
-  bt = recog->backtrellis;
-  winfo = recog->model->winfo;
-  ngram = recog->model->ngram;
-  lm_weight2 = recog->jconf->lm.lm_weight2;
-  lm_penalty2 = recog->jconf->lm.lm_penalty2;
-  lm_penalty_trans = recog->jconf->lm.lm_penalty_trans;
+  bt = r->backtrellis;
+  winfo = r->lm->winfo;
+  ngram = r->lm->ngram;
+  lm_weight2 = r->config->lmp.lm_weight2;
+  lm_penalty2 = r->config->lmp.lm_penalty2;
+  lm_penalty_trans = r->config->lmp.lm_penalty_trans;
 
   /* set word contexts to cnword[] from 1 considering transparent words */
   if (ngram) {
@@ -269,10 +274,10 @@ pick_backtrellis_words(Recog *recog, NEXTWORD **nw, int oldnum, NODE *hypo, shor
       rawscore += winfo->cprob[w];
 #endif
     }
-    if (recog->lmvar == LM_NGRAM_USER) {
+    if (r->lmvar == LM_NGRAM_USER) {
       /* call user-defined function */
       /* be careful that the word context is ordered in backward direction */
-      rawscore = (*(recog->lmfunc.lmprob))(winfo, hypo->seq, hypo->seqnum, w, rawscore);
+      rawscore = (*(r->lm->lmfunc.lmprob))(winfo, hypo->seq, hypo->seqnum, w, rawscore);
     }
 
     nw[num]->tre   = bt->rw[t][i];
@@ -292,42 +297,31 @@ pick_backtrellis_words(Recog *recog, NEXTWORD **nw, int oldnum, NODE *hypo, shor
   return num;
 }
 
-/* Look for survived backtrellis words near the specified frame, and
-   make NEXTWORD list.
-   Words in frame [tm-lookup_range..tm+lookup_range-1] will be picked up.
-   If a word exist in several frames, only one near the center frame
-   will be taken: the true connection point will be determined later at
-   next_word() */
 /** 
  * <JA>
- * @brief  指定フレーム周辺の単語トレリスから次単語集合を決定する．
+ * @brief  単語トレリスから次単語集合を決定する. 
  *
  * 指定フレームの前後 lookup_range 分に終端があるトレリス上の単語を集め，
- * 次単語構造体を構築する．同じ単語が上記の範囲内に複数ある場合，
- * 指定フレームにもっとも近いトレリス上の単語が選択される．
+ * 次単語構造体を構築する. 同じ単語が上記の範囲内に複数ある場合，
+ * 指定フレームにもっとも近いトレリス上の単語が選択される. 
  * 
- * @param bt [in] 単語トレリス構造体
- * @param winfo [in] 単語辞書構造体
- * @param ngram [in] 単語N-gram構造体
+ * @param r [in] 認識処理インスタンス
  * @param nw [out] 次単語集合を格納する構造体へのポインタ
  * @param hypo [in] 展開元の部分文仮説
  * @param tm [in] 単語を探す中心となる指定フレーム
  * @param t_end [in] 単語を探すフレームの右端
  * 
- * @return @a nw に格納された次単語候補の数を返す．
+ * @return @a nw に格納された次単語候補の数を返す. 
  * </JA>
  * <EN>
- * @brief  Look for the next word candidates on the word trellis near the
- * specified time frame.
+ * @brief  Determine next word candidates from the word trellis.
  *
  * This function builds a list of next word candidates by looking up
  * the word trellis at specified frame, with lookup_range frame margin.
  * If the same words exists in the near frames, only the one nearest to the
  * specified frame will be chosen.
  * 
- * @param bt [in] word trellis structure
- * @param winfo [in] word dictionary structure
- * @param ngram [in] word N-gram structure
+ * @param r [in] recognition process instance
  * @param nw [out] pointer to hold the extracted words as list of next word candidates
  * @param hypo [in] partial sentence hypothesis from which the words will be expanded
  * @param tm [in] center time frame to look up the words
@@ -337,7 +331,7 @@ pick_backtrellis_words(Recog *recog, NEXTWORD **nw, int oldnum, NODE *hypo, shor
  * </EN>
  */
 static int
-get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t_end)
+get_backtrellis_words(RecogProcess *r, NEXTWORD **nw, NODE *hypo, short tm, short t_end)
 {
   int num = 0;
   int t, t_step;
@@ -348,8 +342,8 @@ get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t
 
   if (tm < 0) return(0);
 
-  bt = recog->backtrellis;
-  lookup_range = recog->jconf->search.pass2.lookup_range;
+  bt = r->backtrellis;
+  lookup_range = r->config->pass2.lookup_range;
 
 #ifdef PREFER_CENTER_ON_TRELLIS_LOOKUP
   /* fix for 3.2 (01/10/18 by ri) */
@@ -358,7 +352,7 @@ get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t
     /* before or center */
     t = tm - t_step;
     if (t < 0 || t > bt->framelen - 1 || t >= t_end) continue;
-    num = pick_backtrellis_words(recog, nw, oldnum, hypo, t);
+    num = pick_backtrellis_words(r, nw, oldnum, hypo, t);
     if (num > oldnum) {
       qsort(nw, num, sizeof(NEXTWORD *),
 	    (int (*)(const void *,const void *))compare_nw);
@@ -368,7 +362,7 @@ get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t
     /* after */
     t = tm + t_step;
     if (t < 0 || t > bt->framelen - 1 || t >= t_end) continue;
-    num = pick_backtrellis_words(recog, nw, oldnum, hypo, t);
+    num = pick_backtrellis_words(r, nw, oldnum, hypo, t);
     if (num > oldnum) {
       qsort(nw, num, sizeof(NEXTWORD *),
 	    (int (*)(const void *,const void *))compare_nw);
@@ -381,7 +375,7 @@ get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t
   /* before the center frame */
   for(t = tm; t >= tm - lookup_range; t--) {
     if (t < 0) break;
-    num = pick_backtrellis_words(recog, nw, oldnum, hypo, t);
+    num = pick_backtrellis_words(r, nw, oldnum, hypo, t);
     if (num > oldnum) {
       qsort(nw, num, sizeof(NEXTWORD *),
 	    (int (*)(const void *,const void *))compare_nw);
@@ -392,7 +386,7 @@ get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t
   for(t = tm + 1; t < tm + lookup_range; t++) {
     if (t > bt->framelen - 1) break;
     if (t >= t_end) break;
-    num = pick_backtrellis_words(recog, nw, oldnum, hypo, t);
+    num = pick_backtrellis_words(r, nw, oldnum, hypo, t);
     if (num > oldnum) {
       qsort(nw, num, sizeof(NEXTWORD *),
 	    (int (*)(const void *,const void *))compare_nw);
@@ -406,20 +400,26 @@ get_backtrellis_words(Recog *recog, NEXTWORD **nw, NODE *hypo, short tm, short t
 
 /** 
  * <JA>
- * 制約により展開対象とならない単語をリストから消去する．
+ * @brief  非展開単語を除去. 
+ * 
+ * 制約により展開対象とならない単語をリストから消去する. 
  * 
  * @param nw [i/o] 次単語集合（集合中の展開できない単語が消去される）
  * @param hypo [in] 展開元の部分文仮説
  * @param num [in] @a nw に現在格納されている単語数
+ * @param winfo [in] 単語辞書
  * 
  * @return 新たに nw に含まれる次単語数
  * </JA>
  * <EN>
+ * @brief  Remove non-expansion word from list.
+ * 
  * Remove words in the nextword list which should not be expanded.
  * 
  * @param nw [i/o] list of next word candidates (will be shrinked by removing some words)
  * @param hypo [in] partial sentence hypothesis from which the words will be expanded
  * @param num [in] current number of next words in @a nw
+ * @param winfo [in] word dictionary
  * 
  * @return the new number of words in @a nw
  * </EN>
@@ -458,28 +458,23 @@ limit_nw(NEXTWORD **nw, NODE *hypo, int num, WORD_INFO *winfo)
 }
 	
 
-
-/* 最初の単語群を返す．返り値: 単語数 (-1 on error) */
-/* return initial word set.  return value: num of words (-1 on error) */
-
 /** 
  * <JA>
- * @brief  初期単語仮説集合を返す．
+ * @brief  初期単語仮説集合を求める. 
  *
- * N-gramベースの探索では，初期仮説は単語末尾の無音単語に固定されている．
+ * N-gramベースの探索では，初期仮説は単語末尾の無音単語に固定されている. 
  * ただし，ショートポーズセグメンテーション時は，第1パスで最終フレームに終端が
- * 残った単語の中で尤度最大の単語となる．
+ * 残った単語の中で尤度最大の単語となる. 
  * 
  * @param nw [out] 次単語候補リスト（得られた初期単語仮説を格納する）
  * @param peseqlen [in] 入力フレーム長
  * @param maxnw [in] @a nw に格納できる単語の最大数
- * @param winfo [in] 単語情報構造体
- * @param bt [in] 単語トレリス構造体
+ * @param r [in] 認識処理インスタンス
  * 
- * @return @a nw に格納された単語候補数を返す．
+ * @return @a nw に格納された単語候補数を返す. 
  * </JA>
  * <EN>
- * @brief  Return the set of initial word hypotheses at the beginning.
+ * @brief  Get initial word hypotheses at the beginning.
  *
  * on N-gram based recogntion, the initial hypothesis is fixed to the tail
  * silence word.  Exception is that, in short-pause segmentation mode, the
@@ -489,61 +484,61 @@ limit_nw(NEXTWORD **nw, NODE *hypo, int num, WORD_INFO *winfo)
  * @param nw [out] pointer to hold the initial word candidates
  * @param peseqlen [in] input frame length
  * @param maxnw [in] maximum number of words that can be stored in @a nw
- * @param winfo [in] word dictionary information
- * @param bt [in] word trellis structure
+ * @param r [in] recognition process instance
  * 
  * @return the number of words extracted and stored to @a nw.
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
  */
 int
-ngram_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, Recog *recog)
+ngram_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, RecogProcess *r)
 {
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->rest_param != NULL) {
-    /* 初期仮説は 最終フレームに残った単語トレリス上の最尤単語 */
-    /* the initial hypothesis is the best word survived on the last frame of
-       the segment */
-    nw[0]->id = recog->sp_break_2_begin_word;
+
+  if (r->config->successive.enabled) {
+    /* in sp segment mode  */
+    if (r->sp_break_2_begin_word != WORD_INVALID) {
+      /* 初期仮説は 最終フレームに残った単語トレリス上の最尤単語 */
+      /* the initial hypothesis is the best word survived on the last frame of
+	 the segment */
+      nw[0]->id = r->sp_break_2_begin_word;
+    } else {
+      /* 最終セグメント: 初期仮説は 単語の末尾の無音単語(=winfo->tail_silwid) */
+      /* we are in the last of sentence: initial hypothesis is word-end silence word */
+      nw[0]->id = r->lm->winfo->tail_silwid;
+    }
   } else {
-    /* 最終セグメント: 初期仮説は 単語の末尾の無音単語(=winfo->tail_silwid) */
-    /* we are in the last of sentence: initial hypothesis is word-end silence word */
-    nw[0]->id = recog->model->winfo->tail_silwid;
+    /* initial hypothesis should be word-end silence word */
+    nw[0]->id = r->lm->winfo->tail_silwid;
   }
-#else
-  /* initial hypothesis is word-end silence word */
-  nw[0]->id = recog->model->winfo->tail_silwid;
-#endif
+
 #ifdef FIX_PENALTY
   nw[0]->lscore = 0.0;
 #else
-  nw[0]->lscore = recog->jconf->lm.lm_penalty2;
+  nw[0]->lscore = r->config->lmp.lm_penalty2;
 #endif
 
   return 1;			/* number of words = 1 */
 }
 
-/* ある仮説の次の接続単語群を返す．帰り値: 単語数 (-1 on error) */
-/* return next word set from the hypothesis.  return value:
-   num of words (-1 on error) */
 /** 
  * <JA>
- * @brief 次単語仮説集合を返す．
+ * @brief 次単語仮説集合を返す. 
  *
- * 与えられた部分文仮説から，次に接続しうる単語の集合を返す．実際には，
+ * 与えられた部分文仮説から，次に接続しうる単語の集合を返す. 実際には，
  * 第1パスの結果であるトレリス単語集合 bt 上で，展開元の部分文仮説の最終単語の
  * （推定された）始端フレーム hypo->estimated_next_t の前後に存在する
- * 単語集合を取出し，それらの N-gram 接続確率を計算して返す．
+ * 単語集合を取出し，それらの N-gram 接続確率を計算して返す. 
  * 取り出された次単語仮説は，あらかじめ maxnm の長さだけ
- * 領域が確保されている nw に格納される．
+ * 領域が確保されている nw に格納される. 
  * 
  * @param hypo [in] 展開元の文仮説
  * @param nw [out] 次単語候補リストを格納する領域へのポインタ
  * @param maxnw [in] @a nw の最大長
- * @param ngram [in] N-gram情報構造体
- * @param winfo [in] 辞書情報構造体
- * @param bt [in] 単語トレリス構造体
+ * @param r [in] 認識処理インスタンス
  * 
- * @return 抽出され nw に格納された次単語仮説の数を返す．
+ * @return 抽出され nw に格納された次単語仮説の数を返す. 
  * </JA>
  * <EN>
  * @brief  Return the list of next word candidate.
@@ -557,19 +552,15 @@ ngram_firstwords(NEXTWORD **nw, int peseqlen, int maxnw, Recog *recog)
  * @param hypo [in] source partial sentence hypothesis
  * @param nw [out] pointer to store the list of next word candidates (should be already allocated)
  * @param maxnw [in] maximum number of words that can be stored to @a nw
- * @param ngram [in] word N-gram
- * @param winfo [in] word dictionary
- * @param bt [in] word trellis structure
+ * @param r [in] recognition process instance
  * 
  * @return the number of extracted next word candidates in @a nw.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 int
-ngram_nextwords(
-		NODE *hypo,
-		NEXTWORD **nw,
-		int maxnw,	/* hypo: source */
-		Recog *recog)
+ngram_nextwords(NODE *hypo, NEXTWORD **nw, int maxnw, RecogProcess *r)
 {
   int num, num2;
 
@@ -579,57 +570,63 @@ ngram_nextwords(
 
   /* 仮説の推定終端時刻において backtrellis内に残っている単語を得る */
   /* get survived words on backtrellis at the estimated end frame */
-  num = get_backtrellis_words(recog, nw, hypo, hypo->estimated_next_t, hypo->bestt);
+  num = get_backtrellis_words(r, nw, hypo, hypo->estimated_next_t, hypo->bestt);
 
   /* 展開できない単語をチェックして外す */
   /* exclude unallowed words */
-  num2 = limit_nw(nw, hypo, num, recog->model->winfo);
+  num2 = limit_nw(nw, hypo, num, r->lm->winfo);
 
   if (debug2_flag) jlog("DEBUG: ngram_decode: %d-%d=%d unfolded\n",num, num-num2,num2);
 
   return(num2);
 }
 
-/* return if the hypothesis is "acceptable" */
 /** 
  * <JA>
+ * @brief  受理判定
+ * 
  * 与えられた部分文仮説が，文（すなわち探索終了）として
- * 受理可能であるかどうかを返す．N-gram では文頭に対応する無音単語
- * (silhead) であれば受理する．
+ * 受理可能であるかどうかを返す. N-gram では文頭に対応する無音単語
+ * (silhead) であれば受理する. 
  * 
  * @param hypo [in] 部分文仮説
- * @param winfo [in] 単語辞書情報
+ * @param r [in] 認識処理インスタンス
  * 
- * @return 文として受理可能であれば TRUE，不可能なら FALSE を返す．
+ * @return 文として受理可能であれば TRUE，不可能なら FALSE を返す. 
  * </JA>
  * <EN>
+ * @brief  Acceptance check.
+ * 
  * Return whether the given partial hypothesis is acceptable as a sentence
  * and can be treated as a final search candidate.  In N-gram mode, it checks
  * whether the last word is the beginning-of-sentence silence (silhead).
  * 
  * @param hypo [in] partial sentence hypothesis to be examined
- * @param winfo [in] word dictionary
+ * @param r [in] recognition process instance
  * 
  * @return TRUE if acceptable as a sentence, or FALSE if not.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 boolean
-ngram_acceptable(NODE *hypo, Recog *recog)
+ngram_acceptable(NODE *hypo, RecogProcess *r)
 {
-  if (
-#ifdef SP_BREAK_CURRENT_FRAME
-      /* 最後の仮説が第１パス最尤仮説の最初の単語と一致しなければならない */
-      /* the last word should be equal to the first word on the best hypothesis on 1st pass */
-      hypo->seq[hypo->seqnum-1] == recog->sp_break_2_end_word
-#else
-      /* 最後の仮説が文頭無音単語でなければならない */
-      /* the last word should be head silence word */
-      hypo->seq[hypo->seqnum-1] == recog->model->winfo->head_silwid
-#endif
-      ) {
-    return TRUE;
+
+  if (r->config->successive.enabled) {
+    /* 最後の仮説が第１パス最尤仮説の最初の単語と一致しなければならない */
+    /* the last word should be equal to the first word on the best hypothesis on 1st pass */
+    if (hypo->seq[hypo->seqnum-1] == r->sp_break_2_end_word) {
+      return TRUE;
+    }
   } else {
-    return FALSE;
+    /* 最後の仮説が文頭無音単語でなければならない */
+    /* the last word should be head silence word */
+    if (hypo->seq[hypo->seqnum-1] == r->lm->winfo->head_silwid) {
+      return TRUE;
+    }
   }
+  return FALSE;
 }
 
+/* end of file */

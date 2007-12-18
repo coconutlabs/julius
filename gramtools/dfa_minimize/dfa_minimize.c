@@ -1,11 +1,12 @@
 /**
  * @file   dfa_minimize.c
- * @author Akinobu Lee
- * @date   Wed Oct  4 17:42:16 2006
  * 
  * @brief  Minimize DFA for Julian grammar.
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Wed Oct  4 17:42:16 2006
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -190,7 +191,7 @@ minimize(DFA_INFO *dfa, FILE *fpout)
       if (n > 1) {
 	/* several diffrent pattern has been found in a group */
 	/* divide this group into a new subgroup, by assigning
-	   /* new group ID for each different patterns */
+	   new group ID for each different patterns */
 	for(s=0;s<dfa->state_num;s++) {
 	  if (group[s] != g) continue;
 	  group[s] = gnum + gmark[s];

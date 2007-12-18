@@ -1,31 +1,29 @@
 /**
  * @file   multi-gram.c
- * @author Akinobu Lee
- * @date   Sat Jun 18 23:45:18 2005
  * 
  * <JA>
- * @brief  認識用文法の管理 for Julian
+ * @brief  認識用文法の管理
  *
- * このファイルには，認識用文法の読み込みと管理を行う関数が含まれています．
+ * このファイルには，認識用文法の読み込みと管理を行う関数が含まれています. 
  * これらの関数は，文法ファイルの読み込み，および各種データの
- * セットアップを行います．
+ * セットアップを行います. 
  *
- * 複数文法の同時認識に対応しています．複数の文法を一度に読み込んで，
- * 並列に認識を行えます．また，モジュールモードでは，クライアントから
+ * 複数文法の同時認識に対応しています. 複数の文法を一度に読み込んで，
+ * 並列に認識を行えます. また，モジュールモードでは，クライアントから
  * 認識実行中に文法を動的に追加・削除したり，一部分の文法を無効化・
- * 有効化したりできます．また与えられた個々の文法ごとに認識結果を
- * 出すことができます．
+ * 有効化したりできます. また与えられた個々の文法ごとに認識結果を
+ * 出すことができます. 
  *
  * 与えられた（複数の）文法は一つのグローバル文法として結合され,
- * 文法の読み込みや削除などの状態変更を行ったとき，更新されます．
+ * 文法の読み込みや削除などの状態変更を行ったとき，更新されます. 
  * 結合された構文規則 (DFA) が global_dfa に，語彙辞書が global_winfo に
- * それぞれローカルに格納されます．これらは適切なタイミングで
- * multigram_setup() が呼び出されたときに，global.h 内の大域変数 dfa
- * および winfo にコピーされ，認識処理において使用されるようになります．
+ * それぞれローカルに格納されます. これらは適切なタイミングで
+ * multigram_build() が呼び出されたときに，global.h 内の大域変数 dfa
+ * および winfo にコピーされ，認識処理において使用されるようになります. 
  * </JA>
  * 
  * <EN>
- * @brief  Management of Recognition grammars for Julian
+ * @brief  Management of Recognition grammars
  *
  * This file contains functions to read and manage recognition grammar.
  * These function read in grammar and dictionary, and setup data for
@@ -41,96 +39,99 @@
  * The global grammar will be updated whenever a new grammar has been read
  * or deleted.  The syntax rule (DFA) of the global grammar will be stored
  * at global_dfa, and the corresponding dictionary will be at global_winfo
- * locally, independent of the decoding timing.  After that, multigram_setup()
+ * locally, independent of the decoding timing.  After that, multigram_build()
  * will be called to make the prepared global grammar to be used in the
  * actual recognition process, by copying the grammar and the dictionary
  * to the global variable dfa and winfo.
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Sat Jun 18 23:45:18 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 
 #include <julius/julius.h>
 
-/// For debug: define this if you want grammar update messages to stdout
+/// For debug: define to enable grammar update messages to stdout
 #define MDEBUG
 
 /** 
  * <JA>
- * @brief  与えられた文法で認識を行うために各データをセットアップする．
+ * @brief  グローバル文法から木構造化辞書を構築する. 
  *
- * 与えられた文法から，木構造化辞書を新たに再構築します．また
+ * 与えられた文法で認識を行うために，認識処理インスタンスが現在持つ
+ * グローバル文法から木構造化辞書を（再）構築します. また， 
  * 起動時にビーム幅が明示的に指示されていない場合やフルサーチの場合，
- * ビーム幅の再設定も行います．与えられた文法および再構築された木構造化
- * 辞書は，認識に用いるためにそれぞれ大域変数 dfa, winfo, wchmm にセット
- * されます．
+ * ビーム幅の再設定も行います.
  * 
- * @param d [in] 認識に用いるDFA構造体情報
- * @param w [in] 辞書情報
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
- * @brief  Setup informations for recognition with the given grammar.
+ * @brief  Build tree lexicon from global grammar.
  *
- * This function will re-construct the tree lexicon using the given grammar
- * and dictionary to prepare for the recognition.  If explicit value is not
- * specified for the beam width on startup, it also resets the beam width
- * according to the size of the new dictionary.  The given grammars (DFA and
- * dictionary) and the rebuilt tree lexicon will be set to the global
- * variables "dfa", "winfo" and "wchmm" to be accessible from recognition
- * functions.
+ * This function will re-construct the tree lexicon using the global grammar
+ * in the recognition process instance.  If the beam width was not explicitly
+ * specified on startup, the the beam width will be guessed
+ * according to the size of the new lexicon.
  * 
- * @param d [in] DFA grammar information
- * @param w [in] dictionary information.
+ * @param r [i/o] recognition process instance
  * </EN>
  */
 static boolean
-multigram_setup(Recog *recog)
+multigram_rebuild_wchmm(RecogProcess *r)
 {
   boolean ret;
 
   /* re-build wchmm */
-  if (recog->wchmm != NULL) {
-    wchmm_free(recog->wchmm);
+  if (r->wchmm != NULL) {
+    wchmm_free(r->wchmm);
   }
-  recog->wchmm = wchmm_new();
-  recog->wchmm->lmtype = recog->jconf->lmtype;
-  recog->wchmm->lmvar  = recog->jconf->lmvar;
-  recog->wchmm->category_tree = TRUE;
-  recog->wchmm->hmmwrk = &(recog->hmmwrk);
+  r->wchmm = wchmm_new();
+  r->wchmm->lmtype = r->lmtype;
+  r->wchmm->lmvar  = r->lmvar;
+  r->wchmm->ccd_flag = r->ccd_flag;
+  r->wchmm->category_tree = TRUE;
+  r->wchmm->hmmwrk = &(r->am->hmmwrk);
   /* assign models */
-  recog->wchmm->dfa = recog->model->dfa;
-  recog->wchmm->winfo = recog->model->winfo;
-  recog->wchmm->hmminfo = recog->model->hmminfo;
-  if (recog->wchmm->category_tree) {
-    if (recog->jconf->search.pass1.old_tree_function_flag) {
-      ret = build_wchmm(recog->wchmm, recog->jconf);
+  r->wchmm->dfa = r->lm->dfa;
+  r->wchmm->winfo = r->lm->winfo;
+  r->wchmm->hmminfo = r->am->hmminfo;
+  if (r->wchmm->category_tree) {
+    if (r->config->pass1.old_tree_function_flag) {
+      ret = build_wchmm(r->wchmm, r->lm->config);
     } else {
-      ret = build_wchmm2(recog->wchmm, recog->jconf);
+      ret = build_wchmm2(r->wchmm, r->lm->config);
     }
   } else {
-    ret = build_wchmm2(recog->wchmm, recog->jconf);
+    ret = build_wchmm2(r->wchmm, r->lm->config);
   }
 
+  /* 起動時 -check でチェックモードへ */
+  if (r->config->sw.wchmm_check_flag) {
+    wchmm_check_interactive(r->wchmm);
+  }
+  
   if (ret == FALSE) {
     jlog("ERROR: multi-gram: failed to build (global) lexicon tree for recognition\n");
     return FALSE;
   }
   
   /* guess beam width from models, when not specified */
-  recog->trellis_beam_width = set_beam_width(recog->wchmm, recog->jconf->search.pass1.specified_trellis_beam_width);
-  switch(recog->jconf->search.pass1.specified_trellis_beam_width) {
+  r->trellis_beam_width = set_beam_width(r->wchmm, r->config->pass1.specified_trellis_beam_width);
+  switch(r->config->pass1.specified_trellis_beam_width) {
   case 0:
-    jlog("STAT: multi-gram: beam width set to %d (full) by lexicon change\n", recog->trellis_beam_width);
+    jlog("STAT: multi-gram: beam width set to %d (full) by lexicon change\n", r->trellis_beam_width);
     break;
   case -1:
-    jlog("STAT: multi-gram: beam width set to %d (guess) by lexicon change\n", recog->trellis_beam_width);
+    jlog("STAT: multi-gram: beam width set to %d (guess) by lexicon change\n", r->trellis_beam_width);
   }
 
   /* re-allocate factoring cache for the tree lexicon*/
@@ -144,23 +145,70 @@ multigram_setup(Recog *recog)
 }
 
 /** 
+ * <EN>
+ * @brief  Check for global grammar and (re-)build tree lexicon if needed.
+ * 
+ * If any modification of the global grammar has been occured, 
+ * the tree lexicons and some other data for recognition will be re-constructed
+ * from the updated global grammar.
+ * </EN>
  * <JA>
- * 文法に新たな文法を結合する．
+ * @brief  グローバル文法を調べ，必要があれば木構造化辞書を（再）構築する. 
+ * 
+ * グローバル辞書に変更があれば，その更新されたグローバル
+ * 辞書から木構造化辞書などの音声認識用データ構造を再構築する. 
+ * 
+ * </JA>
+ * 
+ * @param r [in] recognition process instance
+ * 
+ * @return TRUE on success, FALSE on error.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+boolean
+multigram_build(RecogProcess *r)
+{
+  if (r->lm->winfo != NULL) {
+    /* re-build tree lexicon for recognition process */
+    if (multigram_rebuild_wchmm(r) == FALSE) {
+      jlog("ERROR: multi-gram: failed to re-build tree lexicon\n");
+      return FALSE;
+    }
+  }
+#ifdef MDEBUG
+  jlog("STAT: wchmm (re)build completed\n");
+#endif
+  return(TRUE);
+}
+
+/** 
+ * <JA>
+ * @brief  グローバル文法の末尾に文法を追加する. 
+ *
+ * もとの文法構造体には，グローバル文法のどの位置にその文法が追加
+ * されたか，そのカテゴリ番号と辞書番号の範囲が記録される. 
  * 
  * @param gdfa [i/o] 結合先の文法のDFA情報
  * @param gwinfo [i/o] 結合先の文法の辞書情報
- * @param m [i/o] 結合する文法情報．結果的にどの位置に結合されたかが記録される．
+ * @param m [i/o] 結合する文法情報. 
  * </JA>
  * <EN>
- * Install a new grammar to the existing one.
+ * @brief  Append a grammar to the tail of global grammar.
+ *
+ * The location of the grammar in the global grammar (categories and words)
+ * will be stored to the grammar structure for later access.
  * 
- * @param gdfa [i/o] DFA information of the existing grammar to which the @a m will be installed.
- * @param gwinfo [i/o] Dictionary information of the existing grammar to which the @a m will be installed.
- * @param m [i/o] New grammar information to be installed.  The resulting location of the grammar within @a gdfa and @a gwinfo will be stored in the data.
+ * @param gdfa [i/o] DFA information of the global grammar
+ * @param gwinfo [i/o] Dictionary information of the global grammar
+ * @param m [i/o] New grammar information to be installed.
  * </EN>
  */
 static boolean
-multigram_build_append(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
+multigram_append_to_global(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
 {
   /* the new grammar 'm' will be appended to the last of gdfa and gwinfo */
   m->state_begin = gdfa->state_num;	/* initial state ID */
@@ -194,22 +242,35 @@ multigram_build_append(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
 
 /** 
  * <JA>
- * 現在所持している文法のリストに新たな文法を追加登録する．
+ * 新たな文法を，文法リストに追加する.
+ * 現在インスタンスが保持している文法のリストは lm->grammars に保存される. 
+ * 追加した文法には，newbie, active のフラグがセットされ，次回の
+ * 文法更新チェック時に更新対象となる. 
  * 
  * @param dfa [in] 追加登録する文法のDFA情報
  * @param winfo [in] 追加登録する文法の辞書情報
  * @param name [in] 追加登録する文法の名称
+ * @param lm [i/o] 言語処理インスタンス
  * </JA>
  * <EN>
  * Add a new grammar to the current list of grammars.
+ * The list of grammars which the LM instance keeps currently is
+ * at lm->grammars.
+ * The new grammar is flaged at "newbie" and "active", to be treated
+ * properly at the next grammar update check.
  * 
  * @param dfa [in] DFA information of the new grammar.
  * @param winfo [in] dictionary information of the new grammar.
  * @param name [in] name string of the new grammar.
+ * @param lm [i/o] LM processing instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 void
-multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, Model *model)
+multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm)
 {
   MULTIGRAM *new;
 
@@ -221,7 +282,7 @@ multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, Model *model)
     strncpy(new->name, "(no name)", MAXGRAMNAMELEN);
   }
 
-  new->id = model->gram_maxid;
+  new->id = lm->gram_maxid;
   new->dfa = dfa;
   new->winfo = winfo;
   new->hook = MULTIGRAM_DEFAULT;
@@ -229,37 +290,45 @@ multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, Model *model)
   new->active = TRUE;		/* default: active */
 
   /* the new grammar is now added to gramlist */
-  new->next = model->grammars;
-  model->grammars = new;
+  new->next = lm->grammars;
+  lm->grammars = new;
 
   jlog("STAT: Gram #%d: read\n", new->id);
-  model->gram_maxid++;
+  lm->gram_maxid++;
 }
 
 /** 
  * <JA>
- * 文法リスト中のある文法を，次回更新時に削除するようマークする．
+ * 文法を削除する. 
+ *
+ * 文法リスト中のある文法について，削除マークを付ける. 
+ * 実際の削除は multigram_exec_delete() で行われる. 
  * 
  * @param delid [in] 削除する文法の文法ID
+ * @param lm [i/o] 言語処理インスタンス
  * 
- * @return 通常時 TRUE を返す．指定されたIDの文法が無い場合は FALSE を返す．
+ * @return 通常時 TRUE を返す. 指定されたIDの文法が無い場合は FALSE を返す. 
  * </JA>
  * <EN>
  * Mark a grammar in the grammar list to be deleted at the next grammar update.
  * 
  * @param delid [in] grammar id to be deleted
+ * @param lm [i/o] LM processing instance
  * 
  * @return TRUE on normal exit, or FALSE if the specified grammar is not found
  * in the grammar list.
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 boolean
-multigram_delete(int delid, Recog *recog)
+multigram_delete(int delid, PROCESS_LM *lm)
 {
   MULTIGRAM *m;
-  for(m=recog->model->grammars;m;m=m->next) {
+  for(m=lm->grammars;m;m=m->next) {
     if (m->id == delid) {
-      m->hook = MULTIGRAM_DELETE;
+      m->hook |= MULTIGRAM_DELETE;
       jlog("STAT: Gram #%d: marked delete\n", m->id);
       break;
     }
@@ -273,36 +342,46 @@ multigram_delete(int delid, Recog *recog)
 
 /** 
  * <JA>
- * 文法リスト中のすべての文法を次回更新時に削除するようマークする．
+ * すべての文法を次回更新時に削除するようマークする.
+ * 
+ * @param lm [i/o] 言語処理インスタンス
  * </JA>
  * <EN>
- * Mark all grammars in the grammar list to be deleted at the next
- * grammar update.
+ * Mark all grammars to be deleted at next grammar update.
+ * 
+ * @param lm [i/o] LM processing instance
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 void
-multigram_delete_all(Recog *recog)
+multigram_delete_all(PROCESS_LM *lm)
 {
   MULTIGRAM *m;
-  for(m=recog->model->grammars;m;m=m->next) {
-    m->hook = MULTIGRAM_DELETE;
+  for(m=lm->grammars;m;m=m->next) {
+    m->hook |= MULTIGRAM_DELETE;
   }
 }
 
 /** 
  * <JA>
- * 削除マークのつけられた文法をリストから削除する．
+ * 削除マークのついた文法をリストから削除する. 
  * 
- * @return グローバル文法の再構築が必要なときは TRUE を，不必要なときは FALSE を返す．
+ * @param lm [i/o] 言語処理インスタンス
+ * 
+ * @return グローバル文法の再構築が必要なときは TRUE を，不必要なときは FALSE を返す. 
  * </JA>
  * <EN>
- * Purge grammars that has been marked as delete.
+ * Purge grammars marked as delete.
+ * 
+ * @param lm [i/o] LM processing instance
  * 
  * @return TRUE if the global grammar must be re-constructed, or FALSE if not needed.
  * </EN>
  */
 static boolean
-multigram_exec_delete(Recog *recog)
+multigram_exec_delete(PROCESS_LM *lm)
 {
   MULTIGRAM *m, *mtmp, *mprev;
   boolean ret_flag = FALSE;
@@ -310,10 +389,10 @@ multigram_exec_delete(Recog *recog)
 
   /* exec delete */
   mprev = NULL;
-  m = recog->model->grammars;
+  m = lm->grammars;
   while(m) {
     mtmp = m->next;
-    if (m->hook == MULTIGRAM_DELETE) {
+    if (m->hook & MULTIGRAM_DELETE) {
       /* if any grammar is deleted, we need to rebuild lexicons etc. */
       /* so tell it to the caller */
       if (! m->newbie) ret_flag = TRUE;
@@ -325,7 +404,7 @@ multigram_exec_delete(Recog *recog)
       if (mprev != NULL) {
 	mprev->next = mtmp;
       } else {
-	recog->model->grammars = mtmp;
+	lm->grammars = mtmp;
       }
     } else {
       mprev = m;
@@ -338,36 +417,48 @@ multigram_exec_delete(Recog *recog)
 
 /** 
  * <JA>
- * 文法リスト中の指定された文法を，有効化する．ここでは次回更新時に
- * 反映されるようにマークをつけるのみである．
+ * 文法を有効化する. ここでは次回更新時に
+ * 反映されるようにマークをつけるのみである. 
  * 
  * @param gid [in] 有効化したい文法の ID
+ * @param lm [i/o] 言語処理インスタンス
  * </JA>
  * <EN>
- * Activate specified grammar in the grammar list.  The specified grammar
+ * Activate a grammar in the grammar list.  The specified grammar
  * will only be marked as to be activated in the next grammar update timing.
  * 
  * @param gid [in] grammar ID to be activated
+ * @param lm [i/o] LM processing instance
  *
  * @return 0 on success, -1 on error (when specified grammar not found),
  * of 1 if already active
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 int
-multigram_activate(int gid, Recog *recog)	/* only mark */
+multigram_activate(int gid, PROCESS_LM *lm)	/* only mark */
 {
   MULTIGRAM *m;
   int ret;
 
-  for(m=recog->model->grammars;m;m=m->next) {
+  for(m=lm->grammars;m;m=m->next) {
     if (m->id == gid) {
-      if (m->hook == MULTIGRAM_ACTIVATE) {
-	jlog("STAT: Gram #%d: already active\n", m->id);
-	ret = 1;
-      } else {
+      if (m->hook & MULTIGRAM_DEACTIVATE) {
 	ret = 0;
-	m->hook = MULTIGRAM_ACTIVATE;
-	jlog("STAT: Gram #%d: marked activate\n", m->id);
+	m->hook &= ~(MULTIGRAM_DEACTIVATE);
+	m->hook |= MULTIGRAM_ACTIVATE;
+	jlog("STAT: Gram #%d: marked active, superceding deactivate\n", m->id);
+      } else {
+	if (m->hook & MULTIGRAM_ACTIVATE) {
+	  jlog("STAT: Gram #%d: already marked active\n", m->id);
+	  ret = 1;
+	} else {
+	  ret = 0;
+	  m->hook |= MULTIGRAM_ACTIVATE;
+	  jlog("STAT: Gram #%d: marked activate\n", m->id);
+	}
       }
       break;
     }
@@ -382,13 +473,14 @@ multigram_activate(int gid, Recog *recog)	/* only mark */
 
 /** 
  * <JA>
- * 文法リスト中の指定された文法を無効化する．無効化された文法は
- * 認識において仮説展開されない．これによって，グローバル辞書を
- * 再構築することなく，一時的に個々の文法をON/OFFできる．無効化した
- * 文法は multigram_activate() で再び有効化できる．なおここでは
- * 次回の文法更新タイミングで反映されるようにマークをつけるのみである．
+ * 文法を無効化する. 無効化された文法は
+ * 認識において仮説展開されない. これによって，グローバル辞書を
+ * 再構築することなく，一時的に個々の文法をON/OFFできる. 無効化した
+ * 文法は multigram_activate() で再び有効化できる. なおここでは
+ * 次回の文法更新タイミングで反映されるようにマークをつけるのみである. 
  * 
  * @param gid [in] 無効化したい文法のID
+ * @param lm [i/o] 言語処理インスタンス
  * </JA>
  * <EN>
  * Deactivate a grammar in the grammar list.  The words of the de-activated
@@ -398,26 +490,37 @@ multigram_activate(int gid, Recog *recog)	/* only mark */
  * multigram_activate().
  * 
  * @param gid [in] grammar ID to be de-activated
+ * @param lm [i/o] LM processing instance
  * 
  * @return 0 on success, -1 on error (when specified grammar not found),
  * of 1 if already inactive
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 int
-multigram_deactivate(int gid, Recog *recog)	/* only mark */
+multigram_deactivate(int gid, PROCESS_LM *lm)	/* only mark */
 {
   MULTIGRAM *m;
   int ret;
 
-  for(m=recog->model->grammars;m;m=m->next) {
+  for(m=lm->grammars;m;m=m->next) {
     if (m->id == gid) {
-      if (m->hook == MULTIGRAM_DEACTIVATE) {
-	jlog("STAT: Gram #%d: already inactive\n", m->id);
-	ret = 1;
-      } else {
+      if (m->hook & MULTIGRAM_ACTIVATE) {
 	ret = 0;
-	m->hook = MULTIGRAM_DEACTIVATE;
-	jlog("STAT: Gram #%d: marked deactivate\n", m->id);
+	m->hook &= ~(MULTIGRAM_ACTIVATE);
+	m->hook |= MULTIGRAM_DEACTIVATE;
+	jlog("STAT: Gram #%d: marked deactivate, superceding activate\n", m->id);
+      } else {
+	if (m->hook & MULTIGRAM_DEACTIVATE) {
+	  jlog("STAT: Gram #%d: already marked deactivate\n", m->id);
+	  ret = 1;
+	} else {
+	  ret = 0;
+	  m->hook |= MULTIGRAM_DEACTIVATE;
+	  jlog("STAT: Gram #%d: marked deactivate\n", m->id);
+	}
       }
       break;
     }
@@ -432,35 +535,39 @@ multigram_deactivate(int gid, Recog *recog)	/* only mark */
 
 /** 
  * <JA>
- * 有効化・無効化マークのつけられた文法を実際に有効化・無効化する．
+ * 文法の有効化・無効化を実行する. 
+ * 
+ * @param lm [i/o] 言語処理インスタンス
  * 
  * @return 無効から有効へ，あるいは有効から無効へ状態が変化した文法が一つでも
- * あればTRUE, 状態が全く変化しなかった場合は FALSE を返す．
+ * あればTRUE, 状態が全く変化しなかった場合は FALSE を返す. 
  * </JA>
  * <EN>
- * Execute (de)activation of grammars previously marked as so.
+ * Execute (de)activation of grammars.
+ * 
+ * @param lm [i/o] LM processing instance
  * 
  * @return TRUE if at least one grammar has been changed, or FALSE if no
  * grammar has changed its status.
  * </EN>
  */
 static boolean
-multigram_exec_activate(Recog *recog)
+multigram_exec_activate(PROCESS_LM *lm)
 {
   MULTIGRAM *m;
   boolean modified;
   
   modified = FALSE;
-  for(m=recog->model->grammars;m;m=m->next) {
-    if (m->hook == MULTIGRAM_ACTIVATE) {
-      m->hook = MULTIGRAM_DEFAULT;
+  for(m=lm->grammars;m;m=m->next) {
+    if (m->hook & MULTIGRAM_ACTIVATE) {
+      m->hook &= ~(MULTIGRAM_ACTIVATE);
       if (!m->active) {
 	jlog("STAT: Gram #%d: turn on active\n", m->id);
       }
       m->active = TRUE;
       modified = TRUE;
-    } else if (m->hook == MULTIGRAM_DEACTIVATE) {
-      m->hook = MULTIGRAM_DEFAULT;
+    } else if (m->hook & MULTIGRAM_DEACTIVATE) {
+      m->hook &= ~(MULTIGRAM_DEACTIVATE);
       if (m->active) {
 	jlog("STAT: Gram #%d: turn off inactive\n", m->id);
       }
@@ -471,27 +578,21 @@ multigram_exec_activate(Recog *recog)
   return(modified);
 }
  
-/************************************************************************/
-/* update grammar if needed */
-/************************************************************************/
 /** 
  * <JA>
  * @brief  グローバル文法の更新
  * 
- * 文法リストの削除または追加をチェックし，それに対応してグローバル文法
- * を更新する．
- *
+ * 前回呼出しからの文法リストの変更をチェックする. 
  * リスト中に削除マークがつけられた文法がある場合は，その文法を削除し，
- * グローバル辞書を再構築する．新たに追加された文法がある場合は，
- * その文法を現在のグローバル辞書の末尾に追加する．
+ * グローバル辞書を再構築する. 新たに追加された文法がある場合は，
+ * その文法を現在のグローバル辞書の末尾に追加する. 
  *
- * 上記のチェックの結果グローバル辞書に変更があれば，その更新されたグローバル
- * 辞書から木構造化辞書などの音声認識用データ構造を再構築する．
+ * @param lm [i/o] 言語処理インスタンス
  * 
- * @return 常に TRUE を返す．
+ * @return 常に TRUE を返す. 
  * </JA>
  * <EN>
- * @brief  Update and re-construct global grammar if needed.
+ * @brief  Update  global grammar if needed.
  *
  * This function checks for any modification in the grammar list from
  * previous call, and update the global grammar if needed.
@@ -501,47 +602,60 @@ multigram_exec_activate(Recog *recog)
  * built from scratch using the rest grammars.
  * If there are new grammars, they are appended to the current global grammar.
  * 
- * If any modification of the global grammar occured in the process above,
- * the tree lexicons and some other data for recognition will be re-constructed
- * from the updated global grammar.
+ * @param lm [i/o] LM processing instance
  * 
  * @return TRUE when any of add/delete/active/inactive occurs, or FALSE if
  * nothing modified.
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 boolean				/* return FALSE if no gram */
-multigram_exec(Recog *recog)
+multigram_update(PROCESS_LM *lm)
 {
   MULTIGRAM *m;
-  boolean global_modified = FALSE;
   boolean active_changed = FALSE;
+  boolean rebuild_flag;
 
-  if (recog->lmvar == LM_DFA_GRAMMAR) {
+  if (lm->lmvar == LM_DFA_GRAMMAR) {
     /* setup additional grammar info of new ones */
-    for(m=recog->model->grammars;m;m=m->next) {
+    for(m=lm->grammars;m;m=m->next) {
       if (m->newbie) {
 	jlog("STAT: Gram #%d: new grammar found, setup it for recognition\n", m->id);
 	/* map dict item to dfa terminal symbols */
 	if (make_dfa_voca_ref(m->dfa, m->winfo) == FALSE) {
 	  jlog("ERROR: failed to map dict <-> DFA. This grammar will be deleted\n");
 	  /* mark as to be deleted */
-	  m->hook = MULTIGRAM_DELETE;
+	  m->hook |= MULTIGRAM_DELETE;
 	  continue;
 	} 
 	/* set dfa->sp_id and dfa->is_sp */
-	dfa_find_pause_word(m->dfa, m->winfo, recog->model->hmminfo);
+	dfa_find_pause_word(m->dfa, m->winfo, lm->am->hmminfo);
 	/* build catergory-pair information */
 	if (extract_cpair(m->dfa) == FALSE) {
 	  jlog("ERROR: failed to extracting category pair. This grammar will be deleted\n");
 	  /* mark as to be deleted */
-	  m->hook = MULTIGRAM_DELETE;
+	  m->hook |= MULTIGRAM_DELETE;
 	}
       }
     }
   }
 
+  rebuild_flag = FALSE;
   /* delete grammars marked as "delete" */
-  if (multigram_exec_delete(recog)) { /* some built grammars deleted */
+  if (multigram_exec_delete(lm)) { /* some built grammars deleted */
+    rebuild_flag = TRUE;	/* needs rebuilding global grammar */
+  }
+  /* find modified grammar */
+  for(m=lm->grammars;m;m=m->next) {
+    if (m->hook & MULTIGRAM_MODIFIED) {
+      rebuild_flag = TRUE;	/* needs rebuilding global grammar */
+      m->hook &= ~(MULTIGRAM_MODIFIED);
+    }
+  }
+
+  if (rebuild_flag) {
     /* rebuild global grammar from scratch (including new) */
     /* active status not changed here (inactive grammar will also included) */
     /* activate/deactivate hook will be handled later, so just keep it here */
@@ -549,135 +663,127 @@ multigram_exec(Recog *recog)
     jlog("STAT: re-build whole global grammar...\n");
 #endif
     /* free old if not yet */
-    if (recog->model->dfa != NULL) {
-      dfa_info_free(recog->model->dfa);
-      recog->model->dfa = NULL;
+    if (lm->dfa != NULL) {
+      dfa_info_free(lm->dfa);
+      lm->dfa = NULL;
     }
-    if (recog->model->winfo != NULL) {
-      word_info_free(recog->model->winfo);
-      recog->model->winfo = NULL;
+    if (lm->winfo != NULL) {
+      word_info_free(lm->winfo);
+      lm->winfo = NULL;
     }
     /* concatinate all existing grammars to global */
-    for(m=recog->model->grammars;m;m=m->next) {
-      if (recog->lmvar == LM_DFA_GRAMMAR && recog->model->dfa == NULL) {
-	recog->model->dfa = dfa_info_new();
-	dfa_state_init(recog->model->dfa);
+    for(m=lm->grammars;m;m=m->next) {
+      if (lm->lmvar == LM_DFA_GRAMMAR && lm->dfa == NULL) {
+	lm->dfa = dfa_info_new();
+	dfa_state_init(lm->dfa);
       }
-      if (recog->model->winfo == NULL) {
-	recog->model->winfo = word_info_new();
-	winfo_init(recog->model->winfo);
+      if (lm->winfo == NULL) {
+	lm->winfo = word_info_new();
+	winfo_init(lm->winfo);
       }
       if (m->newbie) m->newbie = FALSE;
-      if (recog->lmvar == LM_DFA_WORD) {
+      if (lm->lmvar == LM_DFA_WORD) {
 	/* just append dictionaty (category ID is bogus here) */
-	m->word_begin = recog->model->winfo->num;
-	if (voca_append(recog->model->winfo, m->winfo, 0, m->word_begin) == FALSE) {
+	m->word_begin = lm->winfo->num;
+	if (voca_append(lm->winfo, m->winfo, 0, m->word_begin) == FALSE) {
 	  jlog("ERROR: multi-gram: failed to add dictionary #%d to recognition network\n", m->id);
 	  /* mark as delete */
-	  m->hook = MULTIGRAM_DELETE;
+	  m->hook |= MULTIGRAM_DELETE;
 	}
       } else {
-	if (multigram_build_append(recog->model->dfa, recog->model->winfo, m) == FALSE) {
+	if (multigram_append_to_global(lm->dfa, lm->winfo, m) == FALSE) {
 	  jlog("ERROR: multi-gram: failed to add grammar #%d to recognition network\n", m->id);
 	  /* mark as delete */
-	  m->hook = MULTIGRAM_DELETE;
+	  m->hook |= MULTIGRAM_DELETE;
 	}
       }
     }
     /* delete the error grammars if exist */
-    if (multigram_exec_delete(recog)) {
+    if (multigram_exec_delete(lm)) {
       jlog("ERROR: errorous grammar deleted\n");
     }
-    global_modified = TRUE;
+    lm->global_modified = TRUE;
   } else {			/* global not need changed by the deletion */
     /* append only new grammars */
-    for(m=recog->model->grammars;m;m=m->next) {
+    for(m=lm->grammars;m;m=m->next) {
       if (m->newbie) {
-	if (recog->lmvar == LM_DFA_GRAMMAR && recog->model->dfa == NULL) {
-	  recog->model->dfa = dfa_info_new();
-	  dfa_state_init(recog->model->dfa);
+	if (lm->lmvar == LM_DFA_GRAMMAR && lm->dfa == NULL) {
+	  lm->dfa = dfa_info_new();
+	  dfa_state_init(lm->dfa);
 	}
-	if (recog->model->winfo == NULL) {
-	  recog->model->winfo = word_info_new();
-	  winfo_init(recog->model->winfo);
+	if (lm->winfo == NULL) {
+	  lm->winfo = word_info_new();
+	  winfo_init(lm->winfo);
 	}
 	if (m->newbie) m->newbie = FALSE;
-	if (recog->lmvar == LM_DFA_WORD) {
+	if (lm->lmvar == LM_DFA_WORD) {
 	  /* just append dictionaty (category ID is bogus here) */
-	  m->word_begin = recog->model->winfo->num;
-	  if (voca_append(recog->model->winfo, m->winfo, 0, m->word_begin) == FALSE) {
+	  m->word_begin = lm->winfo->num;
+	  if (voca_append(lm->winfo, m->winfo, 0, m->word_begin) == FALSE) {
 	    jlog("ERROR: multi-gram: failed to add dictionary #%d to recognition network\n", m->id);
 	    /* mark as delete */
-	    m->hook = MULTIGRAM_DELETE;
+	    m->hook |= MULTIGRAM_DELETE;
 	  }
 	} else {
-	  if (multigram_build_append(recog->model->dfa, recog->model->winfo, m) == FALSE) {
+	  if (multigram_append_to_global(lm->dfa, lm->winfo, m) == FALSE) {
 	    jlog("ERROR: multi-gram: failed to add grammar #%d to recognition network\n", m->id);
 	    /* mark as delete */
-	    m->hook = MULTIGRAM_DELETE;
+	    m->hook |= MULTIGRAM_DELETE;
 	  }
 	}
-	global_modified = TRUE;
+	lm->global_modified = TRUE;
       }
     }
   }
 
   /* process activate/deactivate hook */
-  active_changed = multigram_exec_activate(recog);
+  active_changed = multigram_exec_activate(lm);
 
-  if (global_modified) {		/* if global lexicon has changed */
+  if (lm->global_modified) {		/* if global lexicon has changed */
     /* now global grammar info has been updated */
     /* check if no grammar */
-    if (recog->lmvar == LM_DFA_GRAMMAR) {
-      if (recog->model->dfa == NULL || recog->model->winfo == NULL) {
-	if (recog->model->dfa != NULL) {
-	  dfa_info_free(recog->model->dfa);
-	  recog->model->dfa = NULL;
+    if (lm->lmvar == LM_DFA_GRAMMAR) {
+      if (lm->dfa == NULL || lm->winfo == NULL) {
+	if (lm->dfa != NULL) {
+	  dfa_info_free(lm->dfa);
+	  lm->dfa = NULL;
 	}
-	if (recog->model->winfo != NULL) {
-	  word_info_free(recog->model->winfo);
-	  recog->model->winfo = NULL;
+	if (lm->winfo != NULL) {
+	  word_info_free(lm->winfo);
+	  lm->winfo = NULL;
 	}
-      }
-    }
-    if (recog->model->winfo != NULL) {
-      /* re-build tree lexicon for recognition process */
-      if (multigram_setup(recog) == FALSE) {
-	jlog("ERROR: multi-gram: failed to re-build tree lexicon\n");
-	return FALSE;
       }
     }
 #ifdef MDEBUG
     jlog("STAT: grammar update completed\n");
 #endif
   }
-  
-  /* output grammar info when any change has been made */
-  if (global_modified || active_changed) {
-    callback_exec(CALLBACK_EVENT_GRAMMAR_UPDATE, recog);    
+
+  if (lm->global_modified || active_changed) {
     return (TRUE);
   }
 
-  return(FALSE);
+  return FALSE;
 }
 
-/***********************************************************************/
 /** 
  * <JA>
- * dfaファイルとdictファイルを読み込んで文法リストに追加する．
+ * dfaファイルとdictファイルを読み込んで文法リストに追加する. 
  * 
  * @param dfa_file [in] dfa ファイル名
  * @param dict_file [in] dict ファイル名
+ * @param lm [i/o] 言語処理インスタンス
  * </JA>
  * <EN>
- * Read in dfa file and dict file, and add them to the grammar list.
+ * Add grammar to the grammar list specified by dfa file and dict file.
  * 
  * @param dfa_file [in] dfa file name
  * @param dict_file [in] dict file name
+ * @param lm [i/o] LM processing instance
  * </EN>
  */
 static boolean
-multigram_read_file(char *dfa_file, char *dict_file, Jconf *jconf, Model *model)
+multigram_read_file_and_add(char *dfa_file, char *dict_file, PROCESS_LM *lm)
 {
   WORD_INFO *new_winfo;
   DFA_INFO *new_dfa;
@@ -693,43 +799,35 @@ multigram_read_file(char *dfa_file, char *dict_file, Jconf *jconf, Model *model)
   /* read dict*/
   new_winfo = word_info_new();
 
-  if (jconf->lmvar == LM_DFA_GRAMMAR) {
-    ret = init_voca(new_winfo, dict_file, model->hmminfo, 
+  if (lm->lmvar == LM_DFA_GRAMMAR) {
+    ret = init_voca(new_winfo, dict_file, lm->am->hmminfo, 
 #ifdef MONOTREE
 		    TRUE,
 #else 
 		    FALSE,
 #endif
-		    jconf->lm.forcedict_flag);
+		    lm->config->forcedict_flag);
     if ( ! ret ) {
       jlog("ERROR: failed to read dictionary \"%s\"\n", dict_file);
       word_info_free(new_winfo);
       return FALSE;
     }
-  } else if (jconf->lmvar == LM_DFA_WORD) {
-    ret = init_wordlist(new_winfo, dict_file, model->hmminfo, 
-			jconf->lm.wordrecog_head_silence_model_name,
-			jconf->lm.wordrecog_tail_silence_model_name,
-			(jconf->lm.wordrecog_silence_context_name[0] == '\0') ? NULL : jconf->lm.wordrecog_silence_context_name,
-			jconf->lm.forcedict_flag);
+  } else if (lm->lmvar == LM_DFA_WORD) {
+    ret = init_wordlist(new_winfo, dict_file, lm->am->hmminfo, 
+			lm->config->wordrecog_head_silence_model_name,
+			lm->config->wordrecog_tail_silence_model_name,
+			(lm->config->wordrecog_silence_context_name[0] == '\0') ? NULL : lm->config->wordrecog_silence_context_name,
+			lm->config->forcedict_flag);
     if ( ! ret ) {
       jlog("ERROR: failed to read word list \"%s\"\n", dict_file);
       word_info_free(new_winfo);
       return FALSE;
     }
   }
-    
-#ifdef PASS1_IWCD
-  if (jconf->sw.triphone_check_flag && model->hmminfo->is_triphone) {
-    /* go into interactive triphone HMM check mode */
-    hmm_check(jconf, new_winfo, model->hmminfo);
-  }
-#endif
-  
+
   new_dfa = NULL;
-  if (jconf->lmvar == LM_DFA_GRAMMAR) {
+  if (lm->lmvar == LM_DFA_GRAMMAR) {
     /* read dfa */
-    jlog("STAT: reading in DFA grammar...");
     new_dfa = dfa_info_new();
     if (init_dfa(new_dfa, dfa_file) == FALSE) {
       jlog("ERROR: multi-gram: error in reading DFA\n");
@@ -756,7 +854,7 @@ multigram_read_file(char *dfa_file, char *dict_file, Jconf *jconf, Model *model)
   buf[p-q] = '\0';
   
   /* register the new grammar to multi-gram tree */
-  multigram_add(new_dfa, new_winfo, buf, model);
+  multigram_add(new_dfa, new_winfo, buf, lm);
 
   jlog("STAT: gram \"%s\" registered\n", buf);
 
@@ -764,103 +862,38 @@ multigram_read_file(char *dfa_file, char *dict_file, Jconf *jconf, Model *model)
 
 }
 
-/** 
- * <JA>
- * 起動時読み込みリストに文法を追加する．
- * 
- * @param dfafile [in] DFAファイル
- * @param dictfile [in] 単語辞書
- * </JA>
- * <EN>
- * Add a grammar to the grammar list to be read at startup.
- * 
- * @param dfafile [in] DFA file
- * @param dictfile [in] dictionary file
- * </EN>
- */
-void
-multigram_add_gramlist(char *dfafile, char *dictfile, Jconf *jconf, int lmvar)
-{
-  GRAMLIST *new;
-
-  new = (GRAMLIST *)mymalloc(sizeof(GRAMLIST));
-  new->dfafile = new->dictfile = NULL;
-  if (dfafile) new->dfafile = strcpy((char *)mymalloc(strlen(dfafile)+1), dfafile);
-  if (dictfile) new->dictfile = strcpy((char *)mymalloc(strlen(dictfile)+1), dictfile);
-  switch(lmvar) {
-  case LM_DFA_GRAMMAR:
-    new->next = jconf->lm.gramlist_root;
-    jconf->lm.gramlist_root = new;
-    break;
-  case LM_DFA_WORD:
-    new->next = jconf->lm.wordlist_root;
-    jconf->lm.wordlist_root = new;
-    break;
-  }
-}
 
 /** 
  * <JA>
- * 起動時読み込みリストを消す．
+ * 起動時に指定されたすべての文法をロードする. 
+ * 
+ * @param lm [i/o] 言語処理インスタンス
  * 
  * </JA>
  * <EN>
- * Remove the grammar list to be read at startup.
+ * Load all the grammars specified at startup.
+ * 
+ * @param lm [i/o] LM processing instance
  * 
  * </EN>
- */
-void
-multigram_remove_gramlist(Jconf *jconf)
-{
-  GRAMLIST *g;
-  GRAMLIST *tmp;
-
-  g = jconf->lm.gramlist_root;
-  while (g) {
-    tmp = g->next;
-    if (g->dfafile) free(g->dfafile);
-    if (g->dictfile) free(g->dictfile);
-    free(g);
-    g = tmp;
-  }
-  jconf->lm.gramlist_root = NULL;
-
-  g = jconf->lm.wordlist_root;
-  while (g) {
-    tmp = g->next;
-    if (g->dfafile) free(g->dfafile);
-    if (g->dictfile) free(g->dictfile);
-    free(g);
-    g = tmp;
-  }
-  jconf->lm.wordlist_root = NULL;
-}
-
-/** 
- * <JA>
- * 起動時に指定されたすべての文法の内容を読み込む．
- * 
- * </JA>
- * <EN>
- * Read in all the grammars specified at startup.
- * 
- * </EN>
+ * @callgraph
+ * @callergraph
  */
 boolean
-multigram_read_all_gramlist(Jconf *jconf, Model *model)
+multigram_load_all_gramlist(PROCESS_LM *lm)
 {
   GRAMLIST *g;
   GRAMLIST *groot;
   boolean ok_p;
 
-  switch(jconf->lmvar) {
-  case LM_DFA_GRAMMAR: groot = jconf->lm.gramlist_root; break;
-  case LM_DFA_WORD:    groot = jconf->lm.wordlist_root; break;
+  switch(lm->config->lmvar) {
+  case LM_DFA_GRAMMAR: groot = lm->config->gramlist_root; break;
+  case LM_DFA_WORD:    groot = lm->config->wordlist_root; break;
   }
 
   ok_p = TRUE;
   for(g = groot; g; g = g->next) {
-    if (multigram_read_file(g->dfafile, g->dictfile, jconf, model) == FALSE) {
+    if (multigram_read_file_and_add(g->dfafile, g->dictfile, lm) == FALSE) {
       ok_p = FALSE;
     }
   }
@@ -869,263 +902,61 @@ multigram_read_all_gramlist(Jconf *jconf, Model *model)
 
 /** 
  * <JA>
- * @brief  プレフィックスから複数の文法を起動時読み込みリストに追加する．
- *
- * プレフィックスは "foo", あるいは "foo,bar" のようにコンマ区切りで
- * 複数与えることができます．各文字列の後ろに ".dfa", ".dict" をつけた
- * ファイルを，それぞれ文法ファイル・辞書ファイルとして順次読み込みます．
- * 読み込まれた文法は順次，文法リストに追加されます．
+ * 現在ある文法の数を得る(active/inactiveとも). 
  * 
- * @param prefix_list [in]  プレフィックスのリスト
- * @param cwd [in] カレントディレクトリの文字列
- * </JA>
- * <EN>
- * @brief  Add multiple grammars given by their prefixs to the grammar list.
- *
- * This function read in several grammars, given a prefix string that
- * contains a list of file prefixes separated by comma: "foo" or "foo,bar".
- * For each prefix, string ".dfa" and ".dict" will be appended to read
- * dfa file and dict file.  The read grammars will be added to the grammar
- * list.
+ * @param lm [i/o] 言語処理インスタンス
  * 
- * @param prefix_list [in] string that contains comma-separated list of grammar path prefixes
- * @param cwd [in] string of current working directory
- * </EN>
- */
-boolean
-multigram_add_prefix_list(char *prefix_list, char *cwd, Jconf *jconf, int lmvar)
-{
-  char buf[MAXGRAMNAMELEN], *p, *q;
-  char buf2_d[MAXGRAMNAMELEN], *buf_d;
-  char buf2_v[MAXGRAMNAMELEN], *buf_v;
-  boolean ok_p, ok_p_total;
-
-  if (prefix_list == NULL) return TRUE;
-  
-  p = &(prefix_list[0]);
-
-  ok_p_total = TRUE;
-  
-  while(*p != '\0') {
-    /* extract one prefix to buf[] */
-    q = p;
-    while(*p != '\0' && *p != ',') {
-      buf[p-q] = *p;
-      p++;
-    }
-    buf[p-q] = '\0';
-
-    switch(lmvar) {
-    case LM_DFA_GRAMMAR:
-      /* register the new grammar to the grammar list to be read later */
-      /* making file names from the prefix */
-      ok_p = TRUE;
-      strcpy(buf2_d, buf);
-      strcat(buf2_d, ".dfa");
-      buf_d = filepath(buf2_d, cwd);
-      if (!checkpath(buf_d)) {
-	jlog("ERROR: multi-gram: cannot read dfa file \"%s\"\n", buf_d);
-	ok_p = FALSE;
-      }
-      strcpy(buf2_v, buf);
-      strcat(buf2_v, ".dict");
-      buf_v = filepath(buf2_v, cwd);
-      if (!checkpath(buf_v)) {
-	jlog("ERROR: multi-gram: cannot read dict file \"%s\"\n", buf_v);
-	ok_p = FALSE;
-      }
-      if (ok_p == TRUE) {
-	multigram_add_gramlist(buf_d, buf_v, jconf, lmvar);
-      } else {
-	ok_p_total = FALSE;
-      }
-      break;
-    case LM_DFA_WORD:
-      /* register the new word list to the list */
-      /* treat the file name as a full file path (not prefix) */
-      buf_v = filepath(buf, cwd);
-      if (!checkpath(buf_v)) {
-	jlog("ERROR: multi-gram: cannot read wordlist file \"%s\"\n", buf_v);
-	ok_p_total = FALSE;
-      } else {
-	multigram_add_gramlist(NULL, buf_v, jconf, lmvar);
-      }
-      break;
-    } 
-
-    /* move to next */
-    if (*p == ',') p++;
-  }
-
-  return ok_p_total;
-}
-
-/** 
- * <JA>
- * @brief リストファイルを読み込み複数文法を起動時読み込みリストに追加する．
- *
- * ファイル内に1行に１つずつ記述された文法のプレフィックスから,
- * 対応する文法ファイルを順次読み込みます．
- * 
- * 各行の文字列の後ろに ".dfa", ".dict" をつけたファイルを，
- * それぞれ文法ファイル・辞書ファイルとして順次読み込みます．
- * 読み込まれた文法は順次，文法リストに追加されます．
- * 
- * @param listfile [in] プレフィックスリストのファイル名
- * </JA>
- * <EN>
- * @brief  Add multiple grammars from prefix list file to the grammar list.
- *
- * This function read in multiple grammars at once, given a file that
- * contains a list of grammar prefixes, each per line.
- *
- * For each prefix, string ".dfa" and ".dict" will be appended to read the
- * corresponding dfa and dict file.  The read grammars will be added to the
- * grammar list.
- * 
- * @param listfile [in] path of the prefix list file
- * </EN>
- */
-boolean
-multigram_add_prefix_filelist(char *listfile, Jconf *jconf, int lmvar)
-{
-  FILE *fp;
-  char buf[MAXGRAMNAMELEN], *p, *src_bgn, *src_end, *dst;
-  char *cdir;
-  char buf2_d[MAXGRAMNAMELEN], *buf_d;
-  char buf2_v[MAXGRAMNAMELEN], *buf_v;
-  boolean ok_p, ok_p_total;
-
-  if (listfile == NULL) return FALSE;
-  if ((fp = fopen(listfile, "r")) == NULL) {
-    jlog("ERROR: multi-gram: failed to open grammar list file %s\n", listfile);
-    return FALSE;
-  }
-
-  /* convert relative paths as relative to this list file */
-  cdir = strcpy((char *)mymalloc(strlen(listfile)+1), listfile);
-  get_dirname(cdir);
-
-  ok_p_total = TRUE;
-
-  while(getl_fp(buf, MAXGRAMNAMELEN, fp) != NULL) {
-    /* remove comment */
-    p = &(buf[0]);
-    while(*p != '\0') {
-      if (*p == '#') {
-	*p = '\0';
-	break;
-      }
-      p++;
-    }
-    if (buf[0] == '\0') continue;
-    
-    /* trim head/tail blanks */
-    p = (&buf[0]);
-    while(*p == ' ' || *p == '\t' || *p == '\r') p++;
-    if (*p == '\0') continue;
-    src_bgn = p;
-    p = (&buf[strlen(buf) - 1]);
-    while((*p == ' ' || *p == '\t' || *p == '\r') && p > src_bgn) p--;
-    src_end = p;
-    dst = (&buf[0]);
-    p = src_bgn;
-    while(p <= src_end) *dst++ = *p++;
-    *dst = '\0';
-    if (buf[0] == '\0') continue;
-
-
-    switch(lmvar) {
-    case LM_DFA_GRAMMAR:
-      /* register the new grammar to the grammar list to be read later */
-      ok_p = TRUE;
-      strcpy(buf2_d, buf);
-      strcat(buf2_d, ".dfa");
-      buf_d = filepath(buf2_d, cdir);
-      if (!checkpath(buf_d)) {
-	jlog("ERROR: multi-gram: cannot read dfa file \"%s\"\n", buf_d);
-	ok_p = FALSE;
-      }
-      strcpy(buf2_v, buf);
-      strcat(buf2_v, ".dict");
-      buf_v = filepath(buf2_v, cdir);
-      if (!checkpath(buf_v)) {
-	jlog("ERROR: multi-gram: cannot read dict file \"%s\"\n", buf_v);
-	ok_p = FALSE;
-      }
-      if (ok_p == TRUE) {
-	multigram_add_gramlist(buf_d, buf_v, jconf, lmvar);
-      } else {
-	ok_p_total = FALSE;
-      }
-      break;
-    case LM_DFA_WORD:
-      /* register the new word list to the list */
-      /* treat the file name as a full file path (not prefix) */
-      buf_v = filepath(buf, cdir);
-      if (!checkpath(buf_v)) {
-	jlog("ERROR: multi-gram: cannot read wordlist file \"%s\"\n", buf_v);
-	ok_p_total = FALSE;
-      } else {
-	multigram_add_gramlist(NULL, buf_v, jconf, lmvar);
-      }
-      break;
-    }
-
-  }
-
-  free(cdir);
-  
-  fclose(fp);
-
-  return ok_p_total;
-}
-
-/** 
- * <JA>
- * 現在ある文法の数を得る(active/inactiveとも)．
- * 
- * @return 文法の数を返す．
+ * @return 文法の数を返す. 
  * </JA>
  * <EN>
  * Get the number of current grammars (both active and inactive).
  * 
+ * @param lm [i/o] LM processing instance
+ * 
  * @return the number of grammars.
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 int
-multigram_get_all_num(Recog *recog)
+multigram_get_all_num(PROCESS_LM *lm)
 {
   MULTIGRAM *m;
   int cnt;
   
   cnt = 0;
-  for(m=recog->model->grammars;m;m=m->next) cnt++;
+  for(m=lm->grammars;m;m=m->next) cnt++;
   return(cnt);
 }
 
 /** 
  * <JA>
- * 単語カテゴリの属する文法を得る．
+ * 単語カテゴリの属する文法を得る. 
  * 
  * @param category 単語カテゴリID
+ * @param lm [i/o] 言語処理インスタンス
  * 
- * @return 単語カテゴリの属する文法のIDを返す．
+ * @return 単語カテゴリの属する文法のIDを返す. 
  * </JA>
  * <EN>
  * Get which grammar the given category belongs to.
  * 
  * @param category word category ID
+ * @param lm [i/o] LM processing instance
  * 
  * @return the id of the belonging grammar.
  * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
  */
 int
-multigram_get_gram_from_category(int category, Recog *recog)
+multigram_get_gram_from_category(int category, PROCESS_LM *lm)
 {
   MULTIGRAM *m;
   int tb, te;
-  for(m = recog->model->grammars; m; m = m->next) {
+  for(m = lm->grammars; m; m = m->next) {
     if (m->newbie) continue;
     tb = m->cate_begin;
     te = tb + m->dfa->term_num;
@@ -1148,6 +979,8 @@ multigram_get_gram_from_category(int category, Recog *recog)
  * 
  * @param root [in] root pointer of grammar list
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 multigram_free_all(MULTIGRAM *root)
@@ -1164,3 +997,194 @@ multigram_free_all(MULTIGRAM *root)
   }
 }
 
+/** 
+ * <EN>
+ * Find a grammar in LM by its name.
+ * </EN>
+ * <JA>
+ * LM中の文法を名前で検索する. 
+ * </JA>
+ * 
+ * @param lm [in] LM process instance
+ * @param gramname [in] grammar name
+ * 
+ * @return poitner to the grammar, or NULL if not found.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+MULTIGRAM *
+multigram_get_grammar_by_name(PROCESS_LM *lm, char *gramname)
+{
+  MULTIGRAM *m;
+
+  for(m=lm->grammars;m;m=m->next) {
+    if (strmatch(m->name, gramname)) break;
+  }
+  if (!m) {
+    jlog("ERROR: multigram: cannot find grammar \"%s\"\n", gramname);
+    return NULL;
+  }
+  return m;
+}
+
+/** 
+ * <EN>
+ * Find a grammar in LM by its ID number.
+ * </EN>
+ * <JA>
+ * LM中の文法を ID 番号で検索する. 
+ * </JA>
+ * 
+ * @param lm [in] LM process instance
+ * @param id [in] ID number
+ * 
+ * @return poitner to the grammar, or NULL if not found.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+MULTIGRAM *
+multigram_get_grammar_by_id(PROCESS_LM *lm, unsigned short id)
+{
+  MULTIGRAM *m;
+
+  for(m=lm->grammars;m;m=m->next) {
+    if (m->id == id) break;
+  }
+  if (!m) {
+    jlog("ERROR: multi-gram: cannot find grammar id \"%d\"\n", id);
+    return NULL;
+  }
+  return m;
+}
+
+/** 
+ * <EN>
+ * @brief  Append words to a grammar.
+ *
+ * Category IDs of grammar in the adding words will be copied as is to
+ * the target grammar, so they should be set beforehand correctly.
+ * The whole tree lexicon will be rebuilt later.
+ *
+ * Currently adding words to N-gram LM is not supported yet.
+ * 
+ * </EN>
+ * <JA>
+ * @brief  単語集合を文法に追加する．
+ *
+ * 追加する単語の文法カテゴリIDについては，すでにアサインされているものが
+ * そのままコピーされる．よって，それらはこの関数を呼び出す前に，
+ * 追加対象の文法で整合性が取れるよう正しく設定されている必要がある．
+ * 木構造化辞書全体が，後に再構築される．
+ *
+ * 単語N-gram言語モデルへの辞書追加は現在サポートされていない．
+ * 
+ * </JA>
+ * 
+ * @param lm [i/o] LM process instance
+ * @param m [i/o] grammar to which the winfo will be appended
+ * @param winfo [in] words to be added to the grammar
+ * 
+ * @return TRUE on success, or FALSE on failure.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+boolean
+multigram_add_words_to_grammar(PROCESS_LM *lm, MULTIGRAM *m, WORD_INFO *winfo)
+{
+  int offset;
+
+  if (lm == NULL || m == NULL || winfo == NULL) return FALSE;
+
+  offset = m->winfo->num;
+  printf("adding %d words to grammar #%d (%d words)\n", winfo->num, m->id, m->winfo->num);
+  /* append to the grammar */
+  if (voca_append(m->winfo, winfo, 0, offset) == FALSE) {
+    jlog("ERROR: multi-gram: failed to add words to dict in grammar #%d \"%s\"\n", m->id, m->name);
+    return FALSE;
+  }
+  /* update dictianary info */
+  if (lm->lmvar == LM_DFA_GRAMMAR) {
+    if (m->dfa->term_num != 0) free_terminfo(&(m->dfa->term));
+    if (make_dfa_voca_ref(m->dfa, m->winfo) == FALSE) {
+      jlog("ERROR: failed to map dict <-> DFA. This grammar will be deleted\n");
+      return FALSE;
+    } 
+  }
+  /* prepare for update */
+  m->hook |= MULTIGRAM_MODIFIED;
+
+  return TRUE;
+}
+
+/** 
+ * <EN>
+ * @brief  Append words to a grammar, given by its name.
+ *
+ * Call multigram_add_words_to_grammar() with target grammar
+ * specified by its name.
+ * </EN>
+ * <JA>
+ * @brief  名前で指定された文法に単語集合を追加する．
+ *
+ * multigram_add_words_to_grammar() を文法名で指定して実行する．
+ * 
+ * </JA>
+ * 
+ * @param lm [i/o] LM process instance
+ * @param gramname [in] name of the grammar to which the winfo will be appended
+ * @param winfo [in] words to be added to the grammar
+ * 
+ * @return TRUE on success, or FALSE on failure.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+boolean
+multigram_add_words_to_grammar_by_name(PROCESS_LM *lm, char *gramname, WORD_INFO *winfo)
+{
+  return(multigram_add_words_to_grammar(lm, multigram_get_grammar_by_name(lm, gramname), winfo));
+}
+
+/** 
+ * <EN>
+ * @brief  Append words to a grammar, given by its ID number.
+ *
+ * Call multigram_add_words_to_grammar() with target grammar
+ * specified by its number.
+ * </EN>
+ * <JA>
+ * @brief  番号で指定された文法に単語集合を追加する．
+ *
+ * multigram_add_words_to_grammar() を番号で指定して実行する．
+ * 
+ * </JA>
+ * 
+ * @param lm [i/o] LM process instance
+ * @param id [in] ID number of the grammar to which the winfo will be appended
+ * @param winfo [in] words to be added to the grammar
+ * 
+ * @return TRUE on success, or FALSE on failure.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+boolean
+multigram_add_words_to_grammar_by_id(PROCESS_LM *lm, unsigned short id, WORD_INFO *winfo)
+{
+  return(multigram_add_words_to_grammar(lm, multigram_get_grammar_by_id(lm, id), winfo));
+}
+
+/* end of file */

@@ -1,7 +1,5 @@
 /**
  * @file   gzfile.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 15:46:00 2005
  * 
  * <JA>
  * @brief  zlib あるいは gzip を用いた圧縮ファイルの読み込み
@@ -24,13 +22,16 @@
  * multiple files with these functions is not allowed.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 15:46:00 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

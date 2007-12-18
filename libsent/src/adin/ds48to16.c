@@ -1,7 +1,5 @@
 /**
- * @file   adin_mic_linux_oss_48khz.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 16:18:26 2005
+ * @file   ds48to16.c
  *
  * <JA>
  * @brief  48kHz -> 16kHz ダウンサンプリング
@@ -12,13 +10,16 @@
  *
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 16:18:26 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -296,6 +297,12 @@ ds48to16_new()
   return(ds);
 }
 
+/** 
+ * Free the down sampling buffer.
+ * 
+ * @param ds [i/o] down sampling buffer to free
+ * 
+ */
 void
 ds48to16_free(DS_BUFFER *ds)
 {
@@ -316,6 +323,7 @@ ds48to16_free(DS_BUFFER *ds)
  * @param src [in] input samples
  * @param srclen [in] number of input samples
  * @param maxdstlen [in] maximum length of dst
+ * @param ds [i/o] down sampling buffer
  * 
  * @return the number of samples written to dst, or -1 on errror.
  * </EN>

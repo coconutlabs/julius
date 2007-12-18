@@ -1,7 +1,5 @@
 /**
  * @file   adinrec.c
- * @author Akinobu LEE
- * @date   Wed Mar 23 20:33:01 2005
  * 
  * <JA>
  * @brief  マイクから一発話をファイルへ記録する
@@ -11,13 +9,16 @@
  * @brief  Record a speech segment from microphone to a file
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Mar 23 20:33:01 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2001-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -43,7 +44,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 {
   fprintf(stderr, "adinrec --- record one sentence input to a file\n");
   fprintf(stderr, "Usage: adinrec [options..] filename\n");
-  fprintf(stderr, "    [-freq frequency]     sampling frequency in Hz    (%d)\n", jconf->analysis.para_default.smp_freq);
+  fprintf(stderr, "    [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "    [-48]                 48000Hz recording with down sampling (16kHz only)\n");
   fprintf(stderr, "    [-lv unsignedshort]   silence cut level threshold (%d)\n", jconf->detect.level_thres);
   fprintf(stderr, "    [-zc zerocrossnum]    silence cut zerocross num   (%d)\n", jconf->detect.zero_cross_num);
@@ -71,8 +72,8 @@ opt_raw(Jconf *jconf, char *arg[], int argnum)
 static boolean
 opt_freq(Jconf *jconf, char *arg[], int argnum)
 {
-  jconf->analysis.para.smp_freq = atoi(arg[0]);
-  jconf->analysis.para.smp_period = freq2period(jconf->analysis.para.smp_freq);
+  jconf->amnow->analysis.para.smp_freq = atoi(arg[0]);
+  jconf->amnow->analysis.para.smp_period = freq2period(jconf->amnow->analysis.para.smp_freq);
   return TRUE;
 }
 
@@ -98,12 +99,9 @@ opt_freq(Jconf *jconf, char *arg[], int argnum)
  * </EN>
  */
 static int
-adin_callback_file(SP16 *now, int len, Recog **recoglist, int recognum)
+adin_callback_file(SP16 *now, int len, Recog *recog)
 {
   int count;
-  Recog *recog;
-
-  recog = recoglist[0];
 
   /* erase "<<<please speak>>>" text on tty at trigger up */
   if (speechlen == 0) {
@@ -210,21 +208,21 @@ int
 main(int argc, char *argv[])
 {
   Recog *recog;
+  Jconf *jconf;
 
   /* create instance */
-  recog = j_recog_new();
-  recog->jconf = j_jconf_new();
+  jconf = j_jconf_new();
 
   /* register application options */
-  j_add_option("-freq", 1, "sampling frequency in Hz", opt_freq);
-  j_add_option("-raw", 0, "save in raw (BE) format", opt_raw);
-  j_add_option("-h", 0, "display this help", opt_help);
-  j_add_option("-help", 0, "display this help", opt_help);
-  j_add_option("--help", 0, "display this help", opt_help);
+  j_add_option("-freq", 1, 1, "sampling frequency in Hz", opt_freq);
+  j_add_option("-raw", 0, 0, "save in raw (BE) format", opt_raw);
+  j_add_option("-h", 0, 0, "display this help", opt_help);
+  j_add_option("-help", 0, 0, "display this help", opt_help);
+  j_add_option("--help", 0, 0, "display this help", opt_help);
 
   /* when no argument, output help and exit */
   if (argc <= 1) {
-    opt_help(recog->jconf, NULL, 0);
+    opt_help(jconf, NULL, 0);
     return 0;
   }
 
@@ -237,21 +235,30 @@ main(int argc, char *argv[])
   }
 
   /* read arguments and set parameters */
-  if (j_config_load_args(recog->jconf, argc-1, argv) == -1) {
+  if (j_config_load_args(jconf, argc-1, argv) == -1) {
     fprintf(stderr, "Error reading arguments\n");
     return -1;
   }
-  recog->jconf->input.speech_input = SP_MIC;
+  jconf->input.speech_input = SP_MIC;
 
   /* exit if no file name specified */
   if (filename == NULL) {
-    opt_help(recog->jconf, NULL, 0);
+    opt_help(jconf, NULL, 0);
     return -1;
   }
 
+  /* finalize config */
+  //if (j_jconf_finalize(jconf) == FALSE) return -1;
+
   /* set Julius default parameters for unspecified acoustic parameters */
-  apply_para(&(recog->jconf->analysis.para), &(recog->jconf->analysis.para_default));
+  apply_para(&(jconf->am_root->analysis.para), &(jconf->am_root->analysis.para_default));
   
+  /* set some values */
+  jconf->input.sfreq = jconf->am_root->analysis.para.smp_freq;
+  jconf->input.period = jconf->am_root->analysis.para.smp_period;
+  jconf->input.frameshift = jconf->am_root->analysis.para.frameshift;
+  jconf->input.framesize = jconf->am_root->analysis.para.framesize;
+
   /* preliminary check of output file */
   /* (output file will be opened later when input is triggered) */
   if (!stout) {
@@ -268,6 +275,10 @@ main(int argc, char *argv[])
   if (signal(SIGINT, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal intterupt may collapse output\n");
   }
+
+  recog = j_recog_new();
+  recog->jconf = jconf;
+
   /* initialize input device */
   if (j_adin_init(recog) == FALSE) {
     fprintf(stderr, "Error in initializing adin device\n");
@@ -279,9 +290,9 @@ main(int argc, char *argv[])
   }
   /* do recoding */
   speechlen = 0;
-  sfreq = recog->jconf->analysis.para.smp_freq;
+  sfreq = recog->jconf->input.sfreq;
   fprintf(stderr, "<<< please speak >>>"); /* moved from adin-cut.c */
-  adin_go(adin_callback_file, NULL, &recog, 1);
+  adin_go(adin_callback_file, NULL, recog);
   /* close device */
   adin_end(recog->adin);
   /* close output file */

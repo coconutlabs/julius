@@ -1,23 +1,24 @@
 /**
  * @file   julius.h
- * @author Akinobu LEE
- * @date   Thu Mar 17 21:08:21 2005
  * 
  * <JA>
- * @brief  Julius/Julian 用のトップのヘッダファイル
+ * @brief  Julius 用のトップヘッダファイル
  * </JA>
  * 
  * <EN>
- * @brief  Top common header for Julius/Julian
+ * @brief  Top common header for Julius
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 17 21:08:21 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -63,7 +64,8 @@
 #include <julius/beam.h>
 #include <julius/search.h>
 #include <julius/misc.h>
-#include <julius/common.h>
+#include <julius/jconf.h>
+#include <julius/recog.h>
 #include <julius/global.h>
 #include <julius/jfunc.h>
 #include <julius/callback.h>

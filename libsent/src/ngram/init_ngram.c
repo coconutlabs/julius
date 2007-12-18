@@ -1,7 +1,5 @@
 /**
  * @file   init_ngram.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 07:40:53 2005
  * 
  * <JA>
  * @brief  N-gramファイルをメモリに読み込み単語辞書と対応を取る
@@ -11,13 +9,16 @@
  * @brief  Load N-gram file into memory and setup with word dictionary
  * </EN>
  * 
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 07:40:53 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

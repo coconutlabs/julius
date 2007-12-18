@@ -1,7 +1,5 @@
 /**
  * @file   ptree.h
- * @author Akinobu LEE
- * @date   Fri Feb 11 17:27:24 2005
  *
  * <EN>
  * @brief Patricia binary tree for data search
@@ -16,13 +14,16 @@
  * パトリシア木の構造体です．
  * </JA>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 11 17:27:24 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -63,7 +64,6 @@ typedef struct _patnode {
   struct _patnode *right1;	///< Link to right node (bit=1)
 } PATNODE;
 
-
 int testbit(char *str, int bitplace);
 int testbit_max(char *str, int bitplace, int maxbitplace);
 int where_the_bit_differ(char *str1, char *str2);

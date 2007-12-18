@@ -1,7 +1,5 @@
 /**
  * @file   recogloop.c
- * @author Akinobu Lee
- * @date   Sun Sep 02 21:12:52 2007
  * 
  * <JA>
  * @brief  メイン認識ループ
@@ -11,32 +9,33 @@
  * @brief  Main recognition loop
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Sun Sep 02 21:12:52 2007
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include "app.h"
 
+extern boolean outfile_enabled;
+
 void
-main_recognition_stream_loop(Recog **recoglist, int recognum)
+main_recognition_stream_loop(Recog *recog)
 {
-  Recog *recog;
   Jconf *jconf;
-  Model *model;
   int file_counter;
   int ret;
   FILE *mfclist;
   static char speechfilename[MAXPATHLEN];	/* pathname of speech file or MFCC file */
   
-  recog = recoglist[0];
-
   jconf = recog->jconf;
 
   /* reset file count */
@@ -88,6 +87,7 @@ main_recognition_stream_loop(Recog **recoglist, int recognum)
 	}
       }
       if (verbose_flag) printf("\ninput MFCC file: %s\n", speechfilename);
+      if (outfile_enabled) outfile_set_fname(speechfilename);
 
       /* open stream */
       ret = j_open_stream(recog, speechfilename);
@@ -104,7 +104,7 @@ main_recognition_stream_loop(Recog **recoglist, int recognum)
       /* start recognizing the stream */
       do {
 
-	ret = j_recognize_stream_multi(recoglist, recognum);
+	ret = j_recognize_stream(recog);
 
 	switch(ret) {
 	case 1:	      /* paused by callback (stream may continues) */
@@ -144,8 +144,11 @@ main_recognition_stream_loop(Recog **recoglist, int recognum)
 	}
 	return;
       }
+      if (outfile_enabled) {
+	outfile_set_fname(j_get_current_filename());
+      }
       /* start recognizing the stream */
-      ret = j_recognize_stream_multi(recoglist, recognum);
+      ret = j_recognize_stream(recog);
       /* how to stop:
 	 add a function to CALLBACK_POLL and call j_request_pause() or
 	 j_request_terminate() in the function.

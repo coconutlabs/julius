@@ -1,7 +1,5 @@
 /**
  * @file   vocabulary.h
- * @author Akinobu LEE
- * @date   Sat Feb 12 12:38:13 2005
  *
  * <JA>
  * @brief  単語辞書の構造体定義
@@ -29,13 +27,16 @@
  * belongs.
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sat Feb 12 12:38:13 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -58,6 +59,10 @@ typedef struct {
   WORD_ID	maxnum;		///< Allocated number of word space
   WORD_ID	num;		///< Number of words
   WORD_ID	errnum;		///< Number of error words that were skipped when reading dictionary
+  WORD_ID	linenum;	///< Current line number while loading
+  boolean	do_conv;	///< TRUE if needs conversion while loading
+  boolean	ok_flag;	///< FALSE if any error occur while loading
+
   unsigned char	*wlen;		///< Number of phonemes for each word [wid]
   
   char		**wname;	///< Word name string for each word [wid].  With DFA, it's category ID.  With N-gram, it's N-gram entry name.
@@ -72,15 +77,14 @@ typedef struct {
   WORD_ID	tail_silwid;	///< Word ID of end-of-sentence silence
   short		maxwn;		///< Maximum number of %HMM states per word (statistic)
   short         maxwlen;	///< Maximum number of phones in a word (statistic)
-  int		totalstatenum;
-  int		totalmodelnum;
-  int		totaltransnum;
+  int		totalstatenum;  ///< Total number of HMM states
+  int		totalmodelnum;  ///< Total number of models (phonemes) 
+  int		totaltransnum;  ///< Total number of state transitions
   boolean	*is_transparent; ///< TRUE if the word can be treated as transparent [wid]
   APATNODE	*errph_root; ///< Root node of index tree for gathering error %HMM name appeared when reading the dictionary 
   BMALLOC_BASE *mroot;		///< Pointer for block memory allocation
 } WORD_INFO;
 
-
 WORD_INFO *word_info_new();
 void word_info_free(WORD_INFO *winfo);
 void winfo_init(WORD_INFO *winfo);
@@ -88,16 +92,20 @@ boolean winfo_expand(WORD_INFO *winfo);
 boolean init_voca(WORD_INFO *winfo, char *filename, HTK_HMM_INFO *hmminfo, boolean, boolean);
 boolean init_wordlist(WORD_INFO *winfo, char *filename, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone, boolean force_dict);
 void voca_set_stats(WORD_INFO *winfo);
+void voca_load_start(WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv);
+boolean voca_load_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);
+boolean voca_load_end(WORD_INFO *winfo);
 boolean voca_load_htkdict(FILE *, WORD_INFO *, HTK_HMM_INFO *, boolean);
 boolean	voca_load_htkdict_fd(int, WORD_INFO *, HTK_HMM_INFO *, boolean);
 boolean	voca_load_htkdict_sd(int, WORD_INFO *, HTK_HMM_INFO *, boolean);
 boolean voca_append_htkdict(char *entry, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv);
 boolean voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset);
-
 boolean voca_load_htkdict_line(char *buf, WORD_ID *vnum, int linenum, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean do_conv, boolean *ok_flag);
+
+boolean voca_load_word_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailpohone, char *contextphone);
+boolean voca_load_wordlist(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone);
 boolean voca_load_wordlist_line(char *buf, WORD_ID *vnum, int linenum, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean do_conv, boolean *ok_flag, char *headphone, char *tailphone, char *contextphone);
 boolean voca_mono2tri(WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);
-boolean voca_load_wordlist(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone);
 WORD_ID voca_lookup_wid(char *, WORD_INFO *);
 WORD_ID *new_str2wordseq(WORD_INFO *, char *, int *);
 char *cycle_triphone(char *p);

@@ -1,7 +1,5 @@
 /**
  * @file   gprune_common.c
- * @author Akinobu LEE
- * @date   Fri Feb 18 18:10:58 2005
  * 
  * <JA>
  * @brief  混合ガウス分布計算: Gaussian pruning (共通部)
@@ -18,13 +16,16 @@
  * manipulation, commonly used for the Gaussian pruning functions.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 18 18:10:58 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -76,6 +77,7 @@ find_insert_point(LOGPROB *calced_score, LOGPROB score, int len)
  *
  * The OP_calced_score will always kept sorted by the scores.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param id [in] mixture id of the Gaussian to store
  * @param score [in] score of the Gaussian to store
  * @param len [in] current number of stored scores in OP_calced_score

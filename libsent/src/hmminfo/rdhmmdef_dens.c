@@ -1,7 +1,5 @@
 /**
  * @file   rdhmmdef_dens.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 01:43:43 2005
  * 
  * <JA>
  * @brief  HTK %HMM 定義ファイルの読み込み：ガウス分布
@@ -11,17 +9,20 @@
  * @brief  Read HTK %HMM definition file: Gaussian density
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 01:43:43 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
-/* $Id: rdhmmdef_dens.c,v 1.1 2007/09/28 02:50:56 sumomo Exp $ */
+/* $Id: rdhmmdef_dens.c,v 1.2 2007/12/18 08:45:51 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>

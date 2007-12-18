@@ -1,7 +1,5 @@
 /**
  * @file   voca_load_wordlist.c
- * @author Akinobu LEE
- * @date   Sun Jul 22 13:29:32 2007
  * 
  * <JA>
  * @brief  孤立単語認識モード用単語リストの読み込み
@@ -12,13 +10,16 @@
  * @brief  Read word list from a file for isolated word recognition mode
  * </EN>
  * 
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Sun Jul 22 13:29:32 2007
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -95,54 +96,75 @@ list_error(WORD_INFO *winfo)
 }
 
 /** 
+ * Load a line from buffer and set parameters to the dictionary.
+ * 
+ * @param buf [in] input buffer containing a word entry
+ * @param winfo [i/o] word dictionary to append the entry
+ * @param hmminfo [in] phoneme HMM definition
+ * @param headphone [in] word head silence model name
+ * @param tailphone [in] word tail silence model name
+ * @param contextphone [in] silence context name to be used at head and tail
+ * 
+ * @return TRUE when successfully read, or FALSE on encountered end of
+ * dictionary.  When an error occurs, this function will set winfo->ok_flag
+ * to FALSE.
+ * 
+ */
+boolean
+voca_load_word_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone)
+{
+  WORD_ID vnum;
+
+  winfo->linenum++;
+  vnum = winfo->num;
+  if (vnum >= winfo->maxnum) {
+    if (winfo_expand(winfo) == FALSE) return FALSE;
+  }
+  if (voca_load_wordlist_line(buf, &vnum, winfo->linenum, winfo, hmminfo, winfo->do_conv, &(winfo->ok_flag), headphone, tailphone, contextphone) == FALSE) {
+    return FALSE;
+  }
+  winfo->num = vnum;
+  return TRUE;
+}
+/** 
  * Top function to read word list via file pointer
  * 
  * @param fp [in] file pointer
  * @param winfo [out] pointer to word dictionary to store the read data.
  * @param hmminfo [in] HTK %HMM definition data.  if NULL, phonemes are ignored.
+ * @param headphone [in] word head silence model name
+ * @param tailphone [in] word tail silence model name
+ * @param contextphone [in] silence context name to be used at head and tail
  * 
  * @return TRUE on success, FALSE on any error word.
  */
 boolean
 voca_load_wordlist(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone)
 {
-  boolean ok_flag = TRUE;
-  WORD_ID vnum;
-  int linenum;
-  boolean do_conv = FALSE;
+  boolean ret;
 
-  if (hmminfo != NULL && hmminfo->is_triphone) do_conv = TRUE;
-
-  winfo_init(winfo);
-
-  linenum = 0;
-  vnum = 0;
+  voca_load_start(winfo, hmminfo, FALSE);
   while (getl(buf, sizeof(buf), fp) != NULL) {
-    linenum++;
-    if (vnum >= winfo->maxnum) {
-      if (winfo_expand(winfo) == FALSE) return FALSE;
-    }
-    if (voca_load_wordlist_line(buf, &vnum, linenum, winfo, hmminfo, do_conv, &ok_flag, headphone, tailphone, contextphone) == FALSE) break;
+    if (voca_load_word_line(buf, winfo, hmminfo, headphone, tailphone, contextphone) == FALSE) break;
   }
-  winfo->num = vnum;
+  ret = voca_load_end(winfo);
 
-  voca_set_stats(winfo);
-  if (!ok_flag) {
-    if (winfo->errph_root != NULL) list_error(winfo);
-  }
-
-  return(ok_flag);
+  return(ret);
 }
 
 /** 
  * Sub function to Add a dictionary entry line to the word dictionary.
  * 
  * @param buf [i/o] buffer to hold the input string, will be modified in this function
- * @param vnum [in] current number of words in @a winfo
+ * @param vnum_p [in] current number of words in @a winfo
+ * @param linenum [in] current line number of the input
  * @param winfo [out] pointer to word dictionary to append the data.
  * @param hmminfo [in] HTK %HMM definition data.  if NULL, phonemes are ignored.
  * @param do_conv [in] TRUE if performing triphone conversion
  * @param ok_flag [out] will be set to FALSE if an error occured for this input.
+ * @param headphone [in] word head silence model name
+ * @param tailphone [in] word tail silence model name
+ * @param contextphone [in] silence context name to be used at head and tail
  * 
  * @return FALSE if buf == "DICEND", else TRUE will be returned.
  */
@@ -179,7 +201,6 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
     return TRUE;
   }
   winfo->wname[vnum] = strcpy((char *)mybmalloc2(strlen(ptmp)+1, &(winfo->mroot)), ptmp);
-  winfo->woutput[vnum] = winfo->wname[vnum];
 
   /* reset transparent flag */
   winfo->is_transparent[vnum] = FALSE;
@@ -238,6 +259,27 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 #endif /* CLASS_NGRAM */
   }
 
+  /* OutputString */
+  switch(ptmp[0]) {
+  case '[':			/* ignore transparency */
+    ptmp = mystrtok_quotation(NULL, " \t\n", '[', ']', 0);
+    break;
+  case '{':			/* ignore transparency */
+    ptmp = mystrtok_quotation(NULL, " \t\n", '{', '}', 0);
+    break;
+  default:
+    /* ALLOW no entry for output */
+    /* same as wname is used */
+    ptmp = winfo->wname[vnum];
+  }
+  if (ptmp == NULL) {
+    jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    winfo->errnum++;
+    *ok_flag = FALSE;
+    return TRUE;
+  }
+  winfo->woutput[vnum] = strcpy((char *)mybmalloc2(strlen(ptmp)+1, &(winfo->mroot)), ptmp);
+    
   /* phoneme sequence */
   if (hmminfo == NULL) {
     /* don't read */

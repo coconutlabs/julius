@@ -1,7 +1,5 @@
 /**
  * @file   outprob.c
- * @author Akinobu LEE
- * @date   Fri Feb 18 18:45:21 2005
  * 
  * <JA>
  * @brief  音響尤度計算の実行および状態レベルキャッシュ
@@ -45,13 +43,16 @@
  * in addition to this state-level cache.  See calc_tied_mix.c for details.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 18 18:45:21 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -69,6 +70,8 @@
 /** 
  * Initialize the cache data, should be called once on startup.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
@@ -85,6 +88,7 @@ outprob_cache_init(HMMWork *wrk)
 /** 
  * Prepare cache for the next input, by clearing the existing cache.
  * 
+ * @param wrk [i/o] HMM computation work area
  * 
  * @return TRUE on success, FALSE on failure.
  */
@@ -106,6 +110,7 @@ outprob_cache_prepare(HMMWork *wrk)
 /** 
  * Expand the cache to time axis if needed.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param reqframe [in] required frame length
  */
 static void
@@ -146,6 +151,8 @@ outprob_cache_extend(HMMWork *wrk, int reqframe)
 /**
  * Free work area for cache.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 void
 outprob_cache_free(HMMWork *wrk)
@@ -165,15 +172,16 @@ outprob_cache_free(HMMWork *wrk)
  * (If you use GMS, the entity will be gms_state() instead.)
  *
  * The state-level cache is also consulted here.
+ *
+ * @param wrk [i/o] HMM computation work area
+ * @param t [in] time frame
+ * @param stateinfo [in] state information to compute the output probability
+ * @param param [in] input parameter vectors
  * 
  * @return output log probability.
  */
 LOGPROB
-outprob_state(
-	      HMMWork *wrk, 
-	      int t,			/* time frame */
-	      HTK_HMM_State *stateinfo,	/* state info */
-	      HTK_Param *param)		/* parameter */
+outprob_state(HMMWork *wrk, int t, HTK_HMM_State *stateinfo, HTK_Param *param)
 {
   LOGPROB outp;
   int sid;
@@ -204,6 +212,7 @@ outprob_state(
 /** 
  * Initialize work area for outprob_cd_nbest().
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param num [in] number of top states to be calculated.
  */
 void
@@ -216,6 +225,8 @@ outprob_cd_nbest_init(HMMWork *wrk, int num)
 /**
  * Free work area for outprob_cd_nbest().
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 void
 outprob_cd_nbest_free(HMMWork *wrk)
@@ -226,6 +237,7 @@ outprob_cd_nbest_free(HMMWork *wrk)
 /** 
  * Return average of N-beat outprob for pseudo state set.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param t [in] input frame
  * @param lset [in] pseudo state set
  * @param param [in] input parameter data
@@ -270,6 +282,7 @@ outprob_cd_nbest(HMMWork *wrk, int t, CD_State_Set *lset, HTK_Param *param)
 /** 
  * Return maximum outprob of the pseudo state set.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param t [in] input frame
  * @param lset [in] pseudo state set
  * @param param [in] input parameter data
@@ -293,6 +306,7 @@ outprob_cd_max(HMMWork *wrk, int t, CD_State_Set *lset, HTK_Param *param)
 /** 
  * Return average outprob of the pseudo state set.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param t [in] input frame
  * @param lset [in] pseudo state set
  * @param param [in] input parameter data
@@ -319,6 +333,7 @@ outprob_cd_avg(HMMWork *wrk, int t, CD_State_Set *lset, HTK_Param *param)
 /** 
  * Compute the log output probability of a pseudo state set.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param t [in] input frame
  * @param lset [in] pseudo state set
  * @param param [in] input parameter data
@@ -348,7 +363,8 @@ outprob_cd(HMMWork *wrk, int t, CD_State_Set *lset, HTK_Param *param)
 
 /** 
  * Top function to compute the output probability of a HMM state.
- * 
+ *
+ * @param wrk [i/o] HMM computation work area
  * @param t [in] input frame
  * @param hmmstate [in] HMM state
  * @param param [in] input parameter data

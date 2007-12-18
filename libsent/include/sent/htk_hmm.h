@@ -1,7 +1,5 @@
 /**
  * @file   htk_hmm.h
- * @author Akinobu LEE
- * @date   Thu Feb 10 19:36:47 2005
  *
  * <EN>
  * @brief Data structures for handling HTK %HMM definition
@@ -15,13 +13,16 @@
  * 定義されています．
  * </JA>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 10 19:36:47 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -41,7 +42,6 @@
 /// Delimiter string for parsing %HMM definition file
 #define HMMDEF_DELM " \t\n<>"
 
-
 /**
  * @defgroup hmminfo HTK HMM definition
  * <EN>
@@ -90,7 +90,6 @@ enum iwcd_type {
   IWCD_NBEST			///< Use average of N-best scores among context variants
 };
 
-
 /* options info */
 
 /// Stream information (although current Julius supports only single stream)
@@ -108,7 +107,6 @@ typedef struct {
   short param_type;		///< Type of parameter , see also htk_defs.h
 } HTK_HMM_Options;
 
-
 /// %HMM transition table
 typedef struct _HTK_HMM_trans {
   char *name;			///< Name (NULL if not defined as Macro)
@@ -179,7 +177,6 @@ typedef struct {
   /* GCODEBOOK *book;*/		/* pointer to the corresponding codebook in hmminfo */
 } GS_SET;
 
-
 /**
  * @defgroup cdset Context-Dependent HMM set
  * <EN>
@@ -250,7 +247,6 @@ typedef struct {
 } HMM_CDSET_INFO;
 //@}
 
-
 /**
  * @ingroup cdset
  *
@@ -382,7 +378,6 @@ typedef struct {
   //@}
 } HTK_HMM_INFO;
 
-
 /* init_phmm.c */
 void htk_hmm_set_pause_model(HTK_HMM_INFO *hmminfo, char *spmodel_name);
 /* rdhmmdef.c */

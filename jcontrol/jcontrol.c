@@ -1,7 +1,5 @@
 /**
  * @file   jcontrol.c
- * @author Akinobu LEE
- * @date   Thu Mar 24 11:49:27 2005
  * 
  * <JA>
  * @brief  サンプルモジュールクライアント jcontrol メイン
@@ -11,13 +9,16 @@
  * @brief  Main routine for sample module client 'jcontrol'
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Mar 24 11:49:27 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 #include "japi.h"
@@ -79,6 +80,22 @@ do_command(int sd)
       japi_deactivate_grammar(sd, arg1);
     } else if (strmatch(com, "syncgram")) {
       japi_sync_grammar(sd);
+    } else if (strmatch(com, "listprocess")) {
+      japi_list_process(sd);
+    } else if (strmatch(com, "currentprocess")) {
+      japi_current_process(sd, arg1);
+    } else if (strmatch(com, "shiftprocess")) {
+      japi_shift_process(sd);
+    } else if (strmatch(com, "addprocess")) {
+      japi_add_process(sd, arg1);
+    } else if (strmatch(com, "delprocess")) {
+      japi_del_process(sd, arg1);
+    } else if (strmatch(com, "activateprocess")) {
+      japi_activate_process(sd, arg1);
+    } else if (strmatch(com, "deactivateprocess")) {
+      japi_deactivate_process(sd, arg1);
+    } else if (strmatch(com, "addword")) {
+      japi_add_words(sd, arg1, arg2);
     } else {
       fprintf(stderr,"No such command: [%s]\n", com);
     }

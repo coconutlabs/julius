@@ -1,7 +1,5 @@
 /**
  * @file   gprune_beam.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 03:27:53 2005
  * 
  * <JA>
  * @brief  º®¹ç¥¬¥¦¥¹Ê¬ÉÛ·×»»: Gaussian pruning (beam algorithm)
@@ -39,13 +37,16 @@
  * calc_tied_mix() or calc_mix().
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 03:27:53 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -117,6 +118,8 @@
 /** 
  * Clear per-dimension thresholds.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  */
 static void
 clear_dimthres(HMMWork *wrk)
@@ -128,6 +131,8 @@ clear_dimthres(HMMWork *wrk)
 /** 
  * Set beam thresholds by adding TMBEAMWIDTH to the maximum values
  * of each dimension.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  */
 static void
@@ -145,6 +150,7 @@ set_dimthres(HMMWork *wrk)
  * for future pruning.  The pruning itself is not performed here.
  * This function will be used to compute the first N Gaussians.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param binfo [in] Gaussian density
  * 
  * @return the output log probability.
@@ -184,6 +190,7 @@ compute_g_beam_updating(HMMWork *wrk, HTK_HMM_Dens *binfo)
  * that has been set by compute_g_beam_updating() and
  * set_dimthres().
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param binfo [in] Gaussian density
  * 
  * @return the output log probability.
@@ -219,6 +226,8 @@ compute_g_beam_pruning(HMMWork *wrk, HTK_HMM_Dens *binfo)
 /** 
  * Initialize and setup work area for Gaussian pruning by beam algorithm.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
@@ -239,6 +248,8 @@ gprune_beam_init(HMMWork *wrk)
 
 /**
  * Free gprune_beam related work area.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  */
 void
@@ -268,6 +279,7 @@ gprune_beam_free(HMMWork *wrk)
  * 
  * This can be called from calc_tied_mix() or calc_mix().
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param g [in] set of Gaussian densities to compute the output probability
  * @param gnum [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,

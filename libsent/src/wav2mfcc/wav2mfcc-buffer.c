@@ -1,7 +1,5 @@
 /**
  * @file   wav2mfcc-buffer.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 17:43:35 2005
  * 
  * <JA>
  * @brief  音声波形から MFCC 特徴量へ変換する(発話単位)
@@ -23,7 +21,10 @@
  * The supported format is MFCC[_0][_E][_D][_A][_Z].
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 17:43:35 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 
@@ -48,13 +49,12 @@
  * @param mfcc [out] buffer to store the resulting MFCC parameter vector [t][0..veclen-1], should be already allocated
  * @param para [in] configuration parameters
  * @param nSamples [in] length of waveform data
- * @param ssbuf [in] buffer that holds noise spectrum to be subtracted from input, or NULL if not use spectral subtraction
- * @param ssbuflen [in] length of above, ignored when @a ssbuf is NULL
+ * @param w [i/o] MFCC calculation work area
  * 
  * @return the number of processed frames.
  */
 int
-Wav2MFCC(SP16 *wave, float **mfcc, Value para, int nSamples, MFCCWork *w)
+Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w)
 {
   int i, k, t;
   int end = 0, start = 1;
@@ -69,13 +69,13 @@ Wav2MFCC(SP16 *wave, float **mfcc, Value para, int nSamples, MFCCWork *w)
     }
   }
 
-  frame_num = (int)((nSamples - para.framesize) / para.frameshift) + 1;
+  frame_num = (int)((nSamples - para->framesize) / para->frameshift) + 1;
   
   for(t = 0; t < frame_num; t++){
-    if(end != 0) start = end - (para.framesize - para.frameshift) - 1;
+    if(end != 0) start = end - (para->framesize - para->frameshift) - 1;
 
     k = 1;
-    for(i = start; i <= start + para.framesize; i++){
+    for(i = start; i <= start + para->framesize; i++){
       w->bf[k] = (float)wave[i - 1];  k++;
     }
     end = i;
@@ -85,16 +85,16 @@ Wav2MFCC(SP16 *wave, float **mfcc, Value para, int nSamples, MFCCWork *w)
   }
   
   /* Normalise Log Energy */
-  if (para.energy && para.enormal) NormaliseLogE(mfcc, frame_num, para);
+  if (para->energy && para->enormal) NormaliseLogE(mfcc, frame_num, para);
   
   /* Delta (consider energy suppress) */
-  if (para.delta) Delta(mfcc, frame_num, para);
+  if (para->delta) Delta(mfcc, frame_num, para);
 
   /* Acceleration */
-  if (para.acc) Accel(mfcc, frame_num, para);
+  if (para->acc) Accel(mfcc, frame_num, para);
 
   /* Cepstrum Mean Normalization */
-  if(para.cmn) CMN(mfcc, frame_num, para.mfcc_dim);
+  if(para->cmn) CMN(mfcc, frame_num, para->mfcc_dim);
 
   return(frame_num);
 }
@@ -106,14 +106,14 @@ Wav2MFCC(SP16 *wave, float **mfcc, Value para, int nSamples, MFCCWork *w)
  * @param frame_num [in] number of frames
  * @param para [in] configuration parameters
  */
-void NormaliseLogE(float **mfcc, int frame_num, Value para)
+void NormaliseLogE(float **mfcc, int frame_num, Value *para)
 {  
   float max, min, f;
   int t;
   int l;
 
-  l = para.mfcc_dim;
-  if (para.c0) l++;
+  l = para->mfcc_dim;
+  if (para->c0) l++;
 
   /* find max log energy */
   max = mfcc[0][l];
@@ -121,13 +121,13 @@ void NormaliseLogE(float **mfcc, int frame_num, Value para)
     if(mfcc[t][l] > max) max = mfcc[t][l];
 
   /* set the silence floor */
-  min = max - (para.silFloor * LOG_TEN) / 10.0;  
+  min = max - (para->silFloor * LOG_TEN) / 10.0;  
 
   /* normalise */
   for(t = 0; t < frame_num; t++){
     f = mfcc[t][l];
     if (f < min) f = min;
-    mfcc[t][l] = 1.0 - (max - f) * para.escale;
+    mfcc[t][l] = 1.0 - (max - f) * para->escale;
   }
 }
 
@@ -138,18 +138,18 @@ void NormaliseLogE(float **mfcc, int frame_num, Value para)
  * @param frame [in] number of frames
  * @param para [in] configuration parameters
  */
-void Delta(float **c, int frame, Value para)
+void Delta(float **c, int frame, Value *para)
 {
   int theta, t, n, B = 0;
   float A1, A2, sum;
 
-  for(theta = 1; theta <= para.delWin; theta++)
+  for(theta = 1; theta <= para->delWin; theta++)
     B += theta * theta;
 
-  for(n = para.baselen - 1; n >=0; n--){
+  for(n = para->baselen - 1; n >=0; n--){
     for(t = 0; t < frame; t++){
       sum = 0;
-      for(theta = 1; theta <= para.delWin; theta++){
+      for(theta = 1; theta <= para->delWin; theta++){
 	/* Replicate the first or last vector */
 	/* at the beginning and end of speech */
 	if (t - theta < 0) A1 = c[0][n];
@@ -159,10 +159,10 @@ void Delta(float **c, int frame, Value para)
 	sum += theta * (A2 - A1);
       }
       sum /= (2.0 * B);
-      if (para.absesup) {
-	c[t][para.baselen + n - 1] = sum;
+      if (para->absesup) {
+	c[t][para->baselen + n - 1] = sum;
       } else {
-	c[t][para.baselen + n] = sum;
+	c[t][para->baselen + n] = sum;
       }
     }
   }
@@ -176,22 +176,22 @@ void Delta(float **c, int frame, Value para)
  * @param frame [in] number of frames
  * @param para [in] configuration parameters
  */
-void Accel(float **c, int frame, Value para)
+void Accel(float **c, int frame, Value *para)
 {
   int theta, t, n, B = 0;
   int src, dst;
   float A1, A2, sum;
 
-  for(theta = 1; theta <= para.accWin; theta++)
+  for(theta = 1; theta <= para->accWin; theta++)
     B += theta * theta;
 
   for(t = 0; t < frame; t++){
-    src = para.baselen * 2 - 1;
-    if (para.absesup) src--;
-    dst = src + para.baselen;
-    for(n = 0; n < para.baselen; n++){
+    src = para->baselen * 2 - 1;
+    if (para->absesup) src--;
+    dst = src + para->baselen;
+    for(n = 0; n < para->baselen; n++){
       sum = 0;
-      for(theta = 1; theta <= para.accWin; theta++){
+      for(theta = 1; theta <= para->accWin; theta++){
 	/* Replicate the first or last vector */
 	/* at the beginning and end of speech */
 	if (t - theta < 0) A1 = c[0][src];

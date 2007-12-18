@@ -1,27 +1,22 @@
 /**
  * @file   search_bestfirst_main.c
- * @author Akinobu Lee
- * @date   Thu Sep 08 11:51:12 2005
  * 
  * <JA>
- * @brief  第2パスのスタックデコーディング
+ * @brief  第2パス：スタックデコーディング
  *
- * Julius/Julian の第2パスであるスタックデコーディングアルゴリズムが
- * 記述されています。第1パスの結果の単語トレリス情報を元に、第1パスとは
- * 逆向きの right-to-left に探索を行います。仮説のスコアは、第1パスのトレリス
- * とそのスコアを未探索部のヒューリスティックとして接続することで、
- * 文全体の仮説スコアを考慮しながら探索を行います。
+ * Julius の第2パスであるスタックデコーディングアルゴリズムが記述され
+ * ています. 第1パスの結果の単語トレリス情報を元に，第1パスとは逆向き
+ * の right-to-left に探索を行います. 仮説のスコアは、第1パスのトレリ
+ * スとそのスコアを未探索部のヒューリスティックとして接続することで，
+ * 文全体の仮説スコアを考慮しながら探索を行います. 
  *
- * 単語の展開では、Julius では ngram_decode.c 内の関数が、Julian　では
- * dfa_decode.c の関数が次単語集合を取得するために使用されます。
- * 
- * 単語信頼度の計算やビームを考慮したスコア計算、enveloped beam 探索も
- * ここで記述されています。
+ * 次単語集合の取得のために，単語N-gramでは ngram_decode.c 内の関数が，
+ * 文法では dfa_decode.c の関数が用いられます. 
  * 
  * </JA>
  * 
  * <EN>
- * @brief  Main search function for stack decoding on the 2nd pass.
+ * @brief  The second pass: stack decoding
  *
  * This file implements search algorithm based on best-first stack
  * decoding on the 2nd pass.  The search will be performed on backward
@@ -30,23 +25,23 @@
  * in a global stack, and the best one will be expanded according to
  * the survived words in the word trellis and language constraint.
  *
- * The expanding words will be given by ngram_decode.c for N-gram based
- * recognition (Julius), with their langugage probabilities, or by
- * dfa_decode.c for grammar-based recognition (Julian), with their emitting
+ * The expanding words will be given by ngram_decode.c for N-gram
+ * based recognition, with their langugage probabilities, or by
+ * dfa_decode.c for grammar-based recognition, with their emitting
  * DFA state information.
  *
- * The dynamic confidence scoring using local posterior probability,
- * score envelope beaming, and other techniques are also implemented
- * within this file.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Thu Sep 08 11:51:12 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -67,18 +62,22 @@ static void put_hypo_wname(NODE *hypo, WORD_INFO *winfo);
 
 /** 
  * <JA>
- * 次単語候補を格納するための NEXTWORD 配列にメモリを割り付ける．
+ * 次単語の格納領域の割り当て. 
+ * 次単語候補を格納するための NEXTWORD 配列にメモリを割り付ける. 
  * 
  * @param maxlen [out] 格納可能な単語数
  * @param root [out] 割り付け領域の先頭へのポインタ
+ * @param max [in] 割り付ける領域のサイズ
  * 
- * @return 割り付けられた次単語配列へのポインタを返す．
+ * @return 割り付けられた次単語配列へのポインタを返す. 
  * </JA>
  * <EN>
- * Allocate NEXTWORD array for storing list of candidate next words
+ * Allocate memory for next word candidates.
+ * Allocate NEXTWORD array for storing list of candidate next words.
  * 
  * @param maxlen [out] maximum number of words that can be stored
  * @param root [out] pointer to the top address of allocated data
+ * @param max [in] number of elementes to be allocated
  * 
  * @return the newly allocated pointer of NEXTWORD array.
  * </EN>
@@ -102,13 +101,13 @@ nw_malloc(int *maxlen, NEXTWORD **root, int max)
 
 /** 
  * <JA>
- * 次単語候補を格納する NEXTWORD 配列のメモリを解放する．
+ * 次単語の格納領域の解放. 
  * 
  * @param nw [in] NEXTWORD配列
  * @param root [in] nw_malloc() で与えられた領域先頭へのポインタ
  * </JA>
  * <EN>
- * Free given NEXTWORD data.
+ * Free next word candidate area.
  * 
  * @param nw [in] pointer to NEXTWORD structure to be free.
  * @param root [in] pointer to the top address of allocated data previously
@@ -124,22 +123,23 @@ nw_free(NEXTWORD **nw, NEXTWORD *root)
 
 /** 
  * <JA>
- * @brief  次単語候補格納用の NEXTWORD 配列のメモリ領域を伸張する．
+ * @brief  次単語候補格納用の NEXTWORD 配列のメモリ領域を伸張する. 
  *
  * この関数は探索中に次単語候補集合が溢れた際に呼ばれ，配列により多くの
- * 次単語候補を格納できるよう NEXTWORD の中身を realloc() する．
+ * 次単語候補を格納できるよう NEXTWORD の中身を realloc() する. 
  * 実際には最初に nw_malloc() で辞書の単語数分だけ領域を確保しており，
- * Julius では呼ばれることはない．Julian では，ショートポーズの
+ * 単語N-gram使用時は呼ばれることはない. 文法認識では，ショートポーズの
  * スキップ処理により状態の異なる候補を同時に展開するので，
- * 次単語数が語彙数よりも大きいことが起こりうる．
+ * 次単語数が語彙数よりも大きいことが起こりうる. 
  * 
  * @param nwold [i/o] NEXTWORD配列
- * @param maxlen [i/o] 最大格納数を格納するポインタ．現在の最大格納数を
- * 入れて呼び，関数内で新たに確保された数に変更される．
- * @param root [i/o] 領域先頭へのポインタを格納するアドレス．関数内で
- * 書き換えられる．
+ * @param maxlen [i/o] 最大格納数を格納するポインタ. 現在の最大格納数を
+ * 入れて呼び，関数内で新たに確保された数に変更される. 
+ * @param root [i/o] 領域先頭へのポインタを格納するアドレス. 関数内で
+ * 書き換えられる.
+ * @param num [in] 伸長する長さ
  * 
- * @return 伸張された新たな次単語配列へのポインタを返す．
+ * @return 伸張された新たな次単語配列へのポインタを返す. 
  * </JA>
  * <EN>
  * @brief  expand data area of NEXTWORD.
@@ -154,6 +154,7 @@ nw_free(NEXTWORD **nw, NEXTWORD *root)
  * and the resulting new number will be stored within this function.
  * @param root [i/o] address to the pointer of the allocated data.  The
  * value will be updated by reallocation in this function.
+ * @param num [in] size to expand
  * 
  * @return the newlly re-allocated pointer of NEXTWORD array.
  * </EN>
@@ -185,17 +186,14 @@ nw_expand(NEXTWORD **nwold, int *maxlen, NEXTWORD **root, int num)
 /********** Hypothesis stack operation ********************************/
 /**********************************************************************/
 
-/* 文仮説スタックは double linked list である．また常にスコア順が保たれる */
-/* The hypothesis stack is double-linked list, and holds entries in score sorted order */
-
 /** 
  * <JA>
- * スタックトップの最尤仮説を取り出す．
+ * スタックトップの最尤仮説を取り出す. 
  * 
  * @param start [i/o] スタックの先頭ノードへのポインタ（書換えられる場合あり）
  * @param stacknum [i/o] 現在のスタックサイズへのポインタ（書き換えあり）
  * 
- * @return 取り出した最尤仮説のポインタを返す．
+ * @return 取り出した最尤仮説のポインタを返す. 
  * </JA>
  * <EN>
  * Pop the best hypothesis from stack.
@@ -227,7 +225,7 @@ get_best_from_stack(NODE **start, int *stacknum)
 
 /** 
  * <JA>
- * ある仮説がスタック内に格納されるかどうかチェックする．
+ * ある仮説がスタック内に格納されるかどうかチェックする. 
  * 
  * @param new [in] チェックする仮説
  * @param bottom [in] スタックの底ノードへのポインタ
@@ -236,7 +234,7 @@ get_best_from_stack(NODE **start, int *stacknum)
  * 
  * @return スタックのサイズが上限に達していないか，スコアが底ノードよりも
  * よければ格納されるとして 0 を，それ以外であれば格納できないとして -1 を
- * 返す．
+ * 返す. 
  * </JA>
  * <EN>
  * Check whether a hypothesis will be stored in the stack.
@@ -264,9 +262,9 @@ can_put_to_stack(NODE *new, NODE **bottom, int *stacknum, int stacksize)
 
 /** 
  * <JA>
- * スタックに新たな仮説を格納する．
- * スタック内のスコア順を考慮した位置に挿入される．
- * 格納できなかった場合，与えられた仮説は free_node() される．
+ * スタックに新たな仮説を格納する. 
+ * スタック内のスコア順を考慮した位置に挿入される. 
+ * 格納できなかった場合，与えられた仮説は free_node() される. 
  * 
  * @param new [in] チェックする仮説
  * @param start [i/o] スタックのトップノードへのポインタ
@@ -274,7 +272,7 @@ can_put_to_stack(NODE *new, NODE **bottom, int *stacknum, int stacksize)
  * @param stacknum [i/o] スタックに現在格納されているノード数へのポインタ
  * @param stacksize [in] スタックのノード数の上限
  * 
- * @return 格納できれば 0 を，できなかった場合は -1 を返す．
+ * @return 格納できれば 0 を，できなかった場合は -1 を返す. 
  * </JA>
  * <EN>
  * Push a new hypothesis into the stack, keeping score order.
@@ -364,16 +362,18 @@ put_to_stack(NODE *new, NODE **start, NODE **bottom, int *stacknum, int stacksiz
 
 /** 
  * <JA>
- * スタックの中身を全て出力する．スタックの中身は失われる．(デバッグ用)
+ * スタックの中身を全て出力する. スタックの中身は失われる. (デバッグ用)
  * 
  * @param start [i/o] スタックのトップノードへのポインタ
  * @param stacknum [i/o] スタックに現在格納されているノード数へのポインタ
+ * @param winfo [in] 単語辞書
  * </JA>
  * <EN>
  * Output all nodes in the stack. All nodes will be lost (for debug).
  * 
  * @param start [i/o] pointer to stack top node
  * @param stacknum [i/o] pointer to current stack size
+ * @param winfo [in] word dictionary
  * </EN>
  */
 static void
@@ -391,7 +391,7 @@ put_all_in_stack(NODE **start, int *stacknum, WORD_INFO *winfo)
 
 /** 
  * <JA>
- * スタック内の全仮説を解放する．
+ * スタック内の全仮説を解放する. 
  * 
  * @param start [i/o] スタックのトップノード
  * </JA>
@@ -415,19 +415,13 @@ free_all_nodes(NODE *start)
   }
 }
 
-
+
 #ifdef CONFIDENCE_MEASURE
 
 /**********************************************************************/
 /********** 単語信頼度の計算 ******************************************/
 /********** Confidence scoring ****************************************/
 /**********************************************************************/
-/* scoring using multiple cmalpha value will be enabled by CM_MULTIPLE_ALPHA */
-
-#ifdef CM_MULTIPLE_ALPHA
-static LOGPROB *cmsumlist = NULL; ///< Sum of cm score for each alpha coef.
-#endif
-
 
 #ifdef CM_SEARCH
 /**************************************************************/
@@ -436,83 +430,89 @@ static LOGPROB *cmsumlist = NULL; ///< Sum of cm score for each alpha coef.
 /****   - Obtain CM at hypothesis expansion time         ******/
 /**************************************************************/
 
-static LOGPROB cm_tmpbestscore;	///< Temporal best score for summing up scores
-#ifndef CM_MULTIPLE_ALPHA
-static LOGPROB cm_tmpsum;	///< Sum of CM score
-#endif
-
-/* local stack for CM */
-static int l_stacksize;		///< Local stack size for CM
-static int l_stacknum;		///< Num of hypo. in local stack for CM
-static NODE *l_start = NULL;	///< Top node of local stack for CM
-static NODE *l_bottom = NULL;	///< bottom node of local stack for CM
-
 /** 
  * <JA>
- * CM計算用のパラメータを初期化する（第2パス開始時に呼び出される）
+ * CM計算用のパラメータを初期化する. CM計算の直前に呼び出される. 
+ *
+ * @param sd [i/o] 第2パス用ワークエリア
+ * @param wnum [in] スタックサイズ
+ * @param cm_alpha [in] 使用するスケーリング値
  * 
- * @param winfo [in] 単語辞書
  * </JA>
  * <EN>
  * Initialize parameters for confidence scoring (will be called at
  * each startup of 2nd pass)
- * 
- * @param winfo [in] word dictionary
+ *
+ * @param sd [i/o] work area for 2nd pass
+ * @param wnum [in] stack size
+ * @param cm_alpha [in] scaling value to use at confidence scoring
  * </EN>
  */
 static void
-cm_init(int wnum
+cm_init(StackDecode *sd, int wnum, LOGPROB cm_alpha
 #ifdef CM_MULTIPLE_ALPHA
 	, cm_alpha_num
 #endif
 	)
 {
-  l_stacksize = wnum;
-  l_start = l_bottom = NULL;
-  l_stacknum = 0;
+  sd->l_stacksize = wnum;
+  sd->l_start = sd->l_bottom = NULL;
+  sd->l_stacknum = 0;
+  sd->cm_alpha = cm_alpha;
 #ifdef CM_MULTIPLE_ALPHA
-  if (cmsumlist == NULL) {	/* allocate if not yet */
-    cmsumlist = (LOGPROB *)mymalloc(sizeof(LOGPROB) * cm_alpha_num);
+  if (sd->cmsumlist) {
+    if (sd->cmsumlistlen < cm_alpha_num) {
+      free(sd->cmsumlist);
+      sd->cmsumlist = NULL;
+    }
+  }
+  if (sd->cmsumlist == NULL) {
+    sd->cmsumlist = (LOGPROB *)mymalloc(sizeof(LOGPROB) * cm_alpha_num);
+    sd->cmsumlistlen = cm_alpha_num;
   }
 #endif    
 }
 
 /** 
  * <JA>
- * CM計算のためにローカルスタックに展開仮説を一時的に保存する．
+ * CM計算のためにローカルスタックに展開仮説を一時的に保存する. 
  * 
+ * @param sd [i/o] 第2パス用ワークエリア
  * @param new [in] 展開仮説
  * </JA>
  * <EN>
  * Store an expanded hypothesis to the local stack for later CM scoring
  * 
+ * @param sd [i/o] work area for 2nd pass
  * @param new [in] expanded hypothesis
  * </EN>
  */
 static void
-cm_store(NODE *new)
+cm_store(StackDecode *sd, NODE *new)
 {
   /* store the generated hypo into local stack */
-  put_to_stack(new, &l_start, &l_bottom, &l_stacknum, l_stacksize);
+  put_to_stack(new, &(sd->l_start), &(sd->l_bottom), &(sd->l_stacknum), sd->l_stacksize);
 }
 
 /** 
  * <JA>
- * CM計算のためにローカルスタック内の仮説の出現確率の合計を求める．
+ * CM計算のためにローカルスタック内の仮説の出現確率の合計を求める.
+ *
+ * @param sd [i/o] 第2パス用ワークエリア
  * 
  * </JA>
  * <EN>
  * Compute sum of probabilities for hypotheses in the local stack for
  * CM scoring.
+ *
+ * @param sd [i/o] work area for 2nd pass
  * 
  * </EN>
  */
 static void
-cm_sum_score(
+cm_sum_score(StackDecode *sd
 #ifdef CM_MULTIPLE_ALPHA
-	     bgn, end, step
-#else
-	     LOGPROB cm_alpha
+	     , bgn, end, step
 #endif
 )
 {
@@ -523,48 +523,47 @@ cm_sum_score(
   int j;
 #endif
 
-  if (l_start == NULL) return;	/* no hypo */
-  cm_tmpbestscore = l_start->score; /* best hypo is at the top of the stack */
+  if (sd->l_start == NULL) return;	/* no hypo */
+  sd->cm_tmpbestscore = sd->l_start->score; /* best hypo is at the top of the stack */
 
 #ifdef CM_MULTIPLE_ALPHA
   for (j = 0, a = bgn; a <= end; a += step) {
     sum = 0.0;
-    for(node = l_start; node; node = node->next) {
-      sum += pow(10, a * (node->score - cm_tmpbestscore));
+    for(node = sd->l_start; node; node = node->next) {
+      sum += pow(10, a * (node->score - sd->cm_tmpbestscore));
     }
-    cmsumlist[j++] = sum;	/* store sums for each alpha coef. */
+    sd->cmsumlist[j++] = sum;	/* store sums for each alpha coef. */
   }
 #else
   sum = 0.0;
-  for(node = l_start; node; node = node->next) {
-    sum += pow(10, cm_alpha * (node->score - cm_tmpbestscore));
+  for(node = sd->l_start; node; node = node->next) {
+    sum += pow(10, sd->cm_alpha * (node->score - sd->cm_tmpbestscore));
   }
-  cm_tmpsum = sum;		/* store sum */
+  sd->cm_tmpsum = sum;		/* store sum */
 #endif
 
 }
 
-/* compute CM scores of the new word in the local stack from the sum above */
 /** 
  * <JA>
  * 展開されたある文仮説について，その展開単語の信頼度を，事後確率に
- * 基づいて計算する．
+ * 基づいて計算する. 
  * 
+ * @param sd [i/o] 第2パス用ワークエリア
  * @param node [i/o] 展開されたある文仮説
  * </JA>
  * <EN>
  * Compute confidence score of a new word at the end of the given hypothesis,
  * based on the local posterior probabilities.
  * 
+ * @param sd [i/o] work area for 2nd pass
  * @param node [i/o] expanded hypothesis
  * </EN>
  */
 static void
-cm_set_score(NODE *node
+cm_set_score(StackDecode *sd, NODE *node
 #ifdef CM_MULTIPLE_ALPHA
 	     , bgn, end, step
-#else
-	     , LOGPROB cm_alpha
 #endif
 	     )
 {
@@ -575,30 +574,34 @@ cm_set_score(NODE *node
 
 #ifdef CM_MULTIPLE_ALPHA
   for (j = 0, a = bgn; a <= end; a += step) {
-    node->cmscore[node->seqnum-1][j] = pow(10, a * (node->score - cm_tmpbestscore)) / cmsumlist[j];
+    node->cmscore[node->seqnum-1][j] = pow(10, a * (node->score - sd->cm_tmpbestscore)) / sd->cmsumlist[j];
     j++;
   }
 #else
-  node->cmscore[node->seqnum-1] = pow(10, cm_alpha * (node->score - cm_tmpbestscore)) / cm_tmpsum;
+  node->cmscore[node->seqnum-1] = pow(10, sd->cm_alpha * (node->score - sd->cm_tmpbestscore)) / sd->cm_tmpsum;
 #endif
 }
 
 /** 
  * <JA>
- * CM計算用のローカルスタックから仮説を取り出す．
+ * CM計算用のローカルスタックから仮説を取り出す. 
  * 
- * @return 取り出された文仮説を返す．
+ * @param sd [i/o] 第2パス用ワークエリア
+ * 
+ * @return 取り出された文仮説を返す. 
  * </JA>
  * <EN>
  * Pop one node from local stack for confidence scoring.
+ * 
+ * @param sd [i/o] work area for 2nd pass
  * 
  * @return the popped hypothesis.
  * </EN>
  */
 static NODE *
-cm_get_node()
+cm_get_node(StackDecode *sd)
 {
-  return(get_best_from_stack(&l_start, &l_stacknum));
+  return(get_best_from_stack(&(sd->l_start), &(sd->l_stacknum)));
 }
 
 #endif /* CM_SEARCH */
@@ -609,61 +612,66 @@ cm_get_node()
 /**** NOTE: enough N-best should be computed (-n 10 ~ -n 100) ****/
 /*****************************************************************/
 
-/* CM of each word is calculated after all search had finished */
-
-static LOGPROB *sentcm = NULL;	///< Confidence score of each sentence
-static LOGPROB *wordcm = NULL;	///< Confidence score of each word voted from @a sentcm
-static int sentnum;		///< Allocated length of @a sentcm
-
 /** 
  * <JA>
- * スタック内にある文候補から単語信頼度を計算する．
+ * スタック内にある文候補から単語信頼度を計算する. 
  * 
+ * @param sd [i/o] 第2パス用ワークエリア
  * @param start [in] スタックの先頭ノード
  * @param stacknum [in] スタックサイズ
+ * @param jconf [in] SEARCH用設定パラメータ
  * </JA>
  * <EN>
  * Compute confidence scores from N-best sentence candidates in the
  * given stack.
  * 
+ * @param sd [i/o] work area for 2nd pass
  * @param start [in] stack top node 
  * @param stacknum [in] current stack size
+ * @param jconf [in] SEARCH configuration parameters
  * </EN>
  */
 static void
-cm_compute_from_nbest(NODE *start, int stacknum, Jconf *jconf)
+cm_compute_from_nbest(StackDecode *sd, NODE *start, int stacknum, JCONF_SEARCH *jconf)
 {
   NODE *node;
   LOGPROB bestscore, sum, s;
   WORD_ID w;
   int i;
-#ifdef CM_MULTIPLE_ALPHA
   LOGPROB cm_alpha;
   int j;
-#endif
 
   /* prepare buffer */
 #ifdef CM_MULTIPLE_ALPHA
-  if (cmsumlist == NULL) {
-    cmsumlist = (LOGPROB *)mymalloc(sizeof(LOGPROB) * jconf->annotate.cm_alpha_num);
+  if (sd->cmsumlist) {
+    if (sd->cmsumlistlen < jconf->annotate.cm_alpha_num) {
+      free(sd->cmsumlist);
+      sd->cmsumlist = NULL;
+    }
+  }
+  if (sd->cmsumlist == NULL) {
+    sd->cmsumlist = (LOGPROB *)mymalloc(sizeof(LOGPROB) * jconf->annotate.cm_alpha_num);
+    sd->cmsumlistlen = cm_alpha_num;
   }
 #endif    
-  if (sentcm == NULL) {		/* not allocated yet */
-    sentcm = (LOGPROB *)mymalloc(sizeof(LOGPROB)*stacknum);
-    sentnum = stacknum;
-  } else if (sentnum < stacknum) { /* need expanded */
-    sentcm = (LOGPROB *)myrealloc(sentcm, sizeof(LOGPROB)*stacknum);
-    sentnum = stacknum;
+  if (sd->sentcm == NULL) {		/* not allocated yet */
+    sd->sentcm = (LOGPROB *)mymalloc(sizeof(LOGPROB)*stacknum);
+    sd->sentnum = stacknum;
+  } else if (sd->sentnum < stacknum) { /* need expanded */
+    sd->sentcm = (LOGPROB *)myrealloc(sentcm, sizeof(LOGPROB)*stacknum);
+    sd->sentnum = stacknum;
   }
-  if (wordcm == NULL) {
-    wordcm = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->num);
+  if (sd->wordcm == NULL) {
+    sd->wordcm = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->num);
   }
+  
+  cm_alpha = jconf->annotate.cm_alpha;
 #ifdef CM_MULTIPLE_ALPHA
   for (j = 0, cm_alpha = jconf->annotate.cm_alpha_bgn; cm_alpha <= jconf->annotate.cm_alpha_end; cm_alpha += jconf->annotate.cm_alpha_step) {
 #endif
     /* clear whole word cm buffer */
     for(w=0;w<winfo->num;w++) {
-      wordcm[w] = 0.0;
+      sd->wordcm[w] = 0.0;
     }
     /* get best score */
     bestscore = start->score;
@@ -675,14 +683,14 @@ cm_compute_from_nbest(NODE *start, int stacknum, Jconf *jconf)
     /* compute sentence posteriori probabilities */
     i = 0;
     for (node = start; node != NULL; node = node->next) {
-      sentcm[i] = pow(10, cm_alpha * (node->score - bestscore)) / sum;
+      sd->sentcm[i] = pow(10, cm_alpha * (node->score - bestscore)) / sum;
       i++;
     }
     /* compute word posteriori probabilities */
     i = 0;
     for (node = start; node != NULL; node = node->next) {
       for (w=0;w<node->seqnum;w++) {
-	wordcm[node->seq[w]] += sentcm[i];
+	sd->wordcm[node->seq[w]] += sd->sentcm[i];
       }
       i++;
     }
@@ -690,9 +698,9 @@ cm_compute_from_nbest(NODE *start, int stacknum, Jconf *jconf)
     for (node = start; node != NULL; node = node->next) {
       for (w=0;w<node->seqnum;w++) {
 #ifdef CM_MULTIPLE_ALPHA
-	node->cmscore[w][j] = wordcm[node->seq[w]];
+	node->cmscore[w][j] = sd->wordcm[node->seq[w]];
 #else	
-	node->cmscore[w] = wordcm[node->seq[w]];
+	node->cmscore[w] = sd->wordcm[node->seq[w]];
 #endif
       }
     }
@@ -715,7 +723,7 @@ cm_compute_from_nbest(NODE *start, int stacknum, Jconf *jconf)
  * 1. Word envelope
  *
  * 一種の仮説ビーム幅を設定: 展開元となった仮説の数をその仮説長(単語数)
- * ごとにカウントする．一定数を越えたらそれより短い仮説は以後展開しない．
+ * ごとにカウントする. 一定数を越えたらそれより短い仮説は以後展開しない. 
  * 
  * Introduce a kind of beam width to search tree: count the number of
  * popped hypotheses per the depth of the hypotheses, and when a count
@@ -726,12 +734,15 @@ cm_compute_from_nbest(NODE *start, int stacknum, Jconf *jconf)
 
 /** 
  * <JA>
- * Word envelope 用にカウンタを初期化する．
+ * Word envelope 用にカウンタを初期化する.
+ *
+ * @param s [i/o] 第2パス用ワークエリア
  * 
  * </JA>
  * <EN>
  * Initialize counters fro word enveloping.
  * 
+ * @param s [i/o] work area for 2nd pass
  * </EN>
  */
 static void
@@ -744,20 +755,24 @@ wb_init(StackDecode *s)
 
 /** 
  * <JA>
- * Word envelope を参照して，与えられた仮説を展開してよいかどうかを返す．
- * また，Word envelope のカウンタを更新する．
+ * Word envelope を参照して，与えられた仮説を展開してよいかどうかを返す. 
+ * また，Word envelope のカウンタを更新する. 
  * 
+ * @param s [i/o] 第2パス用ワークエリア
  * @param now [in] 今から展開しようとしている仮説
+ * @param width [in] 展開カウントの上限値
  * 
- * @return 展開可能（ビームカウントが上限に達していない）なら TRUE,
- * 展開不可能（カウントに達している）なら FALSE を返す．
+ * @return 展開可能（展開カウントが上限に達していない）なら TRUE,
+ * 展開不可能（カウントが上限に達している）なら FALSE を返す. 
  * </JA>
  * <EN>
  * Consult the current word envelope to check if word expansion from
  * the hypothesis node is allowed or not.  Also increment the counter
  * of word envelope if needed.
  * 
+ * @param s [i/o] work area for 2nd pass
  * @param now [in] popped hypothesis
+ * @param width [in] maximum limit of expansion count
  * 
  * @return TRUE if word expansion is allowed (in case word envelope count
  * of the corresponding hypothesis depth does not reach the limit), or
@@ -790,12 +805,12 @@ wb_ok(StackDecode *s, NODE *now, int width)
  * 2. Score envelope
  *
  * Viterbi計算量の削減: 入力フレームごとの最大尤度 (score envelope) を
- * 全仮説にわたって記録しておく．仮説の前向き尤度計算時に，その envelope
- * から一定幅以上スコアが下回るとき，Viterbi パスの演算を中断する．
+ * 全仮説にわたって記録しておく. 仮説の前向き尤度計算時に，その envelope
+ * から一定幅以上スコアが下回るとき，Viterbi パスの演算を中断する. 
  *
  * ここでは，取り出した仮説からフレームごとの score envelope を更新する
- * 部分が記述されている．Envelope を考慮した Viterbi 計算の実際は
- * scan_word() を参照のこと．
+ * 部分が記述されている. Envelope を考慮した Viterbi 計算の実際は
+ * scan_word() を参照のこと. 
  *
  * Reduce computation cost of hypothesis Viterbi processing by setting a
  * "score envelope" that holds the maximum scores at every frames
@@ -809,18 +824,18 @@ wb_ok(StackDecode *s, NODE *now, int width)
  *
  */
 
-/* the score envelope is kept in framemaxscore[0..framelen-1] */
-
 /** 
  * <JA>
- * Score envelope を初期化する．第2パスの開始時に呼ばれる．
+ * Score envelope を初期化する. 第2パスの開始時に呼ばれる. 
  * 
+ * @param s [i/o] 第2パス用ワークエリア
  * @param framenum [in] 入力フレーム長
  * </JA>
  * <EN>
  * Initialize score envelope.  This will be called once at the beginning
  * of 2nd pass.
  * 
+ * @param s [i/o] work area for 2nd pass
  * @param framenum [in] input frame length
  * </EN>
  */
@@ -833,14 +848,16 @@ envl_init(StackDecode *s, int framenum)
 
 /** 
  * <JA>
- * 仮説の前向きスコアから score envelope を更新する．
+ * 仮説の前向きスコアから score envelope を更新する. 
  * 
+ * @param s [i/o] 第2パス用ワークエリア
  * @param n [in] 仮説
  * @param framenum [in] 入力フレーム長
  * </JA>
  * <EN>
  * Update the score envelope using forward score of the given hypothesis.
  * 
+ * @param s [i/o] work area for 2nd pass
  * @param n [in] hypothesis
  * @param framenum [in] input frame length
  * </EN>
@@ -856,17 +873,17 @@ envl_update(StackDecode *s, NODE *n, int framenum)
 #endif /* SCAN_BEAM */
 
 
-#ifdef SP_BREAK_CURRENT_FRAME
 /**********************************************************************/
 /********** Short pause segmentation **********************************/
 /**********************************************************************/
 
 /** 
  * <JA>
- * 認識結果から，次の入力区間の認識を開始する際の初期単語履歴をセットする．
- * 透過語および仮説の重複を考慮して初期単語履歴が決定される．
+ * 認識結果から，次の入力区間の認識を開始する際の初期単語履歴をセットする. 
+ * 透過語および仮説の重複を考慮して初期単語履歴が決定される. 
  * 
  * @param hypo [in] 現在の入力区間の認識結果としての文候補
+ * @param r [in] 認識処理インスタンス
  * </JA>
  * <EN>
  * Set the previous word context for the recognition of the next input
@@ -876,56 +893,55 @@ envl_update(StackDecode *s, NODE *n, int framenum)
  * 
  * @param hypo [in] sentence candidate as a recognition result of current
  * input segment
+ * @param r [in] recognition process instance
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-sp_segment_set_last_nword(NODE *hypo, Recog *recog)
+segment_set_last_nword(NODE *hypo, RecogProcess *r)
 {
   int i;
   WORD_ID w;
 
-  if (recog->sp_break_last_nword_allow_override) {
+  if (r->sp_break_last_nword_allow_override) {
     for(i=0;i<hypo->seqnum;i++) {
       w = hypo->seq[i];
-      if (w != recog->sp_break_last_word
-	  && !is_sil(w, recog->model->winfo, recog->model->hmminfo)
-	  && !recog->model->winfo->is_transparent[w]
+      if (w != r->sp_break_last_word
+	  && !is_sil(w, r)
+	  && !r->lm->winfo->is_transparent[w]
 	  ) {
-	recog->sp_break_last_nword = w;
+	r->sp_break_last_nword = w;
 	break;
       }
     }
 #ifdef SP_BREAK_DEBUG
-    printf("sp_break_last_nword=%d[%s]\n", recog->sp_break_last_nword, recog->model->winfo->woutput[recog->sp_break_last_nword]);
+    printf("sp_break_last_nword=%d[%s]\n", r->sp_break_last_nword, r->lm->winfo->woutput[r->sp_break_last_nword]);
 #endif
   } else {
-    recog->sp_break_last_nword = WORD_INVALID;
+    r->sp_break_last_nword = WORD_INVALID;
   }
 }
-#endif
 
 
 /**********************************************************************/
 /********* Debug output of hypothesis while search ********************/
 /**********************************************************************/
 
-/* 通常の出力関数は result_*.c にある */
-/* normal output functions are in result_*.c */
-
-//static HTK_Param *tparam;	///< Temporal parameter for forced alignment
-
-/* output word sequence of a hypothesis */
-
 /** 
  * <JA>
- * デバッグ用に仮説の単語列を表示する．
+ * デバッグ用に仮説の単語列を表示する. 
  * 
  * @param hypo [in] 仮説
+ * @param winfo [in] 単語辞書
  * </JA>
  * <EN>
  * Output word sequence of a hypothesis for debug.
  * 
  * @param hypo [in] hypothesis
+ * @param winfo [in] word dictionary
  * </EN>
  */
 static void
@@ -944,14 +960,16 @@ put_hypo_woutput(NODE *hypo, WORD_INFO *winfo)
 
 /** 
  * <JA>
- * デバッグ用に仮説の単語N-gramエントリ名（Julianではカテゴリ番号）を出力する．
+ * デバッグ用に仮説の単語N-gramエントリ名（Julianではカテゴリ番号）を出力する. 
  * 
  * @param hypo [in] 仮説
+ * @param winfo [in] 単語辞書
  * </JA>
  * <EN>
  * Output N-gram entries (or DFA category IDs) of a hypothesis for debug.
  * 
  * @param hypo [in] hypothesis
+ * @param winfo [in] word dictionary
  * </EN>
  */
 static void
@@ -968,23 +986,31 @@ put_hypo_wname(NODE *hypo, WORD_INFO *winfo)
   jlog("\n");  
 }
 
+/** 
+ * <EN>
+ * Save a hypothesis as a recognition result f 2nd pass.
+ * </EN>
+ * <JA>
+ * 第2パスの結果として仮説を保存する. 
+ * </JA>
+ * 
+ * @param hypo [in] hypothesis to save
+ * @param r [in] recognition process instance
+ * 
+ */
 static void
-store_result_pass2(NODE *hypo, Recog *recog)
+store_result_pass2(NODE *hypo, RecogProcess *r)
 {
   int i;
   Sentence *s;
 
-  s = &(recog->result.sent[recog->result.sentnum]);
-  s->word = NULL;
-  s->confidence = NULL;
+  s = &(r->result.sent[r->result.sentnum]);
 
   s->word_num = hypo->seqnum;
-  s->word = (WORD_ID *)mymalloc(sizeof(WORD_ID) * hypo->seqnum);
   for (i = 0; i < hypo->seqnum; i++) {
     s->word[i] = hypo->seq[hypo->seqnum - 1 - i];
   }
 #ifdef CONFIDENCE_MEASURE
-  s->confidence = (LOGPROB *)mymalloc(sizeof(LOGPROB) * hypo->seqnum);
   for (i = 0; i < hypo->seqnum; i++) {
     s->confidence[i] = hypo->cmscore[hypo->seqnum - 1 - i];
   }
@@ -993,17 +1019,17 @@ store_result_pass2(NODE *hypo, Recog *recog)
   s->score = hypo->score;
   s->score_lm = hypo->totallscore;
   s->score_am = hypo->score - hypo->totallscore;
-  if (recog->lmtype == LM_DFA) {
+  if (r->lmtype == LM_DFA) {
     /* output which grammar the hypothesis belongs to on multiple grammar */
     /* determine only by the last word */
-    if (multigram_get_all_num(recog) > 1) {
-      s->gram_id = multigram_get_gram_from_category(recog->model->winfo->wton[hypo->seq[0]], recog);
+    if (multigram_get_all_num(r->lm) > 1) {
+      s->gram_id = multigram_get_gram_from_category(r->lm->winfo->wton[hypo->seq[0]], r->lm);
     } else {
       s->gram_id = 0;
     }
   }
 
-  recog->result.sentnum++;
+  r->result.sentnum++;
   /* add to tail */
 }
 
@@ -1014,68 +1040,73 @@ store_result_pass2(NODE *hypo, Recog *recog)
 
 /** 
  * <JA>
- * スタックから上位の仮説を取り出し，認識結果として出力する．さらに，
- * スタックに格納されている全ての仮説を解放する．
+ * スタックから上位の仮説を取り出し，認識結果として出力する. さらに，
+ * スタックに格納されている全ての仮説を解放する. 
  *
- * Julius/Julian では，第2パスにおいて得られた文候補は，いったん結果格納用
- * のスタックに格納される．探索終了（"-n" の数だけ文候補が見つかるか，
- * 探索が中断される）の後，結果的に得られた文候補の中から上位N個
- * （"-output" で指定された数）の仮説を出力する．
+ * 得られた文候補は，いったん結果格納用のスタックに格納される. 探索終
+ * 了（"-n" の数だけ文候補が見つかるか，探索が中断される）の後，結果的
+ * に得られた文候補の中から上位N個（"-output" で指定された数）の仮説を
+ * 出力する.
+ *
+ * 指定があればアラインメントもここで実行する. 
  * 
  * @param r_start [i/o] 結果格納用スタックの先頭ノードへのポインタ
  * @param r_bottom [i/o] 結果格納用スタックの底ノードへのポインタ
  * @param r_stacknum [i/o] スタックに格納されているノード数へのポインタ
  * @param ncan [in] 出力する上位仮説数
- * @param winfo [in] 単語辞書
+ * @param r [in] 認識処理インスタンス
+ * @param param [in] 入力パラメータ
  * </JA>
  * <EN>
  * Output top N-best hypotheses in a stack as a recognition result, and
  * free all hypotheses.
  *
- * In Julius/Julian, the sentence candidates found at the 2nd pass will
- * be pushed to the "result stack" instead of immediate output.  After
- * recognition is over (in case the number of found sentences reaches
- * the number specified by "-n", or search has been terminated in other
- * reason), the top N sentence candidates in the stack will be output
- * as a final result (where N should be specified by "-output").  After
+ * The sentence candidates found at the 2nd pass will be pushed to the
+ * "result stack" instead of immediate output.  After recognition is
+ * over (in case the number of found sentences reaches the number
+ * specified by "-n", or search has been terminated in other reason),
+ * the top N sentence candidates in the stack will be output as a
+ * final result (where N should be specified by "-output").  After
  * then, all the hypotheses in the stack will be freed.
+ *
+ * Additionally, forced alignment for the recognized sentence
+ * will be executed here if required.
  * 
  * @param r_start [i/o] pointer to the top node of the result stack
  * @param r_bottom [i/o] pointer to the bottom node of the result stack
  * @param r_stacknum [i/o] number of candidates in the current result stack
  * @param ncan [in] number of sentence candidates to be output
- * @param winfo [in] word dictionary
+ * @param r [in] recognition process instance
+ * @param param [in] input parameter
  * </EN>
  */
 static void
-result_reorder_and_output(NODE **r_start, NODE **r_bottom, int *r_stacknum, int ncan, Recog *recog, HTK_Param *param)
+result_reorder_and_output(NODE **r_start, NODE **r_bottom, int *r_stacknum, int ncan, RecogProcess *r, HTK_Param *param)
 {
   NODE *now;
   int num;
 
 #ifdef CM_NBEST 
   /* compute CM from the N-best sentence candidates */
-  cm_compute_from_nbest(*r_start, *r_stacknum, recog->jconf);
+  cm_compute_from_nbest(&(r->pass2), *r_start, *r_stacknum, r->config);
 #endif
   num = 0;
   while ((now = get_best_from_stack(r_start,r_stacknum)) != NULL && num < ncan) {
     num++;
     /* output result */
-    store_result_pass2(now, recog);
-#ifdef SP_BREAK_CURRENT_FRAME
+    store_result_pass2(now, r);
+
+    /* if in sp segmentation mode, */
     /* set the last context-aware word for next recognition */
-    if (num == 1) sp_segment_set_last_nword(now, recog);
-#endif
+    if (r->lmtype == LM_PROB && r->config->successive.enabled && num == 1) segment_set_last_nword(now, r);
     /* do forced alignment if needed */
-    if (recog->jconf->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(recog->result.sent[recog->result.sentnum-1]), recog);
-    if (recog->jconf->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(recog->result.sent[recog->result.sentnum-1]), recog);
-    if (recog->jconf->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(recog->result.sent[recog->result.sentnum-1]), recog);
+    if (r->config->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(r->result.sent[r->result.sentnum-1]), r);
+    if (r->config->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(r->result.sent[r->result.sentnum-1]), r);
+    if (r->config->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(r->result.sent[r->result.sentnum-1]), r);
 
     free_node(now);
   }
-  recog->result.status = 0;
-  callback_exec(CALLBACK_RESULT, recog);
-  callback_exec(CALLBACK_EVENT_PASS2_END, recog);
+  r->result.status = J_RESULT_STATUS_SUCCESS;
   /* free the rest */
   if (now != NULL) free_node(now);
   free_all_nodes(*r_start);
@@ -1086,77 +1117,35 @@ result_reorder_and_output(NODE **r_start, NODE **r_bottom, int *r_stacknum, int 
 /********* Main stack decoding function *******************************/
 /**********************************************************************/
 
-/* subfunctions called by this main function:
-     for word prediction: ngram_decode.c or dfa_decode.c
-     for hypothesis expansion and forward viterbi: search_bestfirst_v{1,2}.c
-                                  (v1: for efficiency   v2: for accuracy)
-*/
-
-static void
-result_sentence_malloc(Recog *recog, int num)
-{
-  int i;
-  recog->result.sent = (Sentence *)mymalloc(sizeof(Sentence) * num);
-  for(i=0;i<num;i++) {
-    recog->result.sent[i].word = NULL;
-    recog->result.sent[i].confidence = NULL;
-    recog->result.sent[i].align.filled = FALSE;
-    recog->result.sent[i].align.w = NULL;
-    recog->result.sent[i].align.ph = NULL;
-    recog->result.sent[i].align.loc = NULL;
-    recog->result.sent[i].align.begin_frame = NULL;
-    recog->result.sent[i].align.end_frame = NULL;
-    recog->result.sent[i].align.avgscore = NULL;
-    recog->result.sent[i].align.is_iwsp = NULL;
-  }
-  recog->result.sentnum = 0;
-}
-
-static void
-result_sentence_free(Recog *recog)
-{  
-  int i;
-  for(i=0;i<recog->result.sentnum;i++) {
-    if (recog->result.sent[i].word) free(recog->result.sent[i].word);
-    if (recog->result.sent[i].confidence) free(recog->result.sent[i].confidence);
-
-    if (recog->result.sent[i].align.w) free(recog->result.sent[i].align.w);
-    if (recog->result.sent[i].align.ph) free(recog->result.sent[i].align.ph);
-    if (recog->result.sent[i].align.loc) free(recog->result.sent[i].align.loc);
-    if (recog->result.sent[i].align.begin_frame) free(recog->result.sent[i].align.begin_frame);
-    if (recog->result.sent[i].align.end_frame) free(recog->result.sent[i].align.end_frame);
-    if (recog->result.sent[i].align.avgscore) free(recog->result.sent[i].align.avgscore);
-    if (recog->result.sent[i].align.is_iwsp) free(recog->result.sent[i].align.is_iwsp);
-  }
-  free(recog->result.sent);
-}
-
 /** 
  * <JA>
  * 第2探索パスであるスタックデコーディングを行うメイン関数
+ *
+ * 引数のうち cate_bgn, cate_num は単語N-gramでは無視される. 
  * 
  * @param param [in] 入力パラメータベクトル列
- * @param backtrellis [in] 第1パスで得られた単語トレリス
- * @param stacksize [in] 仮説スタックのサイズ
- * @param ncan [in] 得るべき文候補数
- * @param maxhypo [in] 探索を断念する展開数閾値
- * @param cate_bgn [in] 展開対象とすべきカテゴリの開始番号（Juliusでは無視）
- * @param cate_num [in] 展開対象とすべきカテゴリの数（Juliusでは無視）
+ * @param r [i/o] 認識処理インスタンス
+ * @param cate_bgn [in] 展開対象とすべきカテゴリの開始番号
+ * @param cate_num [in] 展開対象とすべきカテゴリの数
  * </JA>
  * <EN>
  * Main function to perform stack decoding of the 2nd search pass.
+ *
+ * The cate_bgn and cate_num (third and fourth argument) will have
+ * no effect when N-gram is used.
  * 
  * @param param [in] input parameter vector
- * @param backtrellis [in] backward word trellis obtained at the 1st pass
- * @param stacksize [in] maximum size of hypothesis stack in the search
- * @param ncan [in] num of hypothesis to be found in the search
- * @param maxhypo [in] threshold num of hypothesis expansion to be treated as "search overflow"
+ * @param r [i/o] recognition process instance
  * @param cate_bgn [in] category id to allow word expansion from (ignored in Julius)
  * @param cate_num [in] num of category to allow word expansion from (ignored in Julius)
  * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
  */
 void
-wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
+wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
 {
   /* 文仮説スタック */
   /* hypothesis stack (double-linked list) */
@@ -1200,14 +1189,14 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 
   /* local temporal parameter */
   int stacksize, ncan, maxhypo, peseqlen;
-  static Jconf *jconf;
+  static JCONF_SEARCH *jconf;
   static WORD_INFO *winfo;
   static NGRAM_INFO *ngram;
   static DFA_INFO *gdfa;
   static BACKTRELLIS *backtrellis;
   static StackDecode *dwrk;
 
-  if (recog->lmtype == LM_DFA) {
+  if (r->lmtype == LM_DFA) {
     if (debug2_flag) jlog("DEBUG: only words in these categories will be expanded: %d-%d\n", cate_bgn, cate_bgn + cate_num-1);
   }
 
@@ -1217,31 +1206,31 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
    */
 
   /* just for quick access */
-  jconf = recog->jconf;
-  winfo = recog->model->winfo;
-  if (recog->lmtype == LM_PROB) {
-    ngram = recog->model->ngram;
-  } else if (recog->lmtype == LM_DFA) {
-    gdfa = recog->model->dfa;
+  jconf = r->config;
+  winfo = r->lm->winfo;
+  if (r->lmtype == LM_PROB) {
+    ngram = r->lm->ngram;
+  } else if (r->lmtype == LM_DFA) {
+    gdfa = r->lm->dfa;
   }
-  backtrellis = recog->backtrellis;
-  dwrk = &(recog->pass2);
+  backtrellis = r->backtrellis;
+  dwrk = &(r->pass2);
 
-  stacksize = jconf->search.pass2.stack_size;
-  ncan = jconf->search.pass2.nbest;
-  maxhypo = jconf->search.pass2.hypo_overflow;
+  stacksize = jconf->pass2.stack_size;
+  ncan = jconf->pass2.nbest;
+  maxhypo = jconf->pass2.hypo_overflow;
   peseqlen = backtrellis->framelen;
 
   /* store data for sub routines */
-  recog->peseqlen = backtrellis->framelen;
-  recog->ccd_flag = recog->jconf->am.ccd_flag;
+  r->peseqlen = backtrellis->framelen;
+  //recog->ccd_flag = recog->jconf->am.ccd_flag;
   /* 予測単語格納領域を確保 */
   /* malloc area for word prediction */
   /* the initial maximum number of nextwords is the size of vocabulary */
   nextword = nw_malloc(&maxnwnum, &nwroot, winfo->num);
   /* 前向きスコア計算用の領域を確保 */
   /* malloc are for forward viterbi (scan_word()) */
-  malloc_wordtrellis(recog);		/* scan_word用領域 */
+  malloc_wordtrellis(r);		/* scan_word用領域 */
   /* 仮説スタック初期化 */
   /* initialize hypothesis stack */
   start = bottom = NULL;
@@ -1261,7 +1250,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
   
 #ifdef CM_SEARCH
   /* initialize local stack */
-  cm_init(winfo->num
+  cm_init(dwrk, winfo->num, jconf->annotate.cm_alpha
 #ifdef CM_MULTIPLE_ALPHA
 	  , jconf->annotate.cm_alpha_num
 #endif
@@ -1273,18 +1262,15 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
   envl_init(dwrk, peseqlen);
 #endif /* SCAN_BEAM */
 
-  /* output message */
-  callback_exec(CALLBACK_EVENT_PASS2_BEGIN, recog);
-
   /* prepare result storage */
-  result_sentence_malloc(recog, jconf->output.output_hypo_maxnum);
+  result_sentence_malloc(r, jconf->output.output_hypo_maxnum);
 
   /* エンベロープ探索用の単語長別展開数カウンタを初期化 */
   /* initialize counters for envelope search */
-  if (jconf->search.pass2.enveloped_bestfirst_width >= 0) wb_init(dwrk);
+  if (jconf->pass2.enveloped_bestfirst_width >= 0) wb_init(dwrk);
 
   if (jconf->graph.enabled) {
-    wordgraph_init(recog->wchmm);
+    wordgraph_init(r->wchmm);
   }
 
   /* 
@@ -1293,16 +1279,16 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
    * hypotheses
    */
   /* the first words will be stored in nextword[] */
-  if (recog->lmtype == LM_PROB) {
-    nwnum = ngram_firstwords(nextword, peseqlen, maxnwnum, recog);
-  } else if (recog->lmtype == LM_DFA) {
-    nwnum = dfa_firstwords(nextword, peseqlen, maxnwnum, recog);
+  if (r->lmtype == LM_PROB) {
+    nwnum = ngram_firstwords(nextword, peseqlen, maxnwnum, r);
+  } else if (r->lmtype == LM_DFA) {
+    nwnum = dfa_firstwords(nextword, peseqlen, maxnwnum, r);
     /* 溢れたら、バッファを増やして再チャレンジ */
     /* If the number of nextwords can exceed the buffer size, expand the
        nextword data area */
     while (nwnum < 0) {
       nextword = nw_expand(nextword, &maxnwnum, &nwroot, winfo->num);
-      nwnum = dfa_firstwords(nextword, peseqlen, maxnwnum, recog);
+      nwnum = dfa_firstwords(nextword, peseqlen, maxnwnum, r);
     }
   }
 
@@ -1312,16 +1298,16 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
   
   /* store them to stack */
   for (w = 0; w < nwnum; w++) {
-    if (recog->lmtype == LM_DFA) {
+    if (r->lmtype == LM_DFA) {
       /* limit word hypothesis */
       if (! (winfo->wton[nextword[w]->id] >= cate_bgn && winfo->wton[nextword[w]->id] < cate_bgn + cate_num)) {
 	continue;
       }
     }
     /* generate new hypothesis */
-    new = newnode(recog);
-    start_word(new, nextword[w], param, recog);
-    if (recog->lmtype == LM_DFA) {
+    new = newnode(r);
+    start_word(new, nextword[w], param, r);
+    if (r->lmtype == LM_DFA) {
       if (new->score <= LOG_ZERO) { /* not on trellis */
 	free_node(new);
 	continue;
@@ -1330,12 +1316,12 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     dwrk->genectr++;
 #ifdef CM_SEARCH
     /* store the local hypothesis to temporal stack */
-    cm_store(new);
+    cm_store(dwrk, new);
 #else 
     /* put to stack */
     if (put_to_stack(new, &start, &bottom, &stacknum, stacksize) != -1) {
       dwrk->current = new;
-      callback_exec(CALLBACK_DEBUG_PASS2_PUSH, recog);
+      //callback_exec(CALLBACK_DEBUG_PASS2_PUSH, r);
       if (jconf->graph.enabled) {
 	new->prevgraph = NULL;
 	new->lastcontext = NULL;
@@ -1346,25 +1332,21 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
   }
 #ifdef CM_SEARCH
   /* compute score sum */
-  cm_sum_score(
+  cm_sum_score(dwrk
 #ifdef CM_MULTIPLE_ALPHA
-	       jconf->annotate.cm_alpha_bgn, 
-	       jconf->annotate.cm_alpha_end,
-	       jconf->annotate.cm_alpha_step
-#else
-	       jconf->annotate.cm_alpha
+	       , jconf->annotate.cm_alpha_bgn
+	       , jconf->annotate.cm_alpha_end
+	       , jconf->annotate.cm_alpha_step
 #endif
 	       );
 
   /* compute CM and put the generated hypotheses to global stack */
-  while ((new = cm_get_node()) != NULL) {
-    cm_set_score(new
+  while ((new = cm_get_node(dwrk)) != NULL) {
+    cm_set_score(dwrk, new
 #ifdef CM_MULTIPLE_ALPHA
 		 , jconf->annotate.cm_alpha_bgn
 		 , jconf->annotate.cm_alpha_end
 		 , jconf->annotate.cm_alpha_step
-#else
-		 , jconf->annotate.cm_alpha
 #endif
 		 );
 #ifdef CM_SEARCH_LIMIT
@@ -1380,8 +1362,8 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     
     if (put_to_stack(new, &start, &bottom, &stacknum, stacksize) != -1) {
       dwrk->current = new;
-      callback_exec(CALLBACK_DEBUG_PASS2_PUSH, recog);
-      if (recog->graphout) {
+      //callback_exec(CALLBACK_DEBUG_PASS2_PUSH, r);
+      if (r->graphout) {
 	new->prevgraph = NULL;
 	new->lastcontext = NULL;
       }
@@ -1401,10 +1383,12 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
   for (;;) {
 
     /* if terminate signal has been received, cancel this input */
-    if (recog->process_want_terminate) {
-      jlog("DEBUG: process terminated by request\n");
-      break;
-    }
+    /* 
+     * if (recog->process_want_terminate) {
+     *	 jlog("DEBUG: process terminated by request\n");
+     *	 break;
+     * }
+     */
     
     /* 
      * 仮説スタックから最もスコアの高い仮説を取り出す
@@ -1415,8 +1399,8 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #endif
     now = get_best_from_stack(&start,&stacknum);
     if (now == NULL) {  /* stack empty ---> 探索終了*/
-      jlog("WARNING: hypothesis stack exhausted, terminate search now\n");
-      jlog("STAT: %d sentences have been found\n", dwrk->finishnum);
+      jlog("WARNING: %02d %s: hypothesis stack exhausted, terminate search now\n", r->config->id, r->config->name);
+      jlog("STAT: %02d %s: %d sentences have been found\n", r->config->id, r->config->name, dwrk->finishnum);
       break;
     }
     /* (bogus score check) */
@@ -1427,22 +1411,22 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 
 
     /* 単語グラフ用に pop 仮説の f スコアを一時保存 */
-    if (recog->graphout) {
+    if (r->graphout) {
       prev_score = now->score;
     }
 
     /* word envelope チェック */
     /* consult word envelope */
-    if (jconf->search.pass2.enveloped_bestfirst_width >= 0) {
-      if (!wb_ok(dwrk, now, jconf->search.pass2.enveloped_bestfirst_width)) {
-	/* この仮説長における展開元仮説数の累計数は既に閾値を越えている．
-	   そのため，この仮説は捨てる．*/
+    if (jconf->pass2.enveloped_bestfirst_width >= 0) {
+      if (!wb_ok(dwrk, now, jconf->pass2.enveloped_bestfirst_width)) {
+	/* この仮説長における展開元仮説数の累計数は既に閾値を越えている. 
+	   そのため，この仮説は捨てる. */
 	/* the number of popped hypotheses at the length already
 	   reaches its limit, so the current popped hypothesis should
 	   be discarded here with no expansion */
 	if (debug2_flag) {
 	  jlog("DEBUG: popped but pruned by word envelope:");
-	  put_hypo_woutput(now, recog->model->winfo);
+	  put_hypo_woutput(now, r->lm->winfo);
 	}
 	free_node(now);
 	continue;
@@ -1462,20 +1446,20 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     /*             output information of the popped hypothesis to stdout */
     if (debug2_flag) {
       jlog("DEBUG: --- pop %d:\n", dwrk->popctr);
-      jlog("DEBUG:  "); put_hypo_woutput(now, recog->model->winfo);
-      jlog("DEBUG:  "); put_hypo_wname(now, recog->model->winfo);
+      jlog("DEBUG:  "); put_hypo_woutput(now, r->lm->winfo);
+      jlog("DEBUG:  "); put_hypo_wname(now, r->lm->winfo);
       jlog("DEBUG:  %d words, f=%f, g=%f\n", now->seqnum, now->score, now->g[now->bestt]);
       jlog("DEBUG:  last word on trellis: [%d-%d]\n", now->estimated_next_t + 1, now->bestt);
     }
 
     dwrk->current = now;
-    callback_exec(CALLBACK_DEBUG_PASS2_POP, recog);
+    //callback_exec(CALLBACK_DEBUG_PASS2_POP, r);
 
-    if (recog->graphout) {
+    if (r->graphout) {
 
 #ifdef GRAPHOUT_DYNAMIC
       /* merge last word in popped hypo if possible */
-      wtmp = wordgraph_check_merge(now->prevgraph, &wordgraph_root, now->seq[now->seqnum-1], &merged_p, recog->jconf);
+      wtmp = wordgraph_check_merge(now->prevgraph, &wordgraph_root, now->seq[now->seqnum-1], &merged_p, jconf);
       if (wtmp != NULL) {		/* wtmp holds merged word */
 	dynamic_merged_num++;
 
@@ -1540,7 +1524,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 
     /* 
      * 取り出した仮説の受理フラグが既に立っていれば，
-     * その仮説は探索終了とみなし，結果として出力して次のループへ．
+     * その仮説は探索終了とみなし，結果として出力して次のループへ. 
      *
      * If the popped hypothesis already reached to the end, 
      * we can treat it as a recognition result.
@@ -1583,7 +1567,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 
     
     /* 
-     * 探索失敗を検出する．
+     * 探索失敗を検出する. 
      * 仮説数が maxhypo 以上展開されたら, もうこれ以上は探索しない
      *
      * detecting search failure:
@@ -1593,10 +1577,10 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     jlog("DEBUG: loop end check\n");
 #endif
     if (dwrk->popctr >= maxhypo) {
-      jlog("WARNING: num of popped hypotheses reached the limit (%d)\n", maxhypo);
+      jlog("WARNING: %02d %s: num of popped hypotheses reached the limit (%d)\n", r->config->id, r->config->name, maxhypo);
       /* (for debug) 探索失敗時に、スタックに残った情報を吐き出す */
       /* (for debug) output all hypothesis remaining in the stack */
-      if (debug2_flag) put_all_in_stack(&start, &stacknum, recog->model->winfo);
+      if (debug2_flag) put_all_in_stack(&start, &stacknum, r->lm->winfo);
       free_node(now);
       break;			/* end of search */
     }
@@ -1609,7 +1593,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     }
 
 #ifndef GRAPHOUT_PRECISE_BOUNDARY
-    if (recog->graphout) {
+    if (r->graphout) {
       /* if monophone (= no backscan), the tail g score should be kept here */
       /* else, updated tail g score will be computed in scan_word()  */
       if(!jconf->am.ccd_flag) {
@@ -1619,23 +1603,23 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #endif
 
     /*
-     * 前向きスコアを更新する： 最後の単語の部分の前向きスコアを計算する．
+     * 前向きスコアを更新する： 最後の単語の部分の前向きスコアを計算する. 
      * update forward score: compute forward trellis for the last word
      */
 #ifdef DEBUG
     jlog("DEBUG: scan_word\n");
 #endif
-    scan_word(now, param, recog);
-    if (now->score < recog->backmax + LOG_ZERO) { /* another end-of-search detecter */
+    scan_word(now, param, r);
+    if (now->score < LOG_ZERO) { /* another end-of-search detecter */
       jlog("WARNING: too low score, ignore: score=%f",now->score);
-      put_hypo_woutput(now, recog->model->winfo);
+      put_hypo_woutput(now, r->lm->winfo);
       free_node(now);
       continue;
     }
 
     /* 
      * 取り出した仮説が文として受理可能であれば，
-     * 受理フラグを立ててをスタックにいれ直しておく．
+     * 受理フラグを立ててをスタックにいれ直しておく. 
      * (次に取り出されたら解となる)
      *
      * if the current popped hypothesis is acceptable, set endflag
@@ -1646,16 +1630,16 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     jlog("DEBUG: accept check\n");
 #endif
 
-    if (recog->lmtype == LM_PROB) {
-      acc = ngram_acceptable(now, recog);
-    } else if (recog->lmtype == LM_DFA) {
-      acc = dfa_acceptable(now, recog);
+    if (r->lmtype == LM_PROB) {
+      acc = ngram_acceptable(now, r);
+    } else if (r->lmtype == LM_DFA) {
+      acc = dfa_acceptable(now, r);
     }
     if (acc && now->estimated_next_t <= 5) {
-      new = newnode(recog);
+      new = newnode(r);
       /* new に now の中身をコピーして，最終的なスコアを計算 */
       /* copy content of 'now' to 'new', and compute the final score */
-      last_next_word(now, new, param, recog);
+      last_next_word(now, new, param, r);
       if (debug2_flag) {
 	jlog("DEBUG:  This is acceptable as a sentence candidate\n");
       }
@@ -1676,7 +1660,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
       }
       new->endflag = TRUE;
       if (put_to_stack(new, &start, &bottom, &stacknum, stacksize) != -1) {
-	if (recog->graphout) {
+	if (r->graphout) {
 	  if (new->score > LOG_ZERO) {
 	    new->lastcontext = now->prevgraph;
 	    new->prevgraph = wordgraph_assign(new->seq[new->seqnum-1],
@@ -1711,7 +1695,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #else
 					      LOG_ZERO,
 #endif
-					      recog
+					      r
 					      );
 	  } else {
 	    new->lastcontext = now->lastcontext;
@@ -1724,11 +1708,11 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     }
     
     /*
-     * この仮説から，次単語集合を決定する．
+     * この仮説から，次単語集合を決定する. 
      * 次単語集合は, この仮説の推定始端フレーム周辺に存在した
-     * 第１パスのトレリス単語集合．
+     * 第１パスのトレリス単語集合. 
      *
-     * N-gramの場合は各単語の n-gram 接続確率が含まれる．
+     * N-gramの場合は各単語の n-gram 接続確率が含まれる. 
      * DFA の場合は, その中でさらに DFA 上で接続可能なもののみが返ってくる
      */
     /*
@@ -1743,16 +1727,16 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #ifdef DEBUG
     jlog("DEBUG: get next words\n");
 #endif
-    if (recog->lmtype == LM_PROB) {
-      nwnum = ngram_nextwords(now, nextword, maxnwnum, recog);
-    } else if (recog->lmtype == LM_DFA) {
-      nwnum = dfa_nextwords(now, nextword, maxnwnum, recog);
+    if (r->lmtype == LM_PROB) {
+      nwnum = ngram_nextwords(now, nextword, maxnwnum, r);
+    } else if (r->lmtype == LM_DFA) {
+      nwnum = dfa_nextwords(now, nextword, maxnwnum, r);
       /* nextword が溢れたら、バッファを増やして再チャレンジ */
       /* If the number of nextwords can exceed the buffer size, expand the
 	 nextword data area */
       while (nwnum < 0) {
 	nextword = nw_expand(nextword, &maxnwnum, &nwroot, winfo->num);
-	nwnum = dfa_nextwords(now, nextword, maxnwnum, recog);
+	nwnum = dfa_nextwords(now, nextword, maxnwnum, r);
       }
     }
     if (debug2_flag) {
@@ -1760,7 +1744,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     }
 
     /* 
-     * 仮説と次単語集合から新たな文仮説を生成し，スタックにいれる．
+     * 仮説と次単語集合から新たな文仮説を生成し，スタックにいれる. 
      */
     /*
      * generate new hypotheses from 'now' and 'nextword', 
@@ -1770,14 +1754,14 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     jlog("DEBUG: generate hypo\n");
 #endif
 
-    if (recog->lmtype == LM_DFA) {
+    if (r->lmtype == LM_DFA) {
       now_noise_calced = FALSE;	/* TRUE is noise-inserted score has been calculated */
     }
     i = dwrk->pushctr;		/* store old value */
 
 #ifdef CM_SEARCH
     /* initialize local stack */
-    cm_init(winfo->num
+    cm_init(dwrk, winfo->num, jconf->annotate.cm_alpha
 #ifdef CM_MULTIPLE_ALPHA
 	    , jconf->annotate.cm_alpha_num
 #endif
@@ -1786,15 +1770,15 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 
     /* for each nextword, generate a new hypothesis */
     for (w = 0; w < nwnum; w++) {
-      if (recog->lmtype == LM_DFA) {
+      if (r->lmtype == LM_DFA) {
 	/* limit word hypothesis */
 	if (! (winfo->wton[nextword[w]->id] >= cate_bgn && winfo->wton[nextword[w]->id] < cate_bgn + cate_num)) {
 	  continue;
 	}
       }
-      new = newnode(recog);
+      new = newnode(r);
 
-      if (recog->lmtype == LM_DFA) {
+      if (r->lmtype == LM_DFA) {
 
 	if (nextword[w]->can_insert_sp == TRUE) {
 	  /* ノイズを挟んだトレリススコアを計算し，挟まない場合との最大値を取る */
@@ -1805,12 +1789,12 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	    /* generate temporal hypothesis 'now_noise' which has short-pause
 	       word after the original 'now' */
 	    fornoise.id = gdfa->sp_id;
-	    now_noise = newnode(recog);
+	    now_noise = newnode(r);
 	    cpy_node(now_noise, now);
 #if 0
-	    now_noise_tmp = newnode(recog);
-	    next_word(now, now_noise_tmp, &fornoise, param, recog);
-	    scan_word(now_noise_tmp, param, recog);
+	    now_noise_tmp = newnode(r);
+	    next_word(now, now_noise_tmp, &fornoise, param, r);
+	    scan_word(now_noise_tmp, param, r);
 	    for(t=0;t<peseqlen;t++) {
 	      now_noise->g[t] = max(now_noise_tmp->g[t], now->g[t]);
 	    }
@@ -1818,8 +1802,8 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #else
 	    /* expand NOISE only if it exists in backward trellis */
 	    /* begin patch by kashima */
-	    if (jconf->search.pass2.looktrellis_flag) {
-	      if(!dfa_look_around(&fornoise, now, recog)){
+	    if (jconf->pass2.looktrellis_flag) {
+	      if(!dfa_look_around(&fornoise, now, r)){
 		free_node(now_noise);
 		free_node(new);
 		continue;
@@ -1831,8 +1815,8 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	       高い方を採用 */
 	    /* compute trellis score g[], and adopt the maximum score
 	       for each frame compared with now->g[] */
-	    next_word(now, now_noise, &fornoise, param, recog);
-	    scan_word(now_noise, param, recog);
+	    next_word(now, now_noise, &fornoise, param, r);
+	    scan_word(now_noise, param, r);
 	    for(t=0;t<peseqlen;t++) {
 	      now_noise->g[t] = max(now_noise->g[t], now->g[t]);
 	    }
@@ -1847,8 +1831,8 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	  
 	  /* expand word only if it exists in backward trellis */
 	  /* begin patch by kashima */
-	  if (jconf->search.pass2.looktrellis_flag) {
-	    if(!dfa_look_around(nextword[w], now_noise, recog)){
+	  if (jconf->pass2.looktrellis_flag) {
+	    if(!dfa_look_around(nextword[w], now_noise, r)){
 	      free_node(new);
 	      continue;
 	    }
@@ -1857,14 +1841,14 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	  
 	  /* 新しい仮説' new' を 'now_noise' から生成 */
 	  /* generate a new hypothesis 'new' from 'now_noise' */
-	  next_word(now_noise, new, nextword[w], param, recog);
+	  next_word(now_noise, new, nextword[w], param, r);
 	  
 	} else {
 	  
 	  /* expand word only if it exists in backward trellis */
 	  /* begin patch by kashima */
-	  if (jconf->search.pass2.looktrellis_flag) {
-	    if(!dfa_look_around(nextword[w], now, recog)){
+	  if (jconf->pass2.looktrellis_flag) {
+	    if(!dfa_look_around(nextword[w], now, r)){
 	      free_node(new);
 	      continue;
 	    }
@@ -1873,18 +1857,18 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	  
 	  /* 新しい仮説' new' を 'now_noise' から生成 */
 	  /* generate a new hypothesis 'new' from 'now_noise' */
-	  next_word(now, new, nextword[w], param, recog);
+	  next_word(now, new, nextword[w], param, r);
 	  
 	}
       }
 
-      if (recog->lmtype == LM_PROB) {
+      if (r->lmtype == LM_PROB) {
 
 	/* 新しい仮説' new' を 'now_noise' から生成
 	   N-gram の場合はノイズを特別扱いしない */
 	/* generate a new hypothesis 'new' from 'now'.
 	   pause insertion is treated as same as normal words in N-gram mode. */
-	next_word(now, new, nextword[w], param, recog);
+	next_word(now, new, nextword[w], param, r);
 
       }
 
@@ -1897,7 +1881,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 
 #ifdef CM_SEARCH
       /* store the local hypothesis to temporal stack */
-      cm_store(new);
+      cm_store(dwrk, new);
 #else 
       /* 生成した仮説 'new' をスタックに入れる */
       /* push the generated hypothesis 'new' to stack */
@@ -1908,7 +1892,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	continue;
       }
       
-      if (recog->graphout) {
+      if (r->graphout) {
 	/* assign a word arc to the last fixed word */
 	new->lastcontext = now->prevgraph;
 	new->prevgraph = wordgraph_assign(new->seq[new->seqnum-2],
@@ -1947,7 +1931,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #else
 					  LOG_ZERO,
 #endif
-					  recog
+					  r
 					  );
       }	/* recog->graphout */
       put_to_stack(new, &start, &bottom, &stacknum, stacksize);
@@ -1956,31 +1940,27 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	jlog("DEBUG:  %15s [%15s](id=%5d)(%f) [%d-%d] pushed\n",winfo->wname[j], winfo->woutput[j], j, new->score, new->estimated_next_t + 1, new->bestt);
       }
       dwrk->current = new;
-      callback_exec(CALLBACK_DEBUG_PASS2_PUSH, recog);
+      //callback_exec(CALLBACK_DEBUG_PASS2_PUSH, r);
       dwrk->pushctr++;
 #endif
     } /* end of nextword loop */
 
 #ifdef CM_SEARCH
     /* compute score sum */
-    cm_sum_score(
+    cm_sum_score(dwrk
 #ifdef CM_MULTIPLE_ALPHA
-		 jconf->annotate.cm_alpha_bgn, 
-		 jconf->annotate.cm_alpha_end,
-		 jconf->annotate.cm_alpha_step
-#else
-		 jconf->annotate.cm_alpha
+		 , jconf->annotate.cm_alpha_bgn 
+		 , jconf->annotate.cm_alpha_end
+		 , jconf->annotate.cm_alpha_step
 #endif
 		 );
     /* compute CM and put the generated hypotheses to global stack */
-    while ((new = cm_get_node()) != NULL) {
-      cm_set_score(new
+    while ((new = cm_get_node(dwrk)) != NULL) {
+      cm_set_score(dwrk, new
 #ifdef CM_MULTIPLE_ALPHA
 		   , jconf->annotate.cm_alpha_bgn
 		   , jconf->annotate.cm_alpha_end
 		   , jconf->annotate.cm_alpha_step
-#else
-		   , jconf->annotate.cm_alpha
 #endif
 		   );
 #ifdef CM_SEARCH_LIMIT
@@ -2002,7 +1982,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	continue;
       }
 
-      if (recog->graphout) {
+      if (r->graphout) {
 
 	/* assign a word arc to the last fixed word */
 	new->lastcontext = now->prevgraph;
@@ -2040,7 +2020,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #else
 					  LOG_ZERO,
 #endif
-					  recog
+					  r
 					  );
       }	/* recog->graphout */
       
@@ -2050,7 +2030,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 	jlog("DEBUG:  %15s [%15s](id=%5d)(%f) [%d-%d] pushed\n",winfo->wname[j], winfo->woutput[j], j, new->score, new->estimated_next_t + 1, new->bestt);
       }
       dwrk->current = new;
-      callback_exec(CALLBACK_DEBUG_PASS2_PUSH, recog);
+      //callback_exec(CALLBACK_DEBUG_PASS2_PUSH, r);
       dwrk->pushctr++;
     }
 #endif
@@ -2058,7 +2038,7 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     if (debug2_flag) {
       jlog("DEBUG: %d pushed\n",dwrk->pushctr-i);
     }
-    if (recog->lmtype == LM_DFA) {
+    if (r->lmtype == LM_DFA) {
       if (now_noise_calced == TRUE) free_node(now_noise);
     }
     
@@ -2079,15 +2059,15 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
      the result of the previous 1st pass as a final result. */
   if (dwrk->finishnum == 0) {		/* if search failed */
     if (verbose_flag) {
-      jlog("WARNING: got no candidates, output 1st pass result as a final result\n");
+      jlog("WARNING: %02d %s: got no candidates, output 1st pass result as a final result\n", r->config->id, r->config->name);
     }
     /* make hypothesis data from the result of previous 1st pass */
-    now = newnode(recog);
-    for (i=0;i<recog->pass1_wnum;i++) {
-      now->seq[i] = recog->pass1_wseq[recog->pass1_wnum-1-i];
+    now = newnode(r);
+    for (i=0;i<r->pass1_wnum;i++) {
+      now->seq[i] = r->pass1_wseq[r->pass1_wnum-1-i];
     }
-    now->seqnum = recog->pass1_wnum;
-    now->score = recog->pass1_score;
+    now->seqnum = r->pass1_wnum;
+    now->score = r->pass1_score;
 #ifdef CONFIDENCE_MEASURE
     /* fill in null values */
 #ifdef CM_MULTIPLE_ALPHA
@@ -2098,42 +2078,47 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
     for(i=0;i<now->seqnum;i++) now->cmscore[i] = 0.0;
 #endif
 #endif /* CONFIDENCE_MEASURE */
-    
-#ifdef SP_BREAK_CURRENT_FRAME
-    /* segment restart processing */
-    sp_segment_set_last_nword(now, recog);
-#endif
+
+    if (r->lmtype == LM_PROB && r->config->successive.enabled) {
+      /* if in sp segment mode, */
+      /* find segment restart words from 1st pass result */
+      segment_set_last_nword(now, r);
+    }
     /* do forced alignment if needed */
-    if (jconf->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(recog->result.pass1), recog);
-    if (jconf->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(recog->result.pass1), recog);
-    if (jconf->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(recog->result.pass1), recog);
+    if (jconf->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
+    if (jconf->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
+    if (jconf->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
 
     /* output it */
-    recog->result.status = -1;
-    callback_exec(CALLBACK_RESULT, recog);
+    r->result.status = J_RESULT_STATUS_FAIL;
+    //callback_exec(CALLBACK_RESULT, r);
 
     free_node(now);
+
   } else {			/* if at least 1 candidate found */
     if (debug2_flag) {
-      jlog("STAT: got %d candidates\n",dwrk->finishnum);
+      jlog("STAT: %02d %s: got %d candidates\n", r->config->id, r->config->name, dwrk->finishnum);
     }
       /* 結果はまだ出力されていないので，文候補用スタック内をソートして
 	 ここで出力する */
       /* As all of the found candidate are in result stack, we sort them
 	 and output them here  */
       if (debug2_flag) jlog("DEBUG: done\n");
-      result_reorder_and_output(&r_start, &r_bottom, &r_stacknum, jconf->output.output_hypo_maxnum, recog, param);
+      result_reorder_and_output(&r_start, &r_bottom, &r_stacknum, jconf->output.output_hypo_maxnum, r, param);
+      //callback_exec(CALLBACK_RESULT, r);
+      //callback_exec(CALLBACK_EVENT_PASS2_END, r);
   }
-
+  
   /* 各種カウンタを出力 */
   /* output counters */
   if (verbose_flag) {
-    jlog("STAT: %d generated, %d pushed, %d nodes popped in %d\n",
+    jlog("STAT: %02d %s: %d generated, %d pushed, %d nodes popped in %d\n",
+	 r->config->id, r->config->name,
 	 dwrk->genectr, dwrk->pushctr, dwrk->popctr, backtrellis->framelen);
     jlog_flush();
 #ifdef GRAPHOUT_DYNAMIC
-    if (recog->graphout) {
-      jlog("STAT: graph: %d merged", dynamic_merged_num);
+    if (r->graphout) {
+      jlog("STAT: %02d %s: graph: %d merged", r->config->id, r->config->name, dynamic_merged_num);
 #ifdef GRAPHOUT_SEARCH
       jlog("S, %d terminated", terminate_search_num);
 #endif
@@ -2142,80 +2127,81 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #endif
   }
     
-  if (recog->graphout) {
-    jlog("STAT: ------ wordgraph post-processing begin ------\n");
+  if (dwrk->finishnum > 0 && r->graphout) {
+    if (verbose_flag) jlog("STAT: ------ wordgraph post-processing begin ------\n");
     /* garbage collection and word merging */
     /* words with no following word (except end of sentence) will be erased */
-    wordgraph_purge_leaf_nodes(&wordgraph_root, recog);
+    wordgraph_purge_leaf_nodes(&wordgraph_root, r);
 #ifdef GRAPHOUT_DEPTHCUT
     /* perform word graph depth cutting here */
-    wordgraph_depth_cut(&wordgraph_root, recog);
+    wordgraph_depth_cut(&wordgraph_root, r);
 #endif
 
     /* if GRAPHOUT_PRECISE_BOUNDARY defined,
        propagate exact time boundary to the right context.
        words of different boundary will be duplicated here.
     */
-    wordgraph_adjust_boundary(&wordgraph_root, recog);
+    wordgraph_adjust_boundary(&wordgraph_root, r);
 
-    if (recog->jconf->graph.confnet) {
+    if (jconf->graph.confnet) {
       /* CONFUSION NETWORK GENERATION */
 
       /* old merging functions should be skipped */
 
       /* finalize: sort and annotate ID */
-      recog->graph_totalwordnum = wordgraph_sort_and_annotate_id(&wordgraph_root, recog);
+      r->graph_totalwordnum = wordgraph_sort_and_annotate_id(&wordgraph_root, r);
       /* check coherence */
-      wordgraph_check_coherence(wordgraph_root, recog);
+      wordgraph_check_coherence(wordgraph_root, r);
       /* compute graph CM by forward-backward processing */
-      graph_forward_backward(wordgraph_root, recog);
-      jlog("STAT: ------ wordgraph post-processing end ------\n");
+      graph_forward_backward(wordgraph_root, r);
+      if (verbose_flag) jlog("STAT: ------ wordgraph post-processing end ------\n");
 
-      recog->result.wg = wordgraph_root;
+      r->result.wg = wordgraph_root;
 
-      if (recog->jconf->graph.lattice) {
-	/* output graph */
-	callback_exec(CALLBACK_RESULT_GRAPH, recog);
-      }
+      /* 
+       * if (jconf->graph.lattice) {
+       *   callback_exec(CALLBACK_RESULT_GRAPH, r);
+       * }
+       */
       
       /* parse the graph to extract order relationship */
-      graph_make_order(wordgraph_root, recog);
+      graph_make_order(wordgraph_root, r);
       /* create confusion network */
-      recog->result.confnet = confnet_create(wordgraph_root, recog);
+      r->result.confnet = confnet_create(wordgraph_root, r);
       /* output confusion network */
-      callback_exec(CALLBACK_RESULT_CONFNET, recog);
+      //callback_exec(CALLBACK_RESULT_CONFNET, r);
       /* free area for order relationship */
       graph_free_order();
       /* free confusion network clusters */
-      cn_free_all(&(recog->result.confnet));
+      //cn_free_all(&(r->result.confnet));
 
-    } else if (recog->jconf->graph.lattice) {
+    } else if (jconf->graph.lattice) {
       /* WORD LATTICE POSTPROCESSING */
 
       /* merge words with the same time and same score */
       wordgraph_compaction_thesame(&wordgraph_root);
       /* merge words with the same time (skip if "-graphrange -1") */
-      wordgraph_compaction_exacttime(&wordgraph_root, recog);
+      wordgraph_compaction_exacttime(&wordgraph_root, r);
       /* merge words of near time (skip if "-graphrange" value <= 0 */
-      wordgraph_compaction_neighbor(&wordgraph_root, recog);
+      wordgraph_compaction_neighbor(&wordgraph_root, r);
       /* finalize: sort and annotate ID */
-      recog->graph_totalwordnum = wordgraph_sort_and_annotate_id(&wordgraph_root, recog);
+      r->graph_totalwordnum = wordgraph_sort_and_annotate_id(&wordgraph_root, r);
       /* check coherence */
-      wordgraph_check_coherence(wordgraph_root, recog);
+      wordgraph_check_coherence(wordgraph_root, r);
       /* compute graph CM by forward-backward processing */
-      graph_forward_backward(wordgraph_root, recog);
-      jlog("STAT: ------ wordgraph post-processing end ------\n");
+      graph_forward_backward(wordgraph_root, r);
+      if (verbose_flag) jlog("STAT: ------ wordgraph post-processing end ------\n");
       /* output graph */
-      recog->result.wg = wordgraph_root;
-      callback_exec(CALLBACK_RESULT_GRAPH, recog);
+      r->result.wg = wordgraph_root;
+      //callback_exec(CALLBACK_RESULT_GRAPH, r);
 
     } else {
       j_internal_error("InternalError: graph generation specified but no output format specified?\n");
     }
 
     /* clear all wordgraph */
-    wordgraph_clean(&(recog->result.wg));
-  } /* recog->graphout */
+    //wordgraph_clean(&(r->result.wg));
+  } /* r->graphout */
 
   
   /* 終了処理 */
@@ -2226,6 +2212,8 @@ wchmm_fbs(HTK_Param *param, Recog *recog, int cate_bgn, int cate_num)
 #ifdef SCAN_BEAM
   free(dwrk->framemaxscore);
 #endif
-  result_sentence_free(recog);
+  //result_sentence_free(r);
   clear_stocker(dwrk);
 }
+
+/* end of file */

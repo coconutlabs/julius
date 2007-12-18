@@ -1,23 +1,21 @@
 /**
  * @file   wchmm.c
- * @author Akinobu Lee
- * @date   Mon Sep 19 23:39:15 2005
  * 
  * <JA>
- * @brief  木構造化辞書を構築する
+ * @brief  木構造化辞書の構築
  *
  * ここでは，与えられた単語辞書, HMM定義および言語制約から木構造化辞書を
- * 構築する関数が定義されています．木構造化辞書は起動時に構築され，
- * 第1パスの認識に用いられます．木構造化辞書は状態単位で構成され，
- * 各状態はHMM出力確率と遷移先の他，および探索のための様々な情報を含みます．
+ * 構築する関数が定義されています. 木構造化辞書は起動時に構築され，
+ * 第1パスの認識に用いられます. 木構造化辞書は状態単位で構成され，
+ * 各状態はHMM出力確率と遷移先の他，および探索のための様々な情報を含みます. 
  *
  * 開発の経緯上，ソース内では木構造化辞書は wchmm (word-conjunction HMM) と
- * も表現されています．
+ * も表現されています. 
  * 
  * </JA>
  * 
  * <EN>
- * @brief  Build tree lexicon.
+ * @brief  Construction of tree lexicon.
  *
  * Functions to build a tree lexicon (or called word-conjunction HMM here)
  * from word dictionary, HMM and language models are defined here.  The
@@ -30,13 +28,16 @@
  * "tree lexicon". 
  * </EN>
  * 
- * $Revision: 1.2 $
+ * @author Akinobu Lee
+ * @date   Mon Sep 19 23:39:15 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -47,22 +48,23 @@
 
 #define WCHMM_SIZE_CHECK		///< If defined, do wchmm size estimation (for debug only)
 
-
 /**************************************************************/
 /*********** Initialization of tree lexicon *******************/
 /**************************************************************/
 
 /** 
  * <JA>
- * 木構造化辞書を新たに割り付ける．
+ * 木構造化辞書構造体を新規に割り付ける. 
  * 
- * @return 新たにメモリ上に割り付けられた木構造化辞書構造体へのポインタを返す．
+ * @return 新たにメモリ上に割り付けられた木構造化辞書構造体へのポインタを返す. 
  * </JA>
  * <EN>
  * Allocate a new tree lexicon structure.
  * 
  * @return pointer to the newly allocated tree lexicon structure.
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 WCHMM_INFO *
 wchmm_new()
@@ -87,7 +89,7 @@ wchmm_new()
 
 /** 
  * <JA>
- * 木構造化辞書の内容を初期化する．
+ * 木構造化辞書の内容を初期化する. 
  * 
  * @param wchmm [out] 木構造化辞書へのポインタ
  * </JA>
@@ -145,7 +147,7 @@ wchmm_init(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 木構造化辞書の状態格納領域を MAXWCNSTEP 分だけ伸長する．
+ * 木構造化辞書の状態格納領域を MAXWCNSTEP 分だけ伸長する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -172,7 +174,7 @@ wchmm_extend(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 木構造化辞書の単語先頭ノード格納領域を STARTNODE_STEP分だけ伸長する． (multipath)
+ * 木構造化辞書の単語先頭ノード格納領域を STARTNODE_STEP分だけ伸長する.  (multipath)
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -194,7 +196,7 @@ wchmm_extend_startnode(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 木構造化辞書およびその内部の割付メモリを全て解放する．
+ * 木構造化辞書およびその内部の割付メモリを全て解放する. 
  * 
  * @param w [in] 木構造化辞書
  * </JA>
@@ -203,6 +205,8 @@ wchmm_extend_startnode(WCHMM_INFO *wchmm)
  * 
  * @param w [in] tree lexicon
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 wchmm_free(WCHMM_INFO *w)
@@ -280,7 +284,7 @@ static WORD_INFO *local_winfo;	///< Temporary work area for sort callbacks
  * @param widx1 [in] 単語ID 1 へのポインタ
  * @param widx2 [in] 単語ID 2 へのポインタ
  * 
- * @return 単語widx2が単語widx1の一部か昇順であれば 1, 単語widx1が単語widx2の一部か昇順であれば -1, 全く同じ音素並びであれば 0 を返す．
+ * @return 単語widx2が単語widx1の一部か昇順であれば 1, 単語widx1が単語widx2の一部か昇順であれば -1, 全く同じ音素並びであれば 0 を返す. 
  * </JA>
  * <EN>
  * qsort function to sort words by their phoneme sequence.
@@ -324,7 +328,7 @@ compare_wseq(WORD_ID *widx1, WORD_ID *widx2)
 
 /** 
  * <JA>
- * 単語IDの集合 windex[bgn..bgn+len-1] を単語の音素ならびでソートする．
+ * 単語IDの集合 windex[bgn..bgn+len-1] を単語の音素ならびでソートする. 
  * 
  * @param winfo [in] 単語辞書
  * @param windex [i/o] 単語IDのインデックス列（内部でソートされる）
@@ -349,7 +353,7 @@ wchmm_sort_idx_by_wseq(WORD_INFO *winfo, WORD_ID *windex, WORD_ID bgn, WORD_ID l
 
 /** 
  * <JA>
- * 単語をカテゴリIDでソートするqsort関数．
+ * 単語をカテゴリIDでソートするqsort関数. 
  * 
  * @param widx1 [in] 要素1へのポインタ
  * @param widx2 [in] 要素2へのポインタ
@@ -376,7 +380,7 @@ compare_category(WORD_ID *widx1, WORD_ID *widx2)
 
 /** 
  * <JA>
- * 単語ID集合 windex[0..len-1] をカテゴリIDでソートする．
+ * 単語ID集合 windex[0..len-1] をカテゴリIDでソートする. 
  * 
  * @param winfo [in] 単語辞書
  * @param windex [i/o] 単語IDのインデックス列（内部でソートされる）
@@ -402,19 +406,15 @@ wchmm_sort_idx_by_category(WORD_INFO *winfo, WORD_ID *windex, WORD_ID len)
 /************** Subroutines to link part of words  ********************/
 /**********************************************************************/
 
-/* 
-   返り値: 共有音素数 */
-/* compare 2 words 'i', 'j' from start phoneme, and return the number
-   of sharable phonemes. */
 /** 
  * <JA>
- * ２単語間で，単語の先頭から同一で共有可能な音素の数を調べる．
+ * ２単語間で，単語の先頭から同一で共有可能な音素の数を調べる. 
  * 
  * @param winfo [in] 単語辞書
  * @param i [in] 単語１
  * @param j [in] 単語２
  * 
- * @return 共有可能な先頭からの音素数を返す．
+ * @return 共有可能な先頭からの音素数を返す. 
  * </JA>
  * <EN>
  * Compare two words from word head per phoneme to see how many phones
@@ -442,23 +442,46 @@ wchmm_check_match(WORD_INFO *winfo, int i, int j)
   return(tmplen);
 }
 
+/** 
+ * <EN>
+ * Initialize transition information on a node.
+ * </EN>
+ * <JA>
+ * ノードの遷移情報を初期化する. 
+ * </JA>
+ * 
+ * @param wchmm [i/o] tree lexicon
+ * @param node [in] node id
+ * 
+ */
 static void
 acc_init(WCHMM_INFO *wchmm, int node)
 {
-  A_CELL2 *ac;
-
   wchmm->self_a[node] = LOG_ZERO;
   wchmm->next_a[node] = LOG_ZERO;
   wchmm->ac[node] = NULL;
 }
 
+/** 
+ * <EN>
+ * Add an arc to a node.
+ * This function is for transition other than self and next node.
+ * </EN>
+ * <JA>
+ * ノードに遷移を追加する. 
+ * この関数は自己遷移・隣への遷移以外の場合に使用される. 
+ * </JA>
+ * 
+ * @param wchmm [i/o] tree lexicon
+ * @param node [in] node id
+ * @param a [in] transition probability in log10
+ * @param arc [in] transition destination node id
+ * 
+ */
 static void
 add_ac(WCHMM_INFO *wchmm, int node, LOGPROB a, int arc)
 {
   A_CELL2 *ac2;
-  int x;
-  int *arc_new;
-  LOGPROB *a_new;
 
   for(ac2=wchmm->ac[node];ac2;ac2=ac2->next) {
     if (ac2->n < A_CELL2_ALLOC_STEP) break;
@@ -495,8 +518,6 @@ add_ac(WCHMM_INFO *wchmm, int node, LOGPROB a, int arc)
 static void
 add_wacc(WCHMM_INFO *wchmm, int node, LOGPROB a, int arc)
 {
-  A_CELL2 *ac;
-
   if (arc == node) {
     wchmm->self_a[node] = a;
   } else if (arc == node + 1) {
@@ -506,18 +527,16 @@ add_wacc(WCHMM_INFO *wchmm, int node, LOGPROB a, int arc)
   }
 }
 
-/* homophone processing is not needed in multipath version */
-
 /**
  * <JA>
- * ある単語のある位置の音素から単語末端の外へ出る遷移のリストを得る．(multipath) 
+ * ある単語のある位置の音素から単語末端の外へ出る遷移のリストを得る. (multipath) 
  * 
  * @param wchmm [in] 木構造化辞書
  * @param w [in] 単語ID
  * @param pos [in] 音素位置
  * @param node [out] 音素内の，単語末端外への遷移を持つ状態のリスト
  * @param a [out] @a node の各要素の遷移確率
- * @param num [out] @a node の要素数．発見数だけ増加される．
+ * @param num [out] @a node の要素数. 発見数だけ増加される. 
  * @param maxnum [in] @a node の格納可能な最大数
  * @param insert_sp [in] 単語終端での sp 挟み込みを考慮するならTRUE
  * </JA>
@@ -539,7 +558,7 @@ get_outtrans_list(WCHMM_INFO *wchmm, WORD_ID w, int pos, int *node, LOGPROB *a, 
 {
   HMM_Logical *ltmp;
   int states;
-  int k, ato;
+  int k;
   LOGPROB prob;
   int oldnum;
 
@@ -604,7 +623,7 @@ get_outtrans_list(WCHMM_INFO *wchmm, WORD_ID w, int pos, int *node, LOGPROB *a, 
 
 /** 
  * <JA>
- * ある音素の末尾の状態から，ある音素の先頭状態への遷移を追加する．
+ * ある音素の末尾の状態から，ある音素の先頭状態への遷移を追加する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * @param from_node [in] ある音素の末尾の状態
@@ -659,7 +678,7 @@ wchmm_link_hmm(WCHMM_INFO *wchmm, int from_node, int to_node, HTK_HMM_Trans *tin
 
 /** 
  * <JA>
- * 木構造化辞書中の２単語中のある音素間を接続する．
+ * 木構造化辞書中の２単語中のある音素間を接続する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * @param from_word [in] 遷移元の単語のID
@@ -698,10 +717,10 @@ wchmm_link_subword(WCHMM_INFO *wchmm, int from_word, int from_seq, int to_word, 
  * <JA>
  * 同音語処理:
  * 木構造化辞書においてすべての単語は独立した最終状態を持つ必要があるため，
- * 同音語は注意深く扱う必要がある．このため，最初の木構造化辞書を構築した後, 
+ * 同音語は注意深く扱う必要がある. このため，最初の木構造化辞書を構築した後, 
  * 別の単語と完全に共有された単語(同音語), あるいは別の単語の一部として
  * 埋め込まれてしまっている単語を発見するとともに, その最終ノードを
- * コピーして新たな単語終端ノードを作る必要がある．
+ * コピーして新たな単語終端ノードを作る必要がある. 
  * </JA>
  * <EN>
  * Homophones:
@@ -716,7 +735,7 @@ wchmm_link_subword(WCHMM_INFO *wchmm, int from_word, int from_seq, int to_word, 
 /** 
  * <JA>
  * 単語終端状態の独立化：与えられた単語の終端ノードをコピーして，
- * 新たにある単語の最終状態として定義する．
+ * 新たにある単語の最終状態として定義する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * @param node [in] 同音語の終端ノード番号
@@ -739,7 +758,6 @@ wchmm_duplicate_state(WCHMM_INFO *wchmm, int node, int word) /* source node, new
   int n_src, n_prev;
   A_CELL2	*ac;
   HMM_Logical *lastphone;
-  LOGPROB a;
 
   /* 1 state will newly created: expand tree if needed */
   if (wchmm->n + 1 >= wchmm->maxwcn) {
@@ -852,7 +870,7 @@ wchmm_duplicate_state(WCHMM_INFO *wchmm, int node, int word) /* source node, new
 /** 
  * <JA>
  * 木構造化辞書全体を走査して，すべての同音語について単語終端状態の独立化
- * を行う．
+ * を行う. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * </JA>
@@ -929,14 +947,15 @@ wchmm_duplicate_leafnode(WCHMM_INFO *wchmm)
 
 /** 
  * <JA>
- * 木構造化辞書に新たに単語を追加する．追加場所の情報として，現在の木構造化
+ * 木構造化辞書に新たに単語を追加する. 追加場所の情報として，現在の木構造化
  * 辞書内で最もその単語と先頭から良くマッチする単語，およびそのマッチする長さ
- * を指定する．
+ * を指定する. 
  * 
  * @param wchmm [i/o] 木構造化辞書
  * @param word [in] 追加する辞書単語のID
  * @param matchlen [in] @a word と @a matchword の先頭からマッチする音素長
  * @param matchword [in] 既存の木構造化辞書中で @a word と最もマッチする単語
+ * @param enable_iwsp [in] 単語間ショートポーズ機能使用時TRUEを指定
  * </JA>
  * <EN>
  * Add a new word to the lexicon tree.  The longest matched word in the current
@@ -947,10 +966,11 @@ wchmm_duplicate_leafnode(WCHMM_INFO *wchmm)
  * @param word [in] word id to be added to the lexicon
  * @param matchlen [in] phoneme match length between @a word and @a matchword.
  * @param matchword [in] the longest matched word with @a word in the current lexicon tree
+ * @param enable_iwsp [in] should be TRUE when using inter-word short pause option
  * </EN>
  */
 static boolean
-wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *jconf)
+wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, boolean enable_iwsp)
 {
   boolean ok_p;
   int   j,k,n;
@@ -1034,7 +1054,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
     } else {
       /*printf("%d(%s)\n", word, wchmm->winfo->woutput[word]);*/
       /* on -iwsp, trailing sp is needed only when no phone will be created */
-      get_outtrans_list(wchmm, matchword, add_to, out_from, out_a, &out_num_prev, wchmm->winfo->maxwn, (jconf->lm.enable_iwsp && add_tail - add_head + 1 <= 0) ? TRUE : FALSE);
+      get_outtrans_list(wchmm, matchword, add_to, out_from, out_a, &out_num_prev, wchmm->winfo->maxwn, (enable_iwsp && add_tail - add_head + 1 <= 0) ? TRUE : FALSE);
       /*printf("NUM=%d\n", out_num_prev);*/
     }
   } else { /*  end of multipath block */
@@ -1055,7 +1075,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
 	ltmp = wchmm->winfo->wseq[word][j];
 	ltmp_state_num = hmm_logical_state_num(ltmp);
 #ifdef PASS1_IWCD
-	if (jconf->am.ccd_flag) {
+	if (wchmm->ccd_flag) {
 	  /* in the triphone lexicon tree, the last phone of a word has
 	     left-context cdset */
 	  if (wchmm->winfo->wlen[word] > 1 && j == wchmm->winfo->wlen[word] - 1) {
@@ -1068,7 +1088,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
 		/* no category-aware cdset found.  This is case when no word
 		   can follow this word grammatically.
 		   so fallback to normal state */
-		jlog("WARNING: wchmm: no lcdset found for [%s::%d], fallback to [%s]\n", ltmp->name, wchmm->winfo->wton[word], ltmp->name);
+		jlog("WARNING: wchmm: no lcdset found for [%s::%04d], fallback to [%s]\n", ltmp->name, wchmm->winfo->wton[word], ltmp->name);
 		lcd = lcdset_lookup_by_hmmname(wchmm->hmminfo, ltmp->name);
 	      }
 #endif
@@ -1085,7 +1105,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
 	for (k = 1; k < ltmp_state_num - 1; k++) { /* for each state in the phone */
 	  /* set state output prob info */
 #ifdef PASS1_IWCD
-	  if (jconf->am.ccd_flag) {
+	  if (wchmm->ccd_flag) {
 	    /* output info of triphones needs special handling */
 	    if (wchmm->winfo->wlen[word] == 1) { /* word with only 1 phone */
 	      wchmm->outstyle[ntmp] = AS_LRSET;
@@ -1217,7 +1237,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
   /*************************************/
   
   /* if -iwsp, add noise model to the end of word at ntmp */
-  if (wchmm->hmminfo->multipath && jconf->lm.enable_iwsp && add_tail - add_head + 1 > 0) { /* there are new phones to be created */
+  if (wchmm->hmminfo->multipath && enable_iwsp && add_tail - add_head + 1 > 0) { /* there are new phones to be created */
     int ntmp_bak;
     
     /* set short pause state info */
@@ -1318,7 +1338,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
     /* create word-end node */
 
     /* paranoia check if the short-pause addition has been done well */
-    if (jconf->lm.enable_iwsp && add_tail - add_head + 1 > 0) {
+    if (enable_iwsp && add_tail - add_head + 1 > 0) {
       n += hmm_logical_state_num(wchmm->hmminfo->sp) - 2;
       if (n != ntmp) j_internal_error("wchmm_add_word: cannot match\n");
     }
@@ -1340,7 +1360,7 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
       /* check if the new word has whole word-skipping transition */
       /* (use out_from and out_num_prev temporary) */
       out_num_prev = 0;
-      get_outtrans_list(wchmm, word, word_len-1, out_from, out_a, &out_num_prev, wchmm->winfo->maxwn, jconf->lm.enable_iwsp);
+      get_outtrans_list(wchmm, word, word_len-1, out_from, out_a, &out_num_prev, wchmm->winfo->maxwn, enable_iwsp);
       for(k=0;k<out_num_prev;k++) {
 	if (out_from[k] == wchmm->wordbegin[word]) {
 	  jlog("ERROR: *** ERROR: WORD SKIPPING TRANSITION NOT ALLOWED ***\n");
@@ -1382,50 +1402,9 @@ wchmm_add_word(WCHMM_INFO *wchmm, int word, int matchlen, int matchword, Jconf *
 /**** parse whole structure (after wchmm has been built) *****/
 /*************************************************************/
 
-#if 0
 /** 
  * <JA>
- * 木構造化辞書を走査し，単語間遷移計算のための単語の先頭状態の
- * インデックスを生成する．(non multipath)
- * 
- * @param wchmm [i/o] 木構造化辞書
- * </JA>
- * <EN>
- * Inspect the whole lexicon tree to generate list of word head states
- * for inter-word transition computation. (non multipath)
- * 
- * @param wchmm [i/o] tree lexicon
- * </EN>
- */
-static void
-wchmm_index_ststart(WCHMM_INFO *wchmm)
-{
-  int n;
-  int id;
-
-  id = 0;
-  for (n=0;n<wchmm->n;n++) {
-    if (wchmm->ststart[n] != WORD_INVALID) {
-      if (wchmm->lmtype == LM_PROB) {
-	/* 先頭単語の始端へは遷移させないので，インデックスに含めない */
-	/* exclude silence model on beginning of a sentence from the index:
-	   It cannot come after other words */
-	if (wchmm->ststart[n] == wchmm->winfo->head_silwid) continue;
-      }
-      wchmm->startnode[id] = n;
-      id++;
-      if (id > wchmm->winfo->num) {
-	jlog("ERROR: wchmm: start node num exceeded %d\n", wchmm->winfo->num);
-      }
-    }
-  }
-  wchmm->startnum = id;		/* total num */
-}
-#endif
-
-/** 
- * <JA>
- * 木構造化辞書を走査し，単語の終端状態から外への次遷移確率のリストを作成する．
+ * 木構造化辞書を走査し，単語の終端状態から外への次遷移確率のリストを作成する. 
  * (non multipath)
  * 
  * @param wchmm [i/o] 木構造化辞書
@@ -1451,20 +1430,20 @@ wchmm_calc_wordend_arc(WCHMM_INFO *wchmm)
   }
 }
 
+#ifdef SEPARATE_BY_UNIGRAM
+
 /********************************************************************/
 /****** for separation (linearization) of high-frequent words *******/
 /********************************************************************/
 
-#ifdef SEPARATE_BY_UNIGRAM
-
 /** 
  * <JA>
- * unigram確率でソートするための qsort コールバック関数．
+ * unigram確率でソートするための qsort コールバック関数. 
  * 
  * @param a [in] 要素1
  * @param b [in] 要素2
  * 
- * @return 演算の結果の符合を返す．
+ * @return 演算の結果の符合を返す. 
  * </JA>
  * <EN>
  * qsort callback function to sort unigram values.
@@ -1485,12 +1464,12 @@ compare_prob(LOGPROB *a, LOGPROB *b)
 
 /** 
  * <JA>
- * 1-gramスコアの上位 N 番目の値を求める．
+ * 1-gramスコアの上位 N 番目の値を求める. 
  * 
  * @param winfo [in] 単語辞書
  * @param n [in] 求める順位
  * 
- * @return 上位 N 番目の uni-gram 確率の値を返す．
+ * @return 上位 N 番目の uni-gram 確率の値を返す. 
  * </JA>
  * <EN>
  * Get the Nth-best unigram probability from all words.
@@ -1554,11 +1533,12 @@ get_nbest_uniprob(WCHMM_INFO *wchmm, int n)
 
 /** 
  * <JA>
- * 与えられた単語辞書と言語モデルから木構造化辞書を構築する．この関数は
- * 処理が遅く，Julianで"-oldtree"オプション指定時のみ使用されます．オプション
- * 非指定時およびJuliusでは代わりに build_wchmm2() が用いられます．
+ * 与えられた単語辞書と言語モデルから木構造化辞書を構築する. この関数は
+ * 処理が遅く，Julianで"-oldtree"オプション指定時のみ使用されます. オプション
+ * 非指定時およびJuliusでは代わりに build_wchmm2() が用いられます. 
  * 
  * @param wchmm [i/o] 木構造化辞書
+ * @param lmconf [in] 言語モデル(LM)設定パラメータ
  * </JA>
  * <EN>
  * Build a tree lexicon from given word dictionary and language model.
@@ -1567,10 +1547,13 @@ get_nbest_uniprob(WCHMM_INFO *wchmm, int n)
  * instead of this.
  * 
  * @param wchmm [i/o] lexicon tree
+ * @param lmconf [in] language model (LM) configuration parameters
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 boolean
-build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
+build_wchmm(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
 {
   int i,j;
   int matchword=0, sharelen=0, maxsharelen=0;
@@ -1596,13 +1579,13 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
 #ifdef SEPARATE_BY_UNIGRAM
   /* 上位[separate_wnum]番目の1-gramスコアを求める */
   /* 1-gramスコアがこの値以上のものは木から分ける */
-  separate_thres = get_nbest_uniprob(wchmm, jconf->search.pass1.separate_wnum);
+  separate_thres = get_nbest_uniprob(wchmm, lmconf->separate_wnum);
 #endif
 
 #ifdef PASS1_IWCD
 #ifndef USE_OLD_IWCD
   if (wchmm->category_tree) {
-    if (jconf->am.ccd_flag) {
+    if (wchmm->ccd_flag) {
       /* 全てのカテゴリID付き lcd_set を作成 */
       lcdset_register_with_category_all(wchmm);
     }
@@ -1625,7 +1608,7 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
 	/* 先頭/末尾の無音モデルは木構造化せず，
 	 * 先頭の無音単語の先頭への遷移，末尾単語の末尾からの遷移は作らない*/
 	/* sharelen=0でそのまま */
-	if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+	if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
 	  jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
 	  ok_p = FALSE;
 	}
@@ -1635,7 +1618,7 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
       if (wchmm->winfo->wlen[i] <= SHORT_WORD_LEN) {
 	/* 長さの短い単語を木構造化しない(ここでは1音節) */
 	/* sharelen=0でそのまま */
-	if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+	if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
 	  jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
 	  ok_p = FALSE;
 	}
@@ -1656,10 +1639,10 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
       if (wchmm->lmvar == LM_NGRAM_USER) {
 	p = (*(wchmm->uni_prob_user))(wchmm->winfo, i, p);
       }
-      if (p >= separate_thres && wchmm->separated_word_count < jconf->search.pass1.separate_wnum) {
+      if (p >= separate_thres && wchmm->separated_word_count < lmconf->separate_wnum) {
 	/* 頻度の高い単語を木構造化しない */
 	/* separate_thres は上位separate_wnum番目のスコア */
-	if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+	if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
 	  jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
 	  ok_p = FALSE;
 	}
@@ -1688,7 +1671,7 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
        maxsharelen = sharelen;
       }
     }
-    if (wchmm_add_word(wchmm, i, maxsharelen, matchword, jconf) == FALSE) {
+    if (wchmm_add_word(wchmm, i, maxsharelen, matchword, lmconf->enable_iwsp) == FALSE) {
       jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
       ok_p = FALSE;
     }
@@ -1697,7 +1680,7 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
 #if 0
   /* 木構造を作らない */
   for (i=0;i<wchmm->winfo->num;i++) {
-    if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+    if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
       jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
       ok_p = FALSE;
     }
@@ -1746,23 +1729,19 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
 
   jlog("STAT: done\n");
 
-  /* 起動時 -check でチェックモードへ */
-  if (jconf->sw.wchmm_check_flag) {
-    wchmm_check_interactive(wchmm);
-  }
-
   return ok_p;
 }
 
 /** 
  * <JA>
- * 与えられた単語辞書と言語モデルから木構造化辞書を構築する．
+ * 与えられた単語辞書と言語モデルから木構造化辞書を構築する. 
  * この関数は bulid_wchmm() と同じ処理を行いますが，
  * 最初に単語を音素列でソートして音素列の似た順に単語を並べるため，
- * より高速に木構造化を行うことができる．とくにオプション指定をしない
- * 限り，Julius/Julianではこちらが用いられる．
+ * より高速に木構造化を行うことができる. とくにオプション指定をしない
+ * 限り，Julius/Julianではこちらが用いられる. 
  * 
  * @param wchmm [i/o] 木構造化辞書
+ * @param lmconf [in] 言語モデル(LM)設定パラメータ
  * </JA>
  * <EN>
  * Build a tree lexicon from given word dictionary and language model.
@@ -1773,10 +1752,13 @@ build_wchmm(WCHMM_INFO *wchmm, Jconf *jconf)
  * by default.
  * 
  * @param wchmm [i/o] lexicon tree
+ * @param lmconf [in] language model (LM) configuration parameters
  * </EN>
+ * @callgraph
+ * @callergraph
  */  
 boolean
-build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
+build_wchmm2(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
 {
   int i,j, last_i;
   int num_duplicated;
@@ -1808,14 +1790,14 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
 #ifdef SEPARATE_BY_UNIGRAM
     /* compute score threshold beforehand to separate words from tree */
     /* here we will separate best [separate_wnum] words from tree */
-    separate_thres = get_nbest_uniprob(wchmm, jconf->search.pass1.separate_wnum);
+    separate_thres = get_nbest_uniprob(wchmm, lmconf->separate_wnum);
 #endif
   }
 
 #ifdef PASS1_IWCD
 #ifndef USE_OLD_IWCD
   if (wchmm->category_tree) {
-    if (jconf->am.ccd_flag) {
+    if (wchmm->ccd_flag) {
       /* when Julian mode (category-tree) and triphone is used,
 	 make all category-indexed context-dependent phone set (cdset) here */
       /* these will be assigned on the last phone of each word on tree */
@@ -1878,7 +1860,7 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
       /* start/end silence word should not be shared */
       if (i == wchmm->winfo->head_silwid || i == wchmm->winfo->tail_silwid) {
 	/* add whole word as new (sharelen=0) */
-	if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+	if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
 	  jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
 	  ok_p = FALSE;
 	}
@@ -1887,7 +1869,7 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
 #ifndef NO_SEPARATE_SHORT_WORD
       /* separate short words from tree */
       if (wchmm->winfo->wlen[i] <= SHORT_WORD_LEN) {
-	if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+	if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
 	  jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
 	  ok_p = FALSE;
 	}
@@ -1909,8 +1891,8 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
 	p = (*(wchmm->uni_prob_user))(wchmm->winfo, i, p);
       }
       /* separate high-frequent words from tree (threshold = separate_thres) */
-      if (p >= separate_thres && wchmm->separated_word_count < jconf->search.pass1.separate_wnum) {
-	if (wchmm_add_word(wchmm, i, 0, 0, jconf) == FALSE) {
+      if (p >= separate_thres && wchmm->separated_word_count < lmconf->separate_wnum) {
+	if (wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp) == FALSE) {
 	  jlog("ERROR: wchmm: failed to add word #%d to lexicon tree\n");
 	  ok_p = FALSE;
 	}
@@ -1921,17 +1903,17 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
     }
 
     if (last_i == WORD_INVALID) { /* first word */
-      ret = wchmm_add_word(wchmm, i, 0, 0, jconf);
+      ret = wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp);
     } else {
       /* the previous word (last_i) is always the most matched one */
       if (wchmm->category_tree && wchmm->lmvar == LM_DFA_GRAMMAR) {
 	if (wchmm->winfo->wton[i] != wchmm->winfo->wton[last_i]) {
-	  ret = wchmm_add_word(wchmm, i, 0, 0, jconf);
+	  ret = wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp);
 	} else {
-	  ret = wchmm_add_word(wchmm, i, wchmm_check_match(wchmm->winfo, i, last_i), last_i, jconf);
+	  ret = wchmm_add_word(wchmm, i, wchmm_check_match(wchmm->winfo, i, last_i), last_i, lmconf->enable_iwsp);
 	}
       } else {
-	ret = wchmm_add_word(wchmm, i, wchmm_check_match(wchmm->winfo, i, last_i), last_i, jconf);
+	ret = wchmm_add_word(wchmm, i, wchmm_check_match(wchmm->winfo, i, last_i), last_i, lmconf->enable_iwsp);
       }
     }
     if (ret == FALSE) {
@@ -1948,12 +1930,12 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
   free(windex);
 
   if (wchmm->hmminfo->multipath) {
-    jlog("STAT: %d nodes\n", wchmm->n);
+    jlog("STAT: lexicon size: %d nodes\n", wchmm->n);
   } else {
     /* duplicate leaf nodes of homophone/embedded words */
-    jlog("STAT: %d", wchmm->n);
+    jlog("STAT: lexicon size: %d", wchmm->n);
     num_duplicated = wchmm_duplicate_leafnode(wchmm);
-    jlog("+%d=%d nodes\n", num_duplicated, wchmm->n);
+    jlog("+%d=%d\n", num_duplicated, wchmm->n);
   }
 
   if (! wchmm->hmminfo->multipath) {
@@ -1988,98 +1970,96 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
 
   }
 
-  jlog("STAT: done\n");
-
-  /* go into interactive check mode ("-check" on start) */
-  if (jconf->sw.wchmm_check_flag) {
-    wchmm_check_interactive(wchmm);
-  }
+  //jlog("STAT: done\n");
 
 #ifdef WCHMM_SIZE_CHECK
-  /* detailed check of lexicon tree size (inaccurate!) */
-  jlog("STAT: --- estimated size of word lexicon ---\n");
-  jlog("STAT: wchmm: %d words, %d nodes\n", wchmm->winfo->num, wchmm->n);
-  jlog("STAT: %9d bytes: wchmm->state[node] (exclude ac, sc)\n", sizeof(WCHMM_STATE) * wchmm->n);
-  {
-    int count1 = 0;
-    int count2 = 0;
-    int count3 = 0;
-    for(i=0;i<wchmm->n;i++) {
-      if (wchmm->self_a[i] != LOG_ZERO) count1++;
-      if (wchmm->next_a[i] != LOG_ZERO) count2++;
-      if (wchmm->ac[i] != NULL) count3++;
-    }
-    jlog("STAT: %9d bytes: wchmm->self_a[node] (%4.1f%% filled)\n", sizeof(LOGPROB) * wchmm->n, 100.0 * count1 / (float)wchmm->n);
-    jlog("STAT: %9d bytes: wchmm->next_a[node] (%4.1f%% filled)\n", sizeof(LOGPROB) * wchmm->n, 100.0 * count2 / (float)wchmm->n);
-    jlog("STAT: %9d bytes: wchmm->ac[node] (%4.1f%% used)\n", sizeof(A_CELL2 *) * wchmm->n, 100.0 * count3 / (float)wchmm->n);
-  }
-  jlog("STAT: %9d bytes: wchmm->stend[node]\n", sizeof(WORD_ID) * wchmm->n);
-  {
-    int w,count;
-    count = 0;
-    for(w=0;w<wchmm->winfo->num;w++) {
-      count += wchmm->winfo->wlen[w] * sizeof(int) + sizeof(int *);
-    }
-    jlog("STAT: %9d bytes: wchmm->offset[w][]\n", count);
-  }
-  if (wchmm->hmminfo->multipath) {
-    jlog("STAT: %9d bytes: wchmm->wordbegin[w]\n", wchmm->winfo->num * sizeof(int));
-  }
-  jlog("STAT: %9d bytes: wchmm->wordend[w]\n", wchmm->winfo->num * sizeof(int));
-  jlog("STAT: %9d bytes: wchmm->startnode[]\n", wchmm->startnum * sizeof(int));
-  if (wchmm->category_tree) {
-    jlog("STAT: %9d bytes: wchmm->start2wid[]\n", wchmm->startnum * sizeof(WORD_ID));
-  }
-#ifdef UNIGRAM_FACTORING
-  if (wchmm->lmtype == LM_PROB) {
-    jlog("STAT: %9d bytes: wchmm->start2isolate[]\n", wchmm->isolatenum * sizeof(int));
-  }
-#endif
-  if (!wchmm->hmminfo->multipath) {
-    jlog("STAT: %9d bytes: wchmm->wordend_a[]\n", wchmm->winfo->num * sizeof(LOGPROB));
-  }
-#ifdef PASS1_IWCD
-  jlog("STAT: %9d bytes: wchmm->outstyle[]\n", wchmm->n * sizeof(unsigned char));
-  {
-    int c;
-    c = 0;
-    for(i=0;i<wchmm->n;i++) {
-      switch(wchmm->outstyle[i]) {
-      case AS_RSET:
-	c += sizeof(RC_INFO);
-	break;
-      case AS_LRSET:
-	c += sizeof(LRC_INFO);
-	break;
+  if (debug2_flag) {
+    /* detailed check of lexicon tree size (inaccurate!) */
+    jlog("STAT: --- memory size of word lexicon ---\n");
+    jlog("STAT: wchmm: %d words, %d nodes\n", wchmm->winfo->num, wchmm->n);
+    jlog("STAT: %9d bytes: wchmm->state[node] (exclude ac, sc)\n", sizeof(WCHMM_STATE) * wchmm->n);
+    {
+      int count1 = 0;
+      int count2 = 0;
+      int count3 = 0;
+      for(i=0;i<wchmm->n;i++) {
+	if (wchmm->self_a[i] != LOG_ZERO) count1++;
+	if (wchmm->next_a[i] != LOG_ZERO) count2++;
+	if (wchmm->ac[i] != NULL) count3++;
       }
+      jlog("STAT: %9d bytes: wchmm->self_a[node] (%4.1f%% filled)\n", sizeof(LOGPROB) * wchmm->n, 100.0 * count1 / (float)wchmm->n);
+      jlog("STAT: %9d bytes: wchmm->next_a[node] (%4.1f%% filled)\n", sizeof(LOGPROB) * wchmm->n, 100.0 * count2 / (float)wchmm->n);
+      jlog("STAT: %9d bytes: wchmm->ac[node] (%4.1f%% used)\n", sizeof(A_CELL2 *) * wchmm->n, 100.0 * count3 / (float)wchmm->n);
     }
-    if (c > 0) jlog("STAT: %9d bytes: wchmm->out (RC_INFO / LRC_INFO)\n", c);
-  }
-#endif
-  if (!wchmm->category_tree) {
-    jlog("STAT: %9d bytes: wchmm->sclist[]\n", wchmm->scnum * sizeof(S_CELL *));
-    jlog("STAT: %9d bytes: wchmm->sclist2node[]\n", wchmm->scnum * sizeof(int));
+    jlog("STAT: %9d bytes: wchmm->stend[node]\n", sizeof(WORD_ID) * wchmm->n);
+    {
+      int w,count;
+      count = 0;
+      for(w=0;w<wchmm->winfo->num;w++) {
+	count += wchmm->winfo->wlen[w] * sizeof(int) + sizeof(int *);
+      }
+      jlog("STAT: %9d bytes: wchmm->offset[w][]\n", count);
+    }
+    if (wchmm->hmminfo->multipath) {
+      jlog("STAT: %9d bytes: wchmm->wordbegin[w]\n", wchmm->winfo->num * sizeof(int));
+    }
+    jlog("STAT: %9d bytes: wchmm->wordend[w]\n", wchmm->winfo->num * sizeof(int));
+    jlog("STAT: %9d bytes: wchmm->startnode[]\n", wchmm->startnum * sizeof(int));
+    if (wchmm->category_tree) {
+      jlog("STAT: %9d bytes: wchmm->start2wid[]\n", wchmm->startnum * sizeof(WORD_ID));
+    }
 #ifdef UNIGRAM_FACTORING
     if (wchmm->lmtype == LM_PROB) {
-      jlog("STAT: %9d bytes: wchmm->fscore[]\n", wchmm->fsnum * sizeof(LOGPROB));
+      jlog("STAT: %9d bytes: wchmm->start2isolate[]\n", wchmm->isolatenum * sizeof(int));
     }
-#endif  
-  }
-
-  {
-    int count, n;
-    A_CELL2 *ac;
-    count = 0;
-    for(n=0;n<wchmm->n;n++) {
-      for(ac=wchmm->ac[n];ac;ac=ac->next) {
-	count += sizeof(A_CELL2);
+#endif
+    if (!wchmm->hmminfo->multipath) {
+      jlog("STAT: %9d bytes: wchmm->wordend_a[]\n", wchmm->winfo->num * sizeof(LOGPROB));
+    }
+#ifdef PASS1_IWCD
+    jlog("STAT: %9d bytes: wchmm->outstyle[]\n", wchmm->n * sizeof(unsigned char));
+    {
+      int c;
+      c = 0;
+      for(i=0;i<wchmm->n;i++) {
+	switch(wchmm->outstyle[i]) {
+	case AS_RSET:
+	  c += sizeof(RC_INFO);
+	  break;
+	case AS_LRSET:
+	  c += sizeof(LRC_INFO);
+	  break;
       }
+      }
+      if (c > 0) jlog("STAT: %9d bytes: wchmm->out (RC_INFO / LRC_INFO)\n", c);
     }
-    jlog("STAT: %9d bytes: A_CELL2\n", count);
-  }
-  if (!wchmm->category_tree) {
-    jlog("STAT: %9d bytes: sclist\n", wchmm->scnum * sizeof(S_CELL *));
-    jlog("STAT: %9d bytes: sclist2node\n", wchmm->scnum * sizeof(int));
+#endif
+    if (!wchmm->category_tree) {
+      jlog("STAT: %9d bytes: wchmm->sclist[]\n", wchmm->scnum * sizeof(S_CELL *));
+      jlog("STAT: %9d bytes: wchmm->sclist2node[]\n", wchmm->scnum * sizeof(int));
+#ifdef UNIGRAM_FACTORING
+      if (wchmm->lmtype == LM_PROB) {
+	jlog("STAT: %9d bytes: wchmm->fscore[]\n", wchmm->fsnum * sizeof(LOGPROB));
+      }
+#endif  
+    }
+    
+    {
+      int count, n;
+      A_CELL2 *ac;
+      count = 0;
+      for(n=0;n<wchmm->n;n++) {
+	for(ac=wchmm->ac[n];ac;ac=ac->next) {
+	  count += sizeof(A_CELL2);
+	}
+      }
+      jlog("STAT: %9d bytes: A_CELL2\n", count);
+    }
+    if (!wchmm->category_tree) {
+      jlog("STAT: %9d bytes: sclist\n", wchmm->scnum * sizeof(S_CELL *));
+      jlog("STAT: %9d bytes: sclist2node\n", wchmm->scnum * sizeof(int));
+    }
+
   }
 
 #endif /* WCHMM_SIZE_CHECK */
@@ -2092,7 +2072,7 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
 
 /** 
  * <JA>
- * 木構造化辞書のサイズなどの情報を標準出力に出力する．
+ * 木構造化辞書のサイズなどの情報を標準出力に出力する. 
  * 
  * @param wchmm [in] 木構造化辞書
  * </JA>
@@ -2101,6 +2081,8 @@ build_wchmm2(WCHMM_INFO *wchmm, Jconf *jconf)
  * 
  * @param wchmm [in] tree lexicon already built
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
 print_wchmm_info(WCHMM_INFO *wchmm)
@@ -2117,7 +2099,7 @@ print_wchmm_info(WCHMM_INFO *wchmm)
     }
   }
   
-  jlog("Lexicon tree info:\n");
+  jlog(" Lexicon tree:\n");
   jlog("\t total node num = %6d\n", wchmm->n);
   if (wchmm->lmtype == LM_PROB) {
     jlog("\t  root node num = %6d\n", rootnum);
@@ -2142,3 +2124,5 @@ print_wchmm_info(WCHMM_INFO *wchmm)
     jlog("\t fact. node num = %6d\n", wchmm->scnum - 1);
   }
 }
+
+/* end of file */

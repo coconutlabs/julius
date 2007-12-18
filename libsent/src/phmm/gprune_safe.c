@@ -1,7 +1,5 @@
 /**
  * @file   gprune_safe.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 05:28:12 2005
  * 
  * <JA>
  * @brief  º®¹ç¥¬¥¦¥¹Ê¬ÉÛ·×»»: Gaussian pruning (safe algorithm)
@@ -38,20 +36,23 @@
  * calc_tied_mix() or calc_mix().
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 05:28:12 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 /* gprune_safe.c --- calculate probability of Gaussian densities */
 /*                   with Gaussian pruning (safe) */
 
-/* $Id: gprune_safe.c,v 1.1 2007/09/28 02:50:56 sumomo Exp $ */
+/* $Id: gprune_safe.c,v 1.2 2007/12/18 08:45:54 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
@@ -65,6 +66,7 @@
  * Calculate probability of a Gaussian toward OP_vec,
  * performing pruning using the scholar threshold.
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param binfo [in] Gaussian density
  * @param thres [in] threshold
  * 
@@ -97,6 +99,8 @@ compute_g_safe(HMMWork *wrk, HTK_HMM_Dens *binfo, LOGPROB thres)
 /** 
  * Initialize and setup work area for Gaussian pruning by safe algorithm.
  * 
+ * @param wrk [i/o] HMM computation work area
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
@@ -115,6 +119,8 @@ gprune_safe_init(HMMWork *wrk)
 
 /**
  * Free gprune_safe related work area.
+ * 
+ * @param wrk [i/o] HMM computation work area
  * 
  */
 void
@@ -143,6 +149,7 @@ gprune_safe_free(HMMWork *wrk)
  * 
  * This can be called from calc_tied_mix() or calc_mix().
  * 
+ * @param wrk [i/o] HMM computation work area
  * @param g [in] set of Gaussian densities to compute the output probability
  * @param gnum [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,

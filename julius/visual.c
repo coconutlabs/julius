@@ -1,15 +1,13 @@
 /**
  * @file   visual.c
- * @author Akinobu Lee
- * @date   Mon Sep 12 01:49:44 2005
  * 
  * <JA>
  * @brief  探索空間の可視化 (GTK/X11 を使用)
  *
- * 探索空間可視化機能は Linux でサポートされています．
- * "--enable-visualize" で ON にしてコンパイルできます．
- * なお，使用には gtk のバージョン 1.x が必要です．
- * 動作確認は gtk-1.2 で行いました．
+ * 探索空間可視化機能は Linux でサポートされています. 
+ * "--enable-visualize" で ON にしてコンパイルできます. 
+ * なお，使用には gtk のバージョン 1.x が必要です. 
+ * 動作確認は gtk-1.2 で行いました. 
  * </JA>
  * 
  * <EN>
@@ -20,12 +18,15 @@
  * It needs gtk version = 1.x, (tested on gtk-1.2).
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Mon Sep 12 01:49:44 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -135,7 +136,7 @@ static LOGPROB maxrange2;	///< Maximum distance from normalization line
 
 /** 
  * <JA>
- * スケーリング用に最大スコアと最小スコアを得る．
+ * スケーリング用に最大スコアと最小スコアを得る. 
  * 
  * @param bt [in] 単語トレリス
  * </JA>
@@ -189,11 +190,11 @@ get_max_frame_score(BACKTRELLIS *bt)
 
 /** 
  * <JA>
- * 時間フレームを X 座標値に変換する．
+ * 時間フレームを X 座標値に変換する. 
  * 
  * @param t [in] 時間フレーム
  * 
- * @return 対応する X 座標値を返す．
+ * @return 対応する X 座標値を返す. 
  * </JA>
  * <EN>
  * Scale X axis by time to fullfill in the canvas width.
@@ -211,12 +212,12 @@ scale_x(int t)
 
 /** 
  * <JA>
- * スコアを Y 座標値に変換する．
+ * スコアを Y 座標値に変換する. 
  * 
  * @param s [in] スコア
  * @param t [in] 対応する時間フレーム
  * 
- * @return Y 座標値を返す．
+ * @return Y 座標値を返す. 
  * </JA>
  * <EN>
  * Scale Y axis from score to fulfill in the canvas height.
@@ -260,11 +261,11 @@ scale_y(LOGPROB s, int t)
 
 /** 
  * <JA>
- * 単語IDを Y 座標値に変換する．
+ * 単語IDを Y 座標値に変換する. 
  * 
  * @param wid [in] 単語ID
  * 
- * @return Y 座標値を返す．
+ * @return Y 座標値を返す. 
  * </JA>
  * <EN>
  * Scale Y axis from word id.
@@ -298,11 +299,11 @@ static SP16 max_level;		///< Maximum level of input waveform
 
 /** 
  * <JA>
- * 波形表示用に時間をX座標に変換する．
+ * 波形表示用に時間をX座標に変換する. 
  * 
  * @param t [in] 時間フレーム
  * 
- * @return 変換後の X 座標を返す．
+ * @return 変換後の X 座標を返す. 
  * </JA>
  * <EN>
  * Scale time to X position.
@@ -320,11 +321,11 @@ scale_x_wave(int t)
 
 /** 
  * <JA>
- * 波形表示用に振幅をY座標に変換する．
+ * 波形表示用に振幅をY座標に変換する. 
  * 
  * @param x [in] 波形の振幅
  * 
- * @return 変換後の X 座標を返す．
+ * @return 変換後の X 座標を返す. 
  * </JA>
  * <EN>
  * Scale wave level to Y position
@@ -342,7 +343,7 @@ scale_y_wave(SP16 x)
 
 /** 
  * <JA>
- * 振幅の最大値を speech[] より求める．
+ * 振幅の最大値を speech[] より求める. 
  * 
  * </JA>
  * <EN>
@@ -371,7 +372,7 @@ get_max_waveform_level()
 
 /** 
  * <JA>
- * 入力波形 speech[] を描画する．
+ * 入力波形 speech[] を描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -446,7 +447,7 @@ draw_waveform(GtkWidget *widget)
 
 /** 
  * <JA>
- * アークを描画する．
+ * アークを描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param x1 [in] 第1点のX座標
@@ -538,7 +539,7 @@ mygdk_draw_arc(GtkWidget *widget, int x1, int y1, int x2, int y2, int sw)
 
 /** 
  * <JA>
- * トレリス単語を描画するサブ関数．
+ * トレリス単語を描画するサブ関数. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param tre [in] 描画するトレリス単語
@@ -618,7 +619,7 @@ draw_atom(GtkWidget *widget, TRELLIS_ATOM *tre, int sw)
 /* draw word output text */
 /** 
  * <JA>
- * トレリス単語の単語読みを描画する．
+ * トレリス単語の単語読みを描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param tre [in] トレリス単語
@@ -689,11 +690,11 @@ static WORD_ID wordlistnum = 0;	///< Length of @a wordlist
 
 /** 
  * <JA>
- * 描画単語リストの中に単語があるかどうか検索する．
+ * 描画単語リストの中に単語があるかどうか検索する. 
  * 
  * @param wid [in] 単語ID
  * 
- * @return リストに見つかれば TRUE，見つからなければ FALSE を返す．
+ * @return リストに見つかれば TRUE，見つからなければ FALSE を返す. 
  * </JA>
  * <EN>
  * Check if the given word exists in the drawn word list.
@@ -732,7 +733,7 @@ wordlist_find(WORD_ID wid)
 
 /** 
  * <JA>
- * 単語を描画する（描画単語リストにあるもののみ）．
+ * 単語を描画する（描画単語リストにあるもののみ）. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param tre [in] 描画するトレリス単語
@@ -756,15 +757,15 @@ draw_atom_top(GtkWidget *widget, TRELLIS_ATOM *tre, int sw)
 
 /** 
  * <JA>
- * 単語を描画する（描画単語リストにあるもののみ）．
- * 単語のテキストを描画する（リストになければ描画しない）．
+ * 単語を描画する（描画単語リストにあるもののみ）. 
+ * 単語のテキストを描画する（リストになければ描画しない）. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param tre [in] 描画するトレリス単語
  * @param sw [in] 描画の強さ
  * </JA>
  * <EN>
- * 単語のテキストを描画する（描画単語リストにあるもののみ）．
+ * 単語のテキストを描画する（描画単語リストにあるもののみ）. 
  * Draw text of a word on canvas (only words in wordlist).
  * 
  * @param widget [in] drawing widget
@@ -787,7 +788,7 @@ draw_atom_text_top(GtkWidget *widget, TRELLIS_ATOM *tre, int sw)
 
 /** 
  * <JA>
- * 全てのトレリス単語を描画する．
+ * 全てのトレリス単語を描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -821,7 +822,7 @@ draw_all_atom(GtkWidget *widget)
 
 /** 
  * <JA>
- * 第1パスにおいてその次単語が生き残ったトレリス単語のみ描画する．
+ * 第1パスにおいてその次単語が生き残ったトレリス単語のみ描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -902,7 +903,7 @@ draw_word_graph(GtkWidget *widget)
 
 /** 
  * <JA>
- * 第1パスの一位文仮説を描画する．
+ * 第1パスの一位文仮説を描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -969,7 +970,7 @@ draw_best_path(GtkWidget *widget)
 
 /** 
  * <JA>
- * 第2パス可視化のための初期化を行う．
+ * 第2パス可視化のための初期化を行う. 
  * 
  * @param maxhypo [in] 第2パスにおいてポップされた仮説の最大数
  * </JA>
@@ -1016,7 +1017,7 @@ visual2_init(int maxhypo)
 
 /** 
  * <JA>
- * スタックから取り出した仮説をローカルに保存する．
+ * スタックから取り出した仮説をローカルに保存する. 
  * 
  * @param n [in] 仮説
  * @param popctr [in] 現在のポップ数カウント
@@ -1043,7 +1044,7 @@ visual2_popped(NODE *n, int popctr)
   
 /** 
  * <JA>
- * 生成された仮説のノードを保存する．
+ * 生成された仮説のノードを保存する. 
  * 
  * @param next [in] 生成された次単語仮説
  * @param prev [in] 展開元の仮説
@@ -1076,7 +1077,7 @@ visual2_next_word(NODE *next, NODE *prev, int popctr)
 
 /** 
  * <JA>
- * ポップされた仮説候補を保存する．
+ * ポップされた仮説候補を保存する. 
  * 
  * @param now [in] 文仮説
  * @param winfo [in] 単語辞書
@@ -1108,7 +1109,7 @@ visual2_best(NODE *now, WORD_INFO *winfo)
 /* draw 2nd pass results */
 /** 
  * <JA>
- * 第2パス探索中に，スタックから取り出された仮説とその次単語集合を描画する．
+ * 第2パス探索中に，スタックから取り出された仮説とその次単語集合を描画する. 
  * 
  * @param widget 描画ウィジェット
  * </JA>
@@ -1142,7 +1143,7 @@ static LOGPROB maxscore;	///< Maximum score of popped hypotheses while search
 static LOGPROB minscore;	///< Minimum score of popped hypotheses while search
 /** 
  * <JA>
- * 第2パスで出現した展開元仮説のスコアの最大値と最小値を求める．
+ * 第2パスで出現した展開元仮説のスコアの最大値と最小値を求める. 
  * 
  * </JA>
  * <EN>
@@ -1166,7 +1167,7 @@ get_max_hypo_score()
 
 /** 
  * <JA>
- * 仮説表示時，仮説スコアを Y 座標値に変換する．
+ * 仮説表示時，仮説スコアを Y 座標値に変換する. 
  * 
  * @param s [in] 仮説スコア
  * 
@@ -1195,7 +1196,7 @@ scale_hypo_y(LOGPROB s)
 /* draw popped words */
 /** 
  * <JA>
- * スタックから取り出された仮説を描画する．
+ * スタックから取り出された仮説を描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param p [in] スタックから取り出された仮説の情報
@@ -1275,7 +1276,7 @@ static int old_popctr;		///< popctr of previously popped hypo.
 
 /** 
  * <JA>
- * 第2パスの単語展開の様子を描画する．
+ * 第2パスの単語展開の様子を描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param popctr [in] 展開仮説の番号
@@ -1314,7 +1315,7 @@ draw_popnodes(GtkWidget *widget, int popctr)
 }
 /** 
  * <JA>
- * 直前に draw_popnodes() で描画したのを上書きして消す．
+ * 直前に draw_popnodes() で描画したのを上書きして消す. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1391,7 +1392,7 @@ draw_background(GtkWidget *widget)
 
 /** 
  * <JA>
- * 描画キャンパス内に表示すべき全ての単語情報を pixmap に描画する．
+ * 描画キャンパス内に表示すべき全ての単語情報を pixmap に描画する. 
  * 
  * @param widget 
  * </JA>
@@ -1437,7 +1438,7 @@ drawarea_draw(GtkWidget *widget)
 
 /** 
  * <JA>
- * Expose イベントを発行する．
+ * Expose イベントを発行する. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1461,13 +1462,13 @@ drawarea_expose(GtkWidget *widget)
 
 /** 
  * <JA>
- * Expose イベント処理：あらかじめ描画された pixmap を画面に表示する．
+ * Expose イベント処理：あらかじめ描画された pixmap を画面に表示する. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param event [in] イベント情報
  * @param user_data [in] ユーザデータ（未使用）
  * 
- * @return gboolean を返す．
+ * @return gboolean を返す. 
  * </JA>
  * <EN>
  * Expose event handler: show the already drawn pixmap to the screen.
@@ -1494,13 +1495,13 @@ event_drawarea_expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_da
 
 /** 
  * <JA>
- * Configure イベント処理：resize または map 時に再描画する．
+ * Configure イベント処理：resize または map 時に再描画する. 
  * 
  * @param widget [in] 描画ウィジェット
  * @param event [in] イベント情報
  * @param user_data [in] ユーザデータ（未使用）
  * 
- * @return gboolean を返す．
+ * @return gboolean を返す. 
  * </JA>
  * <EN>
  * Configure event handler: redraw objects when resized or mapped.
@@ -1533,7 +1534,7 @@ event_drawarea_configure(GtkWidget *widget, GdkEventExpose *event, gpointer user
 /** 
  * <JA>
  * [show threshold] ボタンクリック時の callback: トリガしきい値線の描画
- * の ON/ OFF．
+ * の ON/ OFF. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1563,7 +1564,7 @@ action_toggle_thres(GtkWidget *widget)
 #ifdef PLAYCOMMAND
 /** 
  * <JA>
- * [play] ボタンクリック時の callback: 音声を再生する．
+ * [play] ボタンクリック時の callback: 音声を再生する. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1604,7 +1605,7 @@ action_play_waveform(GtkWidget *widget)
 
 /** 
  * <JA>
- * [Word view] ボタンクリック時の callback: Y軸を単語IDにする．
+ * [Word view] ボタンクリック時の callback: Y軸を単語IDにする. 
  * 
  * @param button [in] ボタンウィジェット
  * @param widget [in] 描画ウィジェット
@@ -1634,7 +1635,7 @@ action_view_wid(GtkWidget *button, GtkWidget *widget)
 
 /** 
  * <JA>
- * [Score view] ボタンクリック時の callback: Y軸をスコアにする．
+ * [Score view] ボタンクリック時の callback: Y軸をスコアにする. 
  * 
  * @param button [in] ボタンウィジェット
  * @param widget [in] 描画ウィジェット
@@ -1663,7 +1664,7 @@ action_view_score(GtkWidget *button, GtkWidget *widget)
 /** 
  * <JA>
  * [Beam view] ボタンクリック時の callback: Y軸をフレームごとの最大スコア
- * からの差分にする．
+ * からの差分にする. 
  * 
  * @param button [in] ボタンウィジェット
  * @param widget [in] 描画ウィジェット
@@ -1693,7 +1694,7 @@ action_view_beam(GtkWidget *button, GtkWidget *widget)
 /** 
  * <JA>
  * [Arc on/off] ボタンクリック時の callback: 単語先頭と単語終端の間の線の
- * 描画を on/off する．
+ * 描画を on/off する. 
  * 
  * @param button [in] ボタンウィジェット
  * @param widget [in] 描画ウィジェット
@@ -1725,7 +1726,7 @@ action_toggle_arc(GtkWidget *button, GtkWidget *widget)
 /** 
  * <JA>
  * テキストウィジェットに単語名が入力されたときのcallback: 描画単語リストを
- * 更新する．
+ * 更新する. 
  * 
  * @param widget [in] テキストウィジェット
  * @param draw [in] 描画ウィジェット
@@ -1777,8 +1778,8 @@ action_set_wid(GtkWidget *widget, GtkWidget *draw)
 
 /** 
  * <JA>
- * [x2] ズームボタンクリック時のcallback: X軸を2倍に伸張する．なおFITSCREENは
- * OFFになる．
+ * [x2] ズームボタンクリック時のcallback: X軸を2倍に伸張する. なおFITSCREENは
+ * OFFになる. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1804,8 +1805,8 @@ action_zoom(GtkWidget *widget)
 
 /** 
  * <JA>
- * [x4] ズームボタンクリック時のcallback: X軸を4倍に伸張する．なおFITSCREENは
- * OFFになる．
+ * [x4] ズームボタンクリック時のcallback: X軸を4倍に伸張する. なおFITSCREENは
+ * OFFになる. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1831,8 +1832,8 @@ action_zoom_4(GtkWidget *widget)
 
 /** 
  * <JA>
- * [x8] ズームボタンクリック時のcallback: X軸を8倍に伸張する．なおFITSCREENは
- * OFFになる．
+ * [x8] ズームボタンクリック時のcallback: X軸を8倍に伸張する. なおFITSCREENは
+ * OFFになる. 
  * 
  * @param widget [in] 描画ウィジェット
  * </JA>
@@ -1859,7 +1860,7 @@ action_zoom_8(GtkWidget *widget)
 /** 
  * <JA>
  * [Fit] ボタンクリック時のコールバック：キャンパスサイズをウィンドウサイズに
- * 自動的に合わせるようにする．他の zoom 指定時，それらを off にする．
+ * 自動的に合わせるようにする. 他の zoom 指定時，それらを off にする. 
  * 
  * @param widget 
  * </JA>
@@ -1883,7 +1884,7 @@ action_fit_screen(GtkWidget *widget)
 
 /** 
  * <JA>
- * 第2パス再現用の [start] ボタンのcallback: 第2パス再現用に準備する．
+ * 第2パス再現用の [start] ボタンのcallback: 第2パス再現用に準備する. 
  * 
  * @param button [in] ボタンウィジェット
  * @param widget [in] 描画ウィジェット
@@ -1911,7 +1912,7 @@ action_toggle_popctr(GtkWidget *button, GtkWidget *widget)
 /** 
  * <JA>
  * 第2パス再現用のスケールのcallback: 値が N に変更されたときに，
- * N 番目の単語展開の様子を描画する．
+ * N 番目の単語展開の様子を描画する. 
  * 
  * @param adj [in] アジャスタ
  * @param widget [in] 描画ウィジェット
@@ -1950,7 +1951,7 @@ action_change_popctr(GtkAdjustment *adj, GtkWidget *widget)
  * @param event [in] イベント
  * @param data [in] ユーザデータ
  * 
- * @return FALSEを常に返す（destroy signalを発行するため）．
+ * @return FALSEを常に返す（destroy signalを発行するため）. 
  * </JA>
  * <EN>
  * GTK delete event handler.
@@ -1970,7 +1971,7 @@ delete_event(GtkWidget *widget, GdkEvent *event, gpointer data)
 
 /** 
  * <JA>
- * GTKの終了イベントハンドラ．アプリケーションを終了する．
+ * GTKの終了イベントハンドラ. アプリケーションを終了する. 
  * 
  * @param widget [in] ウィジェット
  * @param data [in] ユーザデータ
@@ -1994,7 +1995,7 @@ destroy(GtkWidget *widget, gpointer data)
 
 /** 
  * <JA>
- * 起動時，可視化機能を初期化する．
+ * 起動時，可視化機能を初期化する. 
  * </JA>
  * <EN>
  * Initialize visualization functions at startup.
@@ -2034,7 +2035,7 @@ visual_init(Recog *recog)
 
 /** 
  * <JA>
- * 認識結果を元に，探索空間の可視化を実行する．
+ * 認識結果を元に，探索空間の可視化を実行する. 
  * 
  * @param bt [in] 単語トレリス
  * </JA>

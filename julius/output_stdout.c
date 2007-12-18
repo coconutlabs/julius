@@ -1,37 +1,40 @@
 /**
- * @file   result_tty.c
- * @author Akinobu Lee
- * @date   Tue Sep 06 17:18:46 2005
+ * @file   output_stdout.c
  * 
  * <JA>
- * @brief  認識結果を標準出力へ出力する．
+ * @brief  認識結果を標準出力へ出力する. 
  * </JA>
  * 
  * <EN>
  * @brief  Output recoginition result to standard output
  * </EN>
  * 
- * $Revision: 1.2 $
+ * @author Akinobu Lee
+ * @date   Tue Sep 06 17:18:46 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 #include "app.h"
 
-#define CALLBACK_DEBUG
+extern boolean separate_score_flag;
+extern boolean callback_debug_flag;
 
 /// Grammar status to be processed in the next reload timing.
 static char *hookstr[] = {"", "delete", "activate", "deactivate"};
 
-#ifdef SP_BREAK_CURRENT_FRAME
+static boolean have_progout = FALSE;
+
+/* for short pause segmentation and successive decoding */
 static WORD_ID confword[MAXSEQNUM];
 static int confwordnum;
-#endif
 
 #ifdef CHARACTER_CONVERSION
 #define MAXBUFLEN 4096 ///< Maximum line length of a message sent from a client
@@ -54,13 +57,19 @@ myprintf(char *fmt, ...)
 #define myprintf printf
 #endif
 
-
 /**
  * Assumed tty width for graph view output
  * 
  */
 #define TEXTWIDTH 70
 
+/**
+ * tty width for short-pause segmentation output
+ * 
+ */
+
+#define SPTEXTWIDTH 72
+#define SPTEXT_FULLWIDTH 76
 
 /**********************************************************************/
 /* process online/offline status  */
@@ -68,7 +77,7 @@ myprintf(char *fmt, ...)
 /** 
  * <JA>
  * 起動が終わったとき，あるいは中断状態から復帰したときに
- * メッセージを表示する．
+ * メッセージを表示する. 
  * 
  * </JA>
  * <EN>
@@ -79,14 +88,12 @@ myprintf(char *fmt, ...)
 static void
 status_process_online(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<ONLINE>\n");
-#endif
+  if (callback_debug_flag) printf("<ONLINE>\n");
 }
 /** 
  * <JA>
- * プロセスが中断状態へ移行したときにメッセージを表示する．モジュールモード
- * で呼ばれる．
+ * プロセスが中断状態へ移行したときにメッセージを表示する. モジュールモード
+ * で呼ばれる. 
  * 
  * </JA>
  * <EN>
@@ -97,9 +104,7 @@ status_process_online(Recog *recog, void *dummy)
 static void
 status_process_offline(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<OFFLINE>\n");
-#endif
+  if (callback_debug_flag) printf("<OFFLINE>\n");
 }
 
 /**********************************************************************/
@@ -118,12 +123,11 @@ status_process_offline(Recog *recog, void *dummy)
 static void
 status_recready(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("[SPEECH_READY]\n");
-#endif
+  if (callback_debug_flag) printf("[SPEECH_READY]\n");
   if (recog->jconf->input.speech_input == SP_MIC || recog->jconf->input.speech_input == SP_NETAUDIO) {
-    /* moved from adin-cut.c */
-    fprintf(stderr, "<<< please speak >>>");
+    if (!recog->process_segment) {
+      fprintf(stderr, "<<< please speak >>>");
+    }
   }
 }
 /** 
@@ -139,11 +143,11 @@ status_recready(Recog *recog, void *dummy)
 static void
 status_recstart(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("[SPEECH_START]\n");
-#endif
+  if (callback_debug_flag) printf("[SPEECH_START]\n");
   if (recog->jconf->input.speech_input == SP_MIC || recog->jconf->input.speech_input == SP_NETAUDIO) {
-    fprintf(stderr, "\r                    \r");
+    if (!recog->process_segment) {
+      fprintf(stderr, "\r                    \r");
+    }
   }
 }
 /** 
@@ -159,13 +163,11 @@ status_recstart(Recog *recog, void *dummy)
 static void
 status_recend(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("[SPEECH_STOP]\n");
-#endif
+  if (callback_debug_flag) printf("[SPEECH_STOP]\n");
 }
 /** 
  * <JA>
- * 入力長などの入力パラメータ情報を出力．
+ * 入力長などの入力パラメータ情報を出力. 
  * 
  * @param param [in] 入力パラメータ構造体
  * </JA>
@@ -178,11 +180,9 @@ status_recend(Recog *recog, void *dummy)
 static void
 status_param(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<STATUS_PARAM>\n");
-#endif
+  if (callback_debug_flag) printf("<STATUS_PARAM>\n");
   if (verbose_flag) {
-    put_param_info(stdout, recog->param);
+    //    put_param_info(stdout, recog->param);
   }
 }
 
@@ -191,8 +191,8 @@ status_param(Recog *recog, void *dummy)
 
 /** 
  * <JA>
- * 音声入力が検知され認識処理を開始した時点でメッセージを表示する．
- * ショートポーズセグメンテーション時は，最初のセグメント開始時点で出力される．
+ * 音声入力が検知され認識処理を開始した時点でメッセージを表示する. 
+ * ショートポーズセグメンテーション時は，最初のセグメント開始時点で出力される. 
  * 
  * </JA>
  * <EN>
@@ -205,21 +205,19 @@ status_param(Recog *recog, void *dummy)
 static void
 status_recognition_begin(Recog *recog, void *dummy) 
 {
-#ifdef CALLBACK_DEBUG
-  printf("<RECOGNITION_BEGIN>\n");
-#endif
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->jconf->output.progout_flag) { 
-    confwordnum = 0;
+  if (callback_debug_flag) printf("<RECOGNITION_BEGIN>\n");
+  if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
+    if (have_progout) {
+      confwordnum = 0;
+    }
   }
-#endif
 }
 
 /** 
  * <JA>
- * 入力終了し認識処理が終了した時点でメッセージを表示する．
+ * 入力終了し認識処理が終了した時点でメッセージを表示する. 
  * ショートポーズセグメンテーション時は，１入力の最後のセグメントの終了時に
- * 呼ばれる．
+ * 呼ばれる. 
  * </JA>
  * <EN>
  * Output message when the whole recognition procedure was just finished for
@@ -230,23 +228,27 @@ status_recognition_begin(Recog *recog, void *dummy)
 static void
 status_recognition_end(Recog *recog, void *dummy) 
 {
-#ifdef CALLBACK_DEBUG
-  printf("<RECOGNITION_END>\n");
-#endif
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->jconf->output.progout_flag) {
-    if (confwordnum > 0) {
-      printf("\n");
+  if (callback_debug_flag) printf("<RECOGNITION_END>\n");
+  if (recog->process_segment) {
+    if (verbose_flag) {
+      printf("Segmented by short pause, continue to next...\n");
+    } else {
+      //printf("-->\n");
     }
   }
-#endif
+  if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
+    if (have_progout) {
+      if (confwordnum > 0) {
+	printf("\n");
+      }
+    }
+  }
 }
 
-#ifdef SP_BREAK_CURRENT_FRAME
 /** 
  * <JA>
  * ショートポーズセグメンテーション時に，区切られたある入力断片に対して
- * 認識を開始したときにメッセージを出力する．
+ * 認識を開始したときにメッセージを出力する. 
  * </JA>
  * <EN>
  * Output a message when recognition was just started for a segment in a
@@ -256,16 +258,14 @@ status_recognition_end(Recog *recog, void *dummy)
 static void
 status_segment_begin(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<SEGMENT_BEGIN>\n");
-#endif
+  if (callback_debug_flag) printf("<SEGMENT_BEGIN>\n");
   /* no output */
 }
 
 /** 
  * <JA>
  * ショートポーズセグメンテーション時に，区切られたある入力断片に対して
- * 認識を終了したときにメッセージを出力する．
+ * 認識を終了したときにメッセージを出力する. 
  * </JA>
  * <EN>
  * Output a message when recognition was just finished for a segment in a
@@ -275,24 +275,19 @@ status_segment_begin(Recog *recog, void *dummy)
 static void
 status_segment_end(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<SEGMENT_END>\n");
-#endif
+  if (callback_debug_flag) printf("<SEGMENT_END>\n");
 }
-
-#endif /* SP_BREAK_CURRENT_FRAME */
 
 /**********************************************************************/
 /* 1st pass output */
 
 static int wst;			///< Number of words at previous output line
-#ifdef SP_BREAK_CURRENT_FRAME
-static int writelen;
-#endif
+static int writelen;		///< written string length on this tty line
+
 
 /** 
  * <JA>
- * 第1パス：音声認識を開始する際の出力（音声入力開始時に呼ばれる）．
+ * 第1パス：音声認識を開始する際の出力（音声入力開始時に呼ばれる）. 
  * 
  * </JA>
  * <EN>
@@ -303,24 +298,18 @@ static int writelen;
 static void
 status_pass1_begin(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<PASS1_BEGIN>\n");
-#endif
-  if (!recog->jconf->search.pass1.realtime_flag) {
-    if (recog->lmtype == LM_NGRAM) {
-      VERMES("### Recognition: 1st pass (LR beam with 2-gram)\n");
-    } else if (recog->lmtype == LM_DFA) {
-      VERMES("### Recognition: 1st pass (LR beam with word-pair grammar)\n");
-    }
+  if (callback_debug_flag) printf("<PASS1_BEGIN>\n");
+  if (!recog->jconf->decodeopt.realtime_flag) {
+    VERMES("### Recognition: 1st pass (LR beam)\n");
   }
 
   wst = 0;
   
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->jconf->output.progout_flag) { 
-    writelen = 0;
+  if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
+    if (have_progout) {
+      writelen = 0;
+    }
   }
-#endif
 
 }
 
@@ -350,77 +339,112 @@ status_pass1_begin(Recog *recog, void *dummy)
 static void
 result_pass1_current(Recog *recog, void *dummy)
 {
-  int i,bgn;
+  int i, j, bgn;
   int len, num;
   WORD_INFO *winfo;
   WORD_ID *seq;
+  RecogProcess *r;
 
-#ifdef CALLBACK_DEBUG
-  //  printf("<PASS1_INTERIM>\n");
-#endif
+  //  if (callback_debug_flag) printf("<PASS1_INTERIM>\n");
 
-  winfo = recog->model->winfo;
-  seq = recog->result.pass1.word;
-  num = recog->result.pass1.word_num;
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (! r->have_interim) continue;
 
-  /* update output line with folding */
-  printf("\r");
+    winfo = r->lm->winfo;
+    seq = r->result.pass1.word;
+    num = r->result.pass1.word_num;
 
-#ifdef SP_BREAK_CURRENT_FRAME
+    /* update output line with folding */
+    printf("\r");
+    
+    if (r->config->successive.enabled) { /* short pause segmentation */
 
-  if (recog->jconf->output.progout_flag) { 
+      if (have_progout) {
+
+	/* progressive output */
+	/* first, print already confirmed words */
+	len = 0;
+	for(i=0;i<confwordnum;i++) {
+	  if (len + strlen(winfo->woutput[confword[i]]) > SPTEXTWIDTH) {
+	    for(j=len;j<writelen;j++) printf(" ");
+	    printf("\n");
+	    for(j=i;j<confwordnum;j++) confword[j-i] = confword[j];
+	    confwordnum -= i;
+	    len = 0;
+	    i = 0;
+	    writelen = 0;
+	  }
+	  myprintf("%s", winfo->woutput[confword[i]]);
+	  len += strlen(winfo->woutput[confword[i]]);
+	}
+
+	/* output nothing if we are in the first pause area */
+	if (!r->pass1.first_sparea) {
+	  printf("|");
+	  len++;
+	  /* the first word of a segment is the same as last segment, so do not output */
+	  if (confword[confwordnum-1] == seq[0]) {
+	    bgn = 1;
+	  } else {
+	    bgn = 0;
+	  }
+	  /* next, print current candidate words */
+	  for(i=bgn;i<num;i++) {
+	    if (len + strlen(winfo->woutput[seq[i]]) > SPTEXT_FULLWIDTH) {
+	      if (i < num - 1) continue;
+	      myprintf("*");
+	      len += 1;
+	    } else {
+	      myprintf("%s", winfo->woutput[seq[i]]);
+	      len += strlen(winfo->woutput[seq[i]]);
+	    }
+	  }
+	  printf("|");
+	  len++;
+	}
+	
+	fflush(stdout);
+	/* store maximum written length */
+	if (writelen < len) writelen = len;
+	
+	return;
+      }
+    }
+    
     len = 0;
-    for(i=0;i<confwordnum;i++) {
-      myprintf("%s", winfo->woutput[confword[i]]);
-      len += strlen(winfo->woutput[confword[i]]);
+    if (wst == 0) {		/* first line */
+      len += 11;
+      printf("pass1_best:");
     }
-    printf("|");
-    len++;
-    /* the first word of a segment is the same as last segment, so do not output */
-    if (confwordnum > 0) {
-      bgn = 1;
-    } else {
-      bgn = 0;
+    
+    bgn = wst;			/* output only the last line */
+    for (i=bgn;i<num;i++) {
+      len += strlen(winfo->woutput[seq[i]]) + 1;
+      if (len > FILLWIDTH) {	/* fold line */
+	wst = i;
+	printf("\n");
+	len = 0;
+      }
+      myprintf(" %s",winfo->woutput[seq[i]]);
     }
-    for(i=bgn;i<num;i++) {
-      myprintf("%s", winfo->woutput[seq[i]]);
-      len += strlen(winfo->woutput[seq[i]]);
-    }
-    printf("|");
-    len++;
-
-    fflush(stdout);
     if (writelen < len) writelen = len;
-
-    return;
+    
   }
 
-#endif
-
-  len = 0;
-  if (wst == 0) {		/* first line */
-    len += 11;
-    printf("pass1_best:");
-  }
-  
-  bgn = wst;			/* output only the last line */
-  for (i=bgn;i<num;i++) {
-    len += strlen(winfo->woutput[seq[i]]) + 1;
-    if (len > FILLWIDTH) {	/* fold line */
-      wst = i;
-      printf("\n");
-      len = 0;
-    }
-    myprintf(" %s",winfo->woutput[seq[i]]);
-  }
-  
   fflush(stdout);		/* flush */
 }
 
 static void
 result_pass1_determined(Recog *recog, void *dummy)
 {
-  printf("determined at %d: %s\n", recog->result.num_frame, recog->model->winfo->woutput[recog->result.pass1.word[0]]);
+  RecogProcess *r;
+
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (! r->determined) continue;
+    printf("#%d %s: determined at %d: %s\n", r->config->id, r->config->name, r->result.num_frame, r->lm->winfo->woutput[r->result.pass1.word[0]]);
+  }
 }
 
 
@@ -428,7 +452,7 @@ result_pass1_determined(Recog *recog, void *dummy)
 /** 
  * <JA>
  * 第1パス：終了時に第1パスの結果を出力する（第1パス終了後、第2パスが
- * 始まる前に呼ばれる．認識に失敗した場合は呼ばれない）．
+ * 始まる前に呼ばれる. 認識に失敗した場合は呼ばれない）. 
  * 
  * @param seq [in] 第1パスの1位候補の単語列
  * @param num [in] 上記の長さ
@@ -456,61 +480,83 @@ result_pass1(Recog *recog, void *dummy)
   WORD_INFO *winfo;
   WORD_ID *seq;
   int num;
+  RecogProcess *r;
+  boolean multi;
+  int len;
 
-#ifdef CALLBACK_DEBUG
-  printf("<RESULT_PASS1>\n");
-#endif
+  if (callback_debug_flag) printf("<RESULT_PASS1>\n");
 
-  winfo = recog->model->winfo;
-  seq = recog->result.pass1.word;
-  num = recog->result.pass1.word_num;
+  if (recog->process_list->next != NULL) multi = TRUE;
+  else multi = FALSE;
 
-  /* words */
-  printf("\npass1_best:");
-  for (i=0;i<num;i++) {
-    myprintf(" %s",winfo->woutput[seq[i]]);
-  }
-  printf("\n");
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (r->result.status < 0) continue;	/* search already failed  */
+    if (have_progout && r->config->successive.enabled) continue; /* short pause segmentation */
+    if (r->config->output.progout_flag) printf("\r");
 
-  if (verbose_flag) {		/* output further info */
-    /* N-gram entries */
-    printf("pass1_best_wordseq:");
-    for (i=0;i<num;i++) {
-      myprintf(" %s",winfo->wname[seq[i]]);
-    }
-    printf("\n");
-    /* phoneme sequence */
-    printf("pass1_best_phonemeseq:");
-    for (i=0;i<num;i++) {
-      for (j=0;j<winfo->wlen[seq[i]];j++) {
-	center_name(winfo->wseq[seq[i]][j]->name, buf);
-	myprintf(" %s", buf);
+    winfo = r->lm->winfo;
+    seq = r->result.pass1.word;
+    num = r->result.pass1.word_num;
+
+    /* words */
+    if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
+    printf("pass1_best:");
+    if (r->config->output.progout_flag) {
+      len = 0;
+      for (i=0;i<num;i++) {
+	len += strlen(winfo->woutput[seq[i]]) + 1;
+	myprintf(" %s",winfo->woutput[seq[i]]);
       }
-      if (i < num-1) printf(" |");
+      for(j=len;j<writelen;j++) printf(" ");
+    } else {
+      for (i=0;i<num;i++) {
+	myprintf(" %s",winfo->woutput[seq[i]]);
+      }
     }
     printf("\n");
-    if (debug2_flag) {
-      /* logical HMMs */
-      printf("pass1_best_HMMseq_logical:");
+    
+    if (verbose_flag) {		/* output further info */
+      /* N-gram entries */
+      printf("pass1_best_wordseq:");
+      for (i=0;i<num;i++) {
+	myprintf(" %s",winfo->wname[seq[i]]);
+      }
+      printf("\n");
+      /* phoneme sequence */
+      printf("pass1_best_phonemeseq:");
       for (i=0;i<num;i++) {
 	for (j=0;j<winfo->wlen[seq[i]];j++) {
-	  myprintf(" %s", winfo->wseq[seq[i]][j]->name);
+	  center_name(winfo->wseq[seq[i]][j]->name, buf);
+	  myprintf(" %s", buf);
 	}
 	if (i < num-1) printf(" |");
       }
       printf("\n");
+      if (debug2_flag) {
+	/* logical HMMs */
+	printf("pass1_best_HMMseq_logical:");
+	for (i=0;i<num;i++) {
+	  for (j=0;j<winfo->wlen[seq[i]];j++) {
+	    myprintf(" %s", winfo->wseq[seq[i]][j]->name);
+	  }
+	  if (i < num-1) printf(" |");
+	}
+	printf("\n");
+      }
+      /* score */
+      printf("pass1_best_score: %f", r->result.pass1.score);
+      if (r->lmtype == LM_PROB) {
+	if (separate_score_flag) {
+	  printf(" (AM: %f  LM: %f)", 
+		 r->result.pass1.score_am,
+		 r->result.pass1.score_lm);
+	}
+      }
+      printf("\n");
     }
+    //printf("\n");
   }
-  /* score */
-  printf("pass1_best_score: %f", recog->result.pass1.score);
-  if (recog->lmtype == LM_NGRAM) {
-    if (recog->jconf->output.separate_score_flag) {
-      printf(" (AM: %f  LM: %f)", 
-	       recog->result.pass1.score - recog->result.pass1.score_lm,
-	       recog->result.pass1.score_lm);
-    }
-  }
-  printf("\n");
 }
 
 #ifdef WORD_GRAPH
@@ -519,44 +565,42 @@ result_pass1_graph(Recog *recog, void *dummy)
 {
   WordGraph *wg;
   WORD_INFO *winfo;
+  RecogProcess *r;
+  boolean multi;
   int n;
   int tw1, tw2, i;
 
-#ifdef CALLBACK_DEBUG
-  printf("<RESULT_GRAPH_PASS1>\n");
-#endif
+  if (callback_debug_flag) printf("<RESULT_GRAPH_PASS1>\n");
 
-  winfo = recog->model->winfo;
+  if (recog->process_list->next != NULL) multi = TRUE;
+  else multi = FALSE;
 
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (r->result.wg1 == NULL) continue;
+    if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
+    printf("--- begin wordgraph data pass1 ---\n");
 
-  printf("--- begin wordgraph data pass1 ---\n");
+    winfo = r->lm->winfo;
+    /* debug: output all graph word info */
+    wordgraph_dump(stdout, r->result.wg1, winfo);
+    for(wg=r->result.wg1;wg;wg=wg->next) {
+      tw1 = (TEXTWIDTH * wg->lefttime) / recog->peseqlen;
+      tw2 = (TEXTWIDTH * wg->righttime) / recog->peseqlen;
+      printf("%4d:", wg->id);
+      for(i=0;i<tw1;i++) printf(" ");
+      myprintf(" %s\n", winfo->woutput[wg->wid]);
+      printf("%4d:", wg->lefttime);
+      for(i=0;i<tw1;i++) printf(" ");
+      printf("|");
+      for(i=tw1+1;i<tw2;i++) printf("-");
+      printf("|\n");
+    }
+    printf("--- end wordgraph data pass1 ---\n");
 
-  /* debug: output all graph word info */
-  wordgraph_dump(stdout, recog->result.wg1, winfo);
-
-  for(wg=recog->result.wg1;wg;wg=wg->next) {
-    tw1 = (TEXTWIDTH * wg->lefttime) / recog->peseqlen;
-    tw2 = (TEXTWIDTH * wg->righttime) / recog->peseqlen;
-    printf("%4d:", wg->id);
-    for(i=0;i<tw1;i++) printf(" ");
-    myprintf(" %s\n", winfo->woutput[wg->wid]);
-    printf("%4d:", wg->lefttime);
-    for(i=0;i<tw1;i++) printf(" ");
-    printf("|");
-    for(i=tw1+1;i<tw2;i++) printf("-");
-    printf("|\n");
   }
-/* 
- *   for(wg=recog->result.wg1;wg;wg=wg->next) {
- *     myprintf("%d: [%d..%d] wid=%d name=\"%s\" lname=\"%s\" score=%f",
- *		n, wg->lefttime, wg->righttime, wg->wid, winfo->woutput[wg->wid], winfo->wname[wg->wid], wg->fscore_head);
- *     printf(" lscore=%f", wg->lscore);
- *     printf(" AMavg=%f\n", wg->amavg);
- *     n++;
- *   }
- */
-  printf("--- end wordgraph data pass1 ---\n");
 }
+
 #endif
 
 /** 
@@ -572,14 +616,12 @@ result_pass1_graph(Recog *recog, void *dummy)
 static void
 status_pass1_end(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<PASS1_END>\n");
-#endif
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->jconf->output.progout_flag) return;
-#endif
+  if (callback_debug_flag) printf("<PASS1_END>\n");
+  if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
+    if (have_progout) return;
+  }
   /* no op */
-  printf("\n");
+  //printf("\n");
 }
 
 /**********************************************************************/
@@ -614,7 +656,7 @@ put_hypo_woutput(WORD_ID *seq, int n, WORD_INFO *winfo)
 
 /** 
  * <JA>
- * 仮説のN-gram情報（Julianではカテゴリ番号列）を出力する．
+ * 仮説のN-gram情報（Julianではカテゴリ番号列）を出力する. 
  * 
  * @param hypo [in] 文仮説
  * @param winfo [in] 単語辞書
@@ -641,7 +683,7 @@ put_hypo_wname(WORD_ID *seq, int n, WORD_INFO *winfo)
 
 /** 
  * <JA>
- * 仮説の音素系列を出力する．
+ * 仮説の音素系列を出力する. 
  * 
  * @param hypo [in] 文仮説
  * @param winfo [in] 単語情報
@@ -662,12 +704,12 @@ put_hypo_phoneme(WORD_ID *seq, int n, WORD_INFO *winfo)
 
   if (seq != NULL) {
     for (i=0;i<n;i++) {
+      if (i > 0) printf(" |");
       w = seq[i];
       for (j=0;j<winfo->wlen[w];j++) {
 	center_name(winfo->wseq[w][j]->name, buf);
 	myprintf(" %s", buf);
       }
-      if (i > 0) printf(" |");
     }
   }
   printf("\n");  
@@ -675,7 +717,7 @@ put_hypo_phoneme(WORD_ID *seq, int n, WORD_INFO *winfo)
 #ifdef CONFIDENCE_MEASURE
 /** 
  * <JA>
- * 仮説の単語ごとの信頼度を出力する．
+ * 仮説の単語ごとの信頼度を出力する. 
  * 
  * @param hypo [in] 文仮説
  * </JA>
@@ -717,7 +759,7 @@ put_hypo_cmscore(LOGPROB *cmscore, int n)
 
 /** 
  * <JA>
- * 第2パス：得られた文仮説候補を1つ出力する．
+ * 第2パス：得られた文仮説候補を1つ出力する. 
  * 
  * @param hypo [in] 得られた文仮説
  * @param rank [in] @a hypo の順位
@@ -735,204 +777,230 @@ static void
 //ttyout_pass2(NODE *hypo, int rank, Recog *recog)
 result_pass2(Recog *recog, void *dummy)
 {
-#ifdef SP_BREAK_CURRENT_FRAME
   int i, j;
   int len;
-#endif
   char ec[5] = {0x1b, '[', '1', 'm', 0};
   WORD_INFO *winfo;
   WORD_ID *seq;
   int seqnum;
   int n, num;
   Sentence *s;
+  RecogProcess *r;
+  boolean multi;
 
-#ifdef CALLBACK_DEBUG
-  printf("<RESULT_PASS2>\n");
-#endif
+  if (callback_debug_flag) printf("<RESULT_PASS2>\n");
 
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->result.status < 0 && recog->jconf->output.progout_flag) {
-    //printf("\r");
-    //for(i=0;i<writelen;i++) printf(" ");
-    //printf("\r");
-    /* output pass1 result as final */
+  if (recog->process_list->next != NULL) multi = TRUE;
+  else multi = FALSE;
 
-    winfo = recog->model->winfo;
-    seq = recog->result.pass1.word;
-    seqnum = recog->result.pass1.word_num;
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
 
-    printf("\r");
-    len = 0;
-#if 0
-    j = seqnum - 1;
-    if (confwordnum > 0) j--;	/* head word is the same as previous segment */
-    for (i=0;i<j;i++) {
-      confword[confwordnum++] = seq[i];
-    }
-#else
-    j = 0;
-    if (confwordnum > 0) j++;	/* head word is the same as previous segment */
-    for (i=j;i<seqnum;i++) {
-      confword[confwordnum++] = seq[i];
-    }
-#endif
-    for(i=0;i<confwordnum;i++) {
-      myprintf("%s", winfo->woutput[confword[i]]);
-      len += strlen(winfo->woutput[confword[i]]);
-    }
-    for(i=len;i<writelen;i++) printf(" ");
-    fflush(stdout);
-    
-    return;
-  }
-#endif
+    if (r->config->successive.enabled) { /* short pause segmentation */
+      if (r->result.status < 0 && r->config->output.progout_flag) {
+	/* search failed */
+	
+	printf("\r");
+	winfo = r->lm->winfo;
 
-  if (recog->result.status < 0) {
-    switch(recog->result.status) {
-    case -3:			/* input rejected by GMM */
-      printf("input rejected by GMM\n");
-      break;
-    case -2:
-      printf("input rejected by short input\n");
-      break;
-    case -1:
-      printf("search failed\n");
-      break;
-    }
-    return;
-  }
+	if (r->result.status == J_RESULT_STATUS_FAIL) {
+ 	  /* search fail */
+ 	  /* output pass1 result as final */
+	  seq = r->result.pass1.word;
+	  seqnum = r->result.pass1.word_num;
+	  j = 0;
+ 	  /* skip output if head word is the same as previous segment */
+	  if (confword[confwordnum-1] == seq[0]) j++;
 
-  winfo = recog->model->winfo;
-  num = recog->result.sentnum;
+	  /* store 1st pass result as final */
+	  for (i=j;i<seqnum;i++) {
+	    confword[confwordnum++] = seq[i];
+	  }
+	} /* else (rejection), output nothing new */
 
-  for(n=0;n<num;n++) {
-    s = &(recog->result.sent[n]);
-    seq = s->word;
-    seqnum = s->word_num;
-
-#ifdef SP_BREAK_CURRENT_FRAME
-    if (recog->jconf->output.progout_flag) {
-      printf("\r");
-      len = 0;
-#if 0
-      j = seqnum - 1;
-      if (confwordnum > 0) j--;	/* head word is the same as previous segment */
-      for (i=0;i<j;i++) {
-	confword[confwordnum++] = seq[i];
+	len = 0;
+	/* output all confirmed words */
+	for(i=0;i<confwordnum;i++) {
+	  if (len + strlen(winfo->woutput[confword[i]]) > SPTEXTWIDTH) {
+	    for(j=len;j<writelen;j++) printf(" ");
+	    printf("\n");
+	    for(j=i;j<confwordnum;j++) confword[j-i] = confword[j];
+	    confwordnum -= i;
+	    len = 0;
+	    i = 0;
+	    writelen = 0;
+	  }
+	  myprintf("%s", winfo->woutput[confword[i]]);
+	  len += strlen(winfo->woutput[confword[i]]);
+	}
+	for(i=len;i<writelen;i++) printf(" ");
+	fflush(stdout);
+	
+	continue;
       }
-#else
-      j = 0;
-      if (confwordnum > 0) j++;	/* head word is the same as previous segment */
-      for (i=j;i<seqnum;i++) {
-	confword[confwordnum++] = seq[i];
-      }
-#endif
-      for(i=0;i<confwordnum;i++) {
-	myprintf("%s", winfo->woutput[confword[i]]);
-	len += strlen(winfo->woutput[confword[i]]);
-      }
-      for(i=len;i<writelen;i++) printf(" ");
-
-      break;
     }
 
-#endif
-
-    if (debug2_flag) {
-      printf("\n%s",ec);		/* newline & bold on */
+    if (r->result.status < 0) {
+      switch(r->result.status) {
+      case J_RESULT_STATUS_REJECT_POWER:
+	printf("<input rejected by power>\n");
+	break;
+      case J_RESULT_STATUS_TERMINATE:
+	printf("<input teminated by request>\n");
+	break;
+      case J_RESULT_STATUS_ONLY_SILENCE:
+	printf("<input rejected by decoder (silence input result)>\n");
+	break;
+      case J_RESULT_STATUS_REJECT_GMM:
+	printf("<input rejected by GMM>\n");
+	break;
+      case J_RESULT_STATUS_REJECT_SHORT:
+	printf("<input rejected by short input>\n");
+	break;
+      case J_RESULT_STATUS_FAIL:
+	printf("<search failed>\n");
+	break;
+      }
+      continue;
     }
-    printf("sentence%d:", n+1);
-    put_hypo_woutput(seq, seqnum, winfo);
-    if (verbose_flag) {
-      printf("wseq%d:", n+1);
-      put_hypo_wname(seq, seqnum, winfo);
-      printf("phseq%d:", n+1);
-      put_hypo_phoneme(seq, seqnum, winfo);
+
+    winfo = r->lm->winfo;
+    num = r->result.sentnum;
+
+    for(n=0;n<num;n++) {
+      s = &(r->result.sent[n]);
+      seq = s->word;
+      seqnum = s->word_num;
+      
+      if (r->config->successive.enabled) { /* short pause segmentation */
+	if (r->config->output.progout_flag) {
+	  printf("\r");
+
+	  j = 0;
+ 	  /* skip output if head word is the same as previous segment */
+	  if (confword[confwordnum-1] == seq[0]) j++;
+	  for (i=j;i<seqnum;i++) {
+	    confword[confwordnum++] = seq[i];
+	  }
+
+	  /* output all confirmed words */
+	  len = 0;
+	  for(i=0;i<confwordnum;i++) {
+	    if (len + strlen(winfo->woutput[confword[i]]) > SPTEXTWIDTH) {
+	      for(j=len;j<writelen;j++) printf(" ");
+	      printf("\n");
+	      for(j=i;j<confwordnum;j++) confword[j-i] = confword[j];
+	      confwordnum -= i;
+	      len = 0;
+	      i = 0;
+	      writelen = 0;
+	    }
+	    myprintf("%s", winfo->woutput[confword[i]]);
+	    len += strlen(winfo->woutput[confword[i]]);
+	  }
+	  for(i=len;i<writelen;i++) printf(" ");
+	  
+	  break;
+	}
+      }
+
+      if (debug2_flag) {
+	printf("\n%s",ec);		/* newline & bold on */
+      }
+      printf("sentence%d:", n+1);
+      put_hypo_woutput(seq, seqnum, winfo);
+      if (verbose_flag) {
+	printf("wseq%d:", n+1);
+	put_hypo_wname(seq, seqnum, winfo);
+	printf("phseq%d:", n+1);
+	put_hypo_phoneme(seq, seqnum, winfo);
 #ifdef CONFIDENCE_MEASURE
 #ifdef CM_MULTIPLE_ALPHA
-      {
-	int i;
-	for(i=0;i<recog->jconf->annotate.cm_alpha_num;i++) {
-	  printf("cmscore%d[%f]:", rank, recog->jconf->annotate.cm_alpha_bgn + i * recog->jconf->annotate.cm_alpha_step);
-	  put_hypo_cmscore(hypo, i);
+	{
+	  int i;
+	  for(i=0;i<r->config->annotate.cm_alpha_num;i++) {
+	    printf("cmscore%d[%f]:", rank, r->config->annotate.cm_alpha_bgn + i * r->config->annotate.cm_alpha_step);
+	    put_hypo_cmscore(hypo, i);
+	  }
 	}
-      }
 #else
-      printf("cmscore%d:", n+1);
-      put_hypo_cmscore(s->confidence, seqnum);
+	printf("cmscore%d:", n+1);
+	put_hypo_cmscore(s->confidence, seqnum);
 #endif
 #endif /* CONFIDENCE_MEASURE */
-    }
-    if (debug2_flag) {
-      ec[2] = '0';
-      printf("%s\n",ec);		/* bold off & newline */
-    }
-    if (verbose_flag) {
-      printf("score%d: %f", n+1, s->score);
-      if (recog->lmtype == LM_NGRAM) {
-	if (recog->jconf->output.separate_score_flag) {
-	  printf(" (AM: %f  LM: %f)", s->score_lm, s->score_lm);
+      }
+      if (debug2_flag) {
+	ec[2] = '0';
+	printf("%s\n",ec);		/* bold off & newline */
+      }
+      if (verbose_flag) {
+	printf("score%d: %f", n+1, s->score);
+	if (r->lmtype == LM_PROB) {
+	  if (separate_score_flag) {
+	    printf(" (AM: %f  LM: %f)", s->score_am, s->score_lm);
+	  }
+	}
+	printf("\n");
+	if (r->lmtype == LM_DFA) {
+	  /* output which grammar the hypothesis belongs to on multiple grammar */
+	  /* determine only by the last word */
+	  if (multigram_get_all_num(r->lm) > 1) {
+	    printf("grammar%d: %d\n", n+1, s->gram_id);
+	  }
 	}
       }
-      printf("\n");
-      if (recog->lmtype == LM_DFA) {
-	/* output which grammar the hypothesis belongs to on multiple grammar */
-	/* determine only by the last word */
-	if (multigram_get_all_num(recog) > 1) {
-	  printf("grammar%d: %d\n", n+1, s->gram_id);
-	}
-      }
-    }
-
-    /* output alignment result if exist */
-    if (s->align.filled) {
-      HMM_Logical *p;
-      int i;
-
-      printf("=== begin forced alignment ===\n");
-      printf(" id: from  to    n_score    unit\n");
-      printf(" ----------------------------------------\n");
-      for(i=0;i<s->align.num;i++) {
-	printf("[%4d %4d]  %f  ", s->align.begin_frame[i], s->align.end_frame[i], s->align.avgscore[i]);
-	switch(s->align.unittype) {
-	case PER_WORD:
-	  myprintf("%s\t[%s]\n", winfo->wname[s->align.w[i]], winfo->woutput[s->align.w[i]]);
-	  break;
-	case PER_PHONEME:
-	  p = s->align.ph[i];
-	  if (p->is_pseudo) {
-	    printf("{%s}\n", p->name);
-	  } else if (strmatch(p->name, p->body.defined->name)) {
-	    printf("%s\n", p->name);
-	  } else {
-	    printf("%s[%s]\n", p->name, p->body.defined->name);
-	  }
-	  break;
-	case PER_STATE:
-	  p = s->align.ph[i];
-	  if (p->is_pseudo) {
-	    printf("{%s}", p->name);
-	  } else if (strmatch(p->name, p->body.defined->name)) {
-	    printf("%s", p->name);
-	  } else {
-	    printf("%s[%s]", p->name, p->body.defined->name);
-	  }
-	  if (recog->model->hmminfo->multipath) {
-	    if (s->align.is_iwsp[i]) {
-	      printf(" #%d (sp)\n", s->align.loc[i]);
+      
+      /* output alignment result if exist */
+      if (s->align.filled) {
+	HMM_Logical *p;
+	int i;
+	
+	printf("=== begin forced alignment ===\n");
+	printf(" id: from  to    n_score    unit\n");
+	printf(" ----------------------------------------\n");
+	for(i=0;i<s->align.num;i++) {
+	  printf("[%4d %4d]  %f  ", s->align.begin_frame[i], s->align.end_frame[i], s->align.avgscore[i]);
+	  switch(s->align.unittype) {
+	  case PER_WORD:
+	    myprintf("%s\t[%s]\n", winfo->wname[s->align.w[i]], winfo->woutput[s->align.w[i]]);
+	    break;
+	  case PER_PHONEME:
+	    p = s->align.ph[i];
+	    if (p->is_pseudo) {
+	      printf("{%s}\n", p->name);
+	    } else if (strmatch(p->name, p->body.defined->name)) {
+	      printf("%s\n", p->name);
+	    } else {
+	      printf("%s[%s]\n", p->name, p->body.defined->name);
+	    }
+	    break;
+	  case PER_STATE:
+	    p = s->align.ph[i];
+	    if (p->is_pseudo) {
+	      printf("{%s}", p->name);
+	    } else if (strmatch(p->name, p->body.defined->name)) {
+	      printf("%s", p->name);
+	    } else {
+	      printf("%s[%s]", p->name, p->body.defined->name);
+	    }
+	    if (r->am->hmminfo->multipath) {
+	      if (s->align.is_iwsp[i]) {
+		printf(" #%d (sp)\n", s->align.loc[i]);
+	      } else {
+		printf(" #%d\n", s->align.loc[i]);
+	      }
 	    } else {
 	      printf(" #%d\n", s->align.loc[i]);
 	    }
-	  } else {
-	    printf(" #%d\n", s->align.loc[i]);
+	    break;
 	  }
-	  break;
 	}
+	
+	printf("re-computed AM score: %f\n", s->align.allscore);
+	
+	printf("=== end forced alignment ===\n");
       }
-
-      printf("re-computed AM score: %f\n", s->align.allscore);
-
-      printf("=== end forced alignment ===\n");
     }
   }
 
@@ -942,8 +1010,8 @@ result_pass2(Recog *recog, void *dummy)
 
 /** 
  * <JA>
- * 第2パス：音声認識結果の出力を開始する際の出力．認識結果を出力する際に、
- * 一番最初に出力される．
+ * 第2パス：音声認識結果の出力を開始する際の出力. 認識結果を出力する際に、
+ * 一番最初に出力される. 
  * 
  * </JA>
  * <EN>
@@ -955,17 +1023,11 @@ result_pass2(Recog *recog, void *dummy)
 static void
 status_pass2_begin(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<PASS2_BEGIN>\n");
-#endif
+  if (callback_debug_flag) printf("<PASS2_BEGIN>\n");
 
-  if (recog->lmtype == LM_NGRAM) {
-    VERMES("### Recognition: 2nd pass (RL heuristic best-first with 3-gram)\n");
-  } else if (recog->lmtype == LM_DFA) {
-    VERMES("### Recognition: 2nd pass (RL heuristic best-first with DFA)\n");
-  }
-  if (verbose_flag) printf("samplenum=%d\n", recog->result.num_frame);
-  if (debug2_flag) VERMES("getting %d candidates...\n", recog->jconf->search.pass2.nbest);
+  VERMES("### Recognition: 2nd pass (RL heuristic best-first)\n");
+  //if (verbose_flag) printf("samplenum=%d\n", recog->param->samplenum);
+  //if (debug2_flag) VERMES("getting %d candidates...\n", recog->jconf->search.pass2.nbest);
 }
 
 /** 
@@ -981,20 +1043,9 @@ status_pass2_begin(Recog *recog, void *dummy)
 static void
 status_pass2_end(Recog *recog, void *dummy)
 {
-#ifdef CALLBACK_DEBUG
-  printf("<PASS2_END>\n");
-#endif
+  if (callback_debug_flag) printf("<PASS2_END>\n");
 
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->rest_param != NULL) {
-    if (verbose_flag) {
-      printf("Segmented by short pause, continue to next...\n");
-    } else {
-      //printf("-->\n");
-    }
-  }
   fflush(stdout);
-#endif
 }
 
 /**********************************************************************/
@@ -1004,7 +1055,7 @@ status_pass2_end(Recog *recog, void *dummy)
 
 /** 
  * <JA>
- * 得られた単語グラフ全体を出力する．
+ * 得られた単語グラフ全体を出力する. 
  * 
  * @param root [in] グラフ単語集合の先頭要素へのポインタ
  * @param winfo [in] 単語辞書
@@ -1022,35 +1073,44 @@ result_graph(Recog *recog, void *dummy)
   WordGraph *wg;
   int tw1, tw2, i;
   WORD_INFO *winfo;
+  RecogProcess *r;
+  boolean multi;
 
-#ifdef CALLBACK_DEBUG
-  printf("<RESULT_GRAPH>\n");
-#endif
+  if (callback_debug_flag) printf("<RESULT_GRAPH>\n");
 
-  winfo = recog->model->winfo;
+  if (recog->process_list->next != NULL) multi = TRUE;
+  else multi = FALSE;
 
-  /* debug: output all graph word info */
-  wordgraph_dump(stdout, recog->result.wg, winfo);
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (r->result.wg == NULL) continue;	/* no graphout specified */
+    if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
 
-  printf("-------------------------- begin wordgraph show -------------------------\n");
-  for(wg=recog->result.wg;wg;wg=wg->next) {
-    tw1 = (TEXTWIDTH * wg->lefttime) / recog->peseqlen;
-    tw2 = (TEXTWIDTH * wg->righttime) / recog->peseqlen;
-    printf("%4d:", wg->id);
-    for(i=0;i<tw1;i++) printf(" ");
-    myprintf(" %s\n", winfo->woutput[wg->wid]);
-    printf("%4d:", wg->lefttime);
-    for(i=0;i<tw1;i++) printf(" ");
-    printf("|");
-    for(i=tw1+1;i<tw2;i++) printf("-");
-    printf("|\n");
+    winfo = r->lm->winfo;
+
+    /* debug: output all graph word info */
+    wordgraph_dump(stdout, r->result.wg, winfo);
+
+    printf("-------------------------- begin wordgraph show -------------------------\n");
+    for(wg=r->result.wg;wg;wg=wg->next) {
+      tw1 = (TEXTWIDTH * wg->lefttime) / r->peseqlen;
+      tw2 = (TEXTWIDTH * wg->righttime) / r->peseqlen;
+      printf("%4d:", wg->id);
+      for(i=0;i<tw1;i++) printf(" ");
+      myprintf(" %s\n", winfo->woutput[wg->wid]);
+      printf("%4d:", wg->lefttime);
+      for(i=0;i<tw1;i++) printf(" ");
+      printf("|");
+      for(i=tw1+1;i<tw2;i++) printf("-");
+      printf("|\n");
+    }
+    printf("-------------------------- end wordgraph show ---------------------------\n");
   }
-  printf("-------------------------- end wordgraph show ---------------------------\n");
 }
 
 /** 
  * <JA>
- * 得られたコンフュージョンネットワークを出力する．
+ * 得られたコンフュージョンネットワークを出力する. 
  * 
  * </JA>
  * <EN>
@@ -1063,33 +1123,41 @@ result_confnet(Recog *recog, void *dummy)
 {
   CN_CLUSTER *c;
   int i;
+  RecogProcess *r;
+  boolean multi;
 
-#ifdef CALLBACK_DEBUG
-  printf("<RESULT_CONFNET>\n");
-#endif
+  if (callback_debug_flag) printf("<RESULT_CONFNET>\n");
+  if (recog->process_list->next != NULL) multi = TRUE;
+  else multi = FALSE;
 
-  printf("---- begin confusion network ---\n");
-  for(c=recog->result.confnet;c;c=c->next) {
-    for(i=0;i<c->wordsnum;i++) {
-      myprintf("(%s:%.3f)", (c->words[i] == WORD_INVALID) ? "-" : recog->model->winfo->woutput[c->words[i]], c->pp[i]);
-      if (i == 0) printf("  ");
-    }
-    printf("\n");
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (r->result.confnet == NULL) continue;	/* no confnet obtained */
+    if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
+
+    printf("---- begin confusion network ---\n");
+    for(c=r->result.confnet;c;c=c->next) {
+      for(i=0;i<c->wordsnum;i++) {
+	myprintf("(%s:%.3f)", (c->words[i] == WORD_INVALID) ? "-" : r->lm->winfo->woutput[c->words[i]], c->pp[i]);
+	if (i == 0) printf("  ");
+      }
+      printf("\n");
 #if 0
-    /* output details - break down all words clustered into this class */
-    for(i=0;i<c->wgnum;i++) {
-      printf("    ");
-      put_wordgraph(stdout, c->wg[i], recog->model->winfo);
-    }
+      /* output details - break down all words clustered into this class */
+      for(i=0;i<c->wgnum;i++) {
+	printf("    ");
+	put_wordgraph(stdout, c->wg[i], r->lm->winfo);
+      }
 #endif
+    }
+    printf("---- end confusion network ---\n");
   }
-  printf("---- end confusion network ---\n");
 }
 
 /********************* RESULT OUTPUT FOR GMM *************************/
 /** 
  * <JA>
- * GMMの計算結果を標準出力に出力する．("-result tty" 用)
+ * GMMの計算結果を標準出力に出力する. ("-result tty" 用)
  * </JA>
  * <EN>
  * Output result of GMM computation to standard out.
@@ -1103,16 +1171,14 @@ result_gmm(Recog *recog, void *dummy)
   GMMCalc *gc;
   int i;
 
-#ifdef CALLBACK_DEBUG
-  printf("<RESULT_GMM>\n");
-#endif
+  if (callback_debug_flag) printf("<RESULT_GMM>\n");
 
   gc = recog->gc;
 
   if (debug2_flag) {
     printf("--- GMM result begin ---\n");
     i = 0;
-    for(d=recog->model->gmm->start;d;d=d->next) {
+    for(d=recog->gmm->start;d;d=d->next) {
       myprintf("  [%8s: total=%f avg=%f]\n", d->name, gc->gmm_score[i], gc->gmm_score[i] / (float)gc->framecount);
       i++;
     }
@@ -1129,19 +1195,19 @@ result_gmm(Recog *recog, void *dummy)
 #endif
     printf("\n");
   } else {
-#ifdef SP_BREAK_CURRENT_FRAME
-    if (!recog->jconf->output.progout_flag) {
+    if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
+      if (!have_progout) {
+	myprintf("[GMM: %s]\n", gc->max_d->name);
+      }
+    } else {
       myprintf("[GMM: %s]\n", gc->max_d->name);
     }
-#else
-    myprintf("[GMM: %s]\n", gc->max_d->name);
-#endif
   }
 }
 
 /** 
  * <JA>
- * 現在保持している文法のリストを標準出力に出力する．
+ * 現在保持している文法のリストを標準出力に出力する. 
  * 
  * </JA>
  * <EN>
@@ -1153,21 +1219,31 @@ void
 print_all_gram(Recog *recog)
 {
   MULTIGRAM *m;
+  RecogProcess *r;
+  boolean multi;
 
-  printf("[grammars]\n");
-  for(m=recog->model->grammars;m;m=m->next) {
-    printf("  #%2d: [%-11s] %4d words, %3d categories, %4d nodes",
+  if (recog->process_list->next != NULL) multi = TRUE;
+  else multi = FALSE;
+
+  for(r=recog->process_list;r;r=r->next) {
+    if (! r->live) continue;
+    if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
+
+    printf("[grammars]\n");
+    for(m=r->lm->grammars;m;m=m->next) {
+      printf("  #%2d: [%-11s] %4d words, %3d categories, %4d nodes",
 	     m->id,
 	     m->active ? "active" : "inactive",
 	     m->winfo->num, m->dfa->term_num, m->dfa->state_num);
-    if (m->newbie) printf(" (new)");
-    if (m->hook != MULTIGRAM_DEFAULT) {
-      printf(" (next: %s)", hookstr[m->hook]);
+      if (m->newbie) printf(" (new)");
+      if (m->hook != MULTIGRAM_DEFAULT) {
+	printf(" (next: %s)", hookstr[m->hook]);
+      }
+      myprintf(" \"%s\"\n", m->name);
     }
-    myprintf(" \"%s\"\n", m->name);
-  }
-  if (recog->model->dfa != NULL) {
-    printf("  Global:            %4d words, %3d categories, %4d nodes\n", recog->model->winfo->num, recog->model->dfa->term_num, recog->model->dfa->state_num);
+    if (r->lm->dfa != NULL) {
+      printf("  Global:            %4d words, %3d categories, %4d nodes\n", r->lm->winfo->num, r->lm->dfa->term_num, r->lm->dfa->state_num);
+    }
   }
 }
 
@@ -1193,26 +1269,24 @@ levelmeter(Recog *recog, SP16 *buf, int len, void *dummy)
 
 
 static void
-status_gram(Recog *recog, void *dummy)
-{
-#ifdef CALLBACK_DEBUG
-  printf("<GRAMMAR_UPDATE>\n");
-#endif
-  print_all_gram(recog);
-}
-  
-static void
 frame_indicator(Recog *recog, void *dummy)
 {
-#ifdef SP_BREAK_CURRENT_FRAME
-  if (recog->pass1.in_sparea) {
-    fprintf(stderr, ".");
+  RecogProcess *r;
+
+  if (recog->jconf->decodeopt.segment) {
+    for(r=recog->process_list;r;r=r->next) {
+      if (! r->live) continue;
+      if (r->pass1.in_sparea) {
+	fprintf(stderr, ".");
+	break;
+      }
+    }
+    if (!r) {
+      fprintf(stderr, "-");
+    }
   } else {
-    fprintf(stderr, "-");
+    fprintf(stderr, ".");
   }
-#else  /* normal */
-  fprintf(stderr, ".");
-#endif /* SP_BREAK_CURRENT_FRAME */
 }
   
 
@@ -1226,12 +1300,25 @@ setup_output_tty(Recog *recog, void *data)
   callback_add(recog, CALLBACK_EVENT_SPEECH_STOP, status_recend, data);
   callback_add(recog, CALLBACK_EVENT_RECOGNITION_BEGIN, status_recognition_begin, data);
   callback_add(recog, CALLBACK_EVENT_RECOGNITION_END, status_recognition_end, data);
-#ifdef SP_BREAK_CURRENT_FRAME
-  callback_add(recog, CALLBACK_EVENT_SEGMENT_BEGIN, status_segment_begin, data);
-  callback_add(recog, CALLBACK_EVENT_SEGMENT_END, status_segment_end, data);
-#endif
+  if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
+    callback_add(recog, CALLBACK_EVENT_SEGMENT_BEGIN, status_segment_begin, data);
+    callback_add(recog, CALLBACK_EVENT_SEGMENT_END, status_segment_end, data);
+  }
   callback_add(recog, CALLBACK_EVENT_PASS1_BEGIN, status_pass1_begin, data);
-  if (!recog->jconf->search.pass1.realtime_flag && verbose_flag && (!recog->jconf->output.progout_flag)) {
+  {
+    JCONF_SEARCH *s;
+    boolean ok_p;
+    ok_p = TRUE;
+    for(s=recog->jconf->search_root;s;s=s->next) {
+      if (s->output.progout_flag) ok_p = FALSE;
+    }
+    if (ok_p) {      
+      have_progout = FALSE;
+    } else {
+      have_progout = TRUE;
+    }
+  }
+  if (!recog->jconf->decodeopt.realtime_flag && verbose_flag && ! have_progout) {
     callback_add(recog, CALLBACK_EVENT_PASS1_FRAME, frame_indicator, data);
   }
   callback_add(recog, CALLBACK_RESULT_PASS1_INTERIM, result_pass1_current, data);
@@ -1251,8 +1338,6 @@ setup_output_tty(Recog *recog, void *data)
   callback_add(recog, CALLBACK_RESULT_CONFNET, result_confnet, data);
 
   //callback_add_adin(CALLBACK_ADIN_CAPTURED, levelmeter, data);
-
-  callback_add(recog, CALLBACK_EVENT_GRAMMAR_UPDATE, status_gram, data);
 
   callback_add(recog, CALLBACK_RESULT_PASS1_DETERMINED, result_pass1_determined, data);
 

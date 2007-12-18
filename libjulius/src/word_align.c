@@ -1,23 +1,21 @@
 /**
  * @file   word_align.c
- * @author Akinobu Lee
- * @date   Sat Sep 24 16:09:46 2005
  * 
  * <JA>
- * @brief  単語・音素・状態アラインメントを取る．
+ * @brief  単語・音素・状態単位のアラインメント
  *
  * ここでは，認識結果に対する入力音声のアラインメントを出力するための
- * 関数が定義されています．
+ * 関数が定義されています. 
  *
  * Julius/Julian では，認識結果においてその単語や音素，あるいはHMMの状態が
- * それぞれ入力音声のどの区間にマッチしたのかを知ることができます．
+ * それぞれ入力音声のどの区間にマッチしたのかを知ることができます. 
  * より正確なアラインメントを求めるために，Julius/Julian では認識中の
  * 近似を含む情報は用いずに，認識が終わった後に得られた認識結果の単語列に
- * 対して，あらためて forced alignment を実行しています．
+ * 対して，あらためて forced alignment を実行しています. 
  * </JA>
  * 
  * <EN>
- * @brief  Do Viterbi alignment per word / phoneme/ state.
+ * @brief  Forced alignment by word / phoneme / state unit.
  *
  * This file defines functions for performing forced alignment of
  * recognized words.  The forced alignment is implimented in Julius/Julian
@@ -32,13 +30,16 @@
  *
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Sat Sep 24 16:09:46 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -46,15 +47,17 @@
 
 /** 
  * <JA>
- * 与えられた単語列からHMMを連結して文全体のHMMを構築する．
+ * 与えられた単語列からHMMを連結して文全体のHMMを構築する. 
  * 
  * @param wseq [in] 単語列
  * @param num [in] @a wseq の数
+ * @param has_sp_ret [out] ショートポーズを後続に挿入しうるユニットの情報
  * @param num_ret [out] 構築されたHMMに含まれる音素HMMの数
  * @param end_ret [out] アラインメントの区切りとなる状態番号の列
  * @param per_what [in] 単語・音素・状態のどの単位でアラインメントを取るかを指定
+ * @param r [in] 認識処理インスタンス
  * 
- * @return あらたに割り付けられた文全体をあらわすHMMモデル列へのポインタを返す．
+ * @return あらたに割り付けられた文全体をあらわすHMMモデル列へのポインタを返す. 
  * </JA>
  * <EN>
  * Make the whole sentence HMM from given word sequence by connecting
@@ -62,16 +65,18 @@
  * 
  * @param wseq [in] word sequence to align
  * @param num [in] number of @a wseq
+ * @param has_sp_ret [out] unit information of whether it can be followed by a short-pause
  * @param num_ret [out] number of HMM contained in the generated sentence HMM
  * @param end_ret [out] sequence of state location as alignment unit
  * @param per_what [in] specify the alignment unit (word / phoneme / state)
+ * @param r [in] recognition process instance
  * 
  * @return newly malloced HMM sequences.
  * </EN>
  */
 static HMM_Logical **
 make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **end_ret, int per_what, 
-	   Recog *recog)
+	   RecogProcess *r)
 {
   HMM_Logical **ph;		/* phoneme sequence */
   boolean *has_sp;
@@ -84,9 +89,9 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
   HTK_HMM_INFO *hmminfo;
   boolean enable_iwsp;		/* for multipath */
 
-  winfo = recog->model->winfo;
-  hmminfo = recog->model->hmminfo;
-  if (hmminfo->multipath) enable_iwsp = recog->jconf->lm.enable_iwsp;
+  winfo = r->lm->winfo;
+  hmminfo = r->am->hmminfo;
+  if (hmminfo->multipath) enable_iwsp = r->lm->config->enable_iwsp;
 
   /* make ph[] from wseq[] */
   /* 1. calc total phone num and malloc */
@@ -107,7 +112,7 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
     for (i=0;i<winfo->wlen[tmpw];i++) {
       tmpp = winfo->wseq[tmpw][i];
       /* handle cross-word context dependency */
-      if (recog->ccd_flag) {
+      if (r->ccd_flag) {
 	if (w > 0 && i == 0) {	/* word head */
 	  
 	  if ((ret = get_left_context_HMM(tmpp, ph[pn-1]->name, hmminfo)) != NULL) {
@@ -157,12 +162,14 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
 
 /** 
  * <JA>
- * 文全体のHMMを構築し，Viterbiアラインメントを実行し，結果を出力する．
+ * 文全体のHMMを構築し，Viterbiアラインメントを実行し，結果を出力する. 
  * 
  * @param words [in] 文仮説をあらわす単語列
  * @param wnum [in] @a words の長さ
  * @param param [in] 入力特徴パラメータ列
  * @param per_what [in] 単語・音素・状態のどの単位でアラインメントを取るかを指定
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Build sentence HMM, call viterbi_segment() and output result.
@@ -171,10 +178,12 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
  * @param wnum [in] number of words in @a words
  * @param param [in] input parameter vector
  * @param per_what [in] specify the alignment unit (word / phoneme / state)
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
  */
 static void
-do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s, Recog *recog)
+do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s, RecogProcess *r)
 {
   HMM_Logical **phones;		/* phoneme sequence */
   boolean *has_sp;		/* whether phone can follow short pause */
@@ -194,9 +203,9 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
   HTK_HMM_INFO *hmminfo;
   boolean enable_iwsp;		/* for multipath */
 
-  winfo = recog->model->winfo;
-  hmminfo = recog->model->hmminfo;
-  if (hmminfo->multipath) enable_iwsp = recog->jconf->lm.enable_iwsp;
+  winfo = r->lm->winfo;
+  hmminfo = r->am->hmminfo;
+  if (hmminfo->multipath) enable_iwsp = r->lm->config->enable_iwsp;
 
   /* initialize result storage buffer */
   switch(per_what) {
@@ -255,7 +264,7 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
   end_state = (int *)mymalloc(sizeof(int) * end_num);
 
   /* make phoneme sequence word sequence */
-  phones = make_phseq(words, wnum, hmminfo->multipath ? &has_sp : NULL, &phonenum, &end_state, per_what, recog);
+  phones = make_phseq(words, wnum, hmminfo->multipath ? &has_sp : NULL, &phonenum, &end_state, per_what, r);
   /* build the sentence HMMs */
   shmm = new_make_word_hmm(hmminfo, phones, phonenum, hmminfo->multipath ? has_sp : NULL);
   if (shmm == NULL) {
@@ -263,7 +272,7 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
   }
 
   /* call viterbi segmentation function */
-  allscore = viterbi_segment(shmm, param, recog->wchmm->hmmwrk, hmminfo->multipath, end_state, end_num, &id_seq, &end_frame, &end_score, &rlen);
+  allscore = viterbi_segment(shmm, param, r->wchmm->hmmwrk, hmminfo->multipath, end_state, end_num, &id_seq, &end_frame, &end_score, &rlen);
 
   /* store result to s */
   s->align.num = rlen;
@@ -335,14 +344,15 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
   
 }
 
-/* entry functions */
 /** 
  * <JA>
- * 単語ごとの forced alignment を行う．
+ * 単語ごとの forced alignment を行う. 
  * 
  * @param words [in] 単語列
  * @param wnum [in] @a words の単語数
  * @param param [in] 入力特徴ベクトル列
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Do forced alignment per word for the given word sequence.
@@ -350,12 +360,16 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
  * @param words [in] word sequence
  * @param wnum [in] length of @a words
  * @param param [in] input parameter vectors
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Recog *recog)
+word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r)
 {
-  do_align(words, wnum, param, PER_WORD, s, recog);
+  do_align(words, wnum, param, PER_WORD, s, r);
 }
 
 /** 
@@ -365,6 +379,8 @@ word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Recog *rec
  * @param revwords [in] 単語列（逆順）
  * @param wnum [in] @a revwords の単語数
  * @param param [in] 入力特徴ベクトル列
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Do forced alignment per word for the given word sequence (reversed order).
@@ -372,26 +388,32 @@ word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Recog *rec
  * @param revwords [in] word sequence in reversed direction
  * @param wnum [in] length of @a revwords
  * @param param [in] input parameter vectors
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, Recog *recog)
+word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r)
 {
   WORD_ID *words;		/* word sequence (true order) */
   int w;
   words = (WORD_ID *)mymalloc(sizeof(WORD_ID) * wnum);
   for (w=0;w<wnum;w++) words[w] = revwords[wnum-w-1];
-  do_align(words, wnum, param, PER_WORD, s, recog);
+  do_align(words, wnum, param, PER_WORD, s, r);
   free(words);
 }
 
 /** 
  * <JA>
- * 音素ごとの forced alignment を行う．
+ * 音素ごとの forced alignment を行う. 
  * 
  * @param words [in] 単語列
  * @param num [in] @a words の単語数
  * @param param [in] 入力特徴ベクトル列
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Do forced alignment per phoneme for the given word sequence.
@@ -399,12 +421,16 @@ word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, Rec
  * @param words [in] word sequence
  * @param num [in] length of @a words
  * @param param [in] input parameter vectors
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-phoneme_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, Recog *recog)
+phoneme_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, RecogProcess *r)
 {
-  do_align(words, num, param, PER_PHONEME, s, recog);
+  do_align(words, num, param, PER_PHONEME, s, r);
 }
 
 /** 
@@ -414,6 +440,8 @@ phoneme_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, Recog *r
  * @param revwords [in] 単語列（逆順）
  * @param num [in] @a revwords の単語数
  * @param param [in] 入力特徴ベクトル列
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Do forced alignment per phoneme for the given word sequence (reversed order).
@@ -421,26 +449,32 @@ phoneme_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, Recog *r
  * @param revwords [in] word sequence in reversed direction
  * @param num [in] length of @a revwords
  * @param param [in] input parameter vectors
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-phoneme_rev_align(WORD_ID *revwords, short num, HTK_Param *param, Sentence *s, Recog *recog)
+phoneme_rev_align(WORD_ID *revwords, short num, HTK_Param *param, Sentence *s, RecogProcess *r)
 {
   WORD_ID *words;		/* word sequence (true order) */
   int p;
   words = (WORD_ID *)mymalloc(sizeof(WORD_ID) * num);
   for (p=0;p<num;p++) words[p] = revwords[num-p-1];
-  do_align(words, num, param, PER_PHONEME, s, recog);
+  do_align(words, num, param, PER_PHONEME, s, r);
   free(words);
 }
 
 /** 
  * <JA>
- * HMM状態ごとの forced alignment を行う．
+ * HMM状態ごとの forced alignment を行う. 
  * 
  * @param words [in] 単語列
  * @param num [in] @a words の単語数
  * @param param [in] 入力特徴ベクトル列
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Do forced alignment per HMM state for the given word sequence.
@@ -448,12 +482,16 @@ phoneme_rev_align(WORD_ID *revwords, short num, HTK_Param *param, Sentence *s, R
  * @param words [in] word sequence
  * @param num [in] length of @a words
  * @param param [in] input parameter vectors
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-state_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, Recog *recog)
+state_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, RecogProcess *r)
 {
-  do_align(words, num, param, PER_STATE, s, recog);
+  do_align(words, num, param, PER_STATE, s, r);
 }
 
 /** 
@@ -463,6 +501,8 @@ state_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, Recog *rec
  * @param revwords [in] 単語列（逆順）
  * @param num [in] @a revwords の単語数
  * @param param [in] 入力特徴ベクトル列
+ * @param s [out] アラインメント結果を格納するSentence構造体
+ * @param r [i/o] 認識処理インスタンス
  * </JA>
  * <EN>
  * Do forced alignment per state for the given word sequence (reversed order).
@@ -470,15 +510,21 @@ state_align(WORD_ID *words, short num, HTK_Param *param, Sentence *s, Recog *rec
  * @param revwords [in] word sequence in reversed direction
  * @param num [in] length of @a revwords
  * @param param [in] input parameter vectors
+ * @param s [out] Sentence data area to store the alignment result
+ * @param r [i/o] recognition process instance
  * </EN>
+ * @callgraph
+ * @callergraph
  */
 void
-state_rev_align(WORD_ID *revwords, short num, HTK_Param *param, Sentence *s, Recog *recog)
+state_rev_align(WORD_ID *revwords, short num, HTK_Param *param, Sentence *s, RecogProcess *r)
 {
   WORD_ID *words;		/* word sequence (true order) */
   int p;
   words = (WORD_ID *)mymalloc(sizeof(WORD_ID) * num);
   for (p=0;p<num;p++) words[p] = revwords[num-p-1];
-  do_align(words, num, param, PER_STATE, s, recog);
+  do_align(words, num, param, PER_STATE, s, r);
   free(words);
 }
+
+/* end of file */

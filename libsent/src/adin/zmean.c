@@ -1,12 +1,10 @@
 /**
  * @file   zmean.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 20:31:23 2005
  *
  * <JA>
  * @brief  入力音声の直流成分の除去
  *
- * HTK の ZMEANSOURCE にあたる，直流成分の除去を行ないます．
+ * 直流成分の除去を行ないます．
  * 
  * 直流成分の推定は入力デバイスごとに異なります．
  * ファイル入力では，データ全体の振幅の平均が用いられます．
@@ -27,13 +25,16 @@
  * and the value will be used for the rest of the input.
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 20:31:23 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

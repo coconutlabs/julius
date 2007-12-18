@@ -1,7 +1,5 @@
 /**
  * @file   voca_load_htkdict.c
- * @author Akinobu LEE
- * @date   Fri Feb 18 19:43:06 2005
  * 
  * <JA>
  * @brief  HTK形式の単語辞書データの読み込み
@@ -18,13 +16,16 @@
  * triphone will be done here.
  * </EN>
  * 
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 18 19:43:06 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -215,6 +216,82 @@ voca_set_stats(WORD_INFO *winfo)
 }
 
 /** 
+ * Start loading a dictionary.  See voca_load_htkdict() for an example
+ * of using this function.
+ * 
+ * @param winfo [i/o] dictionary data where the data will be loaded
+ * @param hmminfo [in] phoneme HMM definition 
+ * @param ignore_tri_conv [in] if TRUE, skip triphone conversion while loading
+ * 
+ */
+void
+voca_load_start(WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
+{
+  winfo->ok_flag = TRUE;
+  winfo->linenum = 0;
+  if (hmminfo != NULL && hmminfo->is_triphone && (! ignore_tri_conv)) {
+    winfo->do_conv = TRUE;
+  } else {
+    winfo->do_conv = FALSE;
+  }
+  winfo_init(winfo);
+  winfo->num = 0;
+}
+
+/** 
+ * Load a line from buffer and set parameters to the dictionary.
+ * See voca_load_htkdict() for an example of using this function.
+ * 
+ * @param buf [in] input buffer containing a word entry
+ * @param winfo [i/o] word dictionary to append the entry
+ * @param hmminfo [in] phoneme HMM definition
+ * 
+ * @return TRUE when successfully read, or FALSE on encountered end of
+ * dictionary.  When an error occurs, this function will set winfo->ok_flag
+ * to FALSE.
+ * 
+ */
+boolean
+voca_load_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo)
+{
+  WORD_ID vnum;
+
+  winfo->linenum++;
+  vnum = winfo->num;
+  if (vnum >= winfo->maxnum) {
+    if (winfo_expand(winfo) == FALSE) return FALSE;
+  }
+  if (voca_load_htkdict_line(buf, &vnum, winfo->linenum, winfo, hmminfo, winfo->do_conv, &(winfo->ok_flag)) == FALSE) {
+    return FALSE;
+  }
+  winfo->num = vnum;
+  return TRUE;
+}
+
+/** 
+ * End loading dictionary entries.  It calculates some statistics for
+ * the read entries, outputs errors if encountered
+ * while the last loading, and returns with status whether an error
+ * occured while loading.
+ * 
+ * @param winfo [i/o] word dictionary just read by voca_load_line() calls
+ * 
+ * @return TRUE when no error has been occured during loading, or FALSE
+ * if an error occured.
+ * 
+ */
+boolean
+voca_load_end(WORD_INFO *winfo)
+{
+  voca_set_stats(winfo);
+  if (!winfo->ok_flag) {
+    if (winfo->errph_root != NULL) list_error(winfo);
+  }
+  return(winfo->ok_flag);
+}
+
+
+/** 
  * Top function to read word dictionary via file pointer
  * 
  * @param fp [in] file pointer
@@ -227,34 +304,15 @@ voca_set_stats(WORD_INFO *winfo)
 boolean
 voca_load_htkdict(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
 {
-  boolean ok_flag = TRUE;
-  WORD_ID vnum;
-  boolean do_conv = FALSE;
-  int linenum;
+  boolean ret;
 
-  if (hmminfo != NULL && hmminfo->is_triphone && (! ignore_tri_conv))
-    do_conv = TRUE;
-
-  winfo_init(winfo);
-
-  linenum = 0;
-  vnum = 0;
+  voca_load_start(winfo, hmminfo, ignore_tri_conv);
   while (getl(buf, sizeof(buf), fp) != NULL) {
-    linenum++;
-    if (vnum >= winfo->maxnum) {
-      if (winfo_expand(winfo) == FALSE) return FALSE;
-    }
-    if (voca_load_htkdict_line(buf, &vnum, linenum, winfo, hmminfo, do_conv, &ok_flag) == FALSE) break;
+    if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
   }
-  winfo->num = vnum;
+  ret = voca_load_end(winfo);
 
-  /* compute maxwn */
-  voca_set_stats(winfo);
-  if (!ok_flag) {
-    if (winfo->errph_root != NULL) list_error(winfo);
-  }
-
-  return(ok_flag);
+  return(ret);
 }
 
 
@@ -271,34 +329,15 @@ voca_load_htkdict(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ign
 boolean
 voca_load_htkdict_fd(int fd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
 {
-  boolean ok_flag = TRUE;
-  WORD_ID vnum;
-  boolean do_conv = FALSE;
-  int linenum;
+  boolean ret;
 
-  if (hmminfo != NULL && hmminfo->is_triphone && (! ignore_tri_conv))
-    do_conv = TRUE;
-
-  winfo_init(winfo);
-
-  linenum = 0;
-  vnum = 0;
+  voca_load_start(winfo, hmminfo, ignore_tri_conv);
   while(getl_fd(buf, MAXLINELEN, fd) != NULL) {
-    linenum++;
-    if (vnum >= winfo->maxnum) {
-      if (winfo_expand(winfo) == FALSE) return FALSE;
-    }
-    if (voca_load_htkdict_line(buf, &vnum, linenum, winfo, hmminfo, do_conv, &ok_flag) == FALSE) break;
+    if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
   }
-  winfo->num = vnum;
+  ret = voca_load_end(winfo);
 
-  /* compute maxwn */
-  voca_set_stats(winfo);
-  if (!ok_flag) {
-    if (winfo->errph_root != NULL) list_error(winfo);
-  }
-
-  return(ok_flag);
+  return(ret);
 }
 
 /** 
@@ -314,34 +353,15 @@ voca_load_htkdict_fd(int fd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ig
 boolean
 voca_load_htkdict_sd(int sd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
 {
-  boolean ok_flag = TRUE;
-  WORD_ID vnum;
-  boolean do_conv = FALSE;
-  int linenum;
-  
-  if (hmminfo != NULL && hmminfo->is_triphone && (! ignore_tri_conv))
-    do_conv = TRUE;
-  
-  winfo_init(winfo);
-  
-  linenum = 0;
-  vnum = 0;
+  boolean ret;
+
+  voca_load_start(winfo, hmminfo, ignore_tri_conv);
   while(getl_sd(buf, MAXLINELEN, sd) != NULL) {
-    linenum++;
-    if (vnum >= winfo->maxnum) {
-      if (winfo_expand(winfo) == FALSE) return FALSE;
-    }
-    if (voca_load_htkdict_line(buf, &vnum, linenum, winfo, hmminfo, do_conv, &ok_flag) == FALSE) break;
+    if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
   }
-  winfo->num = vnum;
-  
-  /* compute maxwn */
-  voca_set_stats(winfo);
-  if (!ok_flag) {
-    if (winfo->errph_root != NULL) list_error(winfo);
-  }
-  
-  return(ok_flag);
+  ret = voca_load_end(winfo);
+
+  return(ret);
 }
 
 /** 
@@ -357,31 +377,16 @@ voca_load_htkdict_sd(int sd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ig
 boolean
 voca_append_htkdict(char *entry, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
 {
-  boolean ok_flag = TRUE;
-  boolean do_conv = FALSE;
-
-  if (hmminfo != NULL && hmminfo->is_triphone && (! ignore_tri_conv))
-    do_conv = TRUE;
-
-  if (winfo->num >= winfo->maxnum) {
-    if (winfo_expand(winfo) == FALSE) return FALSE;
-  }
-  strcpy(buf, entry);		/* const buffer not allowed in voca_load_htkdict_line() */
-  voca_load_htkdict_line(buf, &(winfo->num), 1, winfo, hmminfo, do_conv, &ok_flag);
-
-  voca_set_stats(winfo);
-  if (!ok_flag) {
-    if (winfo->errph_root != NULL) list_error(winfo);
-  }
-
-  return(ok_flag);
+  voca_load_line(entry, winfo, hmminfo);
+  return(voca_load_end(winfo));
 }
 
 /** 
  * Sub function to Add a dictionary entry line to the word dictionary.
  * 
  * @param buf [i/o] buffer to hold the input string, will be modified in this function
- * @param vnum [in] current number of words in @a winfo
+ * @param vnum_p [in] current number of words in @a winfo
+ * @param linenum [in] current line number of the input
  * @param winfo [out] pointer to word dictionary to append the data.
  * @param hmminfo [in] HTK %HMM definition data.  if NULL, phonemes are ignored.
  * @param do_conv [in] TRUE if performing triphone conversion
@@ -415,7 +420,7 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
   strcpy(bufbak, buf);
   
   /* GrammarEntry */
-  if ((ptmp = mystrtok(buf, " \t\n")) == NULL) {
+  if ((ptmp = mystrtok_quote(buf, " \t\n")) == NULL) {
     jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
     winfo->errnum++;
     *ok_flag = FALSE;
@@ -488,10 +493,18 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
     ptmp = mystrtok_quotation(NULL, " \t\n", '{', '}', 0);
     break;
   default:
+#if 1
+    /* ALLOW no entry for output */
+    /* same as wname is used */
+    winfo->is_transparent[vnum] = FALSE;
+    ptmp = winfo->wname[vnum];
+#else
+    /* error */
     jlog("Error: voca_load_htkdict: line %d: missing output string??\n> %s\n", linenum, bufbak);
     winfo->errnum++;
     *ok_flag = FALSE;
     return TRUE;
+#endif
   }
   if (ptmp == NULL) {
     jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);

@@ -1,7 +1,5 @@
 /**
  * @file   adin_mic_linux_oss.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 16:18:26 2005
  *
  * <JA>
  * @brief  マイク入力 (Linux/OSS)
@@ -50,13 +48,16 @@
  * environment variable AUDIODEV.
  * </EN>
  *
- * $Revision: 1.2 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 16:18:26 2005
+ *
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -112,6 +113,8 @@ adin_mic_standby(int sfreq, void *dummy)
   char *defaultdev = DEFAULT_DEVICE; /* default device */
   char *devname;
   int frag;
+  int frag_msec;
+  char *env;
 
   /* set device name */
   if ((devname = getenv("AUDIODEV")) == NULL) {
@@ -173,18 +176,14 @@ adin_mic_standby(int sfreq, void *dummy)
   /* (and smaller fragment causes busy buffering) */
   {
     int arg;
-    int frag_msec;
     int f, f2;
-    char *p;
 
     /* if environment variable "LATENCY_MSEC" is defined, try to set it
        as a minimum latency in msec (will be rouneded to 2^x). */
-    if ((p = getenv("LATENCY_MSEC")) == NULL) {
+    if ((env = getenv("LATENCY_MSEC")) == NULL) {
       frag_msec = MAX_FRAGMENT_MSEC;
-      jlog("Stat: adin_oss: try to set latency to %d msec\n", frag_msec);
     } else {
-      frag_msec = atoi(p);
-      jlog("Stat: adin_oss: try to set latency to %d msec (from LATENCY_MSEC)\n", frag_msec);
+      frag_msec = atoi(env);
     }
       
     /* get fragment size from MAX_FRAGMENT_MSEC and MIN_FRAGMENT_SIZE */
@@ -311,14 +310,19 @@ adin_mic_standby(int sfreq, void *dummy)
   if (samplerate != sfreq) {
     jlog("Warning: adin_oss: specified sampling rate was %dHz but set to %dHz, \n", sfreq, samplerate);
   }
-  jlog("Stat: adin_oss: sampling rate is %dHz\n", samplerate);
+  jlog("Stat: adin_oss: sampling rate = %dHz\n", samplerate);
 
   /* get actual fragment size */
   if (ioctl(audio_fd, SNDCTL_DSP_GETBLKSIZE, &frag_size) == -1) {
     jlog("Error: adin_oss: failed to get fragment size\n");
     return(FALSE);
   }
-  jlog("Stat: adin_oss: audio I/O Latency = %d msec (data fragment = %d frames)\n", frag_size * 1000/ (sfreq * sizeof(SP16)), frag_size / sizeof(SP16));
+  if (env == NULL) {
+    jlog("Stat: adin_oss: going to set latency to %d msec\n", frag_msec);
+  } else {
+    jlog("Stat: adin_oss: going to set latency to %d msec (from env LATENCY_MSEC)\n", frag_msec);
+  }
+  jlog("Stat: adin_oss: audio I/O Latency = %d msec (fragment size = %d samples)\n", frag_size * 1000/ (sfreq * sizeof(SP16)), frag_size / sizeof(SP16));
 
   return TRUE;
 }

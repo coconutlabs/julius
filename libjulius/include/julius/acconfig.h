@@ -1,15 +1,13 @@
 /**
  * @file   acconfig.h
- * @author Akinobu LEE
- * @date   Sat Feb 19 12:53:54 2005
  * 
  * <JA>
  * @brief  config.h.in を configure.in から生成するための autoconf 用ヘッダ
  *
- * このファイルはソースからインクルードされることはありません．
+ * このファイルはソースからインクルードされることはありません. 
  * 実際にはこの内容は config.h.in に埋め込まれており，
  * configure によって config.h.in から生成された config.h が
- * プログラムによって使用されます．
+ * プログラムによって使用されます. 
  *
  * @sa config.h, config.h.in, configure, configure.in
  * </JA>
@@ -26,7 +24,10 @@
  * @sa config.h, config.h.in, configure, configure.in
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sat Feb 19 12:53:54 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 
@@ -138,13 +139,6 @@
 #undef GPRUNE_DEFAULT_BEAM
 
 /**
- * For Julius, if defined, progressive decoding will be performed for the input
- * with short pause segmentation.
- * 
- */
-#undef SP_BREAK_CURRENT_FRAME
-
-/**
  * Enables confidence scoring for the output words.  This will be defined
  * by default.
  * 
@@ -212,3 +206,32 @@
  * 
  */
 #undef CM_SEARCH_LIMIT
+
+/**
+ * If defined, enable decoder-oriented VAD using short-pause segmentation
+ * scheme developed by NAIST team
+ * 
+ */
+
+#undef SPSEGMENT_NAIST
+
+/**
+ * If defined, enable a simple GMM-based VAD.  Both frontend VAD and
+ * postprocessing rejection will be performed using the same GMM.
+ * 
+ */
+
+#undef GMM_VAD
+
+/**
+ * This will be defined internally when in-decoder type VAD is enabled.
+ * 
+ */
+
+#undef BACKEND_VAD
+
+/**
+ * If enabled, do post-rejection by power
+ * 
+ */
+#undef POWER_REJECT

@@ -1,12 +1,10 @@
 /**
  * @file   charconv_libjcode.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 16:02:41 2005
  * 
  * <JA>
  * @brief  文字コード変換 (libjcode 使用)
  *
- * 日本語の文字コード(JIS,EUC,SJIS)の相互変換のみ可能である．
+ * 日本語の文字コード(JIS,EUC,SJIS)の相互変換のみ可能である. 
  *
  * </JA>
  * 
@@ -18,13 +16,16 @@
  *
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 16:02:41 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -33,7 +34,7 @@
 #ifdef CHARACTER_CONVERSION
 #ifdef USE_LIBJCODE
 
-#include <jlib.h>
+#include "libjcode/jlib.h"
 static int convert_to = SJIS; ///< Conversion target
 
 /** 

@@ -1,7 +1,5 @@
 /**
  * @file   read_binhmm.c
- * @author Akinobu LEE
- * @date   Wed Feb 16 05:23:59 2005
  * 
  * <JA>
  * @brief  バイナリ形式の %HMM 定義ファイルを読み込む
@@ -21,12 +19,15 @@
  * not compatible with the HTK binary format.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Wed Feb 16 05:23:59 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -121,33 +122,39 @@ static boolean
 rd_para(FILE *fp, Value *para)
 {
   short version;
+  float dummy;
 
+  /* read version */
   rdn(fp, &version, sizeof(short), 1);
-  switch(version) {
-  case 1:
-    rdn(fp, &(para->smp_period), sizeof(long), 1);      
-    rdn(fp, &(para->smp_freq), sizeof(long), 1);	
-    rdn(fp, &(para->framesize), sizeof(int), 1);        
-    rdn(fp, &(para->frameshift), sizeof(int), 1);       
-    rdn(fp, &(para->preEmph), sizeof(float), 1);        
-    rdn(fp, &(para->lifter), sizeof(int), 1);           
-    rdn(fp, &(para->fbank_num), sizeof(int), 1);        
-    rdn(fp, &(para->delWin), sizeof(int), 1);           
-    rdn(fp, &(para->accWin), sizeof(int), 1);           
-    rdn(fp, &(para->silFloor), sizeof(float), 1);       
-    rdn(fp, &(para->escale), sizeof(float), 1);         
-    rdn(fp, &(para->hipass), sizeof(int), 1);		
-    rdn(fp, &(para->lopass), sizeof(int), 1);		
-    rdn(fp, &(para->enormal), sizeof(int), 1);          
-    rdn(fp, &(para->raw_e), sizeof(int), 1);            
-    rdn(fp, &(para->ss_alpha), sizeof(float), 1);	
-    rdn(fp, &(para->ss_floor), sizeof(float), 1);	
-    rdn(fp, &(para->zmeanframe), sizeof(int), 1);	
-    break;
-  default:
+
+  if (version > VALUE_VERSION) {
     jlog("Error: read_binhmm: unknown embedded parameter format version: %d\n", version);
     return FALSE;
   }
+
+  /* read parameters */
+  rdn(fp, &(para->smp_period), sizeof(long), 1);      
+  rdn(fp, &(para->smp_freq), sizeof(long), 1);	
+  rdn(fp, &(para->framesize), sizeof(int), 1);        
+  rdn(fp, &(para->frameshift), sizeof(int), 1);       
+  rdn(fp, &(para->preEmph), sizeof(float), 1);        
+  rdn(fp, &(para->lifter), sizeof(int), 1);           
+  rdn(fp, &(para->fbank_num), sizeof(int), 1);        
+  rdn(fp, &(para->delWin), sizeof(int), 1);           
+  rdn(fp, &(para->accWin), sizeof(int), 1);           
+  rdn(fp, &(para->silFloor), sizeof(float), 1);       
+  rdn(fp, &(para->escale), sizeof(float), 1);         
+  rdn(fp, &(para->hipass), sizeof(int), 1);		
+  rdn(fp, &(para->lopass), sizeof(int), 1);		
+  rdn(fp, &(para->enormal), sizeof(int), 1);          
+  rdn(fp, &(para->raw_e), sizeof(int), 1);            
+  if (version == 1) {
+    /* version 1 has ss related parameters, but version 2 and later not */
+    /* skip ss related parameters (ss_alpha and ss_floor) */
+    rdn(fp, &dummy, sizeof(float), 1);
+    rdn(fp, &dummy, sizeof(float), 1);
+  }
+  rdn(fp, &(para->zmeanframe), sizeof(int), 1);	
 
   return(TRUE);
 }
@@ -655,9 +662,9 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
   /* determine whether this model needs multi-path handling */
   hmm->need_multipath = htk_hmm_has_several_arc_on_edge(hmm);
   if (hmm->need_multipath) {
-    jlog("Stat: read_binhmm: MULTI-PATH handling is required at decoding\n");
+    jlog("Stat: read_binhmm: this HMM requires multipath handling at decoding\n");
   } else {
-    jlog("Stat: read_binhmm: multi-path handling is not required\n");
+    jlog("Stat: read_binhmm: this HMM does not need multipath handling\n");
   }
   
   if (! hmm->variance_inversed) {

@@ -1,14 +1,14 @@
 /*
- * Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.1 2007/09/28 02:50:56 sumomo Exp $
+ * $Id: mkss.c,v 1.2 2007/12/18 08:45:55 sumomo Exp $
  *
  */
 
@@ -23,7 +23,6 @@ static int sfreq;	/* sampling frequency */
 static int slen  = 3000;	/* record length in msec */
 
 /* parameter for SS */
-static Value para;
 static SP16 *speech;
 static int speechnum;
 static int samples;
@@ -33,10 +32,10 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 {
   fprintf(stderr, "mkss --- compute averate spectrum of mic input for SS\n");
   fprintf(stderr, "Usage: mkss [options..] filename\n");
-  fprintf(stderr, "    [-freq frequency]    sampling freq in Hz   (%d)\n", jconf->analysis.para_default.smp_freq);
+  fprintf(stderr, "    [-freq frequency]    sampling freq in Hz   (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "    [-len msec]          record length in msec (%d)\n", slen);
-  fprintf(stderr, "    [-fsize samplenum]   window size           (%d)\n", jconf->analysis.para_default.framesize);
-  fprintf(stderr, "    [-fshift samplenum]  frame shift           (%d)\n", jconf->analysis.para_default.frameshift);
+  fprintf(stderr, "    [-fsize samplenum]   window size           (%d)\n", jconf->am_root->analysis.para_default.framesize);
+  fprintf(stderr, "    [-fshift samplenum]  frame shift           (%d)\n", jconf->am_root->analysis.para_default.frameshift);
   fprintf(stderr, "    [-zmean]             enable zmean         (off)\n");
   fprintf(stderr, "    [-zmeanframe]        frame-wise zmean     (off)\n");
   fprintf(stderr, "Library configuration: ");
@@ -51,8 +50,8 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 static boolean
 opt_freq(Jconf *jconf, char *arg[], int argnum)
 {
-  jconf->analysis.para.smp_freq = atoi(arg[0]);
-  jconf->analysis.para.smp_period = freq2period(jconf->analysis.para.smp_freq);
+  jconf->amnow->analysis.para.smp_freq = atoi(arg[0]);
+  jconf->amnow->analysis.para.smp_period = freq2period(jconf->amnow->analysis.para.smp_freq);
   return TRUE;
 }
 static boolean
@@ -63,7 +62,7 @@ opt_len(Jconf *jconf, char *arg[], int argnum)
 }
 
 static int
-adin_callback(SP16 *now, int len, Recog **recoglist, int recognum)
+adin_callback(SP16 *now, int len, Recog *recog)
 {
   int num;
   int ret;
@@ -98,22 +97,25 @@ int
 main(int argc, char *argv[])
 {
   Recog *recog;
+  Jconf *jconf;
   float *ss;
+  MFCCWork *wrk;
 
   /* create instance */
   recog = j_recog_new();
-  recog->jconf = j_jconf_new();
+  jconf = j_jconf_new();
+  recog->jconf = jconf;
 
   /* set application-specific additional options */
-  j_add_option("-freq", 1, "sampling freq in Hz", opt_freq);
-  j_add_option("-len", 1, "record length in msec", opt_len);
-  j_add_option("-h", 0, "display this help", opt_help);
-  j_add_option("-help", 0, "display this help", opt_help);
-  j_add_option("--help", 0, "display this help", opt_help);
+  j_add_option("-freq", 1, 1, "sampling freq in Hz", opt_freq);
+  j_add_option("-len", 1, 1, "record length in msec", opt_len);
+  j_add_option("-h", 0, 0, "display this help", opt_help);
+  j_add_option("-help", 0, 0, "display this help", opt_help);
+  j_add_option("--help", 0, 0, "display this help", opt_help);
 
   /* when no argument, output help and exit */
   if (argc <= 1) {
-    opt_help(recog->jconf, NULL, 0);
+    opt_help(jconf, NULL, 0);
     return 0;
   }
 
@@ -125,19 +127,24 @@ main(int argc, char *argv[])
   }
 
   /* process config and load them */
-  if (j_config_load_args(recog->jconf, argc-1, argv) == -1) {
+  if (j_config_load_args(jconf, argc-1, argv) == -1) {
     fprintf(stderr, "Error reading arguments\n");
     return -1;
   }
   /* force some default values */
-  recog->jconf->input.speech_input = SP_MIC; /* mic input */
-  recog->jconf->detect.silence_cut  = 0; /* disable silence cut */
-  recog->jconf->frontend.strip_zero_sample = TRUE; /* strip zero samples */
-  recog->jconf->detect.level_thres = 0;	/* no VAD, record all */
+  jconf->input.speech_input = SP_MIC; /* mic input */
+  jconf->detect.silence_cut  = 0; /* disable silence cut */
+  jconf->preprocess.strip_zero_sample = TRUE; /* strip zero samples */
+  jconf->detect.level_thres = 0;	/* no VAD, record all */
   /* set Julius default parameters for unspecified acoustic parameters */
-  apply_para(&(recog->jconf->analysis.para), &(recog->jconf->analysis.para_default));
-  
-  sfreq = recog->jconf->analysis.para.smp_freq;
+  apply_para(&(jconf->am_root->analysis.para), &(jconf->am_root->analysis.para_default));
+  /* set some values */
+  jconf->input.sfreq = jconf->am_root->analysis.para.smp_freq;
+  jconf->input.period = jconf->am_root->analysis.para.smp_period;
+  jconf->input.frameshift = jconf->am_root->analysis.para.frameshift;
+  jconf->input.framesize = jconf->am_root->analysis.para.framesize;
+
+  sfreq = jconf->am_root->analysis.para.smp_freq;
 
   /* output file check */
   if (!stout) {
@@ -156,8 +163,8 @@ main(int argc, char *argv[])
   speech = (SP16 *)mymalloc(sizeof(SP16) * samples);
 
   /* allocate work area to compute spectrum */
-  recog->mfccwrk_ss = WMP_work_new(recog->jconf->analysis.para);
-  if (recog->mfccwrk_ss == NULL) {
+  wrk = WMP_work_new(&(jconf->am_root->analysis.para));
+  if (wrk == NULL) {
     jlog("ERROR: m_fusion: failed to initialize MFCC computation for SS\n");
     return -1;
   }
@@ -176,7 +183,7 @@ main(int argc, char *argv[])
   /* record mic input */
   fprintf(stderr, "%dHz recording for %.2f seconds of noise\n", sfreq, (float)slen /(float)1000);
   speechnum = 0;
-  adin_go(adin_callback, NULL, &recog, 1);
+  adin_go(adin_callback, NULL, recog);
 
   /* close device */
   adin_end(recog->adin);
@@ -184,9 +191,13 @@ main(int argc, char *argv[])
 
   /* compute SS */
   fprintf(stderr, "compute SS:\n");
-  fprintf(stderr, "  fsize : %4d samples (%.1f msec)\n", recog->jconf->analysis.para.framesize, (float)recog->jconf->analysis.para.framesize * 1000.0/ (float)sfreq);
-  fprintf(stderr, "  fshift: %4d samples (%.1f msec)\n", recog->jconf->analysis.para.frameshift, (float)recog->jconf->analysis.para.frameshift * 1000.0/ (float)sfreq);
-  ss = new_SS_calculate(speech, samples, recog->jconf->analysis.para, &sslen, recog->mfccwrk_ss);
+  fprintf(stderr, "  fsize : %4d samples (%.1f msec)\n", jconf->input.framesize, (float)jconf->input.framesize * 1000.0/ (float)sfreq);
+  fprintf(stderr, "  fshift: %4d samples (%.1f msec)\n", jconf->input.frameshift, (float)jconf->input.frameshift * 1000.0/ (float)sfreq);
+
+  ss = new_SS_calculate(speech, samples, &sslen, wrk, &(jconf->am_root->analysis.para));
+
+  fprintf(stderr, "  points: %4d\n", sslen);
+  fprintf(stderr, "noise spectrum was measured\n");
   
   /* open file for recording */
   fprintf(stderr, "writing average noise spectrum to [%s]...", filename);
@@ -221,7 +232,7 @@ main(int argc, char *argv[])
   }
   fprintf(stderr, "done\n");
 
-  WMP_free(recog->mfccwrk_ss);
+  WMP_free(wrk);
 
   return 0;
 }

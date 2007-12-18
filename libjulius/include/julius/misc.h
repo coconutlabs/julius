@@ -1,7 +1,5 @@
 /**
  * @file   misc.h
- * @author Akinobu Lee
- * @date   Mon May 30 15:58:16 2005
  * 
  * <JA>
  * @brief  その他の雑多な定義
@@ -11,13 +9,16 @@
  * @brief  Some miscellaneous definitions
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu Lee
+ * @date   Mon May 30 15:58:16 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 

@@ -1,7 +1,5 @@
 /**
  * @file   vsegment.c
- * @author Akinobu LEE
- * @date   Fri Feb 18 19:29:22 2005
  * 
  * <JA>
  * @brief  入力に対するViterbi アライメントの実行
@@ -11,13 +9,16 @@
  * @brief  Do viterbi alignment for the input
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 18 19:29:22 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -37,6 +38,8 @@
  * 
  * @param hmm [in] sentence HMM to be matched
  * @param param [in] input parameter data
+ * @param wrk [i/o] HMM computation work area
+ * @param multipath [in] TRUE if need multi-path handling
  * @param endstates [in] list of state id that corrsponds to the ends of units
  * @param ulen [in] total number of units in the @a hmm
  * @param id_ret [out] Pointer to store the newly allocated array of the resulting id sequence of units on the best path.

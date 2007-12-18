@@ -1,17 +1,15 @@
 /**
  * @file   charconv_win32.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 16:02:41 2005
  * 
  * <JA>
  * @brief  文字コード変換 (Win32 API + libjcode 使用)
  *
  * Windows の WideCharToMultiByte() および MultiByteToWideChar() を
- * 使用した文字コード変換を行う．"ansi" "oem" "mac" "utf-7" "utf-8" あるいは
- * 任意のコードページ番号間の変換を，unicode を介して行う．
+ * 使用した文字コード変換を行う. "ansi" "oem" "mac" "utf-7" "utf-8" あるいは
+ * 任意のコードページ番号間の変換を，unicode を介して行う. 
  *
  * Windows では EUC のコードページに対応していないので，変換元の文字コードが
- * euc-jp のときは，libjcode で SJIS に変換してからunicodeへ変換する．
+ * euc-jp のときは，libjcode で SJIS に変換してからunicodeへ変換する. 
  *
  * </JA>
  * 
@@ -28,13 +26,16 @@
  *
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 16:02:41 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -46,7 +47,7 @@
 
 #include <windows.h>
 #include <winnls.h>
-#include <jlib.h>
+#include "libjcode/jlib.h"
 
 static boolean euctosjis = FALSE; ///< TRUE if use libjcode for euc->sjis conv.
 static boolean only_euc_conv = FALSE; ///< Perform only euc->sjis

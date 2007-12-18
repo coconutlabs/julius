@@ -1,7 +1,5 @@
 /**
  * @file   mkwhmm.c
- * @author Akinobu LEE
- * @date   Fri Feb 18 18:31:40 2005
  * 
  * <JA>
  * @brief  音素列から計算用の結合%HMMを生成する
@@ -11,13 +9,16 @@
  * @brief  Generate compound %HMM instance for recognition from phoneme sequence.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Fri Feb 18 18:31:40 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -32,6 +33,8 @@
  * 
  * @param hdseq [in] phoneme sequence as given by pointer list of logical %HMM
  * @param hdseqlen [in] length of above
+ * @param has_sp [in] indicates where short-pause insertion is possible
+ * @param hmminfo [in] HMM definition
  * 
  * @return the total number of states in the sequence.
  */
@@ -86,6 +89,7 @@ add_arc(HMM_STATE *state, int arc, LOGPROB a)
  * @param hmminfo [in] HTK %HMM definitions data
  * @param hdseq [in] phoneme sequence as given by pointer list of logical %HMM
  * @param hdseqlen [in] length of above
+ * @param has_sp [in] indicates where short-pause insertion is possible
  * @param lscore [in] list of log probability to be added at the emitting
  * transition of each phoneme, or NULL if not needed.
  * 
@@ -344,6 +348,7 @@ new_make_word_hmm_with_lm(HTK_HMM_INFO *hmminfo, HMM_Logical **hdseq, int hdseql
  * @param hmminfo [in] HTK %HMM definitions data
  * @param hdseq [in] phoneme sequence as given by pointer list of logical %HMM
  * @param hdseqlen [in] length of above
+ * @param has_sp [in] indicates where short-pause insertion is possible
  * 
  * @return newly allocated HMM instance generated from the given data.
  */

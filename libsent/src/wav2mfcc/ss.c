@@ -1,7 +1,5 @@
 /**
  * @file   ss.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 17:19:54 2005
  * 
  * <JA>
  * @brief  スペクトル減算
@@ -18,13 +16,16 @@
  * of audio input, and file I/O for that.
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 17:19:54 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -100,13 +101,14 @@ new_SS_load_from_file(char *filename, int *slen)
  * 
  * @param wave [in] input audio data sequence
  * @param wavelen [in] length of above
- * @param para [in] parameter
  * @param slen [out] length of returned buffer
+ * @param w [i/o] MFCC calculation work area
+ * @param para [in] parameter
  * 
  * @return a newly allocated buffer that contains the calculated spectrum.
  */
 float *
-new_SS_calculate(SP16 *wave, int wavelen, Value para, int *slen, MFCCWork *w)
+new_SS_calculate(SP16 *wave, int wavelen, int *slen, MFCCWork *w, Value *para)
 {
   float *spec;
   int t, framenum, start, end, k, i;
@@ -117,31 +119,31 @@ new_SS_calculate(SP16 *wave, int wavelen, Value para, int *slen, MFCCWork *w)
   for(i=0;i<w->fb.fftN;i++) spec[i] = 0.0;
   
   /* Caluculate sum of noise power spectrum */
-  framenum = (int)((wavelen - para.framesize) / para.frameshift) + 1;
+  framenum = (int)((wavelen - para->framesize) / para->frameshift) + 1;
   start = 1;
   end = 0;
   for (t = 0; t < framenum; t++) {
-    if (end != 0) start = end - (para.framesize - para.frameshift) - 1;
+    if (end != 0) start = end - (para->framesize - para->frameshift) - 1;
     k = 1;
-    for (i = start; i <= start + para.framesize; i++) {
+    for (i = start; i <= start + para->framesize; i++) {
       w->bf[k] = (float)wave[i-1];
       k++;
     }
     end = i;
 
-    if (para.zmeanframe) {
-      ZMeanFrame(w->bf, para.framesize);
+    if (para->zmeanframe) {
+      ZMeanFrame(w->bf, para->framesize);
     }
 
     /* Pre-emphasis */
-    PreEmphasise(w->bf, para.framesize, para.preEmph);
+    PreEmphasise(w->bf, para->framesize, para->preEmph);
     /* Hamming Window */
-    Hamming(w->bf, para.framesize, w);
+    Hamming(w->bf, para->framesize, w);
     /* FFT Spectrum */
-    for (i = 1; i <= para.framesize; i++) {
+    for (i = 1; i <= para->framesize; i++) {
       w->fb.Re[i-1] = w->bf[i]; w->fb.Im[i-1] = 0.0;
     }
-    for (i = para.framesize + 1; i <= w->fb.fftN; i++) {
+    for (i = para->framesize + 1; i <= w->fb.fftN; i++) {
       w->fb.Re[i-1] = 0.0;   w->fb.Im[i-1] = 0.0;
     }
     FFT(w->fb.Re, w->fb.Im, w->fb.n, w);

@@ -1,12 +1,10 @@
 /**
  * @file   charconv.c
- * @author Akinobu LEE
- * @date   Thu Feb 17 16:02:41 2005
  * 
  * <JA>
  * @brief  文字コード変換
  *
- * 実際には，環境にあわせて iconv, Win32, libjcode のどれかを呼び出す．
+ * 実際には，環境にあわせて iconv, Win32, libjcode のどれかを呼び出す. 
  *
  * </JA>
  * 
@@ -18,13 +16,16 @@
  *
  * </EN>
  * 
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Thu Feb 17 16:02:41 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -154,9 +155,9 @@ opt_kanji(Jconf *jconf, char *arg[], int argnum)
 void
 charconv_add_option()
 {
-  j_add_option("-charconv", 2,"convert character set for output", opt_charconv);
-  j_add_option("-nocharconv", 0, "disable charconv", opt_nocharconv);
-  j_add_option("-kanji", 1, "convert character set for output", opt_kanji);
+  j_add_option("-charconv", 2, 2, "convert character set for output", opt_charconv);
+  j_add_option("-nocharconv", 0, 0, "disable charconv", opt_nocharconv);
+  j_add_option("-kanji", 1, 1, "convert character set for output", opt_kanji);
 }
 
 boolean

@@ -1,7 +1,5 @@
 /**
  * @file   adin_file.c
- * @author Akinobu LEE
- * @date   Sun Feb 13 13:31:20 2005
  *
  * <JA>
  * @brief  ファイル入力：WAV/RAWファイルおよび標準入力からの読み込み
@@ -55,13 +53,16 @@
  * In this file, assume sizeof(int)=4, sizeof(short)=2
  * </EN>
  *
- * $Revision: 1.1 $
+ * @author Akinobu LEE
+ * @date   Sun Feb 13 13:31:20 2005
+ *
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 1991-2006 Kawahara Lab., Kyoto University
+ * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
  * Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2006 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -85,7 +86,6 @@ static boolean has_pre;		///< TRUE if pre_data is available
 static unsigned int sfreq;	///< Sampling frequency in Hz, specified by adin_standby()
 
 static char speechfilename[MAXPATHLEN];	///< Buffer to hold input file name
-
 
 
 /* read .wav data with endian conversion */
@@ -521,4 +521,17 @@ adin_stdin_read(SP16 *buf, int sampnum)
   if (!wav_p) swap_sample_bytes(buf, cnt);
 #endif
   return cnt;
+}
+
+/** 
+ * 
+ * A tiny function to get current input raw speech file name.
+ * 
+ * @return string of current input speech file.
+ * 
+ */
+char *
+adin_file_get_current_filename()
+{
+  return(speechfilename);
 }

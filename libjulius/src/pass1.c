@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -124,7 +124,9 @@ decode_proceed(Recog *recog)
   break_decode = FALSE;
 
   for(p = recog->process_list; p; p = p->next) {
+#ifdef DETERMINE
     p->have_determine = FALSE;
+#endif
     p->have_interim = FALSE;
   }
   for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
@@ -287,6 +289,7 @@ decode_proceed(Recog *recog)
   }
 
   /* call frame-wise callback for the processing results if any */
+#ifdef DETERMINE
   ok_p = FALSE;
   for(p=recog->process_list;p;p=p->next) {
     if (!p->live) continue;
@@ -295,6 +298,7 @@ decode_proceed(Recog *recog)
     }
   }
   if (ok_p) callback_exec(CALLBACK_RESULT_PASS1_DETERMINED, recog);
+#endif
   ok_p = FALSE;
   for(p=recog->process_list;p;p=p->next) {
     if (!p->live) continue;

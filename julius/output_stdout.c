@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 17:18:46 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -434,19 +434,6 @@ result_pass1_current(Recog *recog, void *dummy)
 
   fflush(stdout);		/* flush */
 }
-
-static void
-result_pass1_determined(Recog *recog, void *dummy)
-{
-  RecogProcess *r;
-
-  for(r=recog->process_list;r;r=r->next) {
-    if (! r->live) continue;
-    if (! r->determined) continue;
-    printf("#%d %s: determined at %d: %s\n", r->config->id, r->config->name, r->result.num_frame, r->lm->winfo->woutput[r->result.pass1.word[0]]);
-  }
-}
-
 
 
 /** 
@@ -1338,7 +1325,4 @@ setup_output_tty(Recog *recog, void *data)
   callback_add(recog, CALLBACK_RESULT_CONFNET, result_confnet, data);
 
   //callback_add_adin(CALLBACK_ADIN_CAPTURED, levelmeter, data);
-
-  callback_add(recog, CALLBACK_RESULT_PASS1_DETERMINED, result_pass1_determined, data);
-
 }

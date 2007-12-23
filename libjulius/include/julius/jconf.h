@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -835,10 +835,30 @@ typedef struct __Jconf__ {
     int silence_cut;
 #ifdef GMM_VAD
     /**
-     * Backstep margin when speech trigger detected by GMM VAD
+     * (GMM_VAD) Backstep margin when speech trigger is detected.
      * 
      */
     int gmm_margin;
+    /**
+     * (GMM_VAD) Up trigger threshold of GMM likelihood, where GMM
+     * likelihood is defined as \[ \max_{m \in M_v} p(x|m) - \max_{m
+     * \in M_n} p(x|m) \] where $M_v$ is a set of voice GMM, and $M_n$
+     * is a set of noise GMM whose names are specified by
+     * "-gmmreject".  Julius calculate this value for each input
+     * frame, and average it for the last gmm_margin frames, and when
+     * the value gets higher than this value, Julius will start recognition.
+     */
+    float gmm_uptrigger_thres;
+    /**
+     * (GMM_VAD) Down trigger threshold of GMM likelihood, where GMM
+     * likelihood is defined as \[ \max_{m \in M_v} p(x|m) - \max_{m
+     * \in M_n} p(x|m) \] where $M_v$ is a set of voice GMM, and $M_n$
+     * is a set of noise GMM whose names are specified by
+     * "-gmmreject".  Julius calculate this value for each input
+     * frame, and average it for the last gmm_margin frames, and when
+     * the value gets lower than this value, Julius will stop recognition.
+     */
+    float gmm_downtrigger_thres;
 #endif
   } detect;
 

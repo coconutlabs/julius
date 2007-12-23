@@ -41,7 +41,7 @@
  * @author Akinobu LEE
  * @date   Tue Mar 15 05:14:10 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -834,12 +834,12 @@ gmm_check_trigger(Recog *recog)
   voice_activity_score(gc, &mean, &var, &count);
 
   if (gc->in_voice) {
-    if (mean < -0.2) {
+    if (mean <= recog->jconf->detect.gmm_downtrigger_thres) {
       gc->down_trigger = TRUE;
       gc->in_voice = FALSE;
     }
   } else {
-    if (mean > 0.7) {
+    if (mean >= recog->jconf->detect.gmm_uptrigger_thres) {
       gc->up_trigger = TRUE;
       gc->in_voice = TRUE;
     }

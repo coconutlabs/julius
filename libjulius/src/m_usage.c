@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -124,6 +124,8 @@ j_output_argument_help(FILE *fp)
 #ifdef GMM_VAD
   fprintf(fp, "\n GMM-based VAD:\n");
   fprintf(fp, "    -gmmmargin frames   backstep margin on speech trigger     (%d)\n", jconf->detect.gmm_margin);
+  fprintf(fp, "    -gmmup score        up-trigger threshold                  (%.1f)\n", jconf->detect.gmm_uptrigger_thres);
+  fprintf(fp, "    -gmmdown score      down-trigger threshold                (%.1f)\n", jconf->detect.gmm_downtrigger_thres);
 #endif
 
   fprintf(fp, "\n N-gram Language model:\n");

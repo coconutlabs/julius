@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -282,6 +282,8 @@ print_engine_info(Recog *recog)
 #ifdef GMM_VAD
     jlog("\n GMM-based VAD\n\n");
     jlog("       backstep on trigger = %d frames\n", jconf->detect.gmm_margin);
+    jlog("    up-trigger thres score = %.1f\n", jconf->detect.gmm_uptrigger_thres);
+    jlog("  down-trigger thres score = %.1f\n", jconf->detect.gmm_downtrigger_thres);
 #endif
     jlog("\n GMM");
     print_hmmdef_info(fp, recog->gmm);

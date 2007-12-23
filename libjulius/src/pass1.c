@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -256,7 +256,7 @@ decode_proceed(Recog *recog)
   break_flag = FALSE;
   if (break_decode
 #ifdef GMM_VAD
-      && (recog->gmm != NULL && break_gmm)
+      || (recog->gmm != NULL && break_gmm)
 #endif
       ) {
     break_flag = TRUE;

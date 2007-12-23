@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -910,6 +910,14 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
     } else if (strmatch(argv[i],"-gmmmargin")) { /* backstep margin */
       GET_TMPARG;
       jconf->detect.gmm_margin = atoi(tmparg);
+      continue;
+    } else if (strmatch(argv[i],"-gmmup")) { /* uptrigger threshold */
+      GET_TMPARG;
+      jconf->detect.gmm_uptrigger_thres = atof(tmparg);
+      continue;
+    } else if (strmatch(argv[i],"-gmmdown")) { /* uptrigger threshold */
+      GET_TMPARG;
+      jconf->detect.gmm_downtrigger_thres = atof(tmparg);
       continue;
 #endif
     } else if (strmatch(argv[i],"-htkconf")) {

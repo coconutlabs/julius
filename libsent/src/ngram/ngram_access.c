@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:46:18 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -394,7 +394,7 @@ bi_prob_compute(NGRAM_INFO *ndata, WORD_ID w1, WORD_ID w2)
     prob = ndata->d[0].bo_wt[w2] + ndata->d[0].prob[w1];
   }
   /* p(w2|w1) = p(w1|w2) * p(w2) / p(w1) */
-  prob *= ndata->d[0].prob[w2] / ndata->d[0].prob[w1];
+  prob = prob + ndata->d[0].prob[w2] - ndata->d[0].prob[w1];
   if (w2 != ndata->unk_id) {
     return(prob);
   } else {

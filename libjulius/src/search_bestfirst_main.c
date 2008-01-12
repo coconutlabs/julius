@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -2059,7 +2059,7 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
      the result of the previous 1st pass as a final result. */
   if (dwrk->finishnum == 0) {		/* if search failed */
     if (verbose_flag) {
-      jlog("WARNING: %02d %s: got no candidates, output 1st pass result as a final result\n", r->config->id, r->config->name);
+      jlog("WARNING: %02d %s: got no candidates, search failed\n", r->config->id, r->config->name);
     }
     /* make hypothesis data from the result of previous 1st pass */
     now = newnode(r);

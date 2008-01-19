@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug 11 11:50:58 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -47,7 +47,7 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
   this = &(ndata->d[n-1]);
   up   = &(ndata->d[n]);
 
-  /* count number of valid bigram context */
+  /* count number of valid context */
   c = 0;
   for(i=0;i<up->bgnlistlen;i++) {
     if ((up->is24bit == TRUE && up->bgn_upper[i] != NNID_INVALID_UPPER)
@@ -63,14 +63,14 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
 	return FALSE;
       }
       if (this->bo_wt[i] != 0.0) {
-	jlog("Error: ngram_compact_context: 2-gram has no upper 3-gram, but not 0.0 back-off weight\n");
+	jlog("Error: ngram_compact_context: %d-gram has no upper n-gram, but not 0.0 back-off weight\n");
 	return FALSE;
       }
     }
   }
   
   this->context_num = c;
-  jlog("Stat: ngram_compact_context: bigram bowt compaction: %d -> %d\n", this->totalnum, this->context_num);
+  jlog("Stat: ngram_compact_context: %d-gram back-off weight compaction: %d -> %d\n", n, this->totalnum, this->context_num);
 
   
   /* allocate index buffer */

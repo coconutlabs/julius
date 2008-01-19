@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:46:18 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -156,7 +156,7 @@ ngram_prob(NGRAM_INFO *ndata, int n, WORD_ID *w)
   /* unigram */
   if (n == 1) {
     p = ndata->d[0].prob[w[0]];
-    if (w[0] != ndata->unk_id) p -= ndata->unk_num_log;
+    if (w[0] == ndata->unk_id) p -= ndata->unk_num_log;
 #ifdef ADEBUG
     printf("hit: %f\n", p);
 #endif

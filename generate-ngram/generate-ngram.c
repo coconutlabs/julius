@@ -204,6 +204,7 @@ main(int argc, char *argv[])
 	  fsum += pow(10, findex[windex[i++]]);
 	  //printf("\t%f %f\n", pow(10, findex[windex[i++]]), fsum);
 	}
+	i--;
 	/* if sum of prob. not reached the rnd, assign the least one */
 	if (i == ngram->max_word_num) {
 	  i = ngram->max_word_num - 1;
@@ -229,7 +230,7 @@ main(int argc, char *argv[])
 	  }
 	}
 
-	if (debug) printf("\t%dth/%d hit\n", i, ngram->max_word_num);
+	if (debug) printf("\t%dth/%d hit\n", i+1, ngram->max_word_num);
 	if (debug) printf("\t-> [%s]\n", ngram->wname[windex[i]]);
       
 	/* store */

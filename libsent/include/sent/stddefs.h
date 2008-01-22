@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 11:49:37 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -203,7 +203,9 @@ typedef unsigned short WORD_ID; ///< Typedef for word ID
 #define MAXLINELEN 1024
 
 /// Limit of maximum length of a file path
-#define MAXPATHLEN 1024
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 2048
+#endif
 
 #include <sent/util.h>
 

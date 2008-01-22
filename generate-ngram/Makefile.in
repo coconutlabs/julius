@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.4 2008/01/20 04:37:37 sumomo Exp $
+# $Id: Makefile.in,v 1.5 2008/01/22 13:01:54 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -29,7 +29,7 @@ all: $(TARGET)
 $(TARGET): $(OBJ) $(LIBSENT)/libsent.a
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $(OBJ) $(LDFLAGS)
 
-install: install.bin install.man
+install: install.bin #install.man
 
 install.bin: $(TARGET)
 	${INSTALL} -d @bindir@

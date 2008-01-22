@@ -14,7 +14,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:02:41 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -102,7 +102,7 @@ charconv_iconv(char *instr, char *outstr, int maxoutlen)
   dstlen = maxoutlen;
   src = instr;
   dst = outstr;
-  ret = iconv(cd, &src, &srclen, &dst, &dstlen);
+  ret = iconv(cd, (ICONV_CONST char **)&src, &srclen, &dst, &dstlen);
   if (ret == -1) {
     switch(errno) {
     case EILSEQ:

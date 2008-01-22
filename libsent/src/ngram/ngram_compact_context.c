@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug 11 11:50:58 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -63,15 +63,22 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
 	return FALSE;
       }
       if (this->bo_wt[i] != 0.0) {
-	jlog("Error: ngram_compact_context: %d-gram has no upper n-gram, but not 0.0 back-off weight\n");
-	return FALSE;
+	jlog("Warning: ngram_compact_context: found a %d-gram that has non-zero back-off weight but not a context of upper N-gram (%f)\n", n, this->bo_wt[i]);
+	jlog("Warning: ngram_compact_context: context compaction disabled\n");
+	ndata->d[n-1].ct_compaction = FALSE;
+	return TRUE;		/* no op */
       }
     }
   }
   
+  if (this->totalnum == c) {
+    jlog("Stat: ngram_compact_context: %d-gram has full bo_wt, compaction disabled\n", n);
+    ndata->d[n-1].ct_compaction = FALSE;
+    return TRUE;		/* no op */
+  }
+
   this->context_num = c;
   jlog("Stat: ngram_compact_context: %d-gram back-off weight compaction: %d -> %d\n", n, this->totalnum, this->context_num);
-
   
   /* allocate index buffer */
   this->nnid2ctid_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * this->totalnum);
@@ -102,6 +109,9 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
   up->bgn_upper = (NNID_UPPER *)myrealloc(up->bgn_upper, sizeof(NNID_UPPER) * up->bgnlistlen);
   up->bgn_lower = (NNID_LOWER *)myrealloc(up->bgn_lower, sizeof(NNID_LOWER) * up->bgnlistlen);
   up->num = (WORD_ID *)myrealloc(up->num, sizeof(WORD_ID) * up->bgnlistlen);
+
+  /* finished compaction */
+  ndata->d[n-1].ct_compaction = TRUE;
 
   return TRUE;
 

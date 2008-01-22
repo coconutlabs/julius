@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.4 2007/12/18 08:45:54 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.5 2008/01/22 06:02:13 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -635,11 +635,10 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 
     ndata->n = n;
 
-    for(i=1;i<n;i++) {
-      if (ndata->d[i].bo_wt != NULL) {
+    for(i=2;i<n;i++) {
+      if (ndata->d[i-1].bo_wt != NULL) {
 	/* perform back-off compaction */
-	if (ngram_compact_context(ndata, i+1) == FALSE) return FALSE;
-	ndata->d[i].ct_compaction = TRUE;
+	if (ngram_compact_context(ndata, i) == FALSE) return FALSE;
       }
     }
     

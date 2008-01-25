@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 17:19:54 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -120,6 +120,13 @@ new_SS_calculate(SP16 *wave, int wavelen, int *slen, MFCCWork *w, Value *para)
   
   /* Caluculate sum of noise power spectrum */
   framenum = (int)((wavelen - para->framesize) / para->frameshift) + 1;
+  if (framenum < 1) {
+    jlog("Error: too short to get noise spectrum: length < 1 frame\n");
+    jlog("Error: no SS will be performed\n");
+    *slen = w->fb.fftN;
+    return spec;
+  }
+    
   start = 1;
   end = 0;
   for (t = 0; t < framenum; t++) {

@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -1177,7 +1177,11 @@ j_final_fusion(Recog *recog)
 	mfcc->frontend.mfccwrk_ss = WMP_work_new(mfcc->para);
 	if (mfcc->frontend.mfccwrk_ss == NULL) {
 	  jlog("ERROR: m_fusion: failed to initialize MFCC computation for SS\n");
-	  return -1;
+	  return FALSE;
+	}
+	if (mfcc->frontend.sscalc_len * recog->jconf->input.sfreq / 1000 < mfcc->para->framesize) {
+	  jlog("ERROR: m_fusion: head sil length for SS (%d msec) is shorter than a frame (%d msec)\n", mfcc->frontend.sscalc_len, mfcc->para->framesize * 1000 / recog->jconf->input.sfreq);
+	  return FALSE;
 	}
       }
     }

@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -171,7 +171,6 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   adin->transfer_online = FALSE;
   adin->speech = NULL;
 #endif
-  adin->ds = NULL;
 
   /**********************/
   /* initialize buffers */

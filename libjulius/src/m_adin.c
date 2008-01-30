@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -153,6 +153,7 @@ adin_setup_all(ADIn *adin, Jconf *jconf, void *arg)
       return FALSE;
     }
   } else {
+    adin->ds = NULL;
     adin->down_sample = FALSE;
     if (adin_standby(adin, jconf->input.sfreq, arg) == FALSE) { /* fail */
       jlog("ERROR: m_adin: failed to ready input device\n");

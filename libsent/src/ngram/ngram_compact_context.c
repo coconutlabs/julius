@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug 11 11:50:58 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -77,6 +77,12 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
     return TRUE;		/* no op */
   }
 
+  if (c >= NNIDMAX) {
+    jlog("Stat: ngram_compact_context: %d-gram bo_wt exceeds 24bit, compaction diabled\n", n);
+    ndata->d[n-1].ct_compaction = FALSE;
+    return TRUE;		/* no op */
+  }    
+
   this->context_num = c;
   jlog("Stat: ngram_compact_context: %d-gram back-off weight compaction: %d -> %d\n", n, this->totalnum, this->context_num);
   
@@ -89,8 +95,12 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
     if ((up->is24bit == TRUE && up->bgn_upper[i] != NNID_INVALID_UPPER)
 	|| (up->is24bit == FALSE && up->bgn[i] != NNID_INVALID)) {
       this->bo_wt[dst] = this->bo_wt[i];
-      up->bgn_upper[dst] = up->bgn_upper[i];
-      up->bgn_lower[dst] = up->bgn_lower[i];
+      if (up->is24bit) {
+	up->bgn_upper[dst] = up->bgn_upper[i];
+	up->bgn_lower[dst] = up->bgn_lower[i];
+      } else {
+	up->bgn[dst] = up->bgn[i];
+      }
       up->num[dst] = up->num[i];
       ntmp = dst & 0xffff;
       this->nnid2ctid_lower[i] = ntmp;
@@ -106,8 +116,12 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
 
   /* shrink the memory area */
   this->bo_wt = (LOGPROB *)myrealloc(this->bo_wt, sizeof(LOGPROB) * this->context_num);
-  up->bgn_upper = (NNID_UPPER *)myrealloc(up->bgn_upper, sizeof(NNID_UPPER) * up->bgnlistlen);
-  up->bgn_lower = (NNID_LOWER *)myrealloc(up->bgn_lower, sizeof(NNID_LOWER) * up->bgnlistlen);
+  if (up->is24bit) {
+    up->bgn_upper = (NNID_UPPER *)myrealloc(up->bgn_upper, sizeof(NNID_UPPER) * up->bgnlistlen);
+    up->bgn_lower = (NNID_LOWER *)myrealloc(up->bgn_lower, sizeof(NNID_LOWER) * up->bgnlistlen);
+  } else {
+    up->bgn = (NNID *)myrealloc(up->bgn, sizeof(NNID) * up->bgnlistlen);
+  }
   up->num = (WORD_ID *)myrealloc(up->num, sizeof(WORD_ID) * up->bgnlistlen);
 
   /* finished compaction */

@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.5 2008/01/22 06:02:13 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.6 2008/01/30 00:48:13 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -595,7 +595,7 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 	/* for 3-gram and later 24 bit mode is preferred,
 	   but should be disabled if number of entries is over 2^24 */
 	if (ndata->d[i].totalnum >= NNIDMAX) {
-	  jlog("Warning: ngram_read_arpa: more than 24bit %d-gram tuples, use 32bit index\n", NNIDMAX, n+1);
+	  jlog("Warning: ngram_read_arpa: num of %d-gram exceeds 24bit, now switch to 32bit index\n", i+1);
 	  ndata->d[i].is24bit = FALSE;
 	} else {
 	  ndata->d[i].is24bit = TRUE;

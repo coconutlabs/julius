@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 00:38:57 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -113,7 +113,7 @@ param_strip_zero(HTK_Param *param)
       continue;
     }
     if (src != dst) {
-      param->parvec[dst] = param->parvec[src];
+      memcpy(param->parvec[dst], param->parvec[src], sizeof(VECT) * param->veclen);
     }
     dst++;
   }

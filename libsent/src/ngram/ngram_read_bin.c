@@ -48,7 +48,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:12:08 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -263,10 +263,6 @@ ngram_read_bin_v5(FILE *fp, NGRAM_INFO *ndata)
   /* read total info and set max_word_num */
   for(n=0;n<ndata->n;n++) {
     rdn(fp, &(ndata->d[n].totalnum), sizeof(NNID), 1);
-    if (ndata->d[n].totalnum >= NNIDMAX) {
-      jlog("Error: ngram_read_bin_v5: too big %d-gram (%d, should be less than %d)\n", n+1, ndata->d[n].totalnum, NNIDMAX);
-      return FALSE;
-    }
   }
   ndata->max_word_num = ndata->d[0].totalnum;
 

@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:30:40 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -109,5 +109,9 @@ void confout_lm(FILE *strm);
 void confout_am(FILE *strm);
 void confout_lib(FILE *strm);
 void confout_process(FILE *strm);
+
+/* qsort.c */
+void qsort_reentrant(void *base, int count, int size, int (*compare)(const void *, const void *, void *), void *pointer);
+
 
 #endif /* __SENT_UTIL_H__ */

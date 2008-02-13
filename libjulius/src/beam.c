@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -295,7 +295,7 @@ trace_backptr(WORD_ID wordseq_rt[MAXSEQNUM], int *rt_wordlen, TRELLIS_ATOM *atom
   int wordlen = 0;		/* word length of best sentence hypothesis */
   TRELLIS_ATOM *tretmp;
   LOGPROB langscore = 0.0;
-  static WORD_ID wordseq[MAXSEQNUM];	/* temporal: in reverse order */
+  WORD_ID wordseq[MAXSEQNUM];	/* temporal: in reverse order */
   int i;
 
   /* initialize */

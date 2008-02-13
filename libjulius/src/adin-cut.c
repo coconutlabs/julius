@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -289,13 +289,13 @@ static int
 adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog)
 {
   ADIn *a;
-  static int i;
+  int i;
   int ad_process_ret;
   int imax, len, cnt;
   int wstep;
-  static int end_status;	/* return value */
-  static boolean transfer_online_local;	/* local repository of transfer_online */
-  static int zc;		/* count of zero cross */
+  int end_status;	/* return value */
+  boolean transfer_online_local;	/* local repository of transfer_online */
+  int zc;		/* count of zero cross */
 
   a = recog->adin;
 

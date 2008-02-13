@@ -31,7 +31,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 19 23:39:15 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -275,11 +275,9 @@ wchmm_free(WCHMM_INFO *w)
 /*********** Word sort functions for tree construction ********/
 /**************************************************************/
 
-static WORD_INFO *local_winfo;	///< Temporary work area for sort callbacks
-
 /** 
  * <JA>
- * 単語を音素のならびでソートするqsort関数
+ * 単語を音素のならびでソートするqsort_reentrant関数
  * 
  * @param widx1 [in] 単語ID 1 へのポインタ
  * @param widx2 [in] 単語ID 2 へのポインタ
@@ -287,7 +285,7 @@ static WORD_INFO *local_winfo;	///< Temporary work area for sort callbacks
  * @return 単語widx2が単語widx1の一部か昇順であれば 1, 単語widx1が単語widx2の一部か昇順であれば -1, 全く同じ音素並びであれば 0 を返す. 
  * </JA>
  * <EN>
- * qsort function to sort words by their phoneme sequence.
+ * qsort_reentrant function to sort words by their phoneme sequence.
  * 
  * @param widx1 [in] pointer to word id #1
  * @param widx2 [in] pointer to wrod id #2
@@ -296,17 +294,17 @@ static WORD_INFO *local_winfo;	///< Temporary work area for sort callbacks
  * </EN>
  */
 static int
-compare_wseq(WORD_ID *widx1, WORD_ID *widx2)
+compare_wseq(WORD_ID *widx1, WORD_ID *widx2, WORD_INFO *winfo)
 {
   int len1, len2, n;
   int p=0;
   
-  len1 = local_winfo->wlen[*widx1];
-  len2 = local_winfo->wlen[*widx2];
+  len1 = winfo->wlen[*widx1];
+  len2 = winfo->wlen[*widx2];
 
   n=0;
   /*  while (n < len1 && n < len2 && (p = (int)winfo->wseq[*widx1][n] - (int)winfo->wseq[*widx2][n]) == 0 ) n++;*/
-  while (n < len1 && n < len2 && (p = strcmp((local_winfo->wseq[*widx1][n])->name, (local_winfo->wseq[*widx2][n])->name)) == 0 ) n++;
+  while (n < len1 && n < len2 && (p = strcmp((winfo->wseq[*widx1][n])->name, (winfo->wseq[*widx2][n])->name)) == 0 ) n++;
   if (n < len1) {
     if (n < len2) {
       /* differ */
@@ -347,8 +345,7 @@ compare_wseq(WORD_ID *widx1, WORD_ID *widx2)
 static void
 wchmm_sort_idx_by_wseq(WORD_INFO *winfo, WORD_ID *windex, WORD_ID bgn, WORD_ID len)
 {
-  local_winfo = winfo;
-  qsort(&(windex[bgn]), len, sizeof(WORD_ID), (int (*)(const void *, const void *))compare_wseq);
+  qsort_reentrant(&(windex[bgn]), len, sizeof(WORD_ID), (int (*)(const void *, const void *, void *))compare_wseq, winfo);
 }
 
 /** 
@@ -370,11 +367,11 @@ wchmm_sort_idx_by_wseq(WORD_INFO *winfo, WORD_ID *windex, WORD_ID bgn, WORD_ID l
  * </EN>
  */
 static int
-compare_category(WORD_ID *widx1, WORD_ID *widx2)
+compare_category(WORD_ID *widx1, WORD_ID *widx2, WORD_INFO *winfo)
 {
   int c1,c2;
-  c1 = local_winfo->wton[*widx1];
-  c2 = local_winfo->wton[*widx2];
+  c1 = winfo->wton[*widx1];
+  c2 = winfo->wton[*widx2];
   return(c1 - c2);
 }
 
@@ -397,8 +394,7 @@ compare_category(WORD_ID *widx1, WORD_ID *widx2)
 static void
 wchmm_sort_idx_by_category(WORD_INFO *winfo, WORD_ID *windex, WORD_ID len)
 {
-  local_winfo = winfo;
-  qsort(windex, len, sizeof(WORD_ID), (int (*)(const void *, const void *))compare_category);
+  qsort_reentrant(windex, len, sizeof(WORD_ID), (int (*)(const void *, const void *, void *))compare_category, winfo);
 }
   
 

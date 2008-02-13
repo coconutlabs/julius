@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -226,6 +226,18 @@ typedef struct __StackDecode__ {
   int sentnum;		///< Allocated length of @a sentcm
 # endif
 #endif /* CONFIDENCE_MEASURE */
+
+  LOGPROB *wordtrellis[2]; ///< Buffer to compute viterbi path of a word
+  LOGPROB *g;		///< Buffer to hold source viterbi scores
+  HMM_Logical **phmmseq;	///< Phoneme sequence to be computed
+  int phmmlen_max;		///< Maximum length of @a phmmseq.
+  boolean *has_sp;		///< Mark which phoneme allow short pause for multi-path mode
+#ifdef GRAPHOUT_PRECISE_BOUNDARY
+  short *wend_token_frame[2]; ///< Propagating token of word-end frame to detect corresponding end-of-words at word head
+  LOGPROB *wend_token_gscore[2]; ///< Propagating token of scores at word-end to detect corresponding end-of-words at word head
+  short *wef;		///< Work area for word-end frame tokens for v2
+  LOGPROB *wes;		///< Work area for word-end score tokens for v2
+#endif
 
 } StackDecode;
 
@@ -897,6 +909,20 @@ typedef struct __recogprocess__ {
    * 
    */
   boolean graphout;
+
+  /**
+   * Temporal matrix work area to hold the order relations between words
+   * for confusion network construction.
+   * 
+   */
+  char *order_matrix;
+
+  /**
+   * Number of words to be expressed in the order matrix for confusion network
+   * construction.
+   * 
+   */
+  int order_matrix_count;
 
 #ifdef DETERMINE
   int determine_count;

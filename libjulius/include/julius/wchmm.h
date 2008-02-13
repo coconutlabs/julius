@@ -28,7 +28,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 18 21:31:32 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -270,6 +270,9 @@ typedef struct wchmm_info {
   WCHMM_WORK wrk;		///< Other work area for 1st pass transition computation
 
   int separated_word_count; ///< Number of words actually separated (linearlized) from the tree
+
+  char lccbuf[MAX_HMMNAME_LEN+7]; ///< Work area for HMM name conversion
+  char lccbuf2[MAX_HMMNAME_LEN+7]; ///< Work area for HMM name conversion
 
   /* user-defined functions, used when this->lmvar == LM_NGRAM_USER */
   /* they are local copy from parent Recog instance */

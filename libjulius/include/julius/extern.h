@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -107,7 +107,7 @@ void free_node(NODE *node);
 NODE *cpy_node(NODE *dst, NODE *src);
 NODE *newnode(RecogProcess *r);
 void malloc_wordtrellis(RecogProcess *r);
-void free_wordtrellis();
+void free_wordtrellis(StackDecode *dwrk);
 void scan_word(NODE *now, HTK_Param *param, RecogProcess *r);
 void next_word(NODE *now, NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess *r);
 void start_word(NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess *r);
@@ -272,7 +272,7 @@ void adin_free_param(Recog *recog);
 /* confnet.c */
 CN_CLUSTER *confnet_create(WordGraph *root, RecogProcess *r);
 void graph_make_order(WordGraph *root, RecogProcess *r);
-void graph_free_order();
+void graph_free_order(RecogProcess *r);
 void cn_free_all(CN_CLUSTER **croot);
 
 /* callback.c */

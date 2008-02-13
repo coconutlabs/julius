@@ -37,7 +37,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:16:18 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -213,7 +213,7 @@ expand_env(char *str)
   int target_malloclen;
   int len, n;
   boolean inbrace;
-  static char env[256];
+  char env[256];
 
   /* check if string contains '$' and return immediately if not */
   /* '$' = 36, '\'' = 39 */

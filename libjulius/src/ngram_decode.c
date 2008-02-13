@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Fri Jul  8 14:57:51 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -198,8 +198,8 @@ pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, s
   int w_old = WORD_INVALID;
 #endif
   int num;
-  static WORD_ID cnword[MAX_N];	///< Last two non-transparent words
-  static WORD_ID cnwordrev[MAX_N];	///< Last two non-transparent words
+  WORD_ID cnword[MAX_N];	///< Last two non-transparent words
+  WORD_ID cnwordrev[MAX_N];	///< Last two non-transparent words
   int cnnum;		///< Num of found non-transparent words (<=2)
   int last_trans;		///< Num of skipped transparent words
 

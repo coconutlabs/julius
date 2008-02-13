@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -146,7 +146,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
   JCONF_AM *amconf, *atmp;
   JCONF_LM *lmconf, *ltmp;
   JCONF_SEARCH *sconf, *stmp;
-  static char sname[JCONF_MODULENAME_MAXLEN];
+  char sname[JCONF_MODULENAME_MAXLEN];
 #define GET_TMPARG  if ((tmparg = next_arg(&i, argc, argv)) == NULL) return FALSE
 
   for (i=1;i<argc;i++) {

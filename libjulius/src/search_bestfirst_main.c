@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -1155,14 +1155,14 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
 
   /* 認識結果格納スタック(結果はここへいったん集められる) */
   /* result sentence stack (found results will be stored here and then re-ordered) */
-  static int r_stacksize;
-  static int r_stacknum;
-  static NODE *r_start = NULL;
-  static NODE *r_bottom = NULL;
+  int r_stacksize;
+  int r_stacknum;
+  NODE *r_start = NULL;
+  NODE *r_bottom = NULL;
 
   /* ワークエリア */
   /* work area */
-  static NEXTWORD fornoise; /* Dummy NEXTWORD data for short-pause insertion handling */
+  NEXTWORD fornoise; /* Dummy NEXTWORD data for short-pause insertion handling */
 
   NEXTWORD **nextword, *nwroot;	/* buffer to store predicted words */
   int maxnwnum;			/* current allocated number of words in nextword */
@@ -1189,12 +1189,12 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
 
   /* local temporal parameter */
   int stacksize, ncan, maxhypo, peseqlen;
-  static JCONF_SEARCH *jconf;
-  static WORD_INFO *winfo;
-  static NGRAM_INFO *ngram;
-  static DFA_INFO *gdfa;
-  static BACKTRELLIS *backtrellis;
-  static StackDecode *dwrk;
+  JCONF_SEARCH *jconf;
+  WORD_INFO *winfo;
+  NGRAM_INFO *ngram;
+  DFA_INFO *gdfa;
+  BACKTRELLIS *backtrellis;
+  StackDecode *dwrk;
 
   if (r->lmtype == LM_DFA) {
     if (debug2_flag) jlog("DEBUG: only words in these categories will be expanded: %d-%d\n", cate_bgn, cate_bgn + cate_num-1);
@@ -2171,7 +2171,7 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
       /* output confusion network */
       //callback_exec(CALLBACK_RESULT_CONFNET, r);
       /* free area for order relationship */
-      graph_free_order();
+      graph_free_order(r);
       /* free confusion network clusters */
       //cn_free_all(&(r->result.confnet));
 
@@ -2208,7 +2208,7 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
   /* finalize */
   nw_free(nextword, nwroot);
   free_all_nodes(start);
-  free_wordtrellis();
+  free_wordtrellis(dwrk);
 #ifdef SCAN_BEAM
   free(dwrk->framemaxscore);
 #endif

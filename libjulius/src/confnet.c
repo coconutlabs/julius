@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Thu Aug 16 00:15:51 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -85,22 +85,10 @@ is_same_word(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo)
 /**************************************************************/
 
 /**
- * Temporal matrix work area to hold the order relations between words.
- * 
- */
-static char *order_matrix = NULL;
-
-/**
- * Number of words to be expressed in the order matrix.
- * 
- */
-static int order_matrix_count;
-
-/**
  * Macro to access the order matrix.
  * 
  */
-#define m2i(A, B) (B) * order_matrix_count + (A)
+#define m2i(A, B) (B) * r->order_matrix_count + (A)
 
 /**
  * Judge order between two words by their word graph ID.
@@ -111,9 +99,9 @@ static int order_matrix_count;
  * @return TRUE if they are ordered, or FALSE if not.
  */
 static boolean
-graph_ordered(int i, int j) 
+graph_ordered(RecogProcess *r, int i, int j) 
 {
-  if (i != j  && order_matrix[m2i(i,j)] == 0 && order_matrix[m2i(j,i)] == 0) {
+  if (i != j  && r->order_matrix[m2i(i,j)] == 0 && r->order_matrix[m2i(j,i)] == 0) {
     return FALSE;
   }
   return TRUE;
@@ -125,23 +113,23 @@ graph_ordered(int i, int j)
  * 
  */
 static void
-graph_update_order()
+graph_update_order(RecogProcess *r)
 {
   int i, j, k;
   boolean changed;
   int count;
 
-  count = order_matrix_count;
+  count = r->order_matrix_count;
   
   do {
     changed = FALSE;
     for(i=0;i<count;i++) {
       for(j=0;j<count;j++) {
-	if (order_matrix[m2i(i, j)] == 1) {
+	if (r->order_matrix[m2i(i, j)] == 1) {
 	  for(k=0;k<count;k++) {
-	    if (order_matrix[m2i(j, k)] == 1) {
-	      if (order_matrix[m2i(i, k)] == 0) {
-		order_matrix[m2i(i, k)] = 1;
+	    if (r->order_matrix[m2i(j, k)] == 1) {
+	      if (r->order_matrix[m2i(i, k)] == 0) {
+		r->order_matrix[m2i(i, k)] = 1;
 		changed = TRUE;
 	      }
 	    }
@@ -173,37 +161,37 @@ graph_make_order(WordGraph *root, RecogProcess *r)
   count = 0;
   for(wg=root;wg;wg=wg->next) count++;
   if (count == 0) {
-    order_matrix = NULL;
+    r->order_matrix = NULL;
     return;
   }
   if (count != r->graph_totalwordnum) {
     jlog("Error: graph_make_order: r->graph_totalwordnum differ from actual number?\n");
-    order_matrix = NULL;
+    r->order_matrix = NULL;
     return;
   }
-  order_matrix_count = count;
+  r->order_matrix_count = count;
   for(wg=root;wg;wg=wg->next) {
     if (wg->id >= count) {
       jlog("Error: graph_make_order: wordgraph id >= count (%d >= %d)\n", wg->id, count);
-      order_matrix = NULL;
+      r->order_matrix = NULL;
       return;
     }
   }
 
   /* allocate and clear matrix */
-  order_matrix = (char *)mymalloc(count * count);
-  for(i=0;i<count*count;i++) order_matrix[i] = 0;
+  r->order_matrix = (char *)mymalloc(count * count);
+  for(i=0;i<count*count;i++) r->order_matrix[i] = 0;
   
   /* set initial order info */
   for(wg=root;wg;wg=wg->next) {
     for(i=0;i<wg->rightwordnum;i++) {
       right = wg->rightword[i];
-      order_matrix[m2i(wg->id, right->id)] = 1;
+      r->order_matrix[m2i(wg->id, right->id)] = 1;
     }
   }
 
   /* right propagate loop */
-  graph_update_order();
+  graph_update_order(r);
 }
 
 /**
@@ -213,9 +201,12 @@ graph_make_order(WordGraph *root, RecogProcess *r)
  * @callergraph
  */
 void
-graph_free_order()
+graph_free_order(RecogProcess *r)
 {
-  if (order_matrix) free(order_matrix);
+  if (r->order_matrix) {
+    free(r->order_matrix);
+    r->order_matrix = NULL;
+  }
 }
 
 /**************************************************************/
@@ -300,7 +291,7 @@ cn_add_wg(CN_CLUSTER *c, WordGraph *wg)
  * @param src [in] source cluster holder.
  */
 static void
-cn_merge(CN_CLUSTER *dst, CN_CLUSTER *src)
+cn_merge(RecogProcess *r, CN_CLUSTER *dst, CN_CLUSTER *src)
 {
   WordGraph *wg;
   int i, j, n;
@@ -310,14 +301,14 @@ cn_merge(CN_CLUSTER *dst, CN_CLUSTER *src)
     wg = src->wg[i];
     for(j=0;j<dst->wgnum;j++) {
       for(n=0;n<wg->leftwordnum;n++) {
-	order_matrix[m2i(wg->leftword[n]->id, dst->wg[j]->id)] = 1;
+	r->order_matrix[m2i(wg->leftword[n]->id, dst->wg[j]->id)] = 1;
       }
       for(n=0;n<wg->rightwordnum;n++) {
-	order_matrix[m2i(dst->wg[j]->id, wg->rightword[n]->id)] = 1;
+	r->order_matrix[m2i(dst->wg[j]->id, wg->rightword[n]->id)] = 1;
       }
     }
   }
-  graph_update_order();
+  graph_update_order(r);
   /* add words in the source cluster to target cluster */
   for(i=0;i<src->wgnum;i++) {
     cn_add_wg(dst, src->wg[i]);
@@ -378,15 +369,16 @@ cn_build_wordlist(CN_CLUSTER *c, WORD_INFO *winfo)
 }
 
 /** 
- * qsort callback to sort clusters by their time order.
+ * qsort_reentrant callback to sort clusters by their time order.
  * 
  * @param x [in] element 1
  * @param y [in] element 2
+ * @param r [in] recognition process instance
  * 
  * @return order value
  */
 static int
-compare_cluster(CN_CLUSTER **x, CN_CLUSTER **y)
+compare_cluster(CN_CLUSTER **x, CN_CLUSTER **y, RecogProcess *r)
 {
   //int i, min1, min2;
 /* 
@@ -402,16 +394,17 @@ compare_cluster(CN_CLUSTER **x, CN_CLUSTER **y)
  *   else return 0;
  */
   int i, j;
-  int dir;
-  dir = 0;
+
+  if (x == y) return 0;
   for(i=0;i<(*x)->wgnum;i++) {
     for(j=0;j<(*y)->wgnum;j++) {
       //if (graph_ordered((*x)->wg[i]->id, (*y)->wg[j]->id)) dir = 1;
-      if (order_matrix[m2i((*x)->wg[i]->id, (*y)->wg[j]->id)] == 1) dir = -1;
+      if (r->order_matrix[m2i((*x)->wg[i]->id, (*y)->wg[j]->id)] == 1) {
+	return -1;
+      }
     }
   }
-  if (dir == 0) dir = 1;
-  return dir;
+  return 1;
 }
 
 
@@ -556,10 +549,8 @@ minimum(int a, int b, int c)
  * @return the distance.
  */
 static int
-edit_distance(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo)
+edit_distance(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo, char *b1, char *b2)
 {
-  static char b1[MAX_HMMNAME_LEN];
-  static char b2[MAX_HMMNAME_LEN];
   int i1, i2;
   int *d;
   int len1, len2;
@@ -602,7 +593,7 @@ edit_distance(WORD_ID w1, WORD_ID w2, WORD_INFO *winfo)
  * @return the average similarity.
  */
 static PROB
-get_cluster_interword_similarity(CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winfo)
+get_cluster_interword_similarity(RecogProcess *r, CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winfo, char *buf1, char *buf2)
 {
   int i1, i2, j;
   WORD_ID w1, w2;
@@ -614,7 +605,7 @@ get_cluster_interword_similarity(CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winf
   /* order check */
   for(i1 = 0; i1 < c1->wgnum; i1++) {
     for(i2 = 0; i2 < c2->wgnum; i2++) {
-      if (graph_ordered(c1->wg[i1]->id, c2->wg[i2]->id)) {
+      if (graph_ordered(r, c1->wg[i1]->id, c2->wg[i2]->id)) {
 	/* ordered clusters should not be merged */
 	//printf("Ordered:\n");
 	//printf("c1:\n"); put_cluster(stdout, c1, winfo);
@@ -657,7 +648,7 @@ get_cluster_interword_similarity(CN_CLUSTER *c1, CN_CLUSTER *c2, WORD_INFO *winf
 #endif
 	}
       }
-      dist = edit_distance(w1, w2, winfo);
+      dist = edit_distance(w1, w2, winfo, buf1, buf2);
 #ifdef CDEBUG2
       for(j=0;j<winfo->wlen[w1];j++) {
 	printf("%s ", winfo->wseq[w1][j]->name);
@@ -710,6 +701,10 @@ confnet_create(WordGraph *root, RecogProcess *r)
   WordGraph *wg;
   PROB sim, max_sim;
   int wg_totalnum, n, i;
+  char *buf1, *buf2;
+
+  buf1 = (char *)mymalloc(MAX_HMMNAME_LEN);
+  buf2 = (char *)mymalloc(MAX_HMMNAME_LEN);
 
   /* make initial confnet instances from word graph */
   croot = NULL;
@@ -743,7 +738,7 @@ confnet_create(WordGraph *root, RecogProcess *r)
       put_cluster(stdout, cmax1, r->lm->winfo);
       put_cluster(stdout, cmax2, r->lm->winfo);
 #endif
-      cn_merge(cmax1, cmax2);
+      cn_merge(r, cmax1, cmax2);
       cn_destroy(cmax2, &croot);
     }
   } while (max_sim != 0.0); /* loop until no more similar pair exists */
@@ -777,7 +772,7 @@ confnet_create(WordGraph *root, RecogProcess *r)
     max_sim = 0.0;
     for(c=croot;c;c=c->next) {
       for(cc=c->next;cc;cc=cc->next) {
-	sim = get_cluster_interword_similarity(c, cc, r->lm->winfo);
+	sim = get_cluster_interword_similarity(r, c, cc, r->lm->winfo, buf1, buf2);
 	if (max_sim < sim) {
 	  max_sim = sim;
 	  cmax1 = c;
@@ -792,7 +787,7 @@ confnet_create(WordGraph *root, RecogProcess *r)
       put_cluster(stdout, cmax1, r->lm->winfo);
       put_cluster(stdout, cmax2, r->lm->winfo);
 #endif
-      cn_merge(cmax1, cmax2);
+      cn_merge(r, cmax1, cmax2);
       cn_destroy(cmax2, &croot);
     }
   } while (max_sim != 0.0); /* loop until no more similar pair exists */
@@ -859,16 +854,18 @@ confnet_create(WordGraph *root, RecogProcess *r)
 
     /* sort cluster list by the left frame*/
     clist = (CN_CLUSTER **)mymalloc(sizeof(CN_CLUSTER *) * n);
-    for(i=0,c=croot;c;c=c->next) clist[i++] = c;
-    qsort(clist, n, sizeof(CN_CLUSTER *), (int (*)(const void *, const void *))compare_cluster);
+    for(i=0,c=croot;c;c=c->next) {
+      clist[i++] = c;
+    }
+    qsort_reentrant(clist, n, sizeof(CN_CLUSTER *), (int (*)(const void *, const void *, void *))compare_cluster, r);
     croot = NULL;
     for(k=0;k<n;k++) {
       if (k == 0) croot = clist[k];
       if (k == n - 1) clist[k]->next = NULL;
       else clist[k]->next = clist[k+1];
     }
+    free(clist);
   }
-
 
 #if 0
   /* output */
@@ -882,6 +879,9 @@ confnet_create(WordGraph *root, RecogProcess *r)
   }
   printf("---- end confusion network ---\n");
 #endif
+
+  free(buf2);
+  free(buf1);
 
   return(croot);
 }

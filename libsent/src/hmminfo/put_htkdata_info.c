@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 23:36:00 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -27,8 +27,6 @@
 #include <sent/htk_param.h>
 #include <sent/hmm.h>
 #include <sent/hmm_calc.h>
-
-static char buf[512];		///< Local work area for text handling
 
 
 /** 
@@ -236,6 +234,8 @@ put_hmm(FILE *fp, HMM *d)
 void
 put_param_head(FILE *fp, HTK_Param_Header *h)
 {
+  char buf[128];
+
   if (fp == NULL) return;
   fprintf(fp, "num of samples: %d\n", h->samplenum);
   fprintf(fp, "window shift: %d ms\n", h->wshift / 10000);
@@ -328,6 +328,8 @@ get_max_mixture_num(HTK_HMM_INFO *hmminfo)
 void
 print_hmmdef_info(FILE *fp, HTK_HMM_INFO *hmminfo)
 {
+  char buf[128];
+
   if (fp == NULL) return;
   fprintf(fp, " HMM Info:\n");
   fprintf(fp, "    %d models, %d states, %d mixtures are defined\n",

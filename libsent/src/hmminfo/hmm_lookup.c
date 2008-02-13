@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 22:34:30 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -154,7 +154,6 @@ hmm_add_physical_to_logical(HTK_HMM_INFO *hmminfo)
 }
 
 
-static int add_count;		///< Number of pseudo phones added to logical %HMM list.
 
 /** 
  * @brief  Add a pseudo monophone and pseudo biphone to logical %HMM.
@@ -197,7 +196,7 @@ hmm_add_pseudo_phones_sub(HTK_HMM_INFO *hmminfo, char *name)
     } else {
       aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root));
     }
-    add_count++;
+    hmminfo->totalpseudonum++;
   }
   return TRUE;
 }
@@ -212,10 +211,10 @@ void
 hmm_add_pseudo_phones(HTK_HMM_INFO *hmminfo)
 {
   HMM_Logical *lg;
-  static char buf[MAX_HMMNAME_LEN];
+  char buf[MAX_HMMNAME_LEN];
   boolean ok_p = TRUE;
 
-  add_count = 0;
+  hmminfo->totalpseudonum = 0;
   /* add pseudo monophone */
   for (lg = hmminfo->lgstart; lg; lg = lg->next) {
     if (lg->is_pseudo) continue;
@@ -240,8 +239,7 @@ hmm_add_pseudo_phones(HTK_HMM_INFO *hmminfo)
       ok_p = FALSE;
     }
   }
-  jlog("Stat: hmm_lookup: %d pseudo phones are added to logical HMM list\n", add_count);
-  hmminfo->totalpseudonum = add_count;
+  jlog("Stat: hmm_lookup: %d pseudo phones are added to logical HMM list\n", hmminfo->totalpseudonum);
   /* re-count total number */
   hmm_count_logical_num(hmminfo);
 }

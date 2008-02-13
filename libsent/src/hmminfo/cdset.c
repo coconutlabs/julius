@@ -60,7 +60,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 17:58:54 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -132,7 +132,7 @@ cdset_lookup(HTK_HMM_INFO *hmminfo, char *cdstr)
 CD_Set *
 lcdset_lookup_by_hmmname(HTK_HMM_INFO *hmminfo, char *hmmname)
 {
-  static char buf[MAX_HMMNAME_LEN];
+  char buf[MAX_HMMNAME_LEN];
 
   return(cdset_lookup(hmminfo, leftcenter_name(hmmname, buf)));
 }
@@ -148,7 +148,7 @@ lcdset_lookup_by_hmmname(HTK_HMM_INFO *hmminfo, char *hmmname)
 CD_Set *
 rcdset_lookup_by_hmmname(HTK_HMM_INFO *hmminfo, char *hmmname)
 {
-  static char buf[MAX_HMMNAME_LEN];
+  char buf[MAX_HMMNAME_LEN];
 
   return(cdset_lookup(hmminfo, rightcenter_name(hmmname, buf)));
 }
@@ -353,7 +353,7 @@ boolean
 make_cdset(HTK_HMM_INFO *hmminfo)
 {
   HMM_Logical *lg;
-  static char buf[MAX_HMMNAME_LEN];
+  char buf[MAX_HMMNAME_LEN];
 
   cdset_init(hmminfo);
   /* make cdset name from logical HMM name */

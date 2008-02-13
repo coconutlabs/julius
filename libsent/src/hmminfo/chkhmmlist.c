@@ -26,7 +26,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 19:17:51 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -48,7 +48,7 @@ void
 make_hmm_basephone_list(HTK_HMM_INFO *hmminfo)
 {
   HMM_Logical *lg;
-  static char p[MAX_HMMNAME_LEN];
+  char p[MAX_HMMNAME_LEN];
   BASEPHONE *match = NULL, *new;
   APATNODE *root;
   int n;
@@ -160,7 +160,7 @@ static boolean
 mark_word_edge(WORD_INFO *winfo, HMM_basephone *base)
 {
   WORD_ID w;
-  static char p[MAX_HMMNAME_LEN];
+  char p[MAX_HMMNAME_LEN];
   char *key;
   BASEPHONE *match;
   boolean ok_p = TRUE;

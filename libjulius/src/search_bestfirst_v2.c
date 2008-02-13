@@ -48,7 +48,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 12 00:58:50 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -342,22 +342,6 @@ newnode(RecogProcess *r)
 /************ Expand trellis and update forward score *****************/
 /**********************************************************************/
 
-static LOGPROB *wordtrellis[2];	///< Buffer to compute viterbi path of a word
-static int tn;		       ///< Temporal pointer to current buffer
-static int tl;		       ///< Temporal pointer to previous buffer
-static LOGPROB *g;		///< Buffer to hold source viterbi scores
-static HMM_Logical **phmmseq;	///< Phoneme sequence to be computed
-static int phmmlen_max;		///< Maximum length of @a phmmseq.
-static HMM_Logical *tailph;	///< Last applied tail phone HMM
-static boolean *has_sp;		///< Mark which phoneme allow short pause
-
-#ifdef GRAPHOUT_PRECISE_BOUNDARY
-static short *wend_token_frame[2]; ///< Propagating token of word-end frame to detect corresponding end-of-words at word head
-static LOGPROB *wend_token_gscore[2]; ///< Propagating token of scores at word-end to detect corresponding end-of-words at word head
-static short *wef;		///< Work area for word-end frame tokens
-static LOGPROB *wes;		///< Work area for word-end score tokens
-#endif
-
 /** 
  * <JA>
  * 1単語分のトレリス計算用のワークエリアを確保. 
@@ -378,35 +362,38 @@ void
 malloc_wordtrellis(RecogProcess *r)
 {
   int maxwn;
+  StackDecode *dwrk;
 
   maxwn = r->lm->winfo->maxwn + 10;	/* CCDによる変動を考慮 */
-  wordtrellis[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
-  wordtrellis[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+  dwrk = &(r->pass2);
 
-  g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
+  dwrk->wordtrellis[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+  dwrk->wordtrellis[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
 
-  phmmlen_max = r->lm->winfo->maxwlen + 2;
-  phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * phmmlen_max);
+  dwrk->g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
+
+  dwrk->phmmlen_max = r->lm->winfo->maxwlen + 2;
+  dwrk->phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * dwrk->phmmlen_max);
   if (r->am->hmminfo->multipath) {
-    has_sp = (boolean *)mymalloc(sizeof(boolean) * phmmlen_max);
+    dwrk->has_sp = (boolean *)mymalloc(sizeof(boolean) * dwrk->phmmlen_max);
   } else {
-    has_sp = NULL;
+    dwrk->has_sp = NULL;
   }
 
-  wef = NULL;
-  wes = NULL;
-  wend_token_frame[0] = NULL;
-  wend_token_frame[1] = NULL;
-  wend_token_gscore[0] = NULL;
-  wend_token_gscore[1] = NULL;
+  dwrk->wef = NULL;
+  dwrk->wes = NULL;
+  dwrk->wend_token_frame[0] = NULL;
+  dwrk->wend_token_frame[1] = NULL;
+  dwrk->wend_token_gscore[0] = NULL;
+  dwrk->wend_token_gscore[1] = NULL;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   if (r->graphout) {
-    wef = (short *)mymalloc(sizeof(short) * r->peseqlen);
-    wes = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
-    wend_token_frame[0] = (short *)mymalloc(sizeof(short) * maxwn);
-    wend_token_frame[1] = (short *)mymalloc(sizeof(short) * maxwn);
-    wend_token_gscore[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
-    wend_token_gscore[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+    dwrk->wef = (short *)mymalloc(sizeof(short) * r->peseqlen);
+    dwrk->wes = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
+    dwrk->wend_token_frame[0] = (short *)mymalloc(sizeof(short) * maxwn);
+    dwrk->wend_token_frame[1] = (short *)mymalloc(sizeof(short) * maxwn);
+    dwrk->wend_token_gscore[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+    dwrk->wend_token_gscore[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
   }
 #endif
 }
@@ -424,25 +411,25 @@ malloc_wordtrellis(RecogProcess *r)
  * @callergraph
  */
 void
-free_wordtrellis()
+free_wordtrellis(StackDecode *dwrk)
 {
-  free(wordtrellis[0]);
-  free(wordtrellis[1]);
-  free(g);
-  free(phmmseq);
-  if (has_sp) {
-    free(has_sp);
-    has_sp = NULL;
+  free(dwrk->wordtrellis[0]);
+  free(dwrk->wordtrellis[1]);
+  free(dwrk->g);
+  free(dwrk->phmmseq);
+  if (dwrk->has_sp) {
+    free(dwrk->has_sp);
+    dwrk->has_sp = NULL;
   }
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
-  if (wef) {
-    free(wef);
-    free(wes);
-    free(wend_token_frame[0]);
-    free(wend_token_frame[1]);
-    free(wend_token_gscore[0]);
-    free(wend_token_gscore[1]);
-    wef = NULL;
+  if (dwrk->wef) {
+    free(dwrk->wef);
+    free(dwrk->wes);
+    free(dwrk->wend_token_frame[0]);
+    free(dwrk->wend_token_frame[1]);
+    free(dwrk->wend_token_gscore[0]);
+    free(dwrk->wend_token_gscore[1]);
+    dwrk->wef = NULL;
   }
 #endif
 }
@@ -511,8 +498,11 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
   A_CELL *ac;
   int t,i,j;
   boolean node_exist_p;
+  int tn;		       ///< Temporal pointer to current buffer
+  int tl;		       ///< Temporal pointer to previous buffer
 
   /* store global values to local for rapid access */
+  StackDecode *dwrk;
   WORD_INFO *winfo;
   HTK_HMM_INFO *hmminfo;
   LOGPROB *framemaxscore;
@@ -520,6 +510,7 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
   LOGPROB scan_beam_thres;
 #endif
 
+  dwrk = &(r->pass2);
   winfo = r->lm->winfo;
   hmminfo = r->am->hmminfo;
   framemaxscore = r->pass2.framemaxscore;
@@ -596,8 +587,8 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   if (r->graphout) {
     for(i=0;i<wordhmmnum;i++) {
-      wend_token_frame[tn][i] = -1;
-      wend_token_gscore[tn][i] = LOG_ZERO;
+      dwrk->wend_token_frame[tn][i] = -1;
+      dwrk->wend_token_gscore[tn][i] = LOG_ZERO;
     }
   }
 #endif
@@ -605,15 +596,15 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
   if (! hmminfo->multipath) {
     /* 時間 [startt] 上の値を初期化 */
     /* initialize scores on frame [startt] */
-    for(i=0;i<wordhmmnum-1;i++) wordtrellis[tn][i] = LOG_ZERO;
-    wordtrellis[tn][wordhmmnum-1] = g[startt] + outprob(&(r->am->hmmwrk), startt, &(whmm->state[wordhmmnum-1]), param);
-    g_new[startt] = wordtrellis[tn][0];
+    for(i=0;i<wordhmmnum-1;i++) dwrk->wordtrellis[tn][i] = LOG_ZERO;
+    dwrk->wordtrellis[tn][wordhmmnum-1] = g[startt] + outprob(&(r->am->hmmwrk), startt, &(whmm->state[wordhmmnum-1]), param);
+    g_new[startt] = dwrk->wordtrellis[tn][0];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
     if (r->graphout) {
-      wend_token_frame[tn][wordhmmnum-1] = wordend_frame_src[startt];
-      wend_token_gscore[tn][wordhmmnum-1] = wordend_gscore_src[startt];
-      wordend_frame_dst[startt] = wend_token_frame[tn][0];
-      wordend_gscore_dst[startt] = wend_token_gscore[tn][0];
+      dwrk->wend_token_frame[tn][wordhmmnum-1] = wordend_frame_src[startt];
+      dwrk->wend_token_gscore[tn][wordhmmnum-1] = wordend_gscore_src[startt];
+      wordend_frame_dst[startt] = dwrk->wend_token_frame[tn][0];
+      wordend_gscore_dst[startt] = dwrk->wend_token_gscore[tn][0];
     }
 #endif
   }
@@ -634,25 +625,25 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
       /* the edge node [t][wordhmmnum-1] is either internal transitin or g[] */
       tmpscore = LOG_ZERO;
       for (ac=whmm->state[wordhmmnum-1].ac;ac;ac=ac->next) {
-	if (tmpscore < wordtrellis[tl][ac->arc] + ac->a) {
+	if (tmpscore < dwrk->wordtrellis[tl][ac->arc] + ac->a) {
 	  j = ac->arc;
-	  tmpscore = wordtrellis[tl][ac->arc] + ac->a;
+	  tmpscore = dwrk->wordtrellis[tl][ac->arc] + ac->a;
 	}
       }
       if (g[t] > tmpscore) {
 	tmpmax = g[t];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
-	  wend_token_frame[tn][wordhmmnum-1] = wordend_frame_src[t];
-	  wend_token_gscore[tn][wordhmmnum-1] = wordend_gscore_src[t];
+	  dwrk->wend_token_frame[tn][wordhmmnum-1] = wordend_frame_src[t];
+	  dwrk->wend_token_gscore[tn][wordhmmnum-1] = wordend_gscore_src[t];
 	}
 #endif
       } else {
 	tmpmax = tmpscore;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
-	  wend_token_frame[tn][wordhmmnum-1] = wend_token_frame[tl][j];
-	  wend_token_gscore[tn][wordhmmnum-1] = wend_token_gscore[tl][j];
+	  dwrk->wend_token_frame[tn][wordhmmnum-1] = dwrk->wend_token_frame[tl][j];
+	  dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->wend_token_gscore[tl][j];
 	}
 #endif
       }
@@ -665,16 +656,16 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
 #endif
 	  tmpmax <= LOG_ZERO
 	  ) {
-	wordtrellis[tn][wordhmmnum-1] = LOG_ZERO;
+	dwrk->wordtrellis[tn][wordhmmnum-1] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
-	  wend_token_frame[tn][wordhmmnum-1] = -1;
-	  wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
+	  dwrk->wend_token_frame[tn][wordhmmnum-1] = -1;
+	  dwrk->wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
 	}
 #endif
       } else {
 	node_exist_p = TRUE;
-	wordtrellis[tn][wordhmmnum-1] = tmpmax + outprob(&(r->am->hmmwrk), t, &(whmm->state[wordhmmnum-1]), param);
+	dwrk->wordtrellis[tn][wordhmmnum-1] = tmpmax + outprob(&(r->am->hmmwrk), t, &(whmm->state[wordhmmnum-1]), param);
       }
 
     }
@@ -690,10 +681,10 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
 	if (hmminfo->multipath) {
 	  if (ac->arc == wordhmmnum-1) tmpscore = g[t];
 	  else if (t + 1 > startt) tmpscore = LOG_ZERO;
-	  else tmpscore = wordtrellis[tl][ac->arc];
+	  else tmpscore = dwrk->wordtrellis[tl][ac->arc];
 	  tmpscore += ac->a;
 	} else {
-	  tmpscore = wordtrellis[tl][ac->arc] + ac->a;
+	  tmpscore = dwrk->wordtrellis[tl][ac->arc] + ac->a;
 	}
 	if (tmpmax < tmpscore) {
 	  tmpmax = tmpscore;
@@ -710,33 +701,33 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
 	  tmpmax <= LOG_ZERO
 	  ) {
 	/* invalid node */
-	wordtrellis[tn][i] = LOG_ZERO;
+	dwrk->wordtrellis[tn][i] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
-	  wend_token_frame[tn][i] = -1;
-	  wend_token_gscore[tn][i] = LOG_ZERO;
+	  dwrk->wend_token_frame[tn][i] = -1;
+	  dwrk->wend_token_gscore[tn][i] = LOG_ZERO;
 	}
 #endif
       } else {
 	/* survived node */
 	node_exist_p = TRUE;
- 	wordtrellis[tn][i] = tmpmax;
+ 	dwrk->wordtrellis[tn][i] = tmpmax;
 	if (! hmminfo->multipath || i > 0) {
-	  wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
+	  dwrk->wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
 	}
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
 	  if (hmminfo->multipath) {
 	    if (j == wordhmmnum-1) {
-	      wend_token_frame[tn][i] = wordend_frame_src[t];
-	      wend_token_gscore[tn][i] = wordend_gscore_src[t];
+	      dwrk->wend_token_frame[tn][i] = wordend_frame_src[t];
+	      dwrk->wend_token_gscore[tn][i] = wordend_gscore_src[t];
 	    } else {
-	      wend_token_frame[tn][i] = wend_token_frame[tl][j];
-	      wend_token_gscore[tn][i] = wend_token_gscore[tl][j];
+	      dwrk->wend_token_frame[tn][i] = dwrk->wend_token_frame[tl][j];
+	      dwrk->wend_token_gscore[tn][i] = dwrk->wend_token_gscore[tl][j];
 	    }
 	  } else {
-	    wend_token_frame[tn][i] = wend_token_frame[tl][j];
-	    wend_token_gscore[tn][i] = wend_token_gscore[tl][j];
+	    dwrk->wend_token_frame[tn][i] = dwrk->wend_token_frame[tl][j];
+	    dwrk->wend_token_gscore[tn][i] = dwrk->wend_token_gscore[tl][j];
 	  }
 	}
 #endif
@@ -745,12 +736,12 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
 
     /* 時間 t のViterbi計算終了. 新たな前向きスコア g_new[t] をセット */
     /* Viterbi end for frame [t].  set the new forward score g_new[t] */
-    g_new[t] = wordtrellis[tn][0];
+    g_new[t] = dwrk->wordtrellis[tn][0];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
     if (r->graphout) {
     /* new wordend */
-      wordend_frame_dst[t] = wend_token_frame[tn][0];
-      wordend_gscore_dst[t] = wend_token_gscore[tn][0];
+      wordend_frame_dst[t] = dwrk->wend_token_frame[tn][0];
+      wordend_gscore_dst[t] = dwrk->wend_token_gscore[tn][0];
     }
 #endif
     /* 指定された least_frame より先まで t が進んでおり，かつこの t において
@@ -783,7 +774,7 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
     if (t < 0) {			/* computed till the end */
       tmpmax = LOG_ZERO;
       for(ac=whmm->state[0].ac;ac;ac=ac->next) {
-	tmpscore = wordtrellis[tn][ac->arc] + ac->a;
+	tmpscore = dwrk->wordtrellis[tn][ac->arc] + ac->a;
 	if (tmpmax < tmpscore) tmpmax = tmpscore;
       }
       *final_g = tmpmax;
@@ -826,6 +817,9 @@ do_viterbi_next_word(NODE *now, NODE *new, HMM_Logical *lastphone, boolean sp, H
   LOGPROB a_value;		/* for non multi-path */
   int peseqlen;
   boolean multipath;
+  StackDecode *dwrk;
+
+  dwrk = &(r->pass2);
 
   multipath = r->am->hmminfo->multipath;
 
@@ -847,23 +841,23 @@ do_viterbi_next_word(NODE *now, NODE *new, HMM_Logical *lastphone, boolean sp, H
     if (r->lm->winfo->wlen[now->seq[now->seqnum-1]] > 1) {
       n = hmm_logical_state_num(lastphone);
       a_value = (hmm_logical_trans(lastphone))->a[n-2][n-1];
-      for(t=0; t<peseqlen-1; t++) g[t] = now->g[t+1] + a_value;
-      g[peseqlen-1] = LOG_ZERO;
+      for(t=0; t<peseqlen-1; t++) dwrk->g[t] = now->g[t+1] + a_value;
+      dwrk->g[peseqlen-1] = LOG_ZERO;
     } else {
-      for(t=0; t<peseqlen; t++) g[t] = now->g[t];
+      for(t=0; t<peseqlen; t++) dwrk->g[t] = now->g[t];
     }
 
   } else {
   
-    for(t=0; t<peseqlen; t++) g[t] = now->g[t];
-    phmmseq[0] = lastphone;
-    has_sp[0] = sp;
+    for(t=0; t<peseqlen; t++) dwrk->g[t] = now->g[t];
+    dwrk->phmmseq[0] = lastphone;
+    dwrk->has_sp[0] = sp;
 
   }
   
-  do_viterbi(g, new->g,
-	     multipath ? phmmseq : &lastphone,
-	     multipath ? has_sp : NULL,
+  do_viterbi(dwrk->g, new->g,
+	     multipath ? dwrk->phmmseq : &lastphone,
+	     multipath ? dwrk->has_sp : NULL,
 	     1, param, peseqlen, now->estimated_next_t, &(new->final_g)
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	     , now->wordend_frame, new->wordend_frame
@@ -916,6 +910,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
   int   i,t;
   WORD_ID word;
   int phmmlen;
+  HMM_Logical *tailph;
 
   /* store global values to local for rapid access */
   WORD_INFO *winfo;
@@ -923,7 +918,9 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
   int peseqlen;
   boolean ccd_flag;
   boolean enable_iwsp;		/* multipath */
+  StackDecode *dwrk;
 
+  dwrk = &(r->pass2);
   winfo = r->lm->winfo;
   hmminfo = r->am->hmminfo;
   peseqlen = r->peseqlen;
@@ -1005,53 +1002,53 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     /* scan範囲の音素列を準備 */
     /* prepare HMM of the scan range */
     phmmlen = winfo->wlen[word] - 1;
-    if (phmmlen > phmmlen_max) {
-      j_internal_error("scan_word: num of phonemes in a word exceed phmmlenmax (%d) ?\n", phmmlen_max);
+    if (phmmlen > dwrk->phmmlen_max) {
+      j_internal_error("scan_word: num of phonemes in a word exceed phmmlenmax (%d) ?\n", dwrk->phmmlen_max);
     }
     for (i=0;i<phmmlen-1;i++) {
-      phmmseq[i] = winfo->wseq[word][i+1];
+      dwrk->phmmseq[i] = winfo->wseq[word][i+1];
     }
-    phmmseq[phmmlen-1] = tailph;
+    dwrk->phmmseq[phmmlen-1] = tailph;
     if (hmminfo->multipath) {
-      for (i=0;i<phmmlen-1;i++) has_sp[i] = FALSE;
-      has_sp[phmmlen-1] = (enable_iwsp) ? TRUE : FALSE;
+      for (i=0;i<phmmlen-1;i++) dwrk->has_sp[i] = FALSE;
+      dwrk->has_sp[phmmlen-1] = (enable_iwsp) ? TRUE : FALSE;
     }
 
   } else {			/* ~ccd_flag */
 
     phmmlen = winfo->wlen[word];
-    for (i=0;i<phmmlen;i++) phmmseq[i] = winfo->wseq[word][i];
+    for (i=0;i<phmmlen;i++) dwrk->phmmseq[i] = winfo->wseq[word][i];
     if (hmminfo->multipath) {
-      for (i=0;i<phmmlen;i++) has_sp[i] = FALSE;
-      if (enable_iwsp) has_sp[phmmlen-1] = TRUE;
+      for (i=0;i<phmmlen;i++) dwrk->has_sp[i] = FALSE;
+      if (enable_iwsp) dwrk->has_sp[phmmlen-1] = TRUE;
     }
 
   }
 
   /* 元のg[]をいったん待避しておく */
   /* temporally keeps the original g[] */
-  for (t=0;t<peseqlen;t++) g[t] = now->g[t];
+  for (t=0;t<peseqlen;t++) dwrk->g[t] = now->g[t];
 
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   if (r->graphout) {
     /* 単語境界伝搬情報を初期化 */
     /* initialize word boundary propagation info */
     for (t=0;t<peseqlen;t++) {
-      wef[t] = t;
-      wes[t] = now->g[t];
+      dwrk->wef[t] = t;
+      dwrk->wes[t] = now->g[t];
     }
   }
 #endif
 
   /* viterbiを実行して g[] から now->g[] を更新する */
   /* do viterbi computation for phmmseq from g[] to now->g[] */
-  do_viterbi(g, now->g, phmmseq, hmminfo->multipath ? has_sp : NULL, 
+  do_viterbi(dwrk->g, now->g, dwrk->phmmseq, hmminfo->multipath ? dwrk->has_sp : NULL, 
 	     phmmlen, param, peseqlen, now->estimated_next_t, &(now->final_g)
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	     /* 単語境界情報 we[] から now->wordend_frame[] を更新する */
 	     /* propagate word boundary info from we[] to now->wordend_frame[] */
-	     , wef, now->wordend_frame
-	     , wes, now->wordend_gscore
+	     , dwrk->wef, now->wordend_frame
+	     , dwrk->wes, now->wordend_gscore
 #else
 	     , NULL, NULL
 	     , NULL, NULL
@@ -1118,8 +1115,8 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 void
 next_word(NODE *now, NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess *r)
 {
-  static HMM_Logical *lastphone, *newphone;
-  static LOGPROB *g_src;
+  HMM_Logical *lastphone, *newphone;
+  LOGPROB *g_src;
   int   t;
   int lastword;
   int   i;
@@ -1134,7 +1131,9 @@ next_word(NODE *now, NODE *new, NEXTWORD *nword, HTK_Param *param, RecogProcess 
   HTK_HMM_INFO *hmminfo;
   int peseqlen;
   boolean ccd_flag;
+  StackDecode *dwrk;
 
+  dwrk = &(r->pass2);
   backtrellis = r->backtrellis;
   winfo = r->lm->winfo;
   hmminfo = r->am->hmminfo;

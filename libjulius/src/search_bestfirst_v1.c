@@ -92,7 +92,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 11 23:54:53 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -407,19 +407,6 @@ newnode(RecogProcess *r)
 /************ Expand trellis and update forward viterbi ***************/
 /**********************************************************************/
 
-static LOGPROB *wordtrellis[2]; ///< Buffer to compute viterbi path of a word
-static int tn;		       ///< Temporal pointer to current buffer
-static int tl;		       ///< Temporal pointer to previous buffer
-static LOGPROB *g;		///< Buffer to hold source viterbi scores
-static HMM_Logical **phmmseq;	///< Phoneme sequence to be computed
-static int phmmlen_max;		///< Maximum length of @a phmmseq.
-static boolean *has_sp;		///< Mark which phoneme allow short pause for multi-path mode
-
-#ifdef GRAPHOUT_PRECISE_BOUNDARY
-static short *wend_token_frame[2]; ///< Propagating token of word-end frame to detect corresponding end-of-words at word head
-static LOGPROB *wend_token_gscore[2]; ///< Propagating token of scores at word-end to detect corresponding end-of-words at word head
-#endif
-
 /** 
  * <JA>
  * 1単語分のトレリス計算用のワークエリアを確保.
@@ -440,31 +427,34 @@ void
 malloc_wordtrellis(RecogProcess *r)
 {
   int maxwn;
+  StackDecode *dwrk;
 
   maxwn = r->lm->winfo->maxwn + 10;
-  wordtrellis[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
-  wordtrellis[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+  dwrk = &(r->pass2);
 
-  g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
+  dwrk->wordtrellis[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+  dwrk->wordtrellis[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
 
-  phmmlen_max = r->lm->winfo->maxwlen + 2;
-  phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * phmmlen_max);
+  dwrk->g = (LOGPROB *)mymalloc(sizeof(LOGPROB) * r->peseqlen);
+
+  dwrk->phmmlen_max = r->lm->winfo->maxwlen + 2;
+  dwrk->phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * dwrk->phmmlen_max);
   if (r->am->hmminfo->multipath) {
-    has_sp = (boolean *)mymalloc(sizeof(boolean) * phmmlen_max);
+    dwrk->has_sp = (boolean *)mymalloc(sizeof(boolean) * dwrk->phmmlen_max);
   } else {
-    has_sp = NULL;
+    dwrk->has_sp = NULL;
   }
 
-  wend_token_frame[0] = NULL;
-  wend_token_frame[1] = NULL;
-  wend_token_gscore[0] = NULL;
-  wend_token_gscore[1] = NULL;
+  dwrk->wend_token_frame[0] = NULL;
+  dwrk->wend_token_frame[1] = NULL;
+  dwrk->wend_token_gscore[0] = NULL;
+  dwrk->wend_token_gscore[1] = NULL;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   if (r->graphout) {
-    wend_token_frame[0] = (short *)mymalloc(sizeof(short) * maxwn);
-    wend_token_frame[1] = (short *)mymalloc(sizeof(short) * maxwn);
-    wend_token_gscore[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
-    wend_token_gscore[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+    dwrk->wend_token_frame[0] = (short *)mymalloc(sizeof(short) * maxwn);
+    dwrk->wend_token_frame[1] = (short *)mymalloc(sizeof(short) * maxwn);
+    dwrk->wend_token_gscore[0] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
+    dwrk->wend_token_gscore[1] = (LOGPROB *)mymalloc(sizeof(LOGPROB) * maxwn);
   }
 #endif
   
@@ -483,27 +473,27 @@ malloc_wordtrellis(RecogProcess *r)
  * @callergraph
  */
 void
-free_wordtrellis()
+free_wordtrellis(StackDecode *dwrk)
 {
   int i;
 
-  free(wordtrellis[0]);
-  free(wordtrellis[1]);
-  free(g);
-  free(phmmseq);
-  if (has_sp) {
-    free(has_sp);
-    has_sp = NULL;
+  free(dwrk->wordtrellis[0]);
+  free(dwrk->wordtrellis[1]);
+  free(dwrk->g);
+  free(dwrk->phmmseq);
+  if (dwrk->has_sp) {
+    free(dwrk->has_sp);
+    dwrk->has_sp = NULL;
   }
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   for(i=0;i<2;i++) {
-    if (wend_token_frame[i]) {
-      free(wend_token_frame[i]);
-      wend_token_frame[i] = NULL;
+    if (dwrk->wend_token_frame[i]) {
+      free(dwrk->wend_token_frame[i]);
+      dwrk->wend_token_frame[i] = NULL;
     }
-    if (wend_token_gscore[i]) {
-      free(wend_token_gscore[i]);
-      wend_token_gscore[i] = NULL;
+    if (dwrk->wend_token_gscore[i]) {
+      free(dwrk->wend_token_gscore[i]);
+      dwrk->wend_token_gscore[i] = NULL;
     }
   }
 #endif
@@ -609,6 +599,8 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
   int crossword_point = 0;
   boolean back_rescan = FALSE;
   boolean node_exist_p;
+  int tn;		       ///< Temporal pointer to current buffer
+  int tl;		       ///< Temporal pointer to previous buffer
 
   /* store global values to local for rapid access */
   WORD_INFO *winfo;
@@ -620,9 +612,11 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 #ifdef SCAN_BEAM
   LOGPROB scan_beam_thres;
 #endif
+  StackDecode *dwrk;
 
   winfo = r->lm->winfo;
   hmminfo = r->am->hmminfo;
+  dwrk = &(r->pass2);
   peseqlen = r->peseqlen;
   framemaxscore = r->pass2.framemaxscore;
   ccd_flag = r->ccd_flag;
@@ -672,12 +666,12 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       /* scan range: phones in now->seq[now->seqnum-1] + now->last_ph */
       
       phmmlen = winfo->wlen[word] + 1;
-      if (phmmlen > phmmlen_max) {
-	j_internal_error("scan_word: num of phonemes in a word exceed phmmlenmax (%d) ?\n", phmmlen_max);
+      if (phmmlen > dwrk->phmmlen_max) {
+	j_internal_error("scan_word: num of phonemes in a word exceed phmmlenmax (%d) ?\n", dwrk->phmmlen_max);
       }
-      for (i=0;i<phmmlen - 2;i++) phmmseq[i] = winfo->wseq[word][i];
+      for (i=0;i<phmmlen - 2;i++) dwrk->phmmseq[i] = winfo->wseq[word][i];
       if (hmminfo->multipath) {
-	for (i=0;i<phmmlen - 2;i++) has_sp[i] = FALSE;
+	for (i=0;i<phmmlen - 2;i++) dwrk->has_sp[i] = FALSE;
       }
 
       /* 最終単語と last_ph 間の単語間triphoneを考慮 */
@@ -692,9 +686,9 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	if (winfo->wlen[word] > 1 && wend->is_pseudo) {
 	  error_missing_right_triphone(wend, now->last_ph->name);
 	}
-	phmmseq[phmmlen-2] = wend;
+	dwrk->phmmseq[phmmlen-2] = wend;
       } else {
-	phmmseq[phmmlen-2] = ret;
+	dwrk->phmmseq[phmmlen-2] = ret;
       }
       ret = get_left_context_HMM(now->last_ph, wend->name, hmminfo);
       if (ret == NULL) {
@@ -704,17 +698,17 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	if (now->last_ph->is_pseudo) {
 	  error_missing_left_triphone(now->last_ph, wend->name);
 	}
-	phmmseq[phmmlen-1] = now->last_ph;
+	dwrk->phmmseq[phmmlen-1] = now->last_ph;
       } else {
-	phmmseq[phmmlen-1] = ret;
+	dwrk->phmmseq[phmmlen-1] = ret;
       }
 
       if (hmminfo->multipath) {
-	has_sp[phmmlen-2] = has_sp[phmmlen-1] = FALSE;
+	dwrk->has_sp[phmmlen-2] = dwrk->has_sp[phmmlen-1] = FALSE;
 	if (enable_iwsp) {
-	  has_sp[phmmlen-2] = TRUE;
+	  dwrk->has_sp[phmmlen-2] = TRUE;
 	  if (now->last_ph_sp_attached) {
-	    has_sp[phmmlen-1] = TRUE;
+	    dwrk->has_sp[phmmlen-1] = TRUE;
 	  }
 	}
       }
@@ -723,22 +717,22 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       jlog("DEBUG: w=");
       for(i=0;i<winfo->wlen[word];i++) {
 	jlog(" %s",(winfo->wseq[word][i])->name);
-	if (hmminfo->multipath && has_sp[i]) jlog("(sp)");
+	if (hmminfo->multipath && dwrk->has_sp[i]) jlog("(sp)");
       }
       jlog(" | %s\n", (now->last_ph)->name);
       if (hmminfo->multipath && now->last_ph_sp_attached) jlog("DEBUG:   (sp)\n");
       jlog("DEBUG: scan for:");
       
       for (i=0;i<phmmlen;i++) {
-	jlog(" %s", phmmseq[i]->name);
- 	if (hmminfo->multipath && has_sp[i]) jlog("(sp)");
+	jlog(" %s", dwrk->phmmseq[i]->name);
+ 	if (hmminfo->multipath && dwrk->has_sp[i]) jlog("(sp)");
       }
       jlog("\n");
 #endif
 
       /* 単語HMMを作る */
       /* make word HMM */
-      whmm = new_make_word_hmm(hmminfo, phmmseq, phmmlen, hmminfo->multipath ? has_sp : NULL);
+      whmm = new_make_word_hmm(hmminfo, dwrk->phmmseq, phmmlen, hmminfo->multipath ? dwrk->has_sp : NULL);
       if (whmm == NULL) {
 	j_internal_error("Error: failed to make word hmm for word #%d \"%s [%s]\"\n", word, winfo->wname[word], winfo->woutput[word]);
       }
@@ -747,7 +741,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       /* As backscan enabled, the initial forward score g[] is set by
 	 now->g_prev[] */
       for (t=0;t<peseqlen;t++) {
-	g[t]=now->g_prev[t];
+	dwrk->g[t]=now->g_prev[t];
 
       }
       
@@ -755,26 +749,26 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       /* set where to store scores as new g_prev[] for the next backscan
 	 in the HMM */
       if (hmminfo->multipath) {
-	store_point = hmm_logical_state_num(phmmseq[0]) - 2;
-	store_point_maxarc = max_out_arc(phmmseq[0]);
-	if (enable_iwsp && has_sp[0]) {
+	store_point = hmm_logical_state_num(dwrk->phmmseq[0]) - 2;
+	store_point_maxarc = max_out_arc(dwrk->phmmseq[0]);
+	if (enable_iwsp && dwrk->has_sp[0]) {
 	  store_point += hmm_logical_state_num(hmminfo->sp) - 2;
 	  if (store_point_maxarc < max_out_arc(hmminfo->sp)) {
 	    store_point_maxarc = max_out_arc(hmminfo->sp);
 	  }
 	}
       } else {
-	store_point = hmm_logical_state_num(phmmseq[0]) - 2 - 1;
+	store_point = hmm_logical_state_num(dwrk->phmmseq[0]) - 2 - 1;
       }
       /* scan中に直前単語とこの単語をまたぐ場所を設定 */
       /* set where is the connection point of the last word in the HMM */
       if (hmminfo->multipath) {
-	crossword_point = whmm->len - hmm_logical_state_num(phmmseq[phmmlen-1]);
-	if (enable_iwsp && has_sp[phmmlen-1]) {
+	crossword_point = whmm->len - hmm_logical_state_num(dwrk->phmmseq[phmmlen-1]);
+	if (enable_iwsp && dwrk->has_sp[phmmlen-1]) {
 	  crossword_point -= hmm_logical_state_num(hmminfo->sp) - 2;
 	}
       } else {
-	crossword_point = whmm->len - (hmm_logical_state_num(phmmseq[phmmlen-1]) - 2) - 1;
+	crossword_point = whmm->len - (hmm_logical_state_num(dwrk->phmmseq[phmmlen-1]) - 2) - 1;
       }
       
     } else {			/* not backscan mode */
@@ -792,16 +786,16 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       if (hmminfo->multipath) {
 	/* 必要ならばショートポーズを挟み込む位置を指定する */
 	for(i=0;i<winfo->wlen[word];i++) {
-	  has_sp[i] = FALSE;
+	  dwrk->has_sp[i] = FALSE;
 	}
 	if (enable_iwsp) {
-	  has_sp[winfo->wlen[word]-1] = TRUE;
+	  dwrk->has_sp[winfo->wlen[word]-1] = TRUE;
 	}
       }
       
       /* 単語HMMを作る */
       /* make word HMM */
-      whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], hmminfo->multipath ? has_sp : NULL);
+      whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], hmminfo->multipath ? dwrk->has_sp : NULL);
       if (whmm == NULL) {
 	j_internal_error("Error: failed to make word hmm for word #%d \"%s [%s]\"\n", word, winfo->wname[word], winfo->woutput[word]);
       }
@@ -809,7 +803,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       /* 計算前の g[] 初期値は now->g[] を使用 */
       /* the initial forward score g[] is set by now->g[] */
       for (t=0;t<peseqlen;t++) {
-	g[t]=now->g[t];
+	dwrk->g[t]=now->g[t];
       }
       
       /* 次段用のg_prevを格納するノード位置を設定 */
@@ -818,7 +812,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       if (hmminfo->multipath) {
 	store_point = hmm_logical_state_num(winfo->wseq[word][0]) - 2;
 	store_point_maxarc = max_out_arc(winfo->wseq[word][0]);
-	if (enable_iwsp && has_sp[0]) {
+	if (enable_iwsp && dwrk->has_sp[0]) {
 	  store_point += hmm_logical_state_num(hmminfo->sp) - 2;
 	  if (store_point_maxarc < max_out_arc(hmminfo->sp)) {
 	    store_point_maxarc = max_out_arc(hmminfo->sp);
@@ -838,16 +832,16 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     if (hmminfo->multipath) {
       /* 必要ならばショートポーズを挟み込む位置を指定する */
       for(i=0;i<winfo->wlen[word];i++) {
-	has_sp[i] = FALSE;
+	dwrk->has_sp[i] = FALSE;
       }
       if (enable_iwsp) {
-	has_sp[winfo->wlen[word]-1] = TRUE;
+	dwrk->has_sp[winfo->wlen[word]-1] = TRUE;
       }
     }
 
     /* 音素環境非依存の場合は単純に最終単語分の HMM を作成 */
     /* for monophone: simple make HMM for the last word */
-    whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], hmminfo->multipath ? has_sp : NULL);
+    whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], hmminfo->multipath ? dwrk->has_sp : NULL);
     if (whmm == NULL) {
       j_internal_error("Error: failed to make word hmm for word #%d \"%s [%s]\"\n", word, winfo->wname[word], winfo->woutput[word]);
     }
@@ -855,7 +849,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     /* 計算前の g[] 初期値は now->g[] を使用 */
     /* the initial forward score g[] is set by now->g[] */
     for (t=0;t<peseqlen;t++) {
-      g[t]=now->g[t];
+      dwrk->g[t]=now->g[t];
     }
     
   }
@@ -886,9 +880,9 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
   for(t = peseqlen-1; t >=0 ; t--) {
     if (
 #ifdef SCAN_BEAM
-	g[t] > framemaxscore[t] - scan_beam_thres &&
+	dwrk->g[t] > framemaxscore[t] - scan_beam_thres &&
 #endif
-	g[t] > LOG_ZERO) {
+	dwrk->g[t] > LOG_ZERO) {
       break;
     }
   }
@@ -927,8 +921,8 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   if (r->graphout) {
     for(i=0;i<wordhmmnum;i++) {
-      wend_token_frame[tn][i] = -1;
-      wend_token_gscore[tn][i] = LOG_ZERO;
+      dwrk->wend_token_frame[tn][i] = -1;
+      dwrk->wend_token_gscore[tn][i] = LOG_ZERO;
     }
   }
 #endif
@@ -939,34 +933,34 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     
     /* 時間 [startt] 上の値を初期化 */
     /* initialize scores on frame [startt] */
-    for(i=0;i<wordhmmnum-1;i++) wordtrellis[tn][i] = LOG_ZERO;
-    wordtrellis[tn][wordhmmnum-1] = g[startt] + outprob(&(r->am->hmmwrk), startt, &(whmm->state[wordhmmnum-1]), param);
+    for(i=0;i<wordhmmnum-1;i++) dwrk->wordtrellis[tn][i] = LOG_ZERO;
+    dwrk->wordtrellis[tn][wordhmmnum-1] = dwrk->g[startt] + outprob(&(r->am->hmmwrk), startt, &(whmm->state[wordhmmnum-1]), param);
     if (ccd_flag) {
-      now->g_prev[startt] = wordtrellis[tn][store_point];
+      now->g_prev[startt] = dwrk->wordtrellis[tn][store_point];
     }
-    now->g[startt] = wordtrellis[tn][0];
+    now->g[startt] = dwrk->wordtrellis[tn][0];
     
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
     if (r->graphout) {
       if (ccd_flag) {
 	if (back_rescan) {
 	  if (wordhmmnum-1 == crossword_point) {
-	    wend_token_frame[tn][wordhmmnum-1] = startt;
-	    wend_token_gscore[tn][wordhmmnum-1] = g[startt];
+	    dwrk->wend_token_frame[tn][wordhmmnum-1] = startt;
+	    dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->g[startt];
 	  } else {
-	    wend_token_frame[tn][wordhmmnum-1] = -1;
-	    wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
+	    dwrk->wend_token_frame[tn][wordhmmnum-1] = -1;
+	    dwrk->wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
 	  }
 	} else {
-	  wend_token_frame[tn][wordhmmnum-1] = startt;
-	  wend_token_gscore[tn][wordhmmnum-1] = g[startt];
+	  dwrk->wend_token_frame[tn][wordhmmnum-1] = startt;
+	  dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->g[startt];
 	}
       } else {
-	wend_token_frame[tn][wordhmmnum-1] = startt;
-	wend_token_gscore[tn][wordhmmnum-1] = g[startt];
+	dwrk->wend_token_frame[tn][wordhmmnum-1] = startt;
+	dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->g[startt];
       }
-      now->wordend_frame[startt] = wend_token_frame[tn][0];
-      now->wordend_gscore[startt] = wend_token_gscore[tn][0];
+      now->wordend_frame[startt] = dwrk->wend_token_frame[tn][0];
+      now->wordend_gscore[startt] = dwrk->wend_token_gscore[tn][0];
     }
 #endif
   } /* end of hmminfo->multipath */
@@ -997,22 +991,22 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       /* the edge node [t][wordhmmnum-1] is either internal transitin or g[] */
       tmptmp = LOG_ZERO;
       for (ac=whmm->state[wordhmmnum-1].ac;ac;ac=ac->next) {
-	score1 = wordtrellis[tl][ac->arc] + ac->a;
+	score1 = dwrk->wordtrellis[tl][ac->arc] + ac->a;
 	if (tmptmp < score1) {
 	  j = ac->arc;
 	  tmptmp = score1;
 	}
       }
-      if (g[t] > tmptmp) {
-	tmpmax = g[t];
+      if (dwrk->g[t] > tmptmp) {
+	tmpmax = dwrk->g[t];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
 	  if (!back_rescan || wordhmmnum-1 == crossword_point) {
-	    wend_token_frame[tn][wordhmmnum-1] = t;
-	    wend_token_gscore[tn][wordhmmnum-1] = g[t];
+	    dwrk->wend_token_frame[tn][wordhmmnum-1] = t;
+	    dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->g[t];
 	  } else {
-	    wend_token_frame[tn][wordhmmnum-1] = wend_token_frame[tl][j];
-	    wend_token_gscore[tn][wordhmmnum-1] = wend_token_gscore[tl][j];
+	    dwrk->wend_token_frame[tn][wordhmmnum-1] = dwrk->wend_token_frame[tl][j];
+	    dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->wend_token_gscore[tl][j];
 	  }
 	}
 #endif
@@ -1020,8 +1014,8 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	tmpmax = tmptmp;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
-	  wend_token_frame[tn][wordhmmnum-1] = wend_token_frame[tl][j];
-	  wend_token_gscore[tn][wordhmmnum-1] = wend_token_gscore[tl][j];
+	  dwrk->wend_token_frame[tn][wordhmmnum-1] = dwrk->wend_token_frame[tl][j];
+	  dwrk->wend_token_gscore[tn][wordhmmnum-1] = dwrk->wend_token_gscore[tl][j];
 	}
 #endif
       }
@@ -1034,16 +1028,16 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 #endif
 	  tmpmax <= LOG_ZERO
 	  ) {
-	wordtrellis[tn][wordhmmnum-1] = LOG_ZERO;
+	dwrk->wordtrellis[tn][wordhmmnum-1] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	if (r->graphout) {
-	  wend_token_frame[tn][wordhmmnum-1] = -1;
-	  wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
+	  dwrk->wend_token_frame[tn][wordhmmnum-1] = -1;
+	  dwrk->wend_token_gscore[tn][wordhmmnum-1] = LOG_ZERO;
 	}
 #endif
       } else {
 	node_exist_p = TRUE;
-	wordtrellis[tn][wordhmmnum-1] = tmpmax + outprob(&(r->am->hmmwrk), t, &(whmm->state[wordhmmnum-1]), param);
+	dwrk->wordtrellis[tn][wordhmmnum-1] = tmpmax + outprob(&(r->am->hmmwrk), t, &(whmm->state[wordhmmnum-1]), param);
       }
 
     } /* end of ~multipath */
@@ -1066,12 +1060,12 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	tmpmax = LOG_ZERO;
 	for (ac=whmm->state[i].ac;ac;ac=ac->next) {
 	  if (hmminfo->multipath) {
-	    if (ac->arc == wordhmmnum-1) score1 = g[t];
+	    if (ac->arc == wordhmmnum-1) score1 = dwrk->g[t];
 	    else if (t + 1 > startt) score1 = LOG_ZERO;
-	    else score1 = wordtrellis[tl][ac->arc];
+	    else score1 = dwrk->wordtrellis[tl][ac->arc];
 	    score1 += ac->a;
 	  } else {
-	    score1 = wordtrellis[tl][ac->arc] + ac->a;
+	    score1 = dwrk->wordtrellis[tl][ac->arc] + ac->a;
 	  }
 	  if (i <= crossword_point && ac->arc > crossword_point) {
 	    /* これは単語を越える遷移 (backscan 実行時) */
@@ -1103,11 +1097,11 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 #endif
 	    tmpmax <= LOG_ZERO
 	    ) {  /* invalid node */
-	  wordtrellis[tn][i] = LOG_ZERO;
+	  dwrk->wordtrellis[tn][i] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	  if (r->graphout) {
-	    wend_token_frame[tn][i] = -1;
-	    wend_token_gscore[tn][i] = LOG_ZERO;
+	    dwrk->wend_token_frame[tn][i] = -1;
+	    dwrk->wend_token_gscore[tn][i] = LOG_ZERO;
 	  }
 #endif
 	  if (! hmminfo->multipath) {
@@ -1123,29 +1117,29 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	    if (hmminfo->multipath) {
 	      if ((back_rescan && i <= crossword_point && j > crossword_point)
 		  || j == wordhmmnum-1) {
-		wend_token_frame[tn][i] = t;
-		wend_token_gscore[tn][i] = tmpmax;
+		dwrk->wend_token_frame[tn][i] = t;
+		dwrk->wend_token_gscore[tn][i] = tmpmax;
 	      } else {
-		wend_token_frame[tn][i] = wend_token_frame[tl][j];
-		wend_token_gscore[tn][i] = wend_token_gscore[tl][j];
+		dwrk->wend_token_frame[tn][i] = dwrk->wend_token_frame[tl][j];
+		dwrk->wend_token_gscore[tn][i] = dwrk->wend_token_gscore[tl][j];
 	      }
 	    } else {
 	      if (i <= crossword_point && j > crossword_point) {
-		wend_token_frame[tn][i] = t;
-		wend_token_gscore[tn][i] = tmpmax;
+		dwrk->wend_token_frame[tn][i] = t;
+		dwrk->wend_token_gscore[tn][i] = tmpmax;
 	      } else {
-		wend_token_frame[tn][i] = wend_token_frame[tl][j];
-		wend_token_gscore[tn][i] = wend_token_gscore[tl][j];
+		dwrk->wend_token_frame[tn][i] = dwrk->wend_token_frame[tl][j];
+		dwrk->wend_token_gscore[tn][i] = dwrk->wend_token_gscore[tl][j];
 	      }
 	    }
 	  }
 #endif
 	  node_exist_p = TRUE;	/* at least one node survive in this frame */
 
-	  wordtrellis[tn][i] = tmpmax;
+	  dwrk->wordtrellis[tn][i] = tmpmax;
 	  if (! hmminfo->multipath || i > 0) {
 	    /* compute output probability */
-	    wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
+	    dwrk->wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
 	  }
 	}
 	
@@ -1156,9 +1150,9 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	tmpmax = LOG_ZERO;
 	if (hmminfo->multipath) {
 	  for (ac=whmm->state[i].ac;ac;ac=ac->next) {
-	    if (ac->arc == wordhmmnum-1) score1 = g[t];
+	    if (ac->arc == wordhmmnum-1) score1 = dwrk->g[t];
 	    else if (t + 1 > startt) score1 = LOG_ZERO;
-	    else score1 = wordtrellis[tl][ac->arc];
+	    else score1 = dwrk->wordtrellis[tl][ac->arc];
 	    score1 += ac->a;
 	    if (tmpmax < score1) {
 	      tmpmax = score1;
@@ -1167,7 +1161,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	  }
 	} else {
 	  for (ac=whmm->state[i].ac;ac;ac=ac->next) {
-	    score1 = wordtrellis[tl][ac->arc] + ac->a;
+	    score1 = dwrk->wordtrellis[tl][ac->arc] + ac->a;
 	    if (tmpmax < score1) {
 	      tmpmax = score1;
 	      j = ac->arc;
@@ -1184,11 +1178,11 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	    tmpmax <= LOG_ZERO
 	    ) {
 	  /* invalid node */
-	  wordtrellis[tn][i] = LOG_ZERO;
+	  dwrk->wordtrellis[tn][i] = LOG_ZERO;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	  if (r->graphout) {
-	    wend_token_frame[tn][i] = -1;
-	    wend_token_gscore[tn][i] = LOG_ZERO;
+	    dwrk->wend_token_frame[tn][i] = -1;
+	    dwrk->wend_token_gscore[tn][i] = LOG_ZERO;
 	  }
 #endif
 	} else {
@@ -1198,22 +1192,22 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	  if (r->graphout) {
 	    if (hmminfo->multipath) {
 	      if (j == wordhmmnum-1) {
-		wend_token_frame[tn][i] = t;
-		wend_token_gscore[tn][i] = tmpmax;
+		dwrk->wend_token_frame[tn][i] = t;
+		dwrk->wend_token_gscore[tn][i] = tmpmax;
 	      } else {
-		wend_token_frame[tn][i] = wend_token_frame[tl][j];
-		wend_token_gscore[tn][i] = wend_token_gscore[tl][j];
+		dwrk->wend_token_frame[tn][i] = dwrk->wend_token_frame[tl][j];
+		dwrk->wend_token_gscore[tn][i] = dwrk->wend_token_gscore[tl][j];
 	      }
 	    } else {
-	      wend_token_frame[tn][i] = wend_token_frame[tl][j];
-	      wend_token_gscore[tn][i] = wend_token_gscore[tl][j];
+	      dwrk->wend_token_frame[tn][i] = dwrk->wend_token_frame[tl][j];
+	      dwrk->wend_token_gscore[tn][i] = dwrk->wend_token_gscore[tl][j];
 	    }
 	  }
 #endif
 	  /* score of node [t][i] has been determined here */
-	  wordtrellis[tn][i] = tmpmax;
+	  dwrk->wordtrellis[tn][i] = tmpmax;
 	  if (! hmminfo->multipath || i > 0) {
-	    wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
+	    dwrk->wordtrellis[tn][i] += outprob(&(r->am->hmmwrk), t, &(whmm->state[i]), param);
 	  }
 	}
 	
@@ -1223,11 +1217,11 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     /* 時間 t のViterbi計算終了. 前向きスコアはscanした単語の始端 */
     /* Viterbi end for frame [t].  the forward score is the score of word
        beginning scanned */
-    now->g[t] = wordtrellis[tn][0];
+    now->g[t] = dwrk->wordtrellis[tn][0];
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
     if (r->graphout) {
-      now->wordend_frame[t] = wend_token_frame[tn][0];
-      now->wordend_gscore[t] = wend_token_gscore[tn][0];
+      now->wordend_frame[t] = dwrk->wend_token_frame[tn][0];
+      now->wordend_gscore[t] = dwrk->wend_token_gscore[tn][0];
     }
 #endif
 
@@ -1281,7 +1275,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     if (endt == 0) {
       tmpmax = LOG_ZERO;
       for(ac=whmm->state[0].ac;ac;ac=ac->next) {
-	score1 = wordtrellis[tn][ac->arc] + ac->a;
+	score1 = dwrk->wordtrellis[tn][ac->arc] + ac->a;
 	if (tmpmax < score1) tmpmax = score1;
       }
       now->final_g = score1;
@@ -1302,7 +1296,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	 So the next 'g_prev[]' should be the initial forward scores
 	 before we begin Viterbi (= g[t]). */
       for (t = startt; t>=0; t--) {
-	now->g_prev[t] = g[t];
+	now->g_prev[t] = dwrk->g[t];
       }
     }
 #ifndef GRAPHOUT_PRECISE_BOUNDARY
@@ -1317,12 +1311,12 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     /* 次回のために now->last_ph を更新 */
     /* update 'now->last_ph' for future scan_word() */
     if (back_rescan) {
-      now->last_ph = phmmseq[0];
+      now->last_ph = dwrk->phmmseq[0];
     } else {
       now->last_ph = winfo->wseq[word][0];
     }
     if (hmminfo->multipath) {
-      now->last_ph_sp_attached = has_sp[0];
+      now->last_ph_sp_attached = dwrk->has_sp[0];
     }
   }
 

@@ -68,7 +68,7 @@
  * @author Akinobu Lee
  * @date   Mon Aug 22 17:14:26 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -112,9 +112,6 @@ outprob_style_cache_init(WCHMM_INFO *wchmm)
 
 /**********************************************************************/
 
-static char lccbuf[MAX_HMMNAME_LEN+7]; ///< work area for HMM name conversion
-static char lccbuf2[MAX_HMMNAME_LEN+7]; ///< work area for HMM name conversion
-
 /** 
  * <JA>
  * @brief  単語末尾のトライフォンセット (pseudo phone set) を検索する. 
@@ -148,12 +145,12 @@ lcdset_lookup_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categor
 {
   CD_Set *cd;
 
-  leftcenter_name(hmm->name, lccbuf);
-  sprintf(lccbuf2, "%s::%04d", lccbuf, category);
+  leftcenter_name(hmm->name, wchmm->lccbuf);
+  sprintf(wchmm->lccbuf2, "%s::%04d", wchmm->lccbuf, category);
   if (wchmm->lcdset_category_root != NULL) {
-    cd = aptree_search_data(lccbuf2, wchmm->lcdset_category_root);
+    cd = aptree_search_data(wchmm->lccbuf2, wchmm->lcdset_category_root);
     if (cd == NULL) return NULL;
-    if (strmatch(lccbuf2, cd->name)) {
+    if (strmatch(wchmm->lccbuf2, cd->name)) {
       return cd;
     }
   }
@@ -214,10 +211,10 @@ lcdset_register_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categ
   int cnt_c, cnt_w, cnt_p;
 
   if (lcdset_lookup_with_category(wchmm, hmm, category) == NULL) {
-    leftcenter_name(hmm->name, lccbuf);
-    sprintf(lccbuf2, "%s::%04d", lccbuf, category);
+    leftcenter_name(hmm->name, wchmm->lccbuf);
+    sprintf(wchmm->lccbuf2, "%s::%04d", wchmm->lccbuf, category);
     if (debug2_flag) {
-      jlog("DEBUG: category-aware lcdset {%s}...", lccbuf2);
+      jlog("DEBUG: category-aware lcdset {%s}...", wchmm->lccbuf2);
     }
     cnt_c = cnt_w = cnt_p = 0;
     /* search for category that can connect after this category */
@@ -235,7 +232,7 @@ lcdset_register_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categ
 	  }
 	}
 	if (! ltmp->is_pseudo) {
-	  if (regist_cdset(&(wchmm->lcdset_category_root), ltmp->body.defined, lccbuf2)) {
+	  if (regist_cdset(&(wchmm->lcdset_category_root), ltmp->body.defined, wchmm->lccbuf2)) {
 	    cnt_p++;
 	  }
 	}
@@ -356,7 +353,7 @@ lcdset_remove_with_category_all(WCHMM_INFO *wchmm)
 LOGPROB
 outprob_style(WCHMM_INFO *wchmm, int node, int last_wid, int t, HTK_Param *param)
 {
-  static char rbuf[MAX_HMMNAME_LEN]; ///< Local workarea for HMM name conversion
+  char rbuf[MAX_HMMNAME_LEN]; ///< Local workarea for HMM name conversion
 
 #ifndef PASS1_IWCD
   
@@ -522,7 +519,7 @@ outprob_style(WCHMM_INFO *wchmm, int node, int last_wid, int t, HTK_Param *param
 void
 error_missing_right_triphone(HMM_Logical *base, char *rc_name)
 {
-  static char rbuf[MAX_HMMNAME_LEN]; ///< Local workarea for HMM name conversion
+  char rbuf[MAX_HMMNAME_LEN]; ///< Local workarea for HMM name conversion
   /* only output message */
   strcpy(rbuf, base->name);
   add_right_context(rbuf, rc_name);
@@ -554,7 +551,7 @@ error_missing_right_triphone(HMM_Logical *base, char *rc_name)
 void
 error_missing_left_triphone(HMM_Logical *base, char *lc_name)
 {
-  static char rbuf[MAX_HMMNAME_LEN]; ///< Local workarea for HMM name conversion
+  char rbuf[MAX_HMMNAME_LEN]; ///< Local workarea for HMM name conversion
   /* only output message */
   strcpy(rbuf, base->name);
   add_left_context(rbuf, lc_name);

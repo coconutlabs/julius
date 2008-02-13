@@ -16,7 +16,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 19:36:47 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -80,7 +80,7 @@
 #define SPMODEL_NAME_DEFAULT "sp"
 
 /// Length limit of HMM name (including ones generated in Julius)
-#define MAX_HMMNAME_LEN 128
+#define MAX_HMMNAME_LEN 64
 
 /// Specify method of calculating approximated acoustic score at inter-word context pseudo phones on word edge
 enum iwcd_type {

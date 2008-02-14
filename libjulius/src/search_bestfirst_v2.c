@@ -48,7 +48,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 12 00:58:50 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -374,7 +374,7 @@ malloc_wordtrellis(RecogProcess *r)
 
   dwrk->phmmlen_max = r->lm->winfo->maxwlen + 2;
   dwrk->phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * dwrk->phmmlen_max);
-  if (r->am->hmminfo->multipath) {
+  if (r->lm->config->enable_iwsp && r->am->hmminfo->multipath) {
     dwrk->has_sp = (boolean *)mymalloc(sizeof(boolean) * dwrk->phmmlen_max);
   } else {
     dwrk->has_sp = NULL;
@@ -529,7 +529,7 @@ do_viterbi(LOGPROB *g, LOGPROB *g_new, HMM_Logical **phmmseq, boolean *has_sp, i
   
   /* 単語HMMを作る */
   /* make word HMM */
-  whmm = new_make_word_hmm(hmminfo, phmmseq, phmmlen, hmminfo->multipath ? has_sp : NULL);
+  whmm = new_make_word_hmm(hmminfo, phmmseq, phmmlen, has_sp);
   if (whmm == NULL) {
     j_internal_error("Error: failed to make word hmm\n");
   }
@@ -851,13 +851,13 @@ do_viterbi_next_word(NODE *now, NODE *new, HMM_Logical *lastphone, boolean sp, H
   
     for(t=0; t<peseqlen; t++) dwrk->g[t] = now->g[t];
     dwrk->phmmseq[0] = lastphone;
-    dwrk->has_sp[0] = sp;
+    if (r->lm->config->enable_iwsp) dwrk->has_sp[0] = sp;
 
   }
   
   do_viterbi(dwrk->g, new->g,
 	     multipath ? dwrk->phmmseq : &lastphone,
-	     multipath ? dwrk->has_sp : NULL,
+	     (r->lm->config->enable_iwsp && multipath) ? dwrk->has_sp : NULL,
 	     1, param, peseqlen, now->estimated_next_t, &(new->final_g)
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	     , now->wordend_frame, new->wordend_frame
@@ -982,7 +982,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
        following next_word() */
     if (winfo->wlen[word] == 1) {
       now->last_ph = tailph;
-      if (hmminfo->multipath) now->last_ph_sp_attached = TRUE;
+      if (enable_iwsp && hmminfo->multipath) now->last_ph_sp_attached = TRUE;
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
       if (r->graphout) {
 	/* 単語境界伝搬情報を初期化 */
@@ -1009,18 +1009,18 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       dwrk->phmmseq[i] = winfo->wseq[word][i+1];
     }
     dwrk->phmmseq[phmmlen-1] = tailph;
-    if (hmminfo->multipath) {
+    if (enable_iwsp && hmminfo->multipath) {
       for (i=0;i<phmmlen-1;i++) dwrk->has_sp[i] = FALSE;
-      dwrk->has_sp[phmmlen-1] = (enable_iwsp) ? TRUE : FALSE;
+      dwrk->has_sp[phmmlen-1] = TRUE;
     }
 
   } else {			/* ~ccd_flag */
 
     phmmlen = winfo->wlen[word];
     for (i=0;i<phmmlen;i++) dwrk->phmmseq[i] = winfo->wseq[word][i];
-    if (hmminfo->multipath) {
+    if (enable_iwsp && hmminfo->multipath) {
       for (i=0;i<phmmlen;i++) dwrk->has_sp[i] = FALSE;
-      if (enable_iwsp) dwrk->has_sp[phmmlen-1] = TRUE;
+      dwrk->has_sp[phmmlen-1] = TRUE;
     }
 
   }
@@ -1042,7 +1042,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 
   /* viterbiを実行して g[] から now->g[] を更新する */
   /* do viterbi computation for phmmseq from g[] to now->g[] */
-  do_viterbi(dwrk->g, now->g, dwrk->phmmseq, hmminfo->multipath ? dwrk->has_sp : NULL, 
+  do_viterbi(dwrk->g, now->g, dwrk->phmmseq, (enable_iwsp && hmminfo->multipath) ? dwrk->has_sp : NULL, 
 	     phmmlen, param, peseqlen, now->estimated_next_t, &(now->final_g)
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
 	     /* 単語境界情報 we[] から now->wordend_frame[] を更新する */
@@ -1074,7 +1074,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     /* 次回のために now->last_ph を更新 */
     /* update 'now->last_ph' for future scan_word() */
     now->last_ph = winfo->wseq[word][0];
-    if (hmminfo->multipath) now->last_ph_sp_attached = FALSE; /* wlen > 1 here */
+    if (enable_iwsp && hmminfo->multipath) now->last_ph_sp_attached = FALSE; /* wlen > 1 here */
 #ifdef TCD
     jlog("DEBUG: last_ph = %s\n", (now->last_ph)->name);
 #endif

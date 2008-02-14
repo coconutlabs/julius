@@ -92,7 +92,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 11 23:54:53 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -439,7 +439,7 @@ malloc_wordtrellis(RecogProcess *r)
 
   dwrk->phmmlen_max = r->lm->winfo->maxwlen + 2;
   dwrk->phmmseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * dwrk->phmmlen_max);
-  if (r->am->hmminfo->multipath) {
+  if (r->lm->config->enable_iwsp && r->am->hmminfo->multipath) {
     dwrk->has_sp = (boolean *)mymalloc(sizeof(boolean) * dwrk->phmmlen_max);
   } else {
     dwrk->has_sp = NULL;
@@ -670,7 +670,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	j_internal_error("scan_word: num of phonemes in a word exceed phmmlenmax (%d) ?\n", dwrk->phmmlen_max);
       }
       for (i=0;i<phmmlen - 2;i++) dwrk->phmmseq[i] = winfo->wseq[word][i];
-      if (hmminfo->multipath) {
+      if (enable_iwsp && hmminfo->multipath) {
 	for (i=0;i<phmmlen - 2;i++) dwrk->has_sp[i] = FALSE;
       }
 
@@ -703,21 +703,16 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
 	dwrk->phmmseq[phmmlen-1] = ret;
       }
 
-      if (hmminfo->multipath) {
-	dwrk->has_sp[phmmlen-2] = dwrk->has_sp[phmmlen-1] = FALSE;
-	if (enable_iwsp) {
-	  dwrk->has_sp[phmmlen-2] = TRUE;
-	  if (now->last_ph_sp_attached) {
-	    dwrk->has_sp[phmmlen-1] = TRUE;
-	  }
-	}
+      if (enable_iwsp && hmminfo->multipath) {
+	dwrk->has_sp[phmmlen-2] = TRUE;
+	dwrk->has_sp[phmmlen-1] = now->last_ph_sp_attached;
       }
  
 #ifdef TCD
       jlog("DEBUG: w=");
       for(i=0;i<winfo->wlen[word];i++) {
 	jlog(" %s",(winfo->wseq[word][i])->name);
-	if (hmminfo->multipath && dwrk->has_sp[i]) jlog("(sp)");
+	if (enable_iwsp && hmminfo->multipath && dwrk->has_sp[i]) jlog("(sp)");
       }
       jlog(" | %s\n", (now->last_ph)->name);
       if (hmminfo->multipath && now->last_ph_sp_attached) jlog("DEBUG:   (sp)\n");
@@ -725,14 +720,14 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       
       for (i=0;i<phmmlen;i++) {
 	jlog(" %s", dwrk->phmmseq[i]->name);
- 	if (hmminfo->multipath && dwrk->has_sp[i]) jlog("(sp)");
+ 	if (enable_iwsp && hmminfo->multipath && dwrk->has_sp[i]) jlog("(sp)");
       }
       jlog("\n");
 #endif
 
       /* 単語HMMを作る */
       /* make word HMM */
-      whmm = new_make_word_hmm(hmminfo, dwrk->phmmseq, phmmlen, hmminfo->multipath ? dwrk->has_sp : NULL);
+      whmm = new_make_word_hmm(hmminfo, dwrk->phmmseq, phmmlen, (enable_iwsp && hmminfo->multipath) ? dwrk->has_sp : NULL);
       if (whmm == NULL) {
 	j_internal_error("Error: failed to make word hmm for word #%d \"%s [%s]\"\n", word, winfo->wname[word], winfo->woutput[word]);
       }
@@ -783,19 +778,17 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
       jlog("\n");
 #endif
 
-      if (hmminfo->multipath) {
+      if (enable_iwsp && hmminfo->multipath) {
 	/* 必要ならばショートポーズを挟み込む位置を指定する */
 	for(i=0;i<winfo->wlen[word];i++) {
 	  dwrk->has_sp[i] = FALSE;
 	}
-	if (enable_iwsp) {
-	  dwrk->has_sp[winfo->wlen[word]-1] = TRUE;
-	}
+	dwrk->has_sp[winfo->wlen[word]-1] = TRUE;
       }
       
       /* 単語HMMを作る */
       /* make word HMM */
-      whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], hmminfo->multipath ? dwrk->has_sp : NULL);
+      whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], (enable_iwsp && hmminfo->multipath) ? dwrk->has_sp : NULL);
       if (whmm == NULL) {
 	j_internal_error("Error: failed to make word hmm for word #%d \"%s [%s]\"\n", word, winfo->wname[word], winfo->woutput[word]);
       }
@@ -829,19 +822,17 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     
   } else {			/* ccd_flag == FALSE */
 
-    if (hmminfo->multipath) {
+    if (enable_iwsp && hmminfo->multipath) {
       /* 必要ならばショートポーズを挟み込む位置を指定する */
       for(i=0;i<winfo->wlen[word];i++) {
 	dwrk->has_sp[i] = FALSE;
       }
-      if (enable_iwsp) {
-	dwrk->has_sp[winfo->wlen[word]-1] = TRUE;
-      }
+      dwrk->has_sp[winfo->wlen[word]-1] = TRUE;
     }
 
     /* 音素環境非依存の場合は単純に最終単語分の HMM を作成 */
     /* for monophone: simple make HMM for the last word */
-    whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], hmminfo->multipath ? dwrk->has_sp : NULL);
+    whmm = new_make_word_hmm(hmminfo, winfo->wseq[word], winfo->wlen[word], (enable_iwsp && hmminfo->multipath) ? dwrk->has_sp : NULL);
     if (whmm == NULL) {
       j_internal_error("Error: failed to make word hmm for word #%d \"%s [%s]\"\n", word, winfo->wname[word], winfo->woutput[word]);
     }
@@ -1315,7 +1306,7 @@ scan_word(NODE *now, HTK_Param *param, RecogProcess *r)
     } else {
       now->last_ph = winfo->wseq[word][0];
     }
-    if (hmminfo->multipath) {
+    if (enable_iwsp && hmminfo->multipath) {
       now->last_ph_sp_attached = dwrk->has_sp[0];
     }
   }

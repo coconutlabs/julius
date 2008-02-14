@@ -33,7 +33,7 @@
  * @author Akinobu Lee
  * @date   Sat Sep 24 16:09:46 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -99,8 +99,10 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
   for (w=0;w<num;w++) phnum += winfo->wlen[wseq[w]];
   ph = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * phnum);
   
-  if (hmminfo->multipath) {
+  if (hmminfo->multipath && enable_iwsp) {
     has_sp = (boolean *)mymalloc(sizeof(boolean) * phnum);
+  } else {
+    has_sp = NULL;
   }
   /* 2. make phoneme sequence */
   st = 0;
@@ -128,8 +130,8 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
 	}
       }
       ph[pn] = tmpp;
-      if (hmminfo->multipath) {
-	if (enable_iwsp && i == winfo->wlen[tmpw] - 1) {
+      if (hmminfo->multipath && enable_iwsp) {
+	if (i == winfo->wlen[tmpw] - 1) {
 	  has_sp[pn] = TRUE;
 	} else {
 	  has_sp[pn] = FALSE;
@@ -155,7 +157,7 @@ make_phseq(WORD_ID *wseq, short num, boolean **has_sp_ret, int *num_ret, int **e
     if (per_what == PER_WORD) (*end_ret)[endn++] = st - 1;
   }
   *num_ret = phnum;
-  if (hmminfo->multipath) *has_sp_ret = has_sp;
+  *has_sp_ret = has_sp;
   return ph;
 }
 
@@ -264,9 +266,9 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
   end_state = (int *)mymalloc(sizeof(int) * end_num);
 
   /* make phoneme sequence word sequence */
-  phones = make_phseq(words, wnum, hmminfo->multipath ? &has_sp : NULL, &phonenum, &end_state, per_what, r);
+  phones = make_phseq(words, wnum, &has_sp, &phonenum, &end_state, per_what, r);
   /* build the sentence HMMs */
-  shmm = new_make_word_hmm(hmminfo, phones, phonenum, hmminfo->multipath ? has_sp : NULL);
+  shmm = new_make_word_hmm(hmminfo, phones, phonenum, has_sp);
   if (shmm == NULL) {
     j_internal_error("Error: failed to make word hmm for alignment\n");
   }
@@ -326,7 +328,7 @@ do_align(WORD_ID *words, short wnum, HTK_Param *param, int per_what, Sentence *s
   free_hmm(shmm);
   free(id_seq);
   free(phones);
-  if (hmminfo->multipath) free(has_sp);
+  if (has_sp) free(has_sp);
   free(end_score);
   free(end_frame);
   free(end_state);

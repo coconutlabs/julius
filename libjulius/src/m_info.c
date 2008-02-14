@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -332,6 +332,8 @@ print_engine_info(Recog *recog)
       } else {
 	jlog(" (physical)");
       }
+    } else {
+      jlog(" but not assigned");
     }
     jlog("  (-sp)\n");
     jlog("  cross-word CD on pass1 = ");

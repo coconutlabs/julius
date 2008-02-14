@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 18:31:40 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -46,7 +46,7 @@ totalstatelen(HMM_Logical **hdseq, int hdseqlen, boolean *has_sp, HTK_HMM_INFO *
   len = 0;
   for (i=0;i<hdseqlen;i++) {
     len += hmm_logical_state_num(hdseq[i]) - 2;
-    if (hmminfo->multipath) {
+    if (has_sp) {
       if (has_sp[i]) {
 	len += hmm_logical_state_num(hmminfo->sp) - 2;
       }
@@ -105,7 +105,7 @@ new_make_word_hmm_with_lm(HTK_HMM_INFO *hmminfo, HMM_Logical **hdseq, int hdseql
   HTK_HMM_Trans *tr;
   int state_num;
 
-  if (hmminfo->multipath) {
+  if (has_sp) {
     if (hmminfo->sp == NULL) {
       jlog("Error: mkwhmm: no short-pause model in hmminfo\n");
       return NULL;
@@ -114,7 +114,7 @@ new_make_word_hmm_with_lm(HTK_HMM_INFO *hmminfo, HMM_Logical **hdseq, int hdseql
 
   /* allocate needed states */
   new = (HMM *)mymalloc(sizeof(HMM));
-  new->len = totalstatelen(hdseq, hdseqlen, hmminfo->multipath ? has_sp : NULL, hmminfo);
+  new->len = totalstatelen(hdseq, hdseqlen, has_sp, hmminfo);
   new->state = (HMM_STATE *)mymalloc(sizeof(HMM_STATE) * new->len);
   for (i=0;i<new->len;i++) {
     new->state[i].ac = NULL;
@@ -140,7 +140,7 @@ new_make_word_hmm_with_lm(HTK_HMM_INFO *hmminfo, HMM_Logical **hdseq, int hdseql
 	n++;
       }
     }
-    if (hmminfo->multipath) {
+    if (has_sp) {
       if (has_sp[i]) {
 	/* append sp at the end of the phone */
 	if (hmminfo->sp->is_pseudo) {
@@ -233,7 +233,7 @@ new_make_word_hmm_with_lm(HTK_HMM_INFO *hmminfo, HMM_Logical **hdseq, int hdseql
       out_num_prev = out_num_next;
 
       /* inter-word short pause handling */
-      if (has_sp[i]) {
+      if (has_sp && has_sp[i]) {
       
 	out_num_next = 0;
 

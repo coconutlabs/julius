@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -235,7 +235,7 @@ multigram_append_to_global(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
     return FALSE;
   }
 
-  jlog("STAT: Gram #%d: installed\n", m->id);
+  jlog("STAT: Gram #%d %s: installed\n", m->id, m->name);
 
   return TRUE;
 }
@@ -251,6 +251,8 @@ multigram_append_to_global(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
  * @param winfo [in] 追加登録する文法の辞書情報
  * @param name [in] 追加登録する文法の名称
  * @param lm [i/o] 言語処理インスタンス
+ *
+ * @return 文法IDを返す. 
  * </JA>
  * <EN>
  * Add a new grammar to the current list of grammars.
@@ -263,13 +265,15 @@ multigram_append_to_global(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
  * @param winfo [in] dictionary information of the new grammar.
  * @param name [in] name string of the new grammar.
  * @param lm [i/o] LM processing instance
+ *
+ * @return the new grammar ID for the given grammar.
  * </EN>
  *
  * @callgraph
  * @callergraph
  * @ingroup grammar
  */
-void
+int
 multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm)
 {
   MULTIGRAM *new;
@@ -293,8 +297,10 @@ multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm)
   new->next = lm->grammars;
   lm->grammars = new;
 
-  jlog("STAT: Gram #%d: read\n", new->id);
+  jlog("STAT: Gram #%d %s: read\n", new->id, new->name);
   lm->gram_maxid++;
+
+  return new->id;
 }
 
 /** 
@@ -329,7 +335,7 @@ multigram_delete(int delid, PROCESS_LM *lm)
   for(m=lm->grammars;m;m=m->next) {
     if (m->id == delid) {
       m->hook |= MULTIGRAM_DELETE;
-      jlog("STAT: Gram #%d: marked delete\n", m->id);
+      jlog("STAT: Gram #%d %s: marked delete\n", m->id, m->name);
       break;
     }
   }
@@ -385,7 +391,6 @@ multigram_exec_delete(PROCESS_LM *lm)
 {
   MULTIGRAM *m, *mtmp, *mprev;
   boolean ret_flag = FALSE;
-  int n;
 
   /* exec delete */
   mprev = NULL;
@@ -398,9 +403,8 @@ multigram_exec_delete(PROCESS_LM *lm)
       if (! m->newbie) ret_flag = TRUE;
       if (m->dfa) dfa_info_free(m->dfa);
       word_info_free(m->winfo);
-      n=m->id;
+      jlog("STAT: Gram #%d %s: purged\n", m->id, m->name);
       free(m);
-      jlog("STAT: Gram #%d: purged\n", n);
       if (mprev != NULL) {
 	mprev->next = mtmp;
       } else {
@@ -449,15 +453,15 @@ multigram_activate(int gid, PROCESS_LM *lm)	/* only mark */
 	ret = 0;
 	m->hook &= ~(MULTIGRAM_DEACTIVATE);
 	m->hook |= MULTIGRAM_ACTIVATE;
-	jlog("STAT: Gram #%d: marked active, superceding deactivate\n", m->id);
+	jlog("STAT: Gram #%d %s: marked active, superceding deactivate\n", m->id, m->name);
       } else {
 	if (m->hook & MULTIGRAM_ACTIVATE) {
-	  jlog("STAT: Gram #%d: already marked active\n", m->id);
+	  jlog("STAT: Gram #%d %s: already marked active\n", m->id, m->name);
 	  ret = 1;
 	} else {
 	  ret = 0;
 	  m->hook |= MULTIGRAM_ACTIVATE;
-	  jlog("STAT: Gram #%d: marked activate\n", m->id);
+	  jlog("STAT: Gram #%d %s: marked activate\n", m->id, m->name);
 	}
       }
       break;
@@ -511,15 +515,15 @@ multigram_deactivate(int gid, PROCESS_LM *lm)	/* only mark */
 	ret = 0;
 	m->hook &= ~(MULTIGRAM_ACTIVATE);
 	m->hook |= MULTIGRAM_DEACTIVATE;
-	jlog("STAT: Gram #%d: marked deactivate, superceding activate\n", m->id);
+	jlog("STAT: Gram #%d %s: marked deactivate, superceding activate\n", m->id, m->name);
       } else {
 	if (m->hook & MULTIGRAM_DEACTIVATE) {
-	  jlog("STAT: Gram #%d: already marked deactivate\n", m->id);
+	  jlog("STAT: Gram #%d %s: already marked deactivate\n", m->id, m->name);
 	  ret = 1;
 	} else {
 	  ret = 0;
 	  m->hook |= MULTIGRAM_DEACTIVATE;
-	  jlog("STAT: Gram #%d: marked deactivate\n", m->id);
+	  jlog("STAT: Gram #%d %s: marked deactivate\n", m->id, m->name);
 	}
       }
       break;
@@ -562,14 +566,14 @@ multigram_exec_activate(PROCESS_LM *lm)
     if (m->hook & MULTIGRAM_ACTIVATE) {
       m->hook &= ~(MULTIGRAM_ACTIVATE);
       if (!m->active) {
-	jlog("STAT: Gram #%d: turn on active\n", m->id);
+	jlog("STAT: Gram #%d %s: turn on active\n", m->id, m->name);
       }
       m->active = TRUE;
       modified = TRUE;
     } else if (m->hook & MULTIGRAM_DEACTIVATE) {
       m->hook &= ~(MULTIGRAM_DEACTIVATE);
       if (m->active) {
-	jlog("STAT: Gram #%d: turn off inactive\n", m->id);
+	jlog("STAT: Gram #%d %s: turn off inactive\n", m->id, m->name);
       }
       m->active = FALSE;
       modified = TRUE;
@@ -622,7 +626,7 @@ multigram_update(PROCESS_LM *lm)
     /* setup additional grammar info of new ones */
     for(m=lm->grammars;m;m=m->next) {
       if (m->newbie) {
-	jlog("STAT: Gram #%d: new grammar found, setup it for recognition\n", m->id);
+	jlog("STAT: Gram #%d %s: new grammar found, setup it for recognition\n", m->id, m->name);
 	/* map dict item to dfa terminal symbols */
 	if (make_dfa_voca_ref(m->dfa, m->winfo) == FALSE) {
 	  jlog("ERROR: failed to map dict <-> DFA. This grammar will be deleted\n");
@@ -995,6 +999,39 @@ multigram_free_all(MULTIGRAM *root)
     free(m);
     m = mtmp;
   }
+}
+
+/** 
+ * <EN>
+ * Return a grammar ID of the given grammar name.
+ * </EN>
+ * <JA>
+ * LM中の文法を名前で検索し，その文法IDを返す．
+ * </JA>
+ * 
+ * @param lm [in] LM process instance
+ * @param gramname [in] grammar name
+ * 
+ * @return grammar ID, or -1 if not found.
+ *
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ * 
+ */
+int
+multigram_get_id_by_name(PROCESS_LM *lm, char *gramname)
+{
+  MULTIGRAM *m;
+
+  for(m=lm->grammars;m;m=m->next) {
+    if (strmatch(m->name, gramname)) break;
+  }
+  if (!m) {
+    jlog("ERROR: multigram: cannot find grammar \"%s\"\n", gramname);
+    return -1;
+  }
+  return m->id;
 }
 
 /** 

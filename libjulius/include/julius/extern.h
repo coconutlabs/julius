@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -234,7 +234,7 @@ void jconf_set_default_values_search(JCONF_SEARCH *j);
 
 
 /* multi-gram.c */
-void multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm);
+int multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm);
 boolean multigram_delete(int gid, PROCESS_LM *lm);
 void multigram_delete_all(PROCESS_LM *lm);
 boolean multigram_update(PROCESS_LM *lm);
@@ -246,6 +246,7 @@ int multigram_get_gram_from_category(int category, PROCESS_LM *lm);
 int multigram_get_all_num(PROCESS_LM *lm);
 void multigram_free_all(MULTIGRAM *root);
 
+int multigram_get_id_by_name(PROCESS_LM *lm, char *gramname);
 MULTIGRAM *multigram_get_grammar_by_name(PROCESS_LM *lm, char *gramname);
 MULTIGRAM *multigram_get_grammar_by_id(PROCESS_LM *lm, unsigned short id);
 boolean multigram_add_words_to_grammar(PROCESS_LM *lm, MULTIGRAM *m, WORD_INFO *winfo);

@@ -243,7 +243,7 @@ msock_exec_command(char *command, Recog *recog)
       }
     }
   } else if (strmatch(command, "DELGRAM")) {
-    /* remove the grammar specified by ID */
+    /* remove the grammar specified by ID or name */
     /* read a list of grammar IDs to be deleted */
     if (
 #ifdef WINSOCK
@@ -260,7 +260,16 @@ msock_exec_command(char *command, Recog *recog)
     */
     if (cur->lmtype == LM_DFA) {
       for(p=strtok(buf," ");p;p=strtok(NULL," ")) {
-	gid = atoi(p);
+	q = p;
+	while(*q != '\0' && *q != '\r' && *q != '\n') {
+	  if (*q < '0' || *q > '9') break;
+	}
+	if (*q == '\0' || *q == '\r' || *q == '\n') { /* numeric */
+	  gid = atoi(p);
+	} else {		/* string */
+	  gid = multigram_get_id_by_name(cur->lm, p);
+	  if (gid == -1) continue;
+	}
 	if (multigram_delete(gid, cur->lm) == FALSE) { /* deletion marking failed */
 	  fprintf(stderr, "Warning: msock(DELGRAM): gram #%d failed to delete, ignored\n", gid);
 	  /* tell module */
@@ -275,7 +284,7 @@ msock_exec_command(char *command, Recog *recog)
     }
   } else if (strmatch(command, "ACTIVATEGRAM")) {
     /* activate grammar in this engine */
-    /* read a list of grammar IDs to be activated */
+    /* read a list of grammar IDs or names to be activated */
     if (
 #ifdef WINSOCK
 	getl_sd(buf, MAXBUFLEN, module_sd)
@@ -289,7 +298,16 @@ msock_exec_command(char *command, Recog *recog)
     /* mark them as active */
     if (cur->lmtype == LM_DFA) {
       for(p=strtok(buf," ");p;p=strtok(NULL," ")) {
-	gid = atoi(p);
+	q = p;
+	while(*q != '\0' && *q != '\r' && *q != '\n') {
+	  if (*q < '0' || *q > '9') break;
+	}
+	if (*q == '\0' || *q == '\r' || *q == '\n') { /* numeric */
+	  gid = atoi(p);
+	} else {		/* string */
+	  gid = multigram_get_id_by_name(cur->lm, p);
+	  if (gid == -1) continue;
+	}
 	ret = multigram_activate(gid, cur->lm);
 	if (ret == 1) {
 	  /* already active */
@@ -306,7 +324,7 @@ msock_exec_command(char *command, Recog *recog)
     }
   } else if (strmatch(command, "DEACTIVATEGRAM")) {
     /* deactivate grammar in this engine */
-    /* read a list of grammar IDs to be de-activated */
+    /* read a list of grammar IDs or names to be de-activated */
     if (
 #ifdef WINSOCK
 	getl_sd(buf, MAXBUFLEN, module_sd)
@@ -320,7 +338,16 @@ msock_exec_command(char *command, Recog *recog)
     if (cur->lmtype == LM_DFA) {
       /* mark them as not active */
       for(p=strtok(buf," ");p;p=strtok(NULL," ")) {
-	gid = atoi(p);
+	q = p;
+	while(*q != '\0' && *q != '\r' && *q != '\n') {
+	  if (*q < '0' || *q > '9') break;
+	}
+	if (*q == '\0' || *q == '\r' || *q == '\n') { /* numeric */
+	  gid = atoi(p);
+	} else {		/* string */
+	  gid = multigram_get_id_by_name(cur->lm, p);
+	  if (gid == -1) continue;
+	}
 	ret = multigram_deactivate(gid, cur->lm);
 	if (ret == 1) {
 	  /* already inactive */

@@ -180,6 +180,8 @@ msock_exec_command(char *command, Recog *recog)
     } else {
       fprintf(stderr, "Error: msock(INPUTONCHANGE): unknown method [%s]\n", buf); exit(-1);
     }
+  } else if (strnmatch(command, "GRAMINFO", strlen("GRAMINFO"))) {
+    send_gram_info(cur);
   } else if (strnmatch(command, "CHANGEGRAM", strlen("CHANGEGRAM"))) {
     /* receive grammar (DFA + DICT) from the socket, and swap the whole grammar  */
     /* read grammar name if any */

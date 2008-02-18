@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -884,7 +884,7 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
       }
     }
   }
-  
+
   if (p->config->sw.triphone_check_flag && p->am->hmminfo->is_triphone) {
     /* go into interactive triphone HMM check mode */
     hmm_check(p);
@@ -894,6 +894,12 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
   /******** set work area and flags *********/
   /******************************************/
 
+  /* copy values of sub instances for handly access during recognition */
+  /* set lm type */
+  p->lmtype = p->lm->lmtype;
+  p->lmvar  = p->lm->lmvar;
+  p->graphout = p->config->graph.enabled;
+  
   /* set flag for context dependent handling */
   if (p->config->force_ccd_handling) {
     p->ccd_flag = p->config->ccd_handling;
@@ -941,13 +947,29 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
     } else {
       p->pass1.pausemodel = NULL;
     }
+    /* check if pause word exists on dictionary */
+    {
+      WORD_ID w;
+      boolean ok_p;
+      ok_p = FALSE;
+      for(w=0;w<p->lm->winfo->num;w++) {
+	if (is_sil(w, p)) {
+	  ok_p = TRUE;
+	  break;
+	}
+      }
+      if (!ok_p) {
+#ifdef SPSEGMENT_NAIST
+	jlog("Error: no pause word in dictionary needed for decoder-based VAD\n");
+#else
+	jlog("Error: no pause word in dictionary needed for short-pause segmentation\n");
+#endif
+	jlog("Error: you should have at least one pause word in dictionary\n");
+	jlog("Error: you can specify pause model names by \"-pausemodels\"\n");
+	return FALSE;
+      }
+    }
   }
-
-  /* copy values of sub instances for handly access during recognition */
-  /* set lm type */
-  p->lmtype = p->lm->lmtype;
-  p->lmvar  = p->lm->lmvar;
-  p->graphout = p->config->graph.enabled;
 
   /**********************************************/
   /******** set model-specific defaults *********/

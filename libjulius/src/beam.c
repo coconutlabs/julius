@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -548,7 +548,7 @@ find_1pass_result(int framelen, RecogProcess *r)
 static int
 compare_backscore(TRELLIS_ATOM **x1, TRELLIS_ATOM **x2)
 {
-  return((*x1)->backscore < (*x2)->backscore);
+  return((*x2)->backscore - (*x1)->backscore);
 }
 
 /** 

@@ -6,7 +6,6 @@
  *
  * ALSA API を使用する，マイク入力のための低レベル関数です．
  * 使用には ALSA サウンドドライバーがインストールされていることが必要です．
- * 使用するには configure 時に "--with-mictype=alsa" を指定して下さい．
  *
  * サウンドカードが 16bit モノラル で録音できることが必須です．
  *
@@ -16,14 +15,16 @@
  *
  * 複数サウンドカードはサポートされていません．複数のサウンドカードが
  * インストールされている場合，最初の１つが用いられます．
+ *
+ * バージョン 1.x に対応しています．1.0.13 で動作を確認しました．
+ *
+ * デバイス名は "default" が使用されます．環境変数 ALSADEV で変更できます．
  * </JA>
  * <EN>
  * @brief  Microphone input on Linux/ALSA
  *
  * Low level I/O functions for microphone input on Linux using
  * Advanced Linux Sound Architechture (ALSA) API, developed on version 0.9.x.
- * If you want to use this API, please specify
- * "--with-mictype=alsa" options at compilation time to configure script.
  *
  * Julius does not alter any mixer device setting at all on Linux.  You should
  * configure the mixer for recording source (mic/line) and recording volume
@@ -31,6 +32,11 @@
  *
  * Note that sound card should support 16bit monaural recording, and multiple
  * cards are not supported (in that case the first one will be used).
+ *
+ * This file supports alsa version 1.x, and tested on 1.0.13.
+ *
+ * The default PCM device name is "default", and can be overwritten by
+ * environment variable "ALSADEV".
  * </EN>
  *
  * @sa http://www.alsa-project.org/
@@ -38,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -50,23 +56,26 @@
 
 #include <sent/stddefs.h>
 #include <sent/adin.h>
-
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef HAVE_ALSA_ASOUNDLIB_H
 #include <alsa/asoundlib.h>
+#elif  HAVE_SYS_ASOUNDLIB_H
+#include <sys/asoundlib.h>
+#endif
 
 static snd_pcm_t *handle;	///< Audio handler
-static snd_pcm_hw_params_t *hwparams; ///< Pointer to device hardware parameters
-static char *pcm_name = "hw:0,0"; ///< Name of the PCM device
-
-static boolean need_swap;	///< Whether samples need byte swap
+static char *pcm_name = "default"; ///< Name of the PCM device, can be overridden by env ALSADEV
 static int latency = 32;	///< Lantency time in msec.  You can override this value by specifying environment valuable "LATENCY_MSEC".
+static boolean need_swap;	///< Whether samples need byte swap
 
 static struct pollfd *ufds;	///< Poll descriptor
 static int count;		///< Poll descriptor count
+
+#define MAXPOLLINTERVAL 300	///< Read timeout in msec.
 
 
 /** 
@@ -81,27 +90,34 @@ boolean
 adin_mic_standby(int sfreq, void *dummy)
 {
   int err;
+  snd_pcm_hw_params_t *hwparams; ///< Pointer to device hardware parameters
 #if (SND_LIB_MAJOR == 0)
   int actual_rate;		/* sample rate returned by hardware */
 #else
   unsigned int actual_rate;		/* sample rate returned by hardware */
 #endif
-  int dir;			/* comparison result of exact rate and given rate */
+  int dir = 0;			/* comparison result of exact rate and given rate */
+  char *p;
+
+  /* check $ALSADEV for device name */
+  if ((p = getenv("ALSADEV")) != NULL) {
+    pcm_name = p;
+    jlog("Stat: adin_alsa: device name from ALSADEV: \"%s\"\n", pcm_name);
+  }
+
+  /* open device in non-block mode) */
+  if ((err = snd_pcm_open(&handle, pcm_name, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
+    jlog("Error: adin_alsa: cannot open PCM device \"%s\" (%s)\n", pcm_name, snd_strerror(err));
+    return(FALSE);
+  }
+  /* set device to non-block mode */
+  if ((err = snd_pcm_nonblock(handle, 1)) < 0) {
+    jlog("Error: adin_alsa: cannot set PCM device to non-blocking mode\n");
+    return(FALSE);
+  }
 
   /* allocate hwparam structure */
   snd_pcm_hw_params_alloca(&hwparams);
-
-  /* open device (for resource test, open in non-block mode) */
-  if ((err = snd_pcm_open(&handle, pcm_name, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
-    jlog("Error: adin_alsa: cannot open PCM device %s (%s)\n", pcm_name, snd_strerror(err));
-    return(FALSE);
-  }
-  
-  /* set device to non-block mode */
-  if ((err = snd_pcm_nonblock(handle, 0)) < 0) {
-    jlog("Error: adin_alsa: cannot set PCM device to block mode\n");
-    return(FALSE);
-  }
 
   /* initialize hwparam structure */
   if ((err = snd_pcm_hw_params_any(handle, hwparams)) < 0) {
@@ -123,7 +139,7 @@ adin_mic_standby(int sfreq, void *dummy)
   } else if ((err = snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16_LE)) >= 0) {
     need_swap = TRUE;
   } else {
-    jlog("Error: adin_alsa: cannot set PCM device format to 16bit-signed (%s)\n", snd_strerror(err));
+    jlog("Error: adin_alsa: cannot set PCM device format to signed 16bit (%s)\n", snd_strerror(err));
     return(FALSE);
   }
 #else  /* LITTLE ENDIAN */
@@ -133,10 +149,15 @@ adin_mic_standby(int sfreq, void *dummy)
   } else if ((err = snd_pcm_hw_params_set_format(handle, hwparams, SND_PCM_FORMAT_S16_BE)) >= 0) {
     need_swap = TRUE;
   } else {
-    jlog("Error: adin_alsa: cannot set PCM device format to 16bit-signed (%s)\n", snd_strerror(err));
+    jlog("Error: adin_alsa: cannot set PCM device format to signed 16bit (%s)\n", snd_strerror(err));
     return(FALSE);
   }
 #endif
+  /* set number of channels */
+  if ((err = snd_pcm_hw_params_set_channels(handle, hwparams, 1)) < 0) {
+    jlog("Error: adin_alsa: cannot set PCM channel to %d (%s)\n", 1, snd_strerror(err));
+    return(FALSE);
+  }
   
   /* set sample rate (if the exact rate is not supported by the hardware, use nearest possible rate */
 #if (SND_LIB_MAJOR == 0)
@@ -154,25 +175,10 @@ adin_mic_standby(int sfreq, void *dummy)
   }
 #endif
   if (actual_rate != sfreq) {
-    jlog("Warning: adin_alsa: the rate %d Hz is not supported by your PCM hardware.\n", sfreq);
+    jlog("Warning: adin_alsa: the exact rate %d Hz is not available by your PCM hardware.\n", sfreq);
     jlog("Warning: adin_alsa: using %d Hz instead.\n", actual_rate);
   }
-  jlog("Stat: adin_alsa: sampling rate is %dHz\n", actual_rate);
-
-  /* set number of channels */
-  {
-    int minchannels;
-    snd_pcm_hw_params_get_channels_min(hwparams, &minchannels);
-    if (minchannels > 1) {
-      jlog("Error: adin_alsa: monoral recording not supported on this device/driver\n");
-      return(FALSE);
-    }
-  }
-  
-  if ((err = snd_pcm_hw_params_set_channels(handle, hwparams, 1)) < 0) {
-    jlog("Error: adin_alsa: cannot set PCM channel to %d (%s)\n", 1, snd_strerror(err));
-    return(FALSE);
-  }
+  jlog("Stat: capture audio at %dHz\n", actual_rate);
 
   /* set period size */
   {
@@ -181,14 +187,19 @@ adin_mic_standby(int sfreq, void *dummy)
     int actual_size;
     int maxsize, minsize;
 #else
-    snd_pcm_uframes_t periodsize;		/* period size (bytes) */
-    snd_pcm_uframes_t actual_size;
-    snd_pcm_uframes_t maxsize, minsize;
+    unsigned int period_time, period_time_current;
+    snd_pcm_uframes_t chunk_size;
 #endif
-    char *p;
+    boolean force = FALSE;
     
+    /* set apropriate period size */
+    if ((p = getenv("LATENCY_MSEC")) != NULL) {
+      latency = atoi(p);
+      jlog("Stat: adin_alsa: trying to set latency to %d msec from LATENCY_MSEC)\n", latency);
+      force = TRUE;
+    }
+
     /* get hardware max/min size */
-    dir = 0;
 #if (SND_LIB_MAJOR == 0)
     if ((maxsize = snd_pcm_hw_params_get_period_size_max(hwparams, &dir)) < 0) {
       jlog("Error: adin_alsa: cannot get maximum period size\n");
@@ -199,24 +210,15 @@ adin_mic_standby(int sfreq, void *dummy)
       return(FALSE);
     }
 #else    
-    if ((err = snd_pcm_hw_params_get_period_size_max(hwparams, &maxsize, &dir)) < 0) {
-      jlog("Error: adin_alsa: cannot get maximum period size\n");
+    if ((err = snd_pcm_hw_params_get_period_time(hwparams, &period_time_current, &dir)) < 0) {
+      jlog("Error: adin_alsa: cannot get current period time\n");
       return(FALSE);
     }
-    if ((err = snd_pcm_hw_params_get_period_size_min(hwparams, &minsize, &dir)) < 0) {
-      jlog("Error: adin_alsa: cannot get minimum period size\n");
-      return(FALSE);
-    }
+    //jlog("Stat: adin_alsa: current latency time: %d msec\n", period_time_current / 1000);
 #endif
 
-    /* set apropriate period size */
-    if ((p = getenv("LATENCY_MSEC")) != NULL) {
-      latency = atoi(p);
-      jlog("Stat: adin_alsa: set latency to %d msec (obtained from LATENCY_MSEC)\n", latency);
-    } else {
-      jlog("Stat: adin_alsa: set latency to %d msec\n", latency);
-    }
-
+    /* set period time (near value will be used) */
+#if (SND_LIB_MAJOR == 0)
     periodsize = actual_rate * latency / 1000 * sizeof(SP16);
     if (periodsize < minsize) {
       jlog("Stat: adin_alsa: PCM latency of %d ms (%d bytes) too small, use device minimum %d bytes\n", latency, periodsize, minsize);
@@ -225,32 +227,37 @@ adin_mic_standby(int sfreq, void *dummy)
       jlog("Stat: adin_alsa: PCM latency of %d ms (%d bytes) too large, use device maximum %d bytes\n", latency, periodsize, maxsize);
       periodsize = maxsize;
     }
-    
-    /* set size (near value will be used) */
-#if (SND_LIB_MAJOR == 0)
     actual_size = snd_pcm_hw_params_set_period_size_near(handle, hwparams, periodsize, &dir);
     if (actual_size < 0) {
       jlog("Error: adin_alsa: cannot set PCM record period size to %d (%s)\n", periodsize, snd_strerror(actual_size));
       return(FALSE);
     }
-#else
-    actual_size = periodsize;
-    err = snd_pcm_hw_params_set_period_size_near(handle, hwparams, &actual_size, &dir);
-    if (err < 0) {
-      jlog("Error: adin_alsa: cannot set PCM record period size to %d (%s)\n", periodsize, snd_strerror(err));
-      return(FALSE);
-    }
-#endif
     if (actual_size != periodsize) {
-      jlog("Stat: adin_alsa: PCM period size: %d bytes (%d ms) -> %d bytes\n", periodsize, latency, actual_size);
+      jlog("Stat: adin_alsa: PCM period size: %d bytes (%dms) -> %d bytes\n", periodsize, latency, actual_size);
     }
     jlog("Stat: Audio I/O Latency = %d msec (data fragment = %d frames)\n", actual_size * 1000 / (actual_rate * sizeof(SP16)), actual_size / sizeof(SP16));
-      
+#else
+    period_time = latency * 1000;
+    if (!force && period_time > period_time_current) {
+      jlog("Stat: adin_alsa: current latency (%dms) is shorter than %dms, leave it\n", period_time_current / 1000, latency);
+      period_time = period_time_current;
+    } else {
+      if ((err = snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, 0)) < 0) {
+	jlog("Error: adin_alsa: cannot set PCM record period time to %d msec (%s)\n", period_time / 1000, snd_strerror(err));
+	return(FALSE);
+      }
+      snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
+      jlog("Stat: adin_alsa: latency set to %d msec (chunk = %d bytes)\n", period_time / 1000, chunk_size);
+    }
+#endif
+
+#if (SND_LIB_MAJOR == 0)
     /* set number of periods ( = 2) */
     if ((err = snd_pcm_hw_params_set_periods(handle, hwparams, sizeof(SP16), 0)) < 0) {
       jlog("Error: adin_alsa: cannot set PCM number of periods to %d (%s)\n", sizeof(SP16), snd_strerror(err));
       return(FALSE);
     }
+#endif
   }
 
   /* apply the configuration to the PCM device */
@@ -261,9 +268,10 @@ adin_mic_standby(int sfreq, void *dummy)
 
   /* prepare for recording */
   if ((err = snd_pcm_prepare(handle)) < 0) {
-    jlog("Error: adin_alsa: cannot prepare audio interface (%s)\n", snd_strerror(err));
+    jlog("Error: adin_alsa: failed to prepare audio interface (%s)\n", snd_strerror(err));
   }
 
+#if (SND_LIB_MAJOR == 0)
   /* prepare for polling */
   count = snd_pcm_poll_descriptors_count(handle);
   if (count <= 0) {
@@ -271,10 +279,49 @@ adin_mic_standby(int sfreq, void *dummy)
     return(FALSE);
   }
   ufds = mymalloc(sizeof(struct pollfd) * count);
-
   if ((err = snd_pcm_poll_descriptors(handle, ufds, count)) < 0) {
     jlog("Error: adin_alsa: unable to obtain poll descriptors for PCM recording (%s)\n", snd_strerror(err));
     return(FALSE);
+  }
+#endif
+
+  /* output status */
+  {
+    snd_ctl_t *ctl;
+    snd_ctl_card_info_t *info;
+    snd_pcm_info_t *pcminfo;
+    snd_ctl_card_info_alloca(&info);
+    snd_pcm_info_alloca(&pcminfo);
+
+    /* open control associated with the pcm device name */
+    if ((err = snd_ctl_open(&ctl, pcm_name, 0)) < 0) {
+      jlog("Error: adin_alsa: unable to open control device for %s\n", pcm_name);
+      return(FALSE);
+    }
+    /* get its card info */
+    if ((err = snd_ctl_card_info(ctl, info)) < 0) {
+      jlog("Error: adin_alsa: unable to get card info for %s\n", pcm_name);
+      return(FALSE);
+    }
+    /* get PCM information to set current device and subdevice name */
+    if ((err = snd_pcm_info(handle, pcminfo)) < 0) {
+      jlog("Error: adin_alsa: unable to get pcm info\n");
+      return FALSE;
+    }
+    /* get detailed PCM information of current device from control */
+    if ((err = snd_ctl_pcm_info(ctl, pcminfo)) < 0) {
+      jlog("Error: adin_alsa: unable to get pcm info\n");
+      return FALSE;
+    }
+    /* output */
+    jlog("Stat: \"%s\": %s [%s] device %s [%s] %s\n",
+	 pcm_name,
+	 snd_ctl_card_info_get_id(info),
+	 snd_ctl_card_info_get_name(info),
+	 snd_pcm_info_get_id(pcminfo),
+	 snd_pcm_info_get_name(pcminfo),
+	 snd_pcm_info_get_subdevice_name(pcminfo));
+    snd_ctl_close(ctl);
   }
 
   return(TRUE);
@@ -382,6 +429,9 @@ int
 adin_mic_read(SP16 *buf, int sampnum)
 {
   int cnt;
+
+#if (SND_LIB_MAJOR == 0)
+
   snd_pcm_sframes_t avail;
 
   while ((avail = snd_pcm_avail_update(handle)) <= 0) {
@@ -393,13 +443,31 @@ adin_mic_read(SP16 *buf, int sampnum)
     cnt = snd_pcm_readi(handle, buf, sampnum);
   }
 
+#else
+  int ret;
+
+  ret = snd_pcm_wait(handle, MAXPOLLINTERVAL);
+  switch (ret) {
+  case 0:			/* timeout */
+    jlog("Warning: adin_alsa: no data fragment after %d msec?\n", MAXPOLLINTERVAL);
+    cnt = 0;
+    break;
+  case 1:			/* has data */
+    cnt = snd_pcm_readi(handle, buf, sampnum); /* read available (non-block) */
+    break;
+  default:			/* poll error */
+    jlog("Error: adin_alsa: error in snd_pcm_wait() (%s)\n", snd_strerror(ret));
+    return(-2);			/* error */
+  }
+#endif
   if (cnt < 0) {
     jlog("Error: adin_alsa: failed to read PCM (%s)\n", snd_strerror(cnt));
     return(-2);
   }
-
   if (need_swap) {
     swap_sample_bytes(buf, cnt);
   }
+
   return(cnt);
 }
+/* end of file */

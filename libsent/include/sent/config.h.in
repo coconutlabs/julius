@@ -33,7 +33,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:48:32 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  *
  */
 
@@ -129,3 +129,9 @@
 
 /* Define if <machine/soundcard.h> found in FreeBSD */
 #undef HAVE_MACHINE_SOUNDCARD_H
+
+/* Define if <alsa/asoundlib.h> found */
+#undef HAVE_ALSA_ASOUNDLIB_H
+
+/* Define if <sys/asoundlib.h> exist and <alsa/asoundlib.h> not exist */
+#undef HAVE_SYS_ASOUNDLIB_H

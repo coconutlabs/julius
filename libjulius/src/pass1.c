@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -135,6 +135,7 @@ decode_proceed(Recog *recog)
 
 #ifdef POWER_REJECT
   for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+    if (!mfcc->valid) continue;
     if (mfcc->f == 0) {
       mfcc->avg_power = 0.0;
       if (debug2_flag) jlog("STAT: power_reject: reset\n");
@@ -144,6 +145,11 @@ decode_proceed(Recog *recog)
 
 
   if (recog->gmm != NULL) {
+    /* reset flags */
+    break_gmm = FALSE;
+    recog->gc->want_rewind = FALSE;
+  }
+  if (recog->gmm != NULL && recog->gmmmfcc->valid) {
     /* GMM 計算を行う */
     if (recog->gmmmfcc->f == 0) {
       /* GMM 計算の初期化 */
@@ -152,11 +158,8 @@ decode_proceed(Recog *recog)
     /* このフレームに対するGMMの尤度を計算 */
     gmm_proceed(recog);
 #ifdef GMM_VAD
-    /* reset break flag */
-    break_gmm = FALSE;
     /* Check for GMM-based VAD */
     gmm = recog->gc;
-    gmm->want_rewind = FALSE;
     gmm_check_trigger(recog);
     if (gmm->after_trigger) {
       /* after trigger, in speech area */
@@ -165,7 +168,7 @@ decode_proceed(Recog *recog)
 #ifdef GMM_VAD_DEBUG
 	printf("GMM_VAD: %d: down trigger\n", recog->gmmmfcc->f);
 #endif
-	recog->gmmmfcc->sparea_start = recog->gmmmfcc->f - recog->jconf->detect.gmm_margin;
+	recog->gmmmfcc->sparea_start = recog->gmmmfcc->f + 1 - recog->jconf->detect.gmm_margin;
 	if (recog->gmmmfcc->sparea_start < 0) recog->gmmmfcc->sparea_start = 0;
 	gmm->after_trigger = FALSE;
 	recog->gmmmfcc->segmented = TRUE;
@@ -179,10 +182,10 @@ decode_proceed(Recog *recog)
 	/* start recognition */
 	/* request caller to rewind to the backstep point and
 	   re-start with normal search */
-	if (recog->gmmmfcc->f < recog->jconf->detect.gmm_margin) {
+	if (recog->gmmmfcc->f + 1 < recog->jconf->detect.gmm_margin) {
 	  gmm->rewind_frame = 0;
 	} else {
-	  gmm->rewind_frame = recog->gmmmfcc->f - recog->jconf->detect.gmm_margin;
+	  gmm->rewind_frame = recog->gmmmfcc->f + 1 - recog->jconf->detect.gmm_margin;
 	}
 #ifdef GMM_VAD_DEBUG
 	printf("GMM_VAD: %d: up trigger, start recognition with %d frame rewind\n", recog->gmmmfcc->f, recog->gmmmfcc->f - gmm->rewind_frame);
@@ -196,10 +199,10 @@ decode_proceed(Recog *recog)
 
 	/* if noise goes more than a certain frame, shrink the noise area
 	   to avoid unlimited memory usage */
-	if (recog->gmmmfcc->f > GMM_VAD_AUTOSHRINK_LIMIT) {
+	if (recog->gmmmfcc->f + 1 > GMM_VAD_AUTOSHRINK_LIMIT) {
 	  gmm->want_rewind = TRUE;
 	  gmm->want_rewind_reprocess = FALSE;
-	  gmm->rewind_frame = recog->gmmmfcc->f - recog->jconf->detect.gmm_margin;
+	  gmm->rewind_frame = recog->gmmmfcc->f + 1 - recog->jconf->detect.gmm_margin;
 	  if (debug2_flag) {
 	    jlog("DEBUG: GMM_VAD: pause exceeded %d, rewind\n", GMM_VAD_AUTOSHRINK_LIMIT);
 	  }
@@ -256,7 +259,7 @@ decode_proceed(Recog *recog)
   break_flag = FALSE;
   if (break_decode
 #ifdef GMM_VAD
-      || (recog->gmm != NULL && break_gmm)
+      || (recog->gmm != NULL && recog->gmmmfcc->valid && break_gmm)
 #endif
       ) {
     break_flag = TRUE;
@@ -405,7 +408,7 @@ decode_end_segmented(Recog *recog)
   if (recog->jconf->decodeopt.segment) {
     finalize_segment(recog);
   }
-  if (recog->gmm != NULL) {
+  if (recog->gmm != NULL && recog->gmmmfcc->valid) {
     /* GMM 計算の終了 */
     gmm_end(recog);
   }
@@ -452,7 +455,7 @@ decode_end(Recog *recog)
   for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
     mfcc->segmented = FALSE;
   }
-  if (recog->gmm != NULL) {
+  if (recog->gmm != NULL && recog->gmmmfcc->valid) {
     /* GMM 計算の終了 */
     gmm_end(recog);
   }

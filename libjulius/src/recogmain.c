@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -1094,6 +1094,15 @@ j_recognize_stream_core(Recog *recog)
     /* end of recognition */
     /**********************/
 
+    /* update CMN info for next input (in case of realtime wave input) */
+    if (jconf->input.speech_input != SP_MFCFILE && jconf->decodeopt.realtime_flag) {
+      for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	if (mfcc->param->samplenum > 0) {
+	  RealTimeCMNUpdate(mfcc, recog);
+	}
+      }
+    }
+    
     process_segment_last = recog->process_segment;
     if (jconf->decodeopt.segment) { /* sp-segment mode */
       /* param is now shrinked to hold only the processed input, and */
@@ -1126,15 +1135,6 @@ j_recognize_stream_core(Recog *recog)
     }
 
 
-    /* update CMN info for next input (in case of realtime wave input) */
-    if (jconf->input.speech_input != SP_MFCFILE && jconf->decodeopt.realtime_flag) {
-      for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
-	if (mfcc->param->samplenum > 0) {
-	  RealTimeCMNUpdate(mfcc, recog);
-	}
-      }
-    }
-    
     if (verbose_flag) jlog("\n");
     jlog_flush();
 

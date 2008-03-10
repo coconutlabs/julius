@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -927,6 +927,9 @@ RealTimeResume(Recog *recog)
     /* フレーム数をリセット */
     /* reset frame count */
     mfcc->f = 0;
+    /* MAP-CMN の初期化 */
+    /* Prepare for MAP-CMN */
+    if (mfcc->para->cmn) CMN_realtime_prepare(mfcc->cmn.wrk);
   }
 
 #ifdef BACKEND_VAD

@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -144,11 +144,13 @@ decode_proceed(Recog *recog)
 #endif
 
 
+#ifdef GMM_VAD
   if (recog->gmm != NULL) {
     /* reset flags */
     break_gmm = FALSE;
     recog->gc->want_rewind = FALSE;
   }
+#endif
   if (recog->gmm != NULL && recog->gmmmfcc->valid) {
     /* GMM 計算を行う */
     if (recog->gmmmfcc->f == 0) {

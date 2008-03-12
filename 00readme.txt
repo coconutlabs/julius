@@ -4,22 +4,16 @@
 
                                 Julius
 
-                                                (Rev 4.0   2007/12/19)
+                                                (Rev 4.0.1 2008/03/12)
                                                 (Rev 3.5.3 2006/12/29)
-                                                (Rev 3.5   2005/11/11)
                                                 (Rev 3.4.2 2004/04/30)
-                                                (Rev 3.4   2003/10/01)
-                                                (Rev 3.3   2002/09/12)
-                                                (Rev 3.2   2001/06/18)
-                                                (Rev 3.1   2000/05/11)
-                                                (Rev 3.0   2000/02/14)
                                                 (Rev 2.0   1999/02/20)
                                                 (Rev 1.0   1998/02/20)
 
- Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
+ Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
  Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
+ Copyright (c) 2005-2008 Julius project team, Nagoya Institute of Technology
  All rights reserved
 ======================================================================
 
@@ -41,6 +35,16 @@ for famous tools such as HTK, CMU-Cam SLM toolkit, etc. are adopted.
 The main platform is Linux and other Unix workstations, and also works
 on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
+
+
+What's new in Julius-4.0.1
+===========================
+
+Julius rev.4.0.1 is a bug fix release.
+
+From this release, ALSA becomes default for Linux.  You can still use
+the old OSS interface by specifying "--with-mictype=oss" at configure
+script at compilation time.
 
 
 What's new in Julius-4.0
@@ -102,6 +106,10 @@ Documentation
 The up-to-date documentations are available at the Julius Web site:
 
     http://julius.sourceforge.jp/
+
+Also it is worth taking a look at the Julius forum at:
+
+    http://julius.sourceforge.jp/forum/
 
 
 License

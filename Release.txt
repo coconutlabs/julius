@@ -1,3 +1,43 @@
+4.0.1 (2008.3.12)
+==================
+New features:
+
+  A/D-in
+    - ALSA now become default on Linux instead of OSS.
+
+  Module mode
+    - "ACTIVATEGRAM", "DEACTIVATEGRAM" and "DELGRAM" now accepts
+      grammar name as arguments in addition to grammar ID number.
+    - new command "GRAMINFO" to get list of current grammars.
+
+
+Fixed bugs:
+
+  A/D-in
+    - ALSA codes updated to work on 1.x drivers.
+    - segfault with "-48".
+    - segfault on MFCC input with zero frames with "-spsegment".
+  VAD
+    - CMN not working on spsegment/GMM-VAD/decoder-VAD with microphone input.
+  Acoustic model
+    - Error when no short-pause model defined in multi-path mode.
+  N-gram
+    - incorrect 2-gram prob on 1st pass with backward N-gram only.
+    - incorrect 1-gram prob for unknown words.
+    - fail to read some ARPA files with no back-off compaction.
+    - read failure or segfault on big N-gram with over 24bit entries.
+    - redundant index for back-off weights in some case. 
+  Word recognition
+    - incorrect N-best output with "-output N" on word recognition.
+  Installation
+    - "make install" fails on cygwin.
+  Source code
+    - Static variables in functions that are not meant to be static
+      are made local.
+    - Global variables in search are moved to StackDecode.
+
+
+
 4.0 (2007.12.19)
 =================
 For more detail about new features in 4.0, please see other document.

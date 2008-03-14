@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug 11 11:50:58 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -53,10 +53,6 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
     if ((up->is24bit == TRUE && up->bgn_upper[i] != NNID_INVALID_UPPER)
 	|| (up->is24bit == FALSE && up->bgn[i] != NNID_INVALID)) {
       c++;
-      if (c >= NNIDMAX) {
-	jlog("Error: ngram_compact_context: num of %d-gram valid context exceeds 24bit limit\n", n+1);
-	return FALSE;
-      }
     } else {
       if (up->num[i] != 0) {
 	jlog("Error: ngram_compact_context: internal error\n");

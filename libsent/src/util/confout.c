@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -58,7 +58,7 @@ confout_audio(FILE *strm)
 #else
   fprintf(strm, "    DATLink/NetAudio support: no\n");
 #endif
-  fprintf(strm, "    max. length of an input : %d samples (%d words)\n", MAXSPEECHLEN, MAXSEQNUM);
+  fprintf(strm, "    max. length of an input : %d samples, %d words\n", MAXSPEECHLEN, MAXSEQNUM);
 }
 
 /** 

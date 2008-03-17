@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed May 18 15:02:55 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -26,7 +26,6 @@
 #include "app.h"
 
 boolean separate_score_flag = FALSE;
-boolean callback_debug_flag = FALSE;
 boolean outfile_enabled = FALSE;
 
 static char *logfile = NULL;
@@ -49,12 +48,6 @@ static boolean
 opt_separatescore(Jconf *jconf, char *arg[], int argnum)
 {
   separate_score_flag = TRUE;
-  return TRUE;
-}
-static boolean
-opt_callbackdebug(Jconf *jconf, char *arg[], int argnum)
-{
-  callback_debug_flag = TRUE;
   return TRUE;
 }
 static boolean
@@ -104,7 +97,6 @@ main(int argc, char *argv[])
   module_add_option();
   charconv_add_option();
   j_add_option("-separatescore", 0, 0, "output AM and LM scores separately", opt_separatescore);
-  j_add_option("-callbackdebug", 0, 0, "output callback debug message", opt_callbackdebug);
   j_add_option("-logfile", 1, 1, "output log to file", opt_logfile);
   j_add_option("-nolog", 0, 0, "not output any log", opt_nolog);
   j_add_option("-outfile", 0, 0, "save result in separate .out file", opt_outfile);

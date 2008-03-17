@@ -30,7 +30,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 26 00:03:18 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 #include <julius/julius.h>
@@ -163,6 +163,56 @@ callback_add_adin(Recog *recog, int code, void (*func)(Recog *recog, SP16 *buf, 
   return(callback_add_core(recog, code, func, data));
 }
 
+static void
+c_out(const char *s, int flag)
+{
+  if (flag == 0) {
+    jlog("DEBUG: (%s)\n", s);
+  } else {
+    jlog("DEBUG: %s\n", s);
+  }
+}
+
+static void
+callback_debug_stdout(int code, Recog *recog)
+{
+  int f = recog->callback_function_num[code];
+  switch(code) {
+    //case CALLBACK_POLL: c_out("CALLBACK_POLL", f); break;
+  case CALLBACK_EVENT_PROCESS_ONLINE: c_out("CALLBACK_EVENT_PROCESS_ONLINE", f); break;
+  case CALLBACK_EVENT_PROCESS_OFFLINE: c_out("CALLBACK_EVENT_PROCESS_OFFLINE", f); break;
+  case CALLBACK_EVENT_STREAM_BEGIN: c_out("CALLBACK_EVENT_STREAM_BEGIN", f); break;
+  case CALLBACK_EVENT_STREAM_END: c_out("CALLBACK_EVENT_STREAM_END", f); break;
+  case CALLBACK_EVENT_SPEECH_READY: c_out("CALLBACK_EVENT_SPEECH_READY", f); break;
+  case CALLBACK_EVENT_SPEECH_START: c_out("CALLBACK_EVENT_SPEECH_START", f); break;
+  case CALLBACK_EVENT_SPEECH_STOP: c_out("CALLBACK_EVENT_SPEECH_STOP", f); break;
+  case CALLBACK_EVENT_RECOGNITION_BEGIN: c_out("CALLBACK_EVENT_RECOGNITION_BEGIN", f); break;
+  case CALLBACK_EVENT_RECOGNITION_END: c_out("CALLBACK_EVENT_RECOGNITION_END", f); break;
+  case CALLBACK_EVENT_SEGMENT_BEGIN: c_out("CALLBACK_EVENT_SEGMENT_BEGIN", f); break;
+  case CALLBACK_EVENT_SEGMENT_END: c_out("CALLBACK_EVENT_SEGMENT_END", f); break;
+  case CALLBACK_EVENT_PASS1_BEGIN: c_out("CALLBACK_EVENT_PASS1_BEGIN", f); break;
+    //case CALLBACK_EVENT_PASS1_FRAME: c_out("CALLBACK_EVENT_PASS1_FRAME", f); break;
+  case CALLBACK_EVENT_PASS1_END: c_out("CALLBACK_EVENT_PASS1_END", f); break;
+    //case CALLBACK_RESULT_PASS1_INTERIM: c_out("CALLBACK_RESULT_PASS1_INTERIM", f); break;
+  case CALLBACK_RESULT_PASS1: c_out("CALLBACK_RESULT_PASS1", f); break;
+  case CALLBACK_RESULT_PASS1_GRAPH: c_out("CALLBACK_RESULT_PASS1_GRAPH", f); break;
+  case CALLBACK_STATUS_PARAM: c_out("CALLBACK_STATUS_PARAM", f); break;
+  case CALLBACK_EVENT_PASS2_BEGIN: c_out("CALLBACK_EVENT_PASS2_BEGIN", f); break;
+  case CALLBACK_EVENT_PASS2_END: c_out("CALLBACK_EVENT_PASS2_END", f); break;
+  case CALLBACK_RESULT: c_out("CALLBACK_RESULT", f); break;
+  case CALLBACK_RESULT_GMM: c_out("CALLBACK_RESULT_GMM", f); break;
+  case CALLBACK_RESULT_GRAPH: c_out("CALLBACK_RESULT_GRAPH", f); break;
+  case CALLBACK_RESULT_CONFNET: c_out("CALLBACK_RESULT_CONFNET", f); break;
+    //case CALLBACK_ADIN_CAPTURED: c_out("CALLBACK_ADIN_CAPTURED", f); break;
+    //case CALLBACK_ADIN_TRIGGERED: c_out("CALLBACK_ADIN_TRIGGERED", f); break;
+  case CALLBACK_EVENT_PAUSE: c_out("CALLBACK_EVENT_PAUSE", f); break;
+  case CALLBACK_EVENT_RESUME: c_out("CALLBACK_EVENT_RESUME", f); break;
+  case CALLBACK_PAUSE_FUNCTION: c_out("CALLBACK_PAUSE_FUNCTION", f); break;
+  case CALLBACK_DEBUG_PASS2_POP: c_out("CALLBACK_DEBUG_PASS2_POP", f); break;
+  case CALLBACK_DEBUG_PASS2_PUSH: c_out("CALLBACK_DEBUG_PASS2_PUSH", f); break;
+    //case CALLBACK_RESULT_PASS1_DETERMINED: c_out("CALLBACK_RESULT_PASS1_DETERMINED", f); break;
+  }
+}
 
 /** 
  * <EN>
@@ -188,6 +238,7 @@ callback_exec(int code, Recog *recog)
     jlog("ERROR: callback_exec: failed to exec callback: invalid code number: %d\n", code);
     return;
   }
+  if (callback_debug_flag) callback_debug_stdout(code, recog);
   for(i=0;i<recog->callback_function_num[code];i++) {
     (*(recog->callback_function[code][i]))(recog, recog->callback_user_data[code][i]);
   }
@@ -219,6 +270,7 @@ callback_exec_adin(int code, Recog *recog, SP16 *buf, int len)
     jlog("ERROR: callback_exec_adin: failed to exec callback: invalid code number: %d\n", code);
     return;
   }
+  if (callback_debug_flag) callback_debug_stdout(code, recog);
   for(i=0;i<recog->callback_function_num[code];i++) {
     (*(recog->callback_function[code][i]))(recog, buf, len, recog->callback_user_data[code][i]);
   }

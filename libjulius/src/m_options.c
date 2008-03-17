@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -543,6 +543,9 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
     } else if (strmatch(argv[i],"-debug")) { /* debug mode: output huge log */
       debug2_flag = verbose_flag = TRUE;
+      continue;
+    } else if (strmatch(argv[i],"-callbackdebug")) { /* output callback debug message */
+      callback_debug_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-progout")) { /* enable progressive output */
       jconf->searchnow->output.progout_flag = TRUE;

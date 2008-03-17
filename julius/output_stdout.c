@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 17:18:46 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -25,7 +25,6 @@
 #include "app.h"
 
 extern boolean separate_score_flag;
-extern boolean callback_debug_flag;
 
 /// Grammar status to be processed in the next reload timing.
 static char *hookstr[] = {"", "delete", "activate", "deactivate"};
@@ -88,7 +87,7 @@ myprintf(char *fmt, ...)
 static void
 status_process_online(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<ONLINE>\n");
+  /* nop */
 }
 /** 
  * <JA>
@@ -104,7 +103,7 @@ status_process_online(Recog *recog, void *dummy)
 static void
 status_process_offline(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<OFFLINE>\n");
+  /* nop */
 }
 
 /**********************************************************************/
@@ -123,7 +122,6 @@ status_process_offline(Recog *recog, void *dummy)
 static void
 status_recready(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("[SPEECH_READY]\n");
   if (recog->jconf->input.speech_input == SP_MIC || recog->jconf->input.speech_input == SP_NETAUDIO) {
     if (!recog->process_segment) {
       fprintf(stderr, "<<< please speak >>>");
@@ -143,7 +141,6 @@ status_recready(Recog *recog, void *dummy)
 static void
 status_recstart(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("[SPEECH_START]\n");
   if (recog->jconf->input.speech_input == SP_MIC || recog->jconf->input.speech_input == SP_NETAUDIO) {
     if (!recog->process_segment) {
       fprintf(stderr, "\r                    \r");
@@ -163,7 +160,7 @@ status_recstart(Recog *recog, void *dummy)
 static void
 status_recend(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("[SPEECH_STOP]\n");
+  /* nop */
 }
 /** 
  * <JA>
@@ -180,7 +177,6 @@ status_recend(Recog *recog, void *dummy)
 static void
 status_param(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<STATUS_PARAM>\n");
   if (verbose_flag) {
     //    put_param_info(stdout, recog->param);
   }
@@ -205,7 +201,6 @@ status_param(Recog *recog, void *dummy)
 static void
 status_recognition_begin(Recog *recog, void *dummy) 
 {
-  if (callback_debug_flag) printf("<RECOGNITION_BEGIN>\n");
   if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
     if (have_progout) {
       confwordnum = 0;
@@ -228,7 +223,6 @@ status_recognition_begin(Recog *recog, void *dummy)
 static void
 status_recognition_end(Recog *recog, void *dummy) 
 {
-  if (callback_debug_flag) printf("<RECOGNITION_END>\n");
   if (recog->process_segment) {
     if (verbose_flag) {
       printf("Segmented by short pause, continue to next...\n");
@@ -258,7 +252,6 @@ status_recognition_end(Recog *recog, void *dummy)
 static void
 status_segment_begin(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<SEGMENT_BEGIN>\n");
   /* no output */
 }
 
@@ -275,7 +268,7 @@ status_segment_begin(Recog *recog, void *dummy)
 static void
 status_segment_end(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<SEGMENT_END>\n");
+  /* nop */
 }
 
 /**********************************************************************/
@@ -298,7 +291,6 @@ static int writelen;		///< written string length on this tty line
 static void
 status_pass1_begin(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<PASS1_BEGIN>\n");
   if (!recog->jconf->decodeopt.realtime_flag) {
     VERMES("### Recognition: 1st pass (LR beam)\n");
   }
@@ -344,8 +336,6 @@ result_pass1_current(Recog *recog, void *dummy)
   WORD_INFO *winfo;
   WORD_ID *seq;
   RecogProcess *r;
-
-  //  if (callback_debug_flag) printf("<PASS1_INTERIM>\n");
 
   for(r=recog->process_list;r;r=r->next) {
     if (! r->live) continue;
@@ -471,8 +461,6 @@ result_pass1(Recog *recog, void *dummy)
   boolean multi;
   int len;
 
-  if (callback_debug_flag) printf("<RESULT_PASS1>\n");
-
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
 
@@ -557,8 +545,6 @@ result_pass1_graph(Recog *recog, void *dummy)
   int n;
   int tw1, tw2, i;
 
-  if (callback_debug_flag) printf("<RESULT_GRAPH_PASS1>\n");
-
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
 
@@ -603,7 +589,6 @@ result_pass1_graph(Recog *recog, void *dummy)
 static void
 status_pass1_end(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<PASS1_END>\n");
   if (recog->jconf->decodeopt.segment) { /* short pause segmentation */
     if (have_progout) return;
   }
@@ -774,8 +759,6 @@ result_pass2(Recog *recog, void *dummy)
   Sentence *s;
   RecogProcess *r;
   boolean multi;
-
-  if (callback_debug_flag) printf("<RESULT_PASS2>\n");
 
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
@@ -1010,8 +993,6 @@ result_pass2(Recog *recog, void *dummy)
 static void
 status_pass2_begin(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<PASS2_BEGIN>\n");
-
   VERMES("### Recognition: 2nd pass (RL heuristic best-first)\n");
   //if (verbose_flag) printf("samplenum=%d\n", recog->param->samplenum);
   //if (debug2_flag) VERMES("getting %d candidates...\n", recog->jconf->search.pass2.nbest);
@@ -1030,8 +1011,6 @@ status_pass2_begin(Recog *recog, void *dummy)
 static void
 status_pass2_end(Recog *recog, void *dummy)
 {
-  if (callback_debug_flag) printf("<PASS2_END>\n");
-
   fflush(stdout);
 }
 
@@ -1062,8 +1041,6 @@ result_graph(Recog *recog, void *dummy)
   WORD_INFO *winfo;
   RecogProcess *r;
   boolean multi;
-
-  if (callback_debug_flag) printf("<RESULT_GRAPH>\n");
 
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
@@ -1113,7 +1090,6 @@ result_confnet(Recog *recog, void *dummy)
   RecogProcess *r;
   boolean multi;
 
-  if (callback_debug_flag) printf("<RESULT_CONFNET>\n");
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
 
@@ -1157,8 +1133,6 @@ result_gmm(Recog *recog, void *dummy)
   HTK_HMM_Data *d;
   GMMCalc *gc;
   int i;
-
-  if (callback_debug_flag) printf("<RESULT_GMM>\n");
 
   gc = recog->gc;
 

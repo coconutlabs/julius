@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -295,6 +295,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "\n Others:\n");
   fprintf(fp, "    [-C jconffile]      load options from jconf file\n");
   fprintf(fp, "    [-debug]            (for debug) dump numerous log\n");
+  fprintf(fp, "    [-callbackdebug]    (for debug) output message per callback\n");
   fprintf(fp, "    [-check (wchmm|trellis)] (for debug) check internal structure\n");
   fprintf(fp, "    [-check triphone]   triphone mapping check\n");
   fprintf(fp, "    [-setting]          print engine configuration and exit\n");

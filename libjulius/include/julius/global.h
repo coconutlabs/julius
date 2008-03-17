@@ -14,7 +14,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 18 23:53:17 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -48,5 +48,6 @@
 /* global variables */
 GLOBAL boolean verbose_flag GLOBAL_VAL(TRUE);
 GLOBAL boolean debug2_flag GLOBAL_VAL(FALSE);
+GLOBAL boolean callback_debug_flag GLOBAL_VAL(FALSE);
 
 #endif /* __J_GLOBAL_H__ */

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 
@@ -743,8 +743,6 @@ j_recognize_stream_core(Recog *recog)
 	  /* last was segmented by short pause */
 	  /* the margin segment in the last input will be re-processed first,
 	     and then the speech input will be processed */
-	  /* output listening start message */
-	  callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	  /* process the last remaining parameters */
 	  ret = RealTimeResume(recog);
 	  if (ret < 0) {		/* error end in the margin */
@@ -790,8 +788,6 @@ j_recognize_stream_core(Recog *recog)
 	    jlog("ERROR: failed to prepare for on-the-fly 1st pass decoding");
 	    return (-1);
 	  }
-	  /* output 'listening start' message */
-	  callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	  /* process the incoming input */
 	  ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
 	  if (ret < 0) {		/* error end in adin_go */
@@ -864,8 +860,6 @@ j_recognize_stream_core(Recog *recog)
 	for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
 	  param_init_content(mfcc->param);
 	}
-	/* output 'listening start' message */
-	callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 	/* tell module to start recording */
 	/* the "adin_cut_callback_store_buffer" simply stores
 	   the input speech to a buffer "speech[]" */

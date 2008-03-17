@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -334,11 +334,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
   }
 
   if (!a->adin_cut_on && a->is_valid_data == TRUE) {
-#ifdef HAVE_PTHREAD
-    if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-#else
     callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-#endif
   }
 
   /*************/
@@ -469,11 +465,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
        TRUE here. */ 
     if (!a->adin_cut_on && a->is_valid_data == FALSE && a->current_len > 0) {
       a->is_valid_data = TRUE;
-#ifdef HAVE_PTHREAD
-      if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-#else
       callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-#endif
     }
 
     /******************************************************/
@@ -547,11 +539,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 #ifdef THREAD_DEBUG
 	    jlog("DEBUG: detect on\n");
 #endif
-#ifdef HAVE_PTHREAD
-	    if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-#else
 	    callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-#endif
 
 	    /****************************************/
 	    /* flush samples stored in cycle buffer */
@@ -825,6 +813,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	/* end input by silence */
 	a->is_valid_data = FALSE;	/* turn off processing */
 	a->sblen = 0;
+	callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 #ifdef HAVE_PTHREAD
 	if (a->enable_thread) { /* just stop transfer */
 	  pthread_mutex_lock(&(a->mutex));
@@ -867,15 +856,9 @@ break_input:
       end_status = -1;
     }
   }
-
-  /* execute callback */
-#ifdef HAVE_PTHREAD
-  if (!a->enable_thread) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
-#else
-  callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
-#endif
-
   if (a->end_of_stream) {			/* input already ends */
+    /* execute callback */
+    callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
     if (a->bp == 0) {		/* rest buffer successfully flushed */
       /* reset status */
       a->need_init = TRUE;		/* bufer status shoule be reset at next call */
@@ -1032,7 +1015,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
   int i;
   boolean overflowed_p;
   boolean transfer_online_local;
-  boolean first_trig;
   ADIn *a;
 
   a = recog->adin;
@@ -1048,7 +1030,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 
   /* main processing loop */
   prev_len = 0;
-  first_trig = TRUE;
   for(;;) {
     /* get current length (locking) */
     pthread_mutex_lock(&(a->mutex));
@@ -1065,7 +1046,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
       a->speechlen = 0;
       a->transfer_online = transfer_online_local = FALSE;
       pthread_mutex_unlock(&(a->mutex));
-      if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
       return(1);		/* return with segmented status */
     }
     /* callback poll */
@@ -1076,7 +1056,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 	  a->transfer_online = transfer_online_local = FALSE;
 	  a->speechlen = 0;
 	  pthread_mutex_unlock(&(a->mutex));
-	  if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 	  return(-2);
 	}
       }
@@ -1092,11 +1071,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 	 So locking is not needed while processing.
        */
       /*jlog("DEBUG: main: read %d-%d\n", prev_len, nowlen);*/
-      /* call on/off callback */
-      if (first_trig) {
-	first_trig = FALSE;
-	callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-      }
       if (ad_process != NULL) {
 	callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->speech[prev_len]), nowlen - prev_len);
 	ad_process_ret = (*ad_process)(&(a->speech[prev_len]), nowlen - prev_len, recog);
@@ -1116,14 +1090,12 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 	  }
 	  a->transfer_online = transfer_online_local = FALSE;
 	  pthread_mutex_unlock(&(a->mutex));
-	  if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 	  /* keep transfering */
 	  return(2);		/* return with segmented status */
 	case -1:		/* error */
 	  pthread_mutex_lock(&(a->mutex));
 	  a->transfer_online = transfer_online_local = FALSE;
 	  pthread_mutex_unlock(&(a->mutex));
-	  if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
 	  return(-1);		/* return with error */
 	}
       }
@@ -1145,7 +1117,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 	pthread_mutex_lock(&(a->mutex));
 	a->speechlen = 0;
 	pthread_mutex_unlock(&(a->mutex));
-	if (!first_trig) callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
         break;
       }
       usleep(50000);   /* wait = 0.05sec*/            
@@ -1197,6 +1168,8 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 int
 adin_go(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog)
 {
+  /* output listening start message */
+  callback_exec(CALLBACK_EVENT_SPEECH_READY, recog);
 #ifdef HAVE_PTHREAD
   if (recog->adin->enable_thread) {
     return(adin_thread_process(ad_process, ad_check, recog));

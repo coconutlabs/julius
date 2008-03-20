@@ -519,3 +519,10 @@ char *toStringAuto(char *str, char *buf, int maxlen) {
     break;
   }
 }
+
+char *EUCtoSJIS(char *str, char *buf, int maxlen)
+{
+  if (!str) return NULL;
+  _euc2shift((unsigned char *)str, (unsigned char *)buf);
+  return buf;
+}

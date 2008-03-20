@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:02:41 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -209,7 +209,8 @@ charconv_win32(char *instr, char *outstr, int maxoutlen)
   srcbuf = instr;
   if (euctosjis == TRUE) {
     /* euc->sjis conversion */
-    toStringSJIS(instr, outstr, maxoutlen);
+    //toStringSJIS(instr, outstr, maxoutlen);
+    EUCtoSJIS(instr, outstr, maxoutlen);
     srcbuf = outstr;
     if (only_euc_conv) {
       return(outstr);

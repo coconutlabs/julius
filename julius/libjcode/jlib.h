@@ -21,3 +21,5 @@ extern char *toStringEUC(char *str, char *buf, int maxlen);
 extern char *toStringSJIS(char *str, char *buf, int maxlen);
 /* extern char *toStringAuto(char *str); */
 extern char *toStringAuto(char *str, char *buf, int maxlen);
+
+extern char *EUCtoSJIS(char *str, char *buf, int maxlen);

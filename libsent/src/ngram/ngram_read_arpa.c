@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.6 2008/01/30 00:48:13 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.7 2008/03/20 09:08:04 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -46,16 +46,19 @@ static char pbuf[800];			///< Local buffer for error string
  * 
  * @param fp [in] file pointer
  * @param num [out] set the values to this buffer
+ *
+ * @return the value of N, or -1 on error.
  */
 static int
-get_total_info(FILE *fp, int num[])
+get_total_info(FILE *fp, NNID num[])
 {
   char *p;
   int n;
   int maxn;
-  int entry_num;
+  long entry_num;
 
   maxn = 0;
+
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
     if (strnmatch(buf, "ngram", 5)) { /* n-gram num */
       p = strtok(buf, "=");
@@ -67,7 +70,12 @@ get_total_info(FILE *fp, int num[])
 	return -1;
       }
       p = strtok(NULL, "=");
-      entry_num = atoi(p);
+      entry_num = atol(p);
+      /* check maximum number */
+      if (entry_num > NNID_MAX) {
+	jlog("Error: too big %d-gram (exceeds %d bit)\n", n, sizeof(NNID) * 8);
+	return -1;
+      }
       /* ignore empty entry */
       if (entry_num == 0) {
 	jlog("Warning: empty %d-gram, skipped\n", n);
@@ -254,7 +262,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
 {
   WORD_ID w[2], wtmp;
   LOGPROB prob;
-  int bi_count = 0;
+  long bi_count = 0;
   NNID n2;
   boolean ok_p = TRUE;
   char *s;
@@ -514,7 +522,7 @@ boolean
 ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 {
   int i, n;
-  int num[MAX_N];
+  NNID num[MAX_N];
 
   /* source file is not a binary N-gram */
   ndata->from_bin = FALSE;
@@ -594,8 +602,8 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
       } else {
 	/* for 3-gram and later 24 bit mode is preferred,
 	   but should be disabled if number of entries is over 2^24 */
-	if (ndata->d[i].totalnum >= NNIDMAX) {
-	  jlog("Warning: ngram_read_arpa: num of %d-gram exceeds 24bit, now switch to 32bit index\n", i+1);
+	if (ndata->d[i].totalnum > NNID_MAX_24) {
+	  jlog("Warning: ngram_read_arpa: num of %d-gram exceeds 24bit, now switch to %dbit index\n", i+1, sizeof(NNID) * 8);
 	  ndata->d[i].is24bit = FALSE;
 	} else {
 	  ndata->d[i].is24bit = TRUE;

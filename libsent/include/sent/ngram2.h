@@ -97,7 +97,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 15:04:02 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -115,21 +115,23 @@
 
 #define MAX_N 10		///< Maximum number of N for N-gram
 
-typedef unsigned char NNID_UPPER; ///< N-gram entry ID (upper bit)
-typedef unsigned short NNID_LOWER; ///< N-gram entry ID (lower bit)
-typedef int NNID;	       ///< Type definition for N-gram entry ID
-#define NNID_INVALID -1		///< Value to indicate no id
-#define NNID_INVALID_UPPER 255	///< Value to indicate no id at NNID_UPPER
-#define NNIDMAX 16711680        ///< Allowed maximum number of NNID (255*65536)
+typedef unsigned int NNID;	      ///< Type definition for N-gram entry ID (full)
+#define NNID_INVALID 0xffffffff  ///< Value to indicate no id (full)
+#define NNID_MAX 0xfffffffe	///< Value of maximum value (full)
+
+typedef unsigned char NNID_UPPER; ///< N-gram entry ID (24bit: upper bit)
+typedef unsigned short NNID_LOWER; ///< N-gram entry ID (24bit: lower bit)
+#define NNID_INVALID_UPPER 255	///< Value to indicate no id at NNID_UPPER (24bit)
+#define NNID_MAX_24 16711679        ///< Allowed maximum number of id (255*65536-1) (24bit)
 
 /**
  * N-gram entries for a m-gram (1 <= m <= N)
  * 
  */
 typedef struct {
-  int totalnum;			///< Number of defined tuples
+  NNID totalnum;		///< Number of defined tuples
   boolean is24bit;		///< TRUE if this m-gram uses 24bit index for tuples instead of 32bit
-  int bgnlistlen;		///< Length of bgn and num, should be the same as @a context_num of (m-1)-gram
+  NNID bgnlistlen;		///< Length of bgn and num, should be the same as @a context_num of (m-1)-gram
   NNID_UPPER *bgn_upper;	///< Beginning ID of a tuple set whose context is the (m-1) tuple for 24bit mode (upper 8bit)
   NNID_LOWER *bgn_lower;	///< Beginning ID of a tuple set whose context is the (m-1) tuple for 24bit mode (lower 16bit)
   NNID *bgn;			///< Beginning ID of a tuple set whose context is the (m-1) tuple for 32bit mode
@@ -138,7 +140,7 @@ typedef struct {
   WORD_ID *nnid2wid;		///< List of Word IDs of edge word of the tuple
   LOGPROB *prob;		///< Log probabilities of edge word of the tuple
 
-  int context_num;		///< Number of tuples to be a context of (m+1)-gram (= number of defined back-off weights)
+  NNID context_num;		///< Number of tuples to be a context of (m+1)-gram (= number of defined back-off weights)
   LOGPROB *bo_wt;		///< Back-off weights for (m+1)-gram, the length is @a context_num if @a ct_compaction is TRUE, or @a totalnum if FALSE.
   boolean ct_compaction;	///< TRUE if use compacted index for back-off contexts
   NNID_UPPER *nnid2ctid_upper;	///< Index to map tuple ID of this m-gram to valid context id (upper 8bit)

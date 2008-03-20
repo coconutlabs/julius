@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug 11 11:50:58 2007
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -39,8 +39,8 @@ boolean
 ngram_compact_context(NGRAM_INFO *ndata, int n)
 {
   NNID i;
-  int c;
-  int dst;
+  NNID c;
+  NNID dst;
   NNID ntmp;
   NGRAM_TUPLE_INFO *this, *up;
 
@@ -73,7 +73,7 @@ ngram_compact_context(NGRAM_INFO *ndata, int n)
     return TRUE;		/* no op */
   }
 
-  if (c >= NNIDMAX) {
+  if (c >= NNID_MAX_24) {
     jlog("Stat: ngram_compact_context: %d-gram bo_wt exceeds 24bit, compaction diabled\n", n);
     ndata->d[n-1].ct_compaction = FALSE;
     return TRUE;		/* no op */

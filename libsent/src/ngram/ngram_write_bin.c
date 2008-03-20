@@ -40,7 +40,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:23:16 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -57,13 +57,13 @@ static boolean need_swap; ///< TRUE if need byte swap
 
 #define wrt(A,B,C,D) if (wrtfunc(A,B,C,D) == FALSE) return FALSE
 
-static int count;
+static long count;
 void
 reset_wrt_counter()
 {
   count = 0;
 }
-int
+long
 get_wrt_counter()
 {
   return count;
@@ -79,12 +79,12 @@ get_wrt_counter()
  * @param unitnum [in] number of unit to write
  */
 static boolean
-wrtfunc(FILE *fp, void *buf, size_t unitbyte, int unitnum)
+wrtfunc(FILE *fp, void *buf, size_t unitbyte, size_t unitnum)
 {
   if (need_swap == TRUE && unitbyte != 1) {
     swap_bytes((char *)buf, unitbyte, unitnum);
   }
-  if (myfwrite(buf, unitbyte, unitnum, fp) < (size_t)unitnum) {
+  if (myfwrite(buf, unitbyte, unitnum, fp) < unitnum) {
     jlog("Error: write_ngram_bin: failed to write %d bytes", unitbyte*unitnum);
     return FALSE;
   }
@@ -134,7 +134,8 @@ write_header(FILE *fp, char *str)
 boolean
 ngram_write_bin(FILE *fp, NGRAM_INFO *ndata, char *headerstr)
 {
-  int i,n,len;
+  int i,n;
+  long len;
   NGRAM_TUPLE_INFO *t;
 
   reset_wrt_counter();
@@ -174,8 +175,8 @@ ngram_write_bin(FILE *fp, NGRAM_INFO *ndata, char *headerstr)
 
     wrt(fp, &(t->is24bit), sizeof(boolean), 1);
     wrt(fp, &(t->ct_compaction), sizeof(boolean), 1);
-    wrt(fp, &(t->bgnlistlen), sizeof(int), 1);
-    wrt(fp, &(t->context_num), sizeof(int), 1);
+    wrt(fp, &(t->bgnlistlen), sizeof(NNID), 1);
+    wrt(fp, &(t->context_num), sizeof(NNID), 1);
     if (n > 0) {
       if (t->is24bit) {
 	wrt(fp, t->bgn_upper, sizeof(NNID_UPPER), t->bgnlistlen);

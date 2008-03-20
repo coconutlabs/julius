@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:46:18 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -40,12 +40,12 @@
  * NNID_INVALID if the tuple does not exist in 2-gram.
  */
 static NNID
-search_ngram_core(NGRAM_INFO *ndata, int n, int nid_prev, WORD_ID wkey)
+search_ngram_core(NGRAM_INFO *ndata, int n, NNID nid_prev, WORD_ID wkey)
 {
   NGRAM_TUPLE_INFO *t, *tprev;
   NNID nnid;
   NNID left,right,mid;
-  int x;
+  NNID x;
 
   if (ndata->bigram_index_reversed && n == 2) {
     /* old binary format builds 1gram->2gram mapping using LR 2-gram,

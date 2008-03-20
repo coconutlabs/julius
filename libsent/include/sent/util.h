@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:30:40 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -87,7 +87,7 @@ void *mycalloc(int, int);
 
 /* endian.c */
 void swap_sample_bytes(SP16 *buf, int len);
-void swap_bytes(char *buf, size_t unitbyte, int unitnum);
+void swap_bytes(char *buf, size_t unitbyte, size_t unitnum);
 
 /* j_printf.c */
 void jlog_set_output(FILE *fp);

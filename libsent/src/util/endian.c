@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:43:46 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -32,7 +32,7 @@
  * @param unitnum [in] number of unit in the buffer
  */
 void
-swap_bytes(char *buf, size_t unitbyte, int unitnum)
+swap_bytes(char *buf, size_t unitbyte, size_t unitnum)
 {
   char *p, c;
   int i, j;

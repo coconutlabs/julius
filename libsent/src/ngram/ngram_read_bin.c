@@ -48,7 +48,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:12:08 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -83,10 +83,10 @@ static boolean words_int_retry = FALSE; ///< TRUE if retrying with conversion
  * @param unitnum [in] number of unit to read.
  */
 static boolean
-rdnfunc(FILE *fp, void *buf, size_t unitbyte, int unitnum)
+rdnfunc(FILE *fp, void *buf, size_t unitbyte, size_t unitnum)
 {
   size_t tmp;
-  if ((tmp = myfread(buf, unitbyte, unitnum, fp)) < (size_t)unitnum) {
+  if ((tmp = myfread(buf, unitbyte, unitnum, fp)) < unitnum) {
     jlog("Error: ngram_read_bin: failed to read %d bytes\n", unitbyte*unitnum);
     return FALSE;
   }
@@ -291,8 +291,8 @@ ngram_read_bin_v5(FILE *fp, NGRAM_INFO *ndata)
     
     rdn(fp, &(t->is24bit), sizeof(boolean), 1);
     rdn(fp, &(t->ct_compaction), sizeof(boolean), 1);
-    rdn(fp, &(t->bgnlistlen), sizeof(int), 1);
-    rdn(fp, &(t->context_num), sizeof(int), 1);
+    rdn(fp, &(t->bgnlistlen), sizeof(NNID), 1);
+    rdn(fp, &(t->context_num), sizeof(NNID), 1);
 
     if (n > 0) {
       if (t->is24bit) {
@@ -376,10 +376,6 @@ ngram_read_bin_compat(FILE *fp, NGRAM_INFO *ndata, int *retry_ret)
   /* read total info and set max_word_num */
   for(n=0;n<ndata->n;n++) {
     rdn(fp, &(ndata->d[n].totalnum), sizeof(NNID), 1);
-    if (file_version >= 4 && ndata->d[n].totalnum >= NNIDMAX) {
-      jlog("Error: ngram_read_bin_compat: too big %d-gram (%d, should be less than %d)\n", n+1, ndata->d[n].totalnum, NNIDMAX);
-      return FALSE;
-    }
   }
   ndata->max_word_num = ndata->d[0].totalnum;
 
@@ -391,8 +387,8 @@ ngram_read_bin_compat(FILE *fp, NGRAM_INFO *ndata, int *retry_ret)
     if (n < 2) {
       ndata->d[n].is24bit = FALSE;
     } else {
-      if (ndata->d[n].totalnum >= NNIDMAX) {
-	jlog("Stat: ngram_read_bin_compat: more than %d %d-gram tuples, use old structure\n", NNIDMAX, n+1);
+      if (ndata->d[n].totalnum >= NNID_MAX_24) {
+	jlog("Warning: ngram_read_bin_compat: num of %d-gram exceeds 24bit, now switch to %dbit index\n", n+1, sizeof(NNID) * 8);
 	ndata->d[n].is24bit = FALSE;
       } else {
 	ndata->d[n].is24bit = TRUE;

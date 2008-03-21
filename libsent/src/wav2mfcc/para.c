@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -249,12 +249,13 @@ htk_config_file_parse(char *HTKconffile, Value *para)
     } else if (strmatch(d, "SILFLOOR")) { /* -silfloor */
       para->silFloor = atof(a);
     } else if (strmatch(d, "TARGETKIND")) {
-      jlog("Stat: para: TARGETKIND skipped (will be set from AM header)\n");
+      jlog("Warning: para: TARGETKIND skipped (will be determined by AM header)\n");
       skipped = TRUE;
     } else if (strmatch(d, "NUMCEPS")) {
-      jlog("Stat: para: NUMCEPS skipped (will be set from AM header)\n");
+      jlog("Warning: para: NUMCEPS skipped (will be determined by AM header)\n");
       skipped = TRUE;
     } else {
+      jlog("Warning: para: \"%s\" ignored (not supported, or irrelevant)\n", d);
       skipped = TRUE;
     }
     if (!skipped) {

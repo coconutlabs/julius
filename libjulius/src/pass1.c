@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -261,7 +261,7 @@ decode_proceed(Recog *recog)
   break_flag = FALSE;
   if (break_decode
 #ifdef GMM_VAD
-      || (recog->gmm != NULL && recog->gmmmfcc->valid && break_gmm)
+      || (recog->gmm != NULL && break_gmm)
 #endif
       ) {
     break_flag = TRUE;
@@ -410,7 +410,8 @@ decode_end_segmented(Recog *recog)
   if (recog->jconf->decodeopt.segment) {
     finalize_segment(recog);
   }
-  if (recog->gmm != NULL && recog->gmmmfcc->valid) {
+
+  if (recog->gmm != NULL) {
     /* GMM ·×»»¤Î½ªÎ» */
     gmm_end(recog);
   }
@@ -457,7 +458,8 @@ decode_end(Recog *recog)
   for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
     mfcc->segmented = FALSE;
   }
-  if (recog->gmm != NULL && recog->gmmmfcc->valid) {
+
+  if (recog->gmm != NULL) {
     /* GMM ·×»»¤Î½ªÎ» */
     gmm_end(recog);
   }

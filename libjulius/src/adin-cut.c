@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -565,11 +565,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 #ifdef THREAD_DEBUG
 		jlog("DEBUG: callback for buffered samples (%d bytes)\n", len - wstep);
 #endif
-#ifdef HAVE_PTHREAD
-		if (!a->enable_thread) callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->cbuf, len - wstep);
-#else
 		callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->cbuf, len - wstep);
-#endif
 		ad_process_ret = (*ad_process)(a->cbuf, len - wstep, recog);
 		switch(ad_process_ret) {
 		case 1:		/* segmentation notification from process callback */
@@ -639,11 +635,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 #ifdef THREAD_DEBUG
 		jlog("DEBUG: callback for swapped %d samples\n", a->sblen);
 #endif
-#ifdef HAVE_PTHREAD
-		if (!a->enable_thread) callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->swapbuf, a->sblen);
-#else
 		callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->swapbuf, a->sblen);
-#endif
 		ad_process_ret = (*ad_process)(a->swapbuf, a->sblen, recog);
 		a->sblen = 0;
 		switch(ad_process_ret) {
@@ -765,11 +757,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	    jlog("DEBUG: callback for input sample [%d-%d]\n", i, i+wstep);
 #endif
 	    /* call external function */
-#ifdef HAVE_PTHREAD
-	    if (!a->enable_thread) callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->buffer[i]), wstep);
-#else
 	    callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->buffer[i]), wstep);
-#endif
 	    ad_process_ret = (*ad_process)(&(a->buffer[i]), wstep, recog);
 	    switch(ad_process_ret) {
 	    case 1:		/* segmentation notification from process callback */
@@ -1072,7 +1060,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
        */
       /*jlog("DEBUG: main: read %d-%d\n", prev_len, nowlen);*/
       if (ad_process != NULL) {
-	callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->speech[prev_len]), nowlen - prev_len);
 	ad_process_ret = (*ad_process)(&(a->speech[prev_len]), nowlen - prev_len, recog);
 #ifdef THREAD_DEBUG
 	jlog("DEBUG: ad_process_ret=%d\n", ad_process_ret);

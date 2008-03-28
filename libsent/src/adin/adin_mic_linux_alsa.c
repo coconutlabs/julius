@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -189,6 +189,7 @@ adin_mic_standby(int sfreq, void *dummy)
 #else
     unsigned int period_time, period_time_current;
     snd_pcm_uframes_t chunk_size;
+    boolean has_current_period;
 #endif
     boolean force = FALSE;
     
@@ -210,11 +211,13 @@ adin_mic_standby(int sfreq, void *dummy)
       return(FALSE);
     }
 #else    
+    has_current_period = TRUE;
     if ((err = snd_pcm_hw_params_get_period_time(hwparams, &period_time_current, &dir)) < 0) {
-      jlog("Error: adin_alsa: cannot get current period time\n");
-      return(FALSE);
+      has_current_period = FALSE;
     }
-    //jlog("Stat: adin_alsa: current latency time: %d msec\n", period_time_current / 1000);
+    if (has_current_period) {
+      jlog("Stat: adin_alsa: current latency time: %d msec\n", period_time_current / 1000);
+    }
 #endif
 
     /* set period time (near value will be used) */
@@ -238,9 +241,9 @@ adin_mic_standby(int sfreq, void *dummy)
     jlog("Stat: Audio I/O Latency = %d msec (data fragment = %d frames)\n", actual_size * 1000 / (actual_rate * sizeof(SP16)), actual_size / sizeof(SP16));
 #else
     period_time = latency * 1000;
-    if (!force && period_time > period_time_current) {
-      jlog("Stat: adin_alsa: current latency (%dms) is shorter than %dms, leave it\n", period_time_current / 1000, latency);
-      period_time = period_time_current;
+    if (!force && has_current_period && period_time > period_time_current) {
+	jlog("Stat: adin_alsa: current latency (%dms) is shorter than %dms, leave it\n", period_time_current / 1000, latency);
+	period_time = period_time_current;
     } else {
       if ((err = snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, 0)) < 0) {
 	jlog("Error: adin_alsa: cannot set PCM record period time to %d msec (%s)\n", period_time / 1000, snd_strerror(err));
@@ -294,7 +297,7 @@ adin_mic_standby(int sfreq, void *dummy)
     snd_pcm_info_alloca(&pcminfo);
 
     /* open control associated with the pcm device name */
-    if ((err = snd_ctl_open(&ctl, pcm_name, 0)) < 0) {
+    if ((err = snd_ctl_open(&ctl, "default", 0)) < 0) {
       jlog("Error: adin_alsa: unable to open control device for %s\n", pcm_name);
       return(FALSE);
     }

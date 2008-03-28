@@ -29,7 +29,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:13:54 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -47,7 +47,8 @@ static char *record_dirname = NULL;
 static char rectmpfilename[MAXLINELEN];
 static char recordfilename[MAXLINELEN];
 static int recordlen;
-static FILE *recfile_fp;
+static FILE *recfile_fp = NULL;
+static boolean open_error = FALSE;
 
 /** 
  * <JA>
@@ -155,6 +156,7 @@ record_sample_open(Recog *recog, void *dummy)
   if ((recfile_fp = wrwav_open(rectmpfilename, recog->jconf->input.sfreq)) == NULL) {
     perror("Error: record_sample_open");
     fprintf(stderr, "failed to open \"%s\" (temporary record file)\n", rectmpfilename);
+    open_error = TRUE;
     return;
   }
 
@@ -181,7 +183,7 @@ record_sample_write(Recog *recog, SP16 *speech, int samplenum, void *dummy)
   static char tstr[20];
 
   if (recfile_fp == NULL) {
-    fprintf(stderr, "Error: record_sample_write; file not opened yet, cannot write!\n");
+    if (! open_error) record_sample_open(recog, dummy);
     return;
   }
 
@@ -215,6 +217,7 @@ record_sample_write(Recog *recog, SP16 *speech, int samplenum, void *dummy)
 static void
 record_sample_close(Recog *recog, void *dummy)
 {
+  open_error = FALSE;
   if (recfile_fp == NULL) {
     fprintf(stderr, "Warning: record_sample_close; file not opened yet!?\n");
     return;
@@ -270,7 +273,6 @@ record_setup(Recog *recog, void *data)
 {
   if (record_dirname) {
     /* regist callbacks */
-    callback_add(recog, CALLBACK_EVENT_SPEECH_READY, record_sample_open, data);
     callback_add_adin(recog, CALLBACK_ADIN_TRIGGERED, record_sample_write, data);
     callback_add(recog, CALLBACK_EVENT_SPEECH_STOP, record_sample_close, data);
     printf("Input speech data will be stored to = %s/\n", record_dirname);

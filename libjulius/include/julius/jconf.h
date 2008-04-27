@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -736,6 +736,13 @@ typedef struct __jconf_search__ {
      * 
      */
     boolean start_inactive;
+    /**
+     * In case the 2nd pass search fails, this option specifies Julius
+     * to use the result of the previous 1st pass as final result.
+     * When this is TRUE, no RECOGFAIL occur.
+     * 
+     */
+    boolean fallback_pass1_flag;
     
   } sw;
 

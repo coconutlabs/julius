@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -287,6 +287,7 @@ j_output_argument_help(FILE *fp)
 #endif
 #endif /* CONFIDENCE_MEASURE */
   fprintf(fp, "\n Message Output:\n");
+  fprintf(fp, "    [-fallback1pass]    use 1st pass result when search failed\n");
   fprintf(fp, "    [-separatescore]    (n-gram) output LM and AM score independently\n");
   fprintf(fp, "    [-quiet]            reduce output to only word string\n");
   fprintf(fp, "    [-progout]          progressive output in 1st pass\n");

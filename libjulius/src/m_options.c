@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -975,6 +975,9 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
     } else if (strmatch(argv[i], "-active")) { /* start active (default) */
       jconf->searchnow->sw.start_inactive = FALSE;
+      continue;
+    } else if (strmatch(argv[i],"-fallback1pass")) { /* use 1st pass result on search failure */
+      jconf->searchnow->sw.fallback_pass1_flag = TRUE;
       continue;
     }
     if (argv[i][0] == '-' && strlen(argv[i]) == 2) {

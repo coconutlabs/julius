@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -700,6 +700,12 @@ print_engine_info(Recog *recog)
     }
     if (r->config->output.progout_flag) {
       jlog("\t        progout interval = %d msec\n", r->config->output.progout_interval);
+    }
+    jlog("\tfall back on search fail = ");
+    if (r->config->sw.fallback_pass1_flag) {
+      jlog("on, adopt 1st pass result as final\n");
+    } else {
+      jlog("off, returns search failure\n");
     }
 
     jlog("\n");

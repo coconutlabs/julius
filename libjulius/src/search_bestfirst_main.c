@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -2054,14 +2054,10 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
   /***************/
 
   /* output */
-  /* 探索失敗で一つも候補が得られなければ，第1パスの結果をそのまま出力する */
-  /* If search failed and no candidate obtained in this pass, output
-     the result of the previous 1st pass as a final result. */
   if (dwrk->finishnum == 0) {		/* if search failed */
-    if (verbose_flag) {
-      jlog("WARNING: %02d %s: got no candidates, search failed\n", r->config->id, r->config->name);
-    }
-    /* make hypothesis data from the result of previous 1st pass */
+    /* 探索失敗 */
+    /* search failed */
+    /* make temporal hypothesis data from the result of previous 1st pass */
     now = newnode(r);
     for (i=0;i<r->pass1_wnum;i++) {
       now->seq[i] = r->pass1_wseq[r->pass1_wnum-1-i];
@@ -2078,24 +2074,42 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
     for(i=0;i<now->seqnum;i++) now->cmscore[i] = 0.0;
 #endif
 #endif /* CONFIDENCE_MEASURE */
-
+    
     if (r->lmtype == LM_PROB && r->config->successive.enabled) {
       /* if in sp segment mode, */
       /* find segment restart words from 1st pass result */
       segment_set_last_nword(now, r);
     }
-    /* do forced alignment if needed */
-    if (jconf->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
-    if (jconf->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
-    if (jconf->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
+    
+    if (r->config->sw.fallback_pass1_flag) {
+      /* 第1パスの結果をそのまま出力する */
+      /* output the result of the previous 1st pass as a final result. */
+      if (verbose_flag) {
+	jlog("%02d %s: got no candidates, output 1st pass result as a final result\n", r->config->id, r->config->name);
+      }
+      /* do forced alignment if needed */
+      if (jconf->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
+      if (jconf->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
+      if (jconf->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
 
-    /* output it */
-    r->result.status = J_RESULT_STATUS_FAIL;
-    //callback_exec(CALLBACK_RESULT, r);
+      /* store output as final result */
+      store_result_pass2(now, r);
+
+    } else {
+      /* store output as failure */
+
+      if (verbose_flag) {
+	jlog("WARNING: %02d %s: got no candidates, search failed\n", r->config->id, r->config->name);
+      }
+
+      r->result.status = J_RESULT_STATUS_FAIL;
+      //callback_exec(CALLBACK_RESULT, r);
+    }
 
     free_node(now);
 
   } else {			/* if at least 1 candidate found */
+
     if (debug2_flag) {
       jlog("STAT: %02d %s: got %d candidates\n", r->config->id, r->config->name, dwrk->finishnum);
     }

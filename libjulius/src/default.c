@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -300,7 +300,7 @@ jconf_set_default_values_search(JCONF_SEARCH *j)
   j->sw.triphone_check_flag		= FALSE;
   j->sw.wchmm_check_flag		= FALSE;
   j->sw.start_inactive			= FALSE;
-
+  j->sw.fallback_pass1_flag		= FALSE;
 }
 
 /* end of file */

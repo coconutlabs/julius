@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -77,6 +77,72 @@ static int count;		///< Poll descriptor count
 
 #define MAXPOLLINTERVAL 300	///< Read timeout in msec.
 
+
+/** 
+ * Output detailed device information.
+ * 
+ * @param pcm_name [in] device name string
+ * @param handle [in] pcm audio handler
+ * 
+ */
+static void
+output_card_info(char *pcm_name, snd_pcm_t *handle)
+{
+  int err;
+  snd_ctl_t *ctl;
+  snd_ctl_card_info_t *info;
+  snd_pcm_info_t *pcminfo;
+  snd_ctl_card_info_alloca(&info);
+  snd_pcm_info_alloca(&pcminfo);
+  char ctlname[30];
+  int card;
+  
+  /* get PCM information to set current device and subdevice name */
+  if ((err = snd_pcm_info(handle, pcminfo)) < 0) {
+    jlog("Warning: adin_alsa: failed to obtain pcm info\n");
+    jlog("Warning: adin_alsa: skip output of detailed audio device info\n");
+    return;
+  }
+  /* open control associated with the pcm device name */
+  card = snd_pcm_info_get_card(pcminfo);
+  if (card < 0) {
+    strcpy(ctlname, "default");
+  } else {
+    snprintf(ctlname, 30, "hw:%d", card);
+  }
+  if ((err = snd_ctl_open(&ctl, ctlname, 0)) < 0) {
+    jlog("Warning: adin_alsa: failed to open control device \"%s\", \n", ctlname);
+    jlog("Warning: adin_alsa: skip output of detailed audio device info\n");
+    return;
+  }
+  /* get its card info */
+  if ((err = snd_ctl_card_info(ctl, info)) < 0) {
+    jlog("Warning: adin_alsa: unable to get card info for %s\n", ctlname);
+    jlog("Warning: adin_alsa: skip output of detailed audio device info\n");
+    snd_ctl_close(ctl);
+    return;
+  }
+
+  /* get detailed PCM information of current device from control */
+  if ((err = snd_ctl_pcm_info(ctl, pcminfo)) < 0) {
+    jlog("Error: adin_alsa: unable to get pcm info from card control\n");
+    jlog("Warning: adin_alsa: skip output of detailed audio device info\n");
+    snd_ctl_close(ctl);
+    return;
+  }
+  /* output */
+  jlog("Stat: \"%s\": %s [%s] device %s [%s] %s\n",
+       pcm_name,
+       snd_ctl_card_info_get_id(info),
+       snd_ctl_card_info_get_name(info),
+       snd_pcm_info_get_id(pcminfo),
+       snd_pcm_info_get_name(pcminfo),
+       snd_pcm_info_get_subdevice_name(pcminfo));
+
+  /* close controller */
+  snd_ctl_close(ctl);
+
+}
 
 /** 
  * Device initialization: check device capability and open for recording.
@@ -289,43 +355,7 @@ adin_mic_standby(int sfreq, void *dummy)
 #endif
 
   /* output status */
-  {
-    snd_ctl_t *ctl;
-    snd_ctl_card_info_t *info;
-    snd_pcm_info_t *pcminfo;
-    snd_ctl_card_info_alloca(&info);
-    snd_pcm_info_alloca(&pcminfo);
-
-    /* open control associated with the pcm device name */
-    if ((err = snd_ctl_open(&ctl, "default", 0)) < 0) {
-      jlog("Error: adin_alsa: unable to open control device for %s\n", pcm_name);
-      return(FALSE);
-    }
-    /* get its card info */
-    if ((err = snd_ctl_card_info(ctl, info)) < 0) {
-      jlog("Error: adin_alsa: unable to get card info for %s\n", pcm_name);
-      return(FALSE);
-    }
-    /* get PCM information to set current device and subdevice name */
-    if ((err = snd_pcm_info(handle, pcminfo)) < 0) {
-      jlog("Error: adin_alsa: unable to get pcm info\n");
-      return FALSE;
-    }
-    /* get detailed PCM information of current device from control */
-    if ((err = snd_ctl_pcm_info(ctl, pcminfo)) < 0) {
-      jlog("Error: adin_alsa: unable to get pcm info\n");
-      return FALSE;
-    }
-    /* output */
-    jlog("Stat: \"%s\": %s [%s] device %s [%s] %s\n",
-	 pcm_name,
-	 snd_ctl_card_info_get_id(info),
-	 snd_ctl_card_info_get_name(info),
-	 snd_pcm_info_get_id(pcminfo),
-	 snd_pcm_info_get_name(pcminfo),
-	 snd_pcm_info_get_subdevice_name(pcminfo));
-    snd_ctl_close(ctl);
-  }
+  output_card_info(pcm_name, handle);
 
   return(TRUE);
 }

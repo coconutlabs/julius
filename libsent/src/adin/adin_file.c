@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 13:31:20 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -148,7 +148,7 @@ setup_wav(FILE *fp)
       dummy[2] != 'V' ||
       dummy[3] != 'E') {
     jlog("Error: adin_file: WAVE header not found, file corrupted?\n");
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* format chunk: "fmt " */
   MYREAD(dummy, 1, 4, fp);
@@ -157,7 +157,7 @@ setup_wav(FILE *fp)
       dummy[2] != 't' ||
       dummy[3] != ' ') {
     jlog("Error: adin_file: fmt chunk not found, file corrupted?\n");
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* 4byte: byte size of this part */
   MYREAD(&len, 4, 1, fp);
@@ -166,37 +166,37 @@ setup_wav(FILE *fp)
   MYREAD(&s, 2, 1, fp);
   if (s != 1) {
     jlog("Error: adin_file: data format != PCM (id=%d)\n", s);
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* 2byte: channel num */
   MYREAD(&s, 2, 1, fp);
   if (s >= 2) {
     jlog("Error: adin_file: channel num != 1 (%d)\n", s);
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* 4byte: sampling rate */
   MYREAD(&i, 4, 1, fp);
   if (i != sfreq) {
     jlog("Error: adin_file: sampling rate != %d (%d)\n", sfreq, i);
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* 4byte: bytes per second */
   MYREAD(&i, 4, 1, fp);
   if (i != sfreq * sizeof(SP16)) {
     jlog("Error: adin_file: bytes per second != %d (%d)\n", sfreq * sizeof(SP16), i);
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* 2bytes: bytes per frame ( = (bytes per sample) x channel ) */
   MYREAD(&s, 2, 1, fp);
   if (s != 2) {
     jlog("Error: adin_file: (bytes per sample) x channel != 2 (%d)\n", s);
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* 2bytes: bits per sample */
   MYREAD(&s, 2, 1, fp);
   if (s != 16) {
     jlog("Error: adin_file: bits per sample != 16 (%d)\n", s);
-    fclose_readfile(fp); return FALSE;
+    return FALSE;
   }
   /* skip rest */
   if (len > 16) {
@@ -273,7 +273,7 @@ adin_file_open(char *filename)	/* NULL for standard input */
     wav_p = TRUE;
     has_pre = FALSE;
     if (setup_wav(fp) == FALSE) {
-      jlog("Error: adin_file: failed to read %s as a wav file\n",filename);
+      jlog("Error: adin_file: error in parsing wav header at %s\n",filename);
       fclose_readfile(fp);
       return(FALSE);
     }

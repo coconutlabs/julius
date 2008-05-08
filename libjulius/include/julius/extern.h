@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -262,7 +262,7 @@ boolean multigram_add_prefix_filelist(char *listfile, JCONF_LM *j, int lmvar);
 
 
 /* adin-cut.c */
-void adin_setup_param(ADIn *adin, Jconf *jconf);
+boolean adin_setup_param(ADIn *adin, Jconf *jconf);
 boolean adin_thread_create(Recog *recog);
 int adin_go(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog);
 boolean adin_standby(ADIn *a, int freq, void *arg);

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -162,7 +162,10 @@ adin_setup_all(ADIn *adin, Jconf *jconf, void *arg)
   }
 
   /* set parameter for recording/silence detection */
-  adin_setup_param(adin, jconf);
+  if (adin_setup_param(adin, jconf) == FALSE) {
+    jlog("ERROR: m_adin: failed to set parameter for input device\n");
+    return FALSE;
+  }    
 
   return TRUE;
 }

@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -134,12 +134,16 @@
  * @callergraph
  * @callgraph
  */
-void
+boolean
 adin_setup_param(ADIn *adin, Jconf *jconf)
 {
   float samples_in_msec;
   int freq;
 
+  if (jconf->input.sfreq <= 0) {
+    jlog("ERROR: adin_setup_param: going to set smpfreq to %d\n", jconf->input.sfreq);
+    return FALSE;
+  }
   if (jconf->detect.silence_cut < 2) {
     adin->adin_cut_on = (jconf->detect.silence_cut == 1) ? TRUE : FALSE;
   } else {
@@ -189,6 +193,8 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   adin->need_init = TRUE;
 
   adin->rehash = FALSE;
+
+  return TRUE;
 
 }
 

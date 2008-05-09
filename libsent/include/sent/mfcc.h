@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 03:40:52 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -68,7 +68,8 @@
 #define DEF_SSFLOOR     0.5	///< Default flooring coefficient for spectral subtraction
 
 /* version 2 ... ss_floor and ss_alpha removed */
-#define VALUE_VERSION 2	///< Integer version number of Value, for embedding
+/* version 3 add usepower */
+#define VALUE_VERSION 3	///< Integer version number of Value, for embedding
 
 /// mfcc configuration parameter values
 typedef struct {
@@ -88,6 +89,7 @@ typedef struct {
   int enormal;          ///< 1 if normalise raw energy, 0 if disabled, corresponds to ENORMALISE in HTK
   int raw_e;            ///< 1 if using raw energy, 0 if disabled, corresponds to RAWENERGY in HTK
   int zmeanframe;	///< 1 if apply zero mean frame like ZMEANSOURCE in HTK
+  int usepower;		///< 1 if use power instead of magnitude in filterbank analysis
 
   /* items below does not need to be embedded, because they can be
      detemined from the acoustic model header, or should be computed

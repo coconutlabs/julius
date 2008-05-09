@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 05:23:59 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -131,6 +131,7 @@ rd_para(FILE *fp, Value *para)
     jlog("Error: read_binhmm: unknown embedded parameter format version: %d\n", version);
     return FALSE;
   }
+  jlog("Stat: rd_para: found embedded acoutic parameter (ver.%d)\n", version);
 
   /* read parameters */
   rdn(fp, &(para->smp_period), sizeof(long), 1);      
@@ -155,6 +156,9 @@ rd_para(FILE *fp, Value *para)
     rdn(fp, &dummy, sizeof(float), 1);
   }
   rdn(fp, &(para->zmeanframe), sizeof(int), 1);	
+  if (version >= 3) {
+    rdn(fp, &(para->usepower), sizeof(int), 1);
+  }
 
   return(TRUE);
 }

@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 06:03:36 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -31,7 +31,7 @@
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.2 2007/12/18 08:45:51 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.3 2008/05/09 05:58:17 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
@@ -151,6 +151,7 @@ wt_para(FILE *fp, Value *para)
   wrt(fp, &(para->enormal), sizeof(int), 1);          
   wrt(fp, &(para->raw_e), sizeof(int), 1);            
   wrt(fp, &(para->zmeanframe), sizeof(int), 1);	
+  wrt(fp, &(para->usepower), sizeof(int), 1);
 
   return TRUE;
 }

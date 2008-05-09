@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Mon Aug  7 11:55:45 2006
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -422,13 +422,24 @@ MakeFBank(float *wave, MFCCWork *w, Value *para)
   for(i = 1; i <= para->fbank_num; i++)
     w->fbank[i] = 0.0;
   
-  for(k = w->fb.klo; k <= w->fb.khi; k++){
-    Re = w->fb.Re[k-1]; Im = w->fb.Im[k-1];
-    A = sqrt(Re * Re + Im * Im);
-    bin = w->fb.loChan[k];
-    Re = w->fb.loWt[k] * A;
-    if(bin > 0) w->fbank[bin] += Re;
-    if(bin < para->fbank_num) w->fbank[bin + 1] += A - Re;
+  if (para->usepower) {
+    for(k = w->fb.klo; k <= w->fb.khi; k++){
+      Re = w->fb.Re[k-1]; Im = w->fb.Im[k-1];
+      A = Re * Re + Im * Im;
+      bin = w->fb.loChan[k];
+      Re = w->fb.loWt[k] * A;
+      if(bin > 0) w->fbank[bin] += Re;
+      if(bin < para->fbank_num) w->fbank[bin + 1] += A - Re;
+    }
+  } else {
+    for(k = w->fb.klo; k <= w->fb.khi; k++){
+      Re = w->fb.Re[k-1]; Im = w->fb.Im[k-1];
+      A = sqrt(Re * Re + Im * Im);
+      bin = w->fb.loChan[k];
+      Re = w->fb.loWt[k] * A;
+      if(bin > 0) w->fbank[bin] += Re;
+      if(bin < para->fbank_num) w->fbank[bin + 1] += A - Re;
+    }
   }
 
   /* Take logs */

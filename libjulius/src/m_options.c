@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -734,6 +734,12 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
     } else if (strmatch(argv[i],"-nozmeanframe")) { /* disable frame-wise DC offset by zero mean */
       jconf->amnow->analysis.para.zmeanframe = FALSE;
+      continue;
+    } else if (strmatch(argv[i],"-usepower")) { /* use power instead of magnitude in filterbank analysis */
+      jconf->amnow->analysis.para.usepower = TRUE;
+      continue;
+    } else if (strmatch(argv[i],"-nousepower")) { /* use magnitude in fbank analysis (default)  */
+      jconf->amnow->analysis.para.usepower = FALSE;
       continue;
     } else if (strmatch(argv[i],"-spsegment")) { /* enable short-pause segmentation */
       jconf->searchnow->successive.enabled = TRUE;

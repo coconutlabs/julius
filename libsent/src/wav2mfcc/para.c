@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -59,6 +59,7 @@ undef_para(Value *para)
   //para->ss_alpha   = -1;
   //para->ss_floor   = -1;
   para->zmeanframe = -1;
+  para->usepower   = -1;
   para->delta      = -1;
   para->acc        = -1;
   para->energy     = -1;
@@ -97,6 +98,7 @@ make_default_para(Value *para)
   //para->ss_alpha    = DEF_SSALPHA;
   //para->ss_floor    = DEF_SSFLOOR;
   para->zmeanframe = FALSE;
+  para->usepower   = FALSE;
 }
 
 /** 
@@ -122,6 +124,7 @@ make_default_para_htk(Value *para)
   para->hipass     = -1;	/* disabled */
   para->lopass     = -1;	/* disabled */
   para->zmeanframe = FALSE;
+  para->usepower   = FALSE;
 }
 
 /** 
@@ -155,6 +158,7 @@ apply_para(Value *dst, Value *src)
   //if (dst->ss_alpha   == -1) dst->ss_alpha = src->ss_alpha; 
   //if (dst->ss_floor   == -1) dst->ss_floor = src->ss_floor; 
   if (dst->zmeanframe == -1) dst->zmeanframe = src->zmeanframe; 
+  if (dst->usepower   == -1) dst->usepower = src->usepower; 
   if (dst->delta      == -1) dst->delta = src->delta; 
   if (dst->acc        == -1) dst->acc = src->acc; 
   if (dst->energy     == -1) dst->energy = src->energy; 
@@ -213,6 +217,7 @@ htk_config_file_parse(char *HTKconffile, Value *para)
 
     /* process arguments */
     skipped = FALSE;
+    srate = 0.0;
     if (strmatch(d, "SOURCERATE")) { /* -smpPeriod */
       srate = atof(a);
     } else if (strmatch(d, "TARGETRATE")) { /* -fshift */
@@ -220,6 +225,8 @@ htk_config_file_parse(char *HTKconffile, Value *para)
     } else if (strmatch(d, "WINDOWSIZE")) { /* -fsize */
       para->framesize = atof(a);
     } else if (strmatch(d, "ZMEANSOURCE")) { /* -zmeansource */
+      para->zmeanframe = (a[0] == 'T') ? TRUE : FALSE;
+    } else if (strmatch(d, "USEPOWER")) { /* -usepower */
       para->zmeanframe = (a[0] == 'T') ? TRUE : FALSE;
     } else if (strmatch(d, "PREEMCOEF")) { /* -preemph */
       para->preEmph = atof(a);
@@ -261,6 +268,12 @@ htk_config_file_parse(char *HTKconffile, Value *para)
     if (!skipped) {
       jlog("Stat: para: %s=%s\n", d, a);
     }
+  }
+
+  if (srate == 0.0) {
+    jlog("Warning: no SOURCERATE found\n");
+    jlog("Warning: assume source waveform sample rate to 625 (16kHz)\n");
+    srate = 625;
   }
 
   para->smp_period = srate;
@@ -362,5 +375,8 @@ put_para(FILE *fp, Value *para)
   else fprintf(fp, "%5d Hz\n", para->lopass);
   fprintf(fp, "\t zero mean frame = ");
   if (para->zmeanframe) fprintf(fp, "ON\n");
+  else fprintf(fp, "OFF\n");
+  fprintf(fp, "\t       use power = ");
+  if (para->usepower) fprintf(fp, "ON\n");
   else fprintf(fp, "OFF\n");
 }

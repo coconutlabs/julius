@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:41:58 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -200,19 +200,19 @@ get_line_from_stdin(char *buf, int buflen, char *prompt)
     if (fgets(buf, buflen, stdin) == NULL) {
       return(NULL);
     }
+    /* chop last newline */
+    p = buf + strlen(buf) - 1;
+    if (p >= buf && *p == '\n') {
+      *(p --) = '\0';
+    }
+    if (p >= buf && *p == '\r') {
+      *(p --) = '\0';
+    }
+    /* chop last space */
+    while(p >= buf && *p == ' ') {
+      *(p --) = '\0';
+    }
   } while (!buf[0]);		/* loop till some input */
-  /* chop last newline */
-  p = buf + strlen(buf) - 1;
-  if (p >= buf && *p == '\n') {
-    *(p --) = '\0';
-  }
-  if (p >= buf && *p == '\r') {
-    *(p --) = '\0';
-  }
-  /* chop last space */
-  while(p >= buf && *p == ' ') {
-    *(p --) = '\0';
-  }
 
   return(buf);
 }

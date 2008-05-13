@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Mar 24 11:49:27 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -120,6 +120,7 @@ do_output(int sd)
     if (rbuf[0] == '.' && rbuf[1] == '\0') break;
     printf("> %s\n", rbuf);
   }
+  fflush(stdout);
 }
 
 /* handle input event */

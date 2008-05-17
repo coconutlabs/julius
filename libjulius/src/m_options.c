@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -182,6 +182,10 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
     } else if (strmatch(argv[i],"-AM_GMM") || strmatch(argv[i], "[AM_GMM]")) {
       /* switch current to GMM */
+      if (jconf->gmm == NULL) {
+	/* if new, allocate jconf for GMM */
+	jconf->gmm = j_jconf_am_new();
+      }
       jconf->amnow = jconf->gmm;
       continue;
     } else if (strmatch(argv[i],"-LM") || strmatch(argv[i], "[LM]")) {

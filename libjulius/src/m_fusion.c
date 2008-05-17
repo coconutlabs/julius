@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -200,6 +200,28 @@ initialize_GMM(Jconf *jconf)
   HTK_HMM_INFO *gmm;
   
   jlog("STAT: reading GMM: %s\n", jconf->reject.gmm_filename);
+
+  if (jconf->gmm == NULL) {
+    /* no acoustic parameter setting was given for GMM using -AM_GMM, 
+       copy the first AM setting */
+    jlog("STAT: -AM_GMM not used, use parameter of the first AM\n");
+    jconf->gmm = j_jconf_am_new();
+    memcpy(jconf->gmm, jconf->am_root, sizeof(JCONF_AM));
+    jconf->gmm->hmmfilename = NULL;
+    jconf->gmm->mapfilename = NULL;
+    jconf->gmm->spmodel_name = NULL;
+    jconf->gmm->hmm_gs_filename = NULL;
+    if (jconf->am_root->analysis.cmnload_filename) {
+      jconf->gmm->analysis.cmnload_filename = strcpy((char *)mymalloc(strlen(jconf->am_root->analysis.cmnload_filename)+ 1), jconf->am_root->analysis.cmnload_filename);
+    }
+    if (jconf->am_root->analysis.cmnsave_filename) {
+      jconf->gmm->analysis.cmnsave_filename = strcpy((char *)mymalloc(strlen(jconf->am_root->analysis.cmnsave_filename)+ 1), jconf->am_root->analysis.cmnsave_filename);
+    }
+    if (jconf->am_root->frontend.ssload_filename) {
+      jconf->gmm->frontend.ssload_filename = strcpy((char *)mymalloc(strlen(jconf->am_root->frontend.ssload_filename)+ 1), jconf->am_root->frontend.ssload_filename);
+    }
+  }
+
   gmm = hmminfo_new();
   if (init_hmminfo(gmm, jconf->reject.gmm_filename, NULL, &(jconf->gmm->analysis.para_hmm)) == FALSE) {
     hmminfo_free(gmm);
@@ -663,6 +685,15 @@ j_load_all(Recog *recog, Jconf *jconf)
       }
       return FALSE;
     }
+    /* also check equality for GMM */
+    if (recog->gmm) {
+      if (jconf->input.sfreq != jconf->gmm->analysis.para.smp_freq) {
+	jlog("ERROR: required sampling rate differs between AM and GMM!\n");
+	jlog("ERROR: AM : %dHz\n", jconf->input.sfreq);
+	jlog("ERROR: GMM: %dHz\n", jconf->gmm->analysis.para.smp_freq);
+	return FALSE;
+      }
+    }
     for(amconf = jconf->am_root; amconf; amconf = amconf->next) {
       if (jconf->input.frameshift != amconf->analysis.para.frameshift) ok_p = FALSE;
     }
@@ -673,6 +704,15 @@ j_load_all(Recog *recog, Jconf *jconf)
       }
       return FALSE;
     }
+    /* also check equality for GMM */
+    if (recog->gmm) {
+      if (jconf->input.frameshift != jconf->gmm->analysis.para.frameshift) {
+	jlog("ERROR: required frameshift differs between AM and GMM!\n");
+	jlog("ERROR: AM : %d samples\n", jconf->input.frameshift);
+	jlog("ERROR: GMM: %d samples\n", jconf->gmm->analysis.para.frameshift);
+	return FALSE;
+      }
+    }
     for(amconf = jconf->am_root; amconf; amconf = amconf->next) {
       if (jconf->input.framesize != amconf->analysis.para.framesize) ok_p = FALSE;
     }
@@ -682,6 +722,15 @@ j_load_all(Recog *recog, Jconf *jconf)
 	jlog("ERROR: AM%02d %s: %d samples\n", amconf->analysis.para.framesize);
       }
       return FALSE;
+    }
+    /* also check equality for GMM */
+    if (recog->gmm) {
+      if (jconf->input.framesize != jconf->gmm->analysis.para.framesize) {
+	jlog("ERROR: requested frame size differs between AM and GMM!\n");
+	jlog("ERROR: AM : %d samples\n", jconf->input.framesize);
+	jlog("ERROR: GMM: %d samples\n", jconf->gmm->analysis.para.framesize);
+	return FALSE;
+      }
     }
   }
 

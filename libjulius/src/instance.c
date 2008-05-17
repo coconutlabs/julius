@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -673,7 +673,7 @@ j_jconf_new()
   jconf->lmnow = jconf->lm_root;
   jconf->searchnow = jconf->search_root;
   /* set gmm am jconf */
-  jconf->gmm = j_jconf_am_new();
+  jconf->gmm = NULL;
 
   return(jconf);
 }

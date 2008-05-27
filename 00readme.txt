@@ -4,7 +4,7 @@
 
                                 Julius
 
-                                                (Rev 4.0.1 2008/03/12)
+                                                (Rev 4.0.2 2008/05/27)
                                                 (Rev 3.5.3 2006/12/29)
                                                 (Rev 3.4.2 2004/04/30)
                                                 (Rev 2.0   1999/02/20)
@@ -37,14 +37,11 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.0.1
+What's new in Julius-4.0.2
 ===========================
 
-Julius rev.4.0.1 is a bug fix release.
-
-From this release, ALSA becomes default for Linux.  You can still use
-the old OSS interface by specifying "--with-mictype=oss" at configure
-script at compilation time.
+Julius rev.4.0.2 is a bug fix release.
+Please see Release.txt for detailed list of fixes.
 
 
 What's new in Julius-4.0
@@ -105,7 +102,7 @@ Documentation
 
 The up-to-date documentations are available at the Julius Web site:
 
-    http://julius.sourceforge.jp/
+    http://julius.sourceforge.jp/en/
 
 Also it is worth taking a look at the Julius forum at:
 

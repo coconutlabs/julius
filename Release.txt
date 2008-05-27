@@ -1,3 +1,23 @@
+4.0.2 (2008.5.27)
+==================
+New features:
+
+  - New option "-fallback1pass" will output 1st pass result as final result
+    when the 2nd pass fails.
+  - Added support for "USEPOWER=T" on feature extraction.
+
+Modified:
+  - "-AM_GMM" becomes optional: GMM will share AM params if not specified.
+
+Fixed:
+  - GMM rejection does not work (since 4.0.1)
+  - Cannot specify other A/D device on Linux/ALSA correctly.
+  - Sometimes fails to read a big N-gram.
+  - Sometimes crush with "-record" option.
+  - Callback timing modified on real-time input with sp-segment/GMM/VAD.
+  - Other minor fixes.
+
+
 4.0.1 (2008.3.12)
 ==================
 New features:

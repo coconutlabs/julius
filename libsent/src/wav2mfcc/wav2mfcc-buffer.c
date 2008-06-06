@@ -24,7 +24,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 17:43:35 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -94,7 +94,7 @@ Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w)
   if (para->acc) Accel(mfcc, frame_num, para);
 
   /* Cepstrum Mean Normalization */
-  if(para->cmn) CMN(mfcc, frame_num, para->mfcc_dim);
+  if(para->cmn) CMN(mfcc, frame_num, para->mfcc_dim + (para->c0 ? 1 : 0));
 
   return(frame_num);
 }

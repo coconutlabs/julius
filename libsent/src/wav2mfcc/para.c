@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -345,7 +345,12 @@ put_para(FILE *fp, Value *para)
   if (para->acc) fprintf(fp, "_A");
   if (para->absesup) fprintf(fp, "_N");
   if (para->cmn) fprintf(fp, "_Z");
-  fprintf(fp, " (%d dimension from %d cepstrum)\n", para->veclen, para->mfcc_dim);
+  fprintf(fp, " (%d dim. from %d cepstrum", para->veclen, para->mfcc_dim);
+  if (para->c0) fprintf(fp, " + c0");
+  if (para->energy) fprintf(fp, " + energy");
+  if (para->absesup) fprintf(fp, ", abs energy supressed");
+  if (para->cmn) fprintf(fp, " with CMN");
+  fprintf(fp, ")\n");
   fprintf(fp, "\tsample frequency = %5ld Hz\n", para->smp_freq);
   fprintf(fp, "\t   sample period = %4ld  (1 = 100ns)\n", para->smp_period);
   fprintf(fp, "\t     window size = %4d samples (%.1f ms)\n", para->framesize,

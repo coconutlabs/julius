@@ -260,12 +260,16 @@
 #-zmeanframe			# frame-wise DC offset removal (same as HTK)
 #-nozmeanframe			# disable "-zmeanframe" (this is default)
 
-## Cepstral mean normalization
-#-cmnload filename		# load initial cepstral mean vector on startup
-#-cmnsave filename		# save cepstral mean vector at each input
-#-cmnupdate			# update initial cepstral mean at each input
+## Cepstral mean / variance normalization
+#-cmnload filename		# load initial cep. mean / variance on startup
+#-cmnsave filename		# save cep. mean / variance at each input end
+#-cmnupdate			# update beginning cep. data at each input
 #-cmnnoupdate			# keep initial mean, disable "-cmnupdate"
 #-cmnmapweight 100.0		# weight for MAP-CMN
+#-cvn				# enable variance normalization
+
+## Vocal tract length normalization (VTLN)
+#-vtln 1.0 300 4800		# enable VTLN (alpha, lowerfreq, upperfreq)
 
 ## Spectral subtraction (default: disabled)
 #-sscalc			# do SS, estimate noise from head sil

@@ -19,7 +19,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 15:04:28 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -1496,5 +1496,58 @@ j_process_am_remove(Recog *recog, JCONF_AM *amconf)
 
   return TRUE;
 }
+
+#ifdef DEBUG_VTLN_ALPHA_TEST
+void
+vtln_alpha(Recog *recog, RecogProcess *r)
+{
+  Sentence *s;
+  float alpha, alpha_bgn, alpha_end;
+  float max_alpha;
+  LOGPROB max_score;
+  PROCESS_AM *am;
+  MFCCCalc *mfcc;
+
+  s = &(r->result.sent[0]);
+
+  max_score = LOG_ZERO;
+
+  printf("------------ begin VTLN -------------\n");
+
+  mfcc = r->am->mfcc;
+
+  alpha_bgn = mfcc->para->vtln_alpha - VTLN_RANGE;
+  alpha_end = mfcc->para->vtln_alpha + VTLN_RANGE;
+
+  for(alpha = alpha_bgn; alpha <= alpha_end; alpha += VTLN_STEP) {
+    mfcc->para->vtln_alpha = alpha;
+    if (InitFBank(mfcc->wrk, mfcc->para) == FALSE) {
+      jlog("ERROR: VTLN: InitFBank() failed\n");
+      return;
+    }
+    if (wav2mfcc(recog->speech, recog->speechlen, recog) == FALSE) {
+      jlog("ERROR: VTLN: wav2mfcc() failed\n");
+      return;
+    }
+    outprob_prepare(&(r->am->hmmwrk), mfcc->param->samplenum);
+    word_align(s->word, s->word_num, mfcc->param, s, r);
+    printf("%f: %f\n", alpha, s->align.allscore);
+    if (max_score < s->align.allscore) {
+      max_score = s->align.allscore;
+      max_alpha = alpha;
+    }
+  }
+  printf("MAX: %f: %f\n", max_alpha, max_score);
+  mfcc->para->vtln_alpha = max_alpha;
+  if (InitFBank(mfcc->wrk, mfcc->para) == FALSE) {
+    jlog("ERROR: VTLN: InitFBank() failed\n");
+    return;
+  }
+
+  printf("------------ end VTLN -------------\n");
+
+}
+#endif
+
 
 /* end of file */

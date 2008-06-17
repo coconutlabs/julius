@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -266,7 +266,7 @@ RealTimeInit(Recog *recog)
     mfcc->tmpmfcc = (VECT *)mymalloc(sizeof(VECT) * para->vecbuflen);
     /* MAP-CMN 用の初期ケプストラム平均を読み込んで初期化する */
     /* Initialize the initial cepstral mean data from file for MAP-CMN */
-    if (para->cmn) mfcc->cmn.wrk = CMN_realtime_new(para->mfcc_dim, mfcc->cmn.map_weight);
+    if (para->cmn || para->cvn) mfcc->cmn.wrk = CMN_realtime_new(para, mfcc->cmn.map_weight);
     /* -cmnload 指定時, CMN用のケプストラム平均の初期値をファイルから読み込む */
     /* if "-cmnload", load initial cepstral mean data from file for CMN */
     if (mfcc->cmn.load_filename) {
@@ -400,7 +400,7 @@ RealTimePipeLinePrepare(Recog *recog)
     mfcc->f = 0;
     /* MAP-CMN の初期化 */
     /* Prepare for MAP-CMN */
-    if (mfcc->para->cmn) CMN_realtime_prepare(mfcc->cmn.wrk);
+    if (mfcc->para->cmn	|| mfcc->para->cvn) CMN_realtime_prepare(mfcc->cmn.wrk);
   }
   /* 準備した param 構造体のデータのパラメータ型を音響モデルとチェックする */
   /* check type coherence between param and hmminfo here */
@@ -422,6 +422,11 @@ RealTimePipeLinePrepare(Recog *recog)
   }
 #else
   recog->triggered = FALSE;
+#endif
+
+#ifdef DEBUG_VTLN_ALPHA_TEST
+  /* store speech */
+  recog->speechlen = 0;
 #endif
 
   return TRUE;
@@ -558,7 +563,7 @@ RealTimeMFCC(MFCCCalc *mfcc, SP16 *window, int windowlen)
 
   /* CMN を計算 */
   /* perform CMN */
-  if (para->cmn) CMN_realtime(mfcc->cmn.wrk, tmpmfcc);
+  if (para->cmn || para->cvn) CMN_realtime(mfcc->cmn.wrk, tmpmfcc);
   
   return TRUE;
 }
@@ -647,6 +652,11 @@ RealTimePipeLine(SP16 *Speech, int nowlen, Recog *recog) /* Speech[0...nowlen] =
   boolean all_false, all_true;
 
   r = &(recog->real);
+
+#ifdef DEBUG_VTLN_ALPHA_TEST
+  /* store speech */
+  adin_cut_callback_store_buffer(Speech, nowlen, recog);
+#endif
 
   /* window[0..windownum-1] は前回の呼び出しで残った音声データが格納されている */
   /* window[0..windownum-1] are speech data left from previous call */
@@ -929,7 +939,7 @@ RealTimeResume(Recog *recog)
     mfcc->f = 0;
     /* MAP-CMN の初期化 */
     /* Prepare for MAP-CMN */
-    if (mfcc->para->cmn) CMN_realtime_prepare(mfcc->cmn.wrk);
+    if (mfcc->para->cmn || mfcc->para->cvn) CMN_realtime_prepare(mfcc->cmn.wrk);
   }
 
 #ifdef BACKEND_VAD
@@ -1190,7 +1200,7 @@ RealTimeParam(Recog *recog)
 	}
       }
       /* a new frame has been obtained from delta buffer to tmpmfcc */
-      if(para->cmn) CMN_realtime(mfcc->cmn.wrk, mfcc->tmpmfcc);
+      if(para->cmn || para->cvn) CMN_realtime(mfcc->cmn.wrk, mfcc->tmpmfcc);
       if (param_alloc(mfcc->param, mfcc->f + 1, mfcc->param->veclen) == FALSE) {
 	jlog("ERROR: failed to allocate memory for incoming MFCC vectors\n");
 	return FALSE;
@@ -1321,7 +1331,7 @@ RealTimeCMNUpdate(MFCCCalc *mfcc, Recog *recog)
       }
       if (cmn_update_p) {
 	/* update last CMN parameter for next spech */
-	CMN_realtime_update(mfcc->cmn.wrk);
+	CMN_realtime_update(mfcc->cmn.wrk, mfcc->param);
       } else {
 	/* do not update, because the last input is bogus */
 	if (verbose_flag) {

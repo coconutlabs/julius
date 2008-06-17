@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Mon Aug  7 11:55:45 2006
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -157,6 +157,60 @@ float Mel(int k, float fres)
   return(1127 * log(1 + (k-1) * fres));
 }
 
+/**
+ * Create fbank center frequency for VTLN.
+ *
+ * @param cf [i/o] center frequency of channels in Mel, will be changed considering VTLN
+ * @param para [in] analysis parameter
+ * @param mlo [in] fbank lower bound in Mel
+ * @param mhi [in] fbank upper bound in Mel
+ * @param maxChan [in] maximum number of channels
+ * 
+ */
+static boolean
+VTLN_recreate_fbank_cf(float *cf, Value *para, float mlo, float mhi, int maxChan)
+{
+  int chan;
+  float minf, maxf, cf_orig, cf_new;
+  float scale, cu, cl, au, al;
+
+  /* restore frequency range to non-Mel */
+  minf = 700.0 * (exp(mlo / 1127.0) - 1.0);
+  maxf = 700.0 * (exp(mhi / 1127.0) - 1.0);
+
+  if (para->vtln_upper > maxf) {
+    jlog("Error: VTLN upper cut-off greater than upper frequency bound: %.1f > %.1f\n", para->vtln_upper, maxf);
+    return FALSE;
+  }
+  if (para->vtln_lower < minf) {
+    jlog("Error: VTLN lower cut-off smaller than lower frequency bound: %.1f < %.1f\n", para->vtln_lower, minf);
+    return FALSE;
+  }
+  
+  /* prepare variables for warping */
+  scale = 1.0 / para->vtln_alpha;
+  cu = para->vtln_upper * 2 / ( 1 + scale);
+  cl = para->vtln_lower * 2 / ( 1 + scale);
+  au = (maxf - cu * scale) / (maxf - cu);
+  al = (cl * scale - minf) / (cl - minf);
+  
+  for (chan = 1; chan <= maxChan; chan++) {
+    /* get center frequency, restore to non-Mel */
+    cf_orig = 700.0 * (exp(cf[chan] / 1127.0) - 1.0);
+    /* do warping */
+    if( cf_orig > cu ){
+      cf_new = au * (cf_orig - cu) + scale * cu;
+    } else if ( cf_orig < cl){
+      cf_new = al * (cf_orig - minf) + minf;
+    } else {
+      cf_new = scale * cf_orig;
+    }
+    /* convert the new center frequency to Mel and store */
+    cf[chan] = 1127.0 * log (1.0 + cf_new / 700.0);
+  }
+  return TRUE;
+}
+
 /** 
  * Build filterbank information and generate tables for MFCC comptutation.
  * 
@@ -165,7 +219,7 @@ float Mel(int k, float fres)
  * 
  * @return the generated filterbank information. 
  */
-void
+boolean
 InitFBank(MFCCWork *w, Value *para)
 {
   float mlo, mhi, ms, melk;
@@ -202,6 +256,13 @@ InitFBank(MFCCWork *w, Value *para)
   for (chan = 1; chan <= maxChan; chan++) 
     w->fb.cf[chan] = ((float)chan / maxChan)*ms + mlo;
 
+  if (para->vtln_alpha != 1.0) {
+    /* Modify fbank center frequencies for VTLN */
+    if (VTLN_recreate_fbank_cf(w->fb.cf, para, mlo, mhi, maxChan) == FALSE) {
+      return FALSE;
+    }
+  }
+
   /* Create loChan map, loChan[fftindex] -> lower channel index */
   w->fb.loChan = (short *)mymalloc((nv2 + 1) * sizeof(short));
   for(k = 1, chan = 1; k <= nv2; k++){
@@ -232,6 +293,7 @@ InitFBank(MFCCWork *w, Value *para)
 
   w->sqrt2var = sqrt(2.0 / para->fbank_num);
 
+  return TRUE;
 }
 
 /** 
@@ -558,7 +620,7 @@ WMP_work_new(Value *para)
   memset(w, 0, sizeof(MFCCWork));
 
   /* set filterbank information */
-  InitFBank(w, para);
+  if (InitFBank(w, para) == FALSE) return NULL;
 
 #ifdef MFCC_SINCOS_TABLE
   /* prepare tables */

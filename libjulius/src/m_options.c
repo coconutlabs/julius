@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -532,6 +532,23 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
     } else if (strmatch(argv[i],"-ssfloor")) { /* spectral floor for SS */
       GET_TMPARG;
       jconf->amnow->frontend.ss_floor = atof(tmparg);
+      continue;
+    } else if (strmatch(argv[i],"-cvn")) {
+      jconf->amnow->analysis.para.cvn = 1;
+      continue;
+    } else if (strmatch(argv[i],"-nocvn")) {
+      jconf->amnow->analysis.para.cvn = 0;
+      continue;
+    } else if (strmatch(argv[i],"-vtln")) { /* VTLN */
+      GET_TMPARG;
+      jconf->amnow->analysis.para.vtln_alpha = (float)atof(tmparg);
+      GET_TMPARG;
+      jconf->amnow->analysis.para.vtln_lower = (float)atof(tmparg);
+      GET_TMPARG;
+      jconf->amnow->analysis.para.vtln_upper = (float)atof(tmparg);
+      continue;
+    } else if (strmatch(argv[i],"-novtln")) { /* disable VTLN */
+      jconf->amnow->analysis.para.vtln_alpha = 1.0;
       continue;
     } else if (strmatch(argv[i],"-48")) { /* use 48kHz input and down to 16kHz */
       jconf->input.use_ds48to16 = TRUE;

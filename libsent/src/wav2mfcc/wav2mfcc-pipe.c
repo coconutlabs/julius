@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 18:12:30 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -45,6 +45,7 @@
 
 #include <sent/stddefs.h>
 #include <sent/mfcc.h>
+#include <sent/htk_param.h>
 
 /***********************************************************************/
 /** 
@@ -238,12 +239,12 @@ WMP_deltabuf_flush(DeltaBuf *db)
 /**
  * Initialize MAP-CMN at startup.
  * 
- * @param dimension [in] vector dimension
+ * @param para [in] MFCC computation configuration parameter
  * @param weight [in] initial cepstral mean weight
  * 
  */
 CMNWork *
-CMN_realtime_new(int dimension, float weight)
+CMN_realtime_new(Value *para, float weight)
 {
   int i;
 
@@ -251,19 +252,24 @@ CMN_realtime_new(int dimension, float weight)
 
   c = (CMNWork *)mymalloc(sizeof(CMNWork));
 
-  c->dim = dimension;
   c->cweight = weight;
-
+  c->mfcc_dim = para->mfcc_dim + (para->c0 ? 1 : 0);
+  c->veclen = para->veclen;
+  c->mean = para->cmn ? TRUE : FALSE;
+  c->var = para->cvn ? TRUE : FALSE;
   c->clist_max = CPSTEP;
   c->clist_num = 0;
   c->clist = (CMEAN *)mymalloc(sizeof(CMEAN) * c->clist_max);
   for(i=0;i<c->clist_max;i++) {
-    c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->dim);
+    c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->veclen);
+    if (c->var) c->clist[i].mfcc_var = (float *)mymalloc(sizeof(float)*c->veclen);
     c->clist[i].framenum = 0;
   }
-  c->now.mfcc_sum = (float *)mymalloc(sizeof(float) * c->dim);
+  c->now.mfcc_sum = (float *)mymalloc(sizeof(float) * c->veclen);
+  if (c->var) c->now.mfcc_var = (float *)mymalloc(sizeof(float) * c->veclen);
 
-  c->cmean_init = (float *)mymalloc(sizeof(float) * c->dim);
+  c->cmean_init = (float *)mymalloc(sizeof(float) * c->veclen);
+  if (c->var) c->cvar_init = (float *)mymalloc(sizeof(float) * c->veclen);
   c->cmean_init_set = FALSE;
 
   return c;
@@ -282,7 +288,12 @@ CMN_realtime_free(CMNWork *c)
 
   free(c->cmean_init);
   free(c->now.mfcc_sum);
+  if (c->var) {
+    free(c->cvar_init);
+    free(c->now.mfcc_var);
+  }
   for(i=0;i<c->clist_max;i++) {
+    if (c->var) free(c->clist[i].mfcc_var);
     free(c->clist[i].mfcc_sum);
   }
   free(c->clist);
@@ -299,7 +310,10 @@ CMN_realtime_prepare(CMNWork *c)
 {
   int d;
   
-  for(d=0;d<c->dim;d++) c->now.mfcc_sum[d] = 0.0;
+  for(d=0;d<c->veclen;d++) c->now.mfcc_sum[d] = 0.0;
+  if (c->var) {
+    for(d=0;d<c->veclen;d++) c->now.mfcc_var[d] = 0.0;
+  }
   c->now.framenum = 0;
 }
 
@@ -318,18 +332,50 @@ CMN_realtime(CMNWork *c, float *mfcc)
 
   c->now.framenum++;
   if (c->cmean_init_set) {
-    for(d=0;d<c->dim;d++) {
-      /* accumulate value of given MFCC to sum */
+    /* initial data exists */
+    for(d=0;d<c->veclen;d++) {
+      /* accumulate current MFCC to sum */
       c->now.mfcc_sum[d] += mfcc[d];
-      /* calculate map-cmn and perform subtraction to the given vector */
+      /* calculate map-mean */
       x = c->now.mfcc_sum[d] + c->cweight * c->cmean_init[d];
       y = (double)c->now.framenum + c->cweight;
-      mfcc[d] -= x / y;
+      x /= y;
+      if (c->var) {
+	/* calculate map-var */
+	c->now.mfcc_var[d] += (mfcc[d] - x) * (mfcc[d] - x);
+      }
+      if (c->mean && d < c->mfcc_dim) {
+	/* mean normalization */
+	mfcc[d] -= x;
+      }
+      if (c->var) {
+	/* variance normalization */
+	x = c->now.mfcc_var[d] + c->cweight * c->cvar_init[d];
+	y = (double)c->now.framenum + c->cweight;
+	mfcc[d] /= sqrt(x / y);
+      }
     }
   } else {
-    for(d=0;d<c->dim;d++) {
+    /* no initial data */
+    for(d=0;d<c->veclen;d++) {
+      /* accumulate current MFCC to sum */
       c->now.mfcc_sum[d] += mfcc[d];
-      mfcc[d] -= c->now.mfcc_sum[d] / c->now.framenum;
+      /* calculate current mean */
+      x = c->now.mfcc_sum[d] / c->now.framenum;
+      if (c->var) {
+	/* calculate current variance */
+	c->now.mfcc_var[d] += (mfcc[d] - x) * (mfcc[d] - x);
+      }
+      if (c->mean && d < c->mfcc_dim) {
+	/* mean normalization */
+	mfcc[d] -= x;
+      }
+#if 0	   /* not perform variance normalization on no initial data */
+      if (c->var) {
+	/* variance normalization */
+	mfcc[d] /= sqrt(c->now.mfcc_var[d] / c->now.framenum);
+      }
+#endif
     }
   }
 }
@@ -340,9 +386,9 @@ CMN_realtime(CMNWork *c, float *mfcc)
  * @param c [i/o] CMN calculation work area
  */
 void
-CMN_realtime_update(CMNWork *c)
+CMN_realtime_update(CMNWork *c, HTK_Param *param)
 {
-  float *tmp;
+  float *tmp, *tmp2;
   int i, d;
   int frames;
 
@@ -350,15 +396,44 @@ CMN_realtime_update(CMNWork *c)
   /* this may occur by pausing just after startup */
   if (c->now.framenum == 0) return;
 
+  /* re-calculate variance based on the final mean at the given param */
+  if (c->var && param != NULL) {
+    float m, x;
+    if (param->samplenum != c->now.framenum) {
+      jlog("InternalError: CMN_realtime_update: param->samplenum != c->now.framenum\n");
+    } else if (param->veclen != c->veclen) {
+      jlog("InternalError: CMN_realtime_update: param->veclen != c->veclen\n");
+    } else {
+      for(d=0;d<c->veclen;d++) {
+	m = c->now.mfcc_sum[d] / (float) c->now.framenum;
+	x = 0;
+	for(i=0;i<param->samplenum;i++) {
+	  x += (param->parvec[i][d] - m) * (param->parvec[i][d] - m);
+	}
+	c->now.mfcc_var[d] = x;
+      }
+    }
+  }
+
   /* compute cepstral mean from now and previous sums up to CPMAX frames */
-  for(d=0;d<c->dim;d++) c->cmean_init[d] = c->now.mfcc_sum[d];
+  for(d=0;d<c->veclen;d++) c->cmean_init[d] = c->now.mfcc_sum[d];
+  if (c->var) {
+    for(d=0;d<c->veclen;d++) c->cvar_init[d] = c->now.mfcc_var[d];
+  }
   frames = c->now.framenum;
   for(i=0;i<c->clist_num;i++) {
-    for(d=0;d<c->dim;d++) c->cmean_init[d] += c->clist[i].mfcc_sum[d];
+    for(d=0;d<c->veclen;d++) c->cmean_init[d] += c->clist[i].mfcc_sum[d];
+    if (c->var) {
+      for(d=0;d<c->veclen;d++) c->cvar_init[d] += c->clist[i].mfcc_var[d];
+    }
     frames += c->clist[i].framenum;
     if (frames >= CPMAX) break;
   }
-  for(d=0;d<c->dim;d++) c->cmean_init[d] /= (float) frames;
+  for(d=0;d<c->veclen;d++) c->cmean_init[d] /= (float) frames;
+  if (c->var) {
+    for(d=0;d<c->veclen;d++) c->cvar_init[d] /= (float) frames;
+  }
+
   c->cmean_init_set = TRUE;
 
   /* expand clist if neccessary */
@@ -366,17 +441,21 @@ CMN_realtime_update(CMNWork *c)
     c->clist_max += CPSTEP;
     c->clist = (CMEAN *)myrealloc(c->clist, sizeof(CMEAN) * c->clist_max);
     for(i=c->clist_num;i<c->clist_max;i++) {
-      c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->dim);
+      c->clist[i].mfcc_sum = (float *)mymalloc(sizeof(float)*c->veclen);
+      if (c->var) c->clist[i].mfcc_var = (float *)mymalloc(sizeof(float)*c->veclen);
       c->clist[i].framenum = 0;
     }
   }
   
   /* shift clist */
   tmp = c->clist[c->clist_max-1].mfcc_sum;
+  if (c->var) tmp2 = c->clist[c->clist_max-1].mfcc_var;
   memmove(&(c->clist[1]), &(c->clist[0]), sizeof(CMEAN) * (c->clist_max - 1));
   c->clist[0].mfcc_sum = tmp;
+  if (c->var) c->clist[0].mfcc_var = tmp2;
   /* copy now to clist[0] */
-  memcpy(c->clist[0].mfcc_sum, c->now.mfcc_sum, sizeof(float) * c->dim);
+  memcpy(c->clist[0].mfcc_sum, c->now.mfcc_sum, sizeof(float) * c->veclen);
+  if (c->var) memcpy(c->clist[0].mfcc_var, c->now.mfcc_var, sizeof(float) * c->veclen);
   c->clist[0].framenum = c->now.framenum;
 
   if (c->clist_num < c->clist_max) c->clist_num++;
@@ -457,17 +536,26 @@ CMN_load_from_file(CMNWork *c, char *filename)
     return(FALSE);
   }
   /* check length */
-  if (veclen != c->dim) {
-    jlog("Error: wav2mfcc-pipe: vector dimension mismatch\n");
+  if (veclen != c->veclen) {
+    jlog("Error: wav2mfcc-pipe: cepstral dimension mismatch\n");
+    jlog("Error: wav2mfcc-pipe: process = %d, file = %d\n", c->veclen, veclen);
     fclose_readfile(fp);
     return(FALSE);
   }
   /* read body */
-  if (myread(c->cmean_init, sizeof(float), c->dim, fp) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: failed to read\n");
+  if (myread(c->cmean_init, sizeof(float), c->veclen, fp) == FALSE) {
+    jlog("Error: wav2mfcc-pipe: failed to read mean for CMN\n");
     fclose_readfile(fp);
     return(FALSE);
   }
+  if (c->var) {
+    if (myread(c->cvar_init, sizeof(float), c->veclen, fp) == FALSE) {
+      jlog("Error: wav2mfcc-pipe: failed to read variance for CVN\n");
+      fclose_readfile(fp);
+      return(FALSE);
+    }
+  }
+
   if (fclose_readfile(fp) == -1) {
     jlog("Error: wav2mfcc-pipe: failed to close\n");
     return(FALSE);
@@ -492,27 +580,35 @@ CMN_save_to_file(CMNWork *c, char *filename)
 {
   int fd;
 
-  jlog("Stat: wav2mfcc-pipe: writing current CM to file \"%s\"\n", filename);
+  jlog("Stat: wav2mfcc-pipe: writing current cepstral data to file \"%s\"\n", filename);
 
   if ((fd = creat(filename, 0644)) == -1) {
-    jlog("Error: wav2mfcc-pipe: failed to open\n");
+    jlog("Error: wav2mfcc-pipe: failed to open \"%s\" to write current cepstral data\n", filename);
     return(FALSE);
   }
   /* write header */
-  if (mywrite(&(c->dim), sizeof(int), 1, fd) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: failed to write header\n");
+  if (mywrite(&(c->veclen), sizeof(int), 1, fd) == FALSE) {
+    jlog("Error: wav2mfcc-pipe: cannot write header to \"%s\" as current cepstral data\n", filename);
     close(fd);
     return(FALSE);
   }
   /* write body */
-  if (mywrite(c->cmean_init, sizeof(float), c->dim, fd) == FALSE) {
-    jlog("Error: wav2mfcc-pipe: failed to write header\n");
+  if (mywrite(c->cmean_init, sizeof(float), c->veclen, fd) == FALSE) {
+    jlog("Error: wav2mfcc-pipe: cannot write mean to \"%s\" as current cepstral data\n", filename);
     close(fd);
     return(FALSE);
   }
+  if (c->var) {
+    if (mywrite(c->cvar_init, sizeof(float), c->veclen, fd) == FALSE) {
+      jlog("Error: wav2mfcc-pipe: cannot write variance to \"%s\" as current cepstrum\n", filename);
+      close(fd);
+      return(FALSE);
+    }
+  }
+
   close(fd);
 
-  jlog("Stat: wav2mfcc-pipe: wrote current CM\n");
+  jlog("Stat: wav2mfcc-pipe: current cepstral data written to \"%s\"\n", filename);
   
   return(TRUE);
 }

@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -54,10 +54,14 @@ undef_para(Value *para)
   para->hipass     = -2;	/* undef */
   para->lopass     = -2;	/* undef */
   para->cmn        = -1;
+  para->cvn	   = -1;
   para->raw_e      = -1;
   para->c0         = -1;
   //para->ss_alpha   = -1;
   //para->ss_floor   = -1;
+  para->vtln_alpha = -1;
+  para->vtln_upper = -1;
+  para->vtln_lower = -1;
   para->zmeanframe = -1;
   para->usepower   = -1;
   para->delta      = -1;
@@ -93,10 +97,12 @@ make_default_para(Value *para)
   para->enormal    = FALSE;
   para->escale     = DEF_ESCALE;
   para->silFloor   = DEF_SILFLOOR;
+  para->cvn	   = 0;
   para->hipass     = -1;	/* disabled */
   para->lopass     = -1;	/* disabled */
   //para->ss_alpha    = DEF_SSALPHA;
   //para->ss_floor    = DEF_SSFLOOR;
+  para->vtln_alpha = 1.0;	/* disabled */
   para->zmeanframe = FALSE;
   para->usepower   = FALSE;
 }
@@ -123,6 +129,7 @@ make_default_para_htk(Value *para)
   para->silFloor   = 50.0;
   para->hipass     = -1;	/* disabled */
   para->lopass     = -1;	/* disabled */
+  para->vtln_alpha = 1.0;	/* disabled */
   para->zmeanframe = FALSE;
   para->usepower   = FALSE;
 }
@@ -153,10 +160,14 @@ apply_para(Value *dst, Value *src)
   if (dst->hipass     == -2) dst->hipass = src->hipass;
   if (dst->lopass     == -2) dst->lopass = src->lopass;
   if (dst->cmn        == -1) dst->cmn = src->cmn; 
+  if (dst->cvn        == -1) dst->cvn = src->cvn; 
   if (dst->raw_e      == -1) dst->raw_e = src->raw_e; 
   if (dst->c0         == -1) dst->c0 = src->c0; 
   //if (dst->ss_alpha   == -1) dst->ss_alpha = src->ss_alpha; 
   //if (dst->ss_floor   == -1) dst->ss_floor = src->ss_floor; 
+  if (dst->vtln_alpha == -1) dst->vtln_alpha = src->vtln_alpha; 
+  if (dst->vtln_upper == -1) dst->vtln_upper = src->vtln_upper; 
+  if (dst->vtln_lower == -1) dst->vtln_lower = src->vtln_lower; 
   if (dst->zmeanframe == -1) dst->zmeanframe = src->zmeanframe; 
   if (dst->usepower   == -1) dst->usepower = src->usepower; 
   if (dst->delta      == -1) dst->delta = src->delta; 
@@ -255,6 +266,12 @@ htk_config_file_parse(char *HTKconffile, Value *para)
       para->escale = atof(a);
     } else if (strmatch(d, "SILFLOOR")) { /* -silfloor */
       para->silFloor = atof(a);
+    } else if (strmatch(d, "WARPFREQ")) { /* -vtln (1) */
+      para->vtln_alpha = atof(a);
+    } else if (strmatch(d, "WARPLCUTOFF")) { /* -vtln (2) */
+      para->vtln_lower = atof(a);
+    } else if (strmatch(d, "WARPUCUTOFF")) { /* -vtln (3) */
+      para->vtln_upper = atof(a);
     } else if (strmatch(d, "TARGETKIND")) {
       jlog("Warning: para: TARGETKIND skipped (will be determined by AM header)\n");
       skipped = TRUE;
@@ -384,4 +401,11 @@ put_para(FILE *fp, Value *para)
   fprintf(fp, "\t       use power = ");
   if (para->usepower) fprintf(fp, "ON\n");
   else fprintf(fp, "OFF\n");
+  fprintf(fp, "\t             CVN = ");
+  if (para->cvn) fprintf(fp, "ON\n");
+  else fprintf(fp, "OFF\n");
+  fprintf(fp, "\t            VTLN = ");
+  if(para->vtln_alpha != 1.0) {
+    fprintf(fp, "ON, alpha=%.3f, f_low=%.1f, f_high=%.1f\n", para->vtln_alpha, para->vtln_lower, para->vtln_upper);
+  } else fprintf(fp, "OFF\n");
 }

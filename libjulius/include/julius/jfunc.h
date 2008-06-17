@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Nov  6 22:41:00 2007
  * 
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -76,6 +76,10 @@ boolean j_process_add_lm(Recog *recog, JCONF_LM *lmconf, JCONF_SEARCH *sconf, ch
 boolean j_remove_search(Recog *recog, JCONF_SEARCH *sconf);
 boolean j_remove_lm(Recog *recog, JCONF_LM *lmconf);
 boolean j_remove_am(Recog *recog, JCONF_AM *amconf);
+
+#ifdef DEBUG_VTLN_ALPHA_TEST
+void vtln_alpha(Recog *recog, RecogProcess *r);
+#endif
 
 /* instance.c */
 MFCCCalc *j_mfcccalc_new(JCONF_AM *amconf);

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 
@@ -329,7 +329,7 @@ clear_result(RecogProcess *r)
  * input segmentation.
  * </EN>
  */
-static int
+int
 adin_cut_callback_store_buffer(SP16 *now, int len, Recog *recog)
 {
   if (recog->speechlen == 0) {		/* first part of a segment */
@@ -1082,6 +1082,13 @@ j_recognize_stream_core(Recog *recog)
     
     /* output end of 2nd pass */
     callback_exec(CALLBACK_EVENT_PASS2_END, recog);
+
+#ifdef DEBUG_VTLN_ALPHA_TEST
+    if (r->am->mfcc->para->vtln_alpha == 1.0) {
+      /* if vtln parameter remains default, search for VTLN parameter */
+      vtln_alpha(recog, r);
+    }
+#endif
 
   end_recog:
     /**********************/

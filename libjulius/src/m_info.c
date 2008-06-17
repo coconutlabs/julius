@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -217,13 +217,23 @@ print_engine_info(Recog *recog)
 	  jlog("off\n");
 	}
       }
-      jlog("     cepstral mean norm. = ");
-      if (mfcc->para->cmn) {
+      jlog("  cepstral normalization = ");
+      if (mfcc->para->cmn || mfcc->para->cvn) {
 	if (jconf->decodeopt.realtime_flag) {
-	  jlog("real-time MAP-CMN\n");
+	  jlog("real-time MAP-");
 	} else {
-	  jlog("sentence CMN\n");
+	  jlog("sentence ");
 	}
+	if (mfcc->para->cmn) {
+	  jlog("CMN");
+	}
+	if (mfcc->para->cmn && mfcc->para->cvn) {
+	  jlog("+");
+	}
+	if (mfcc->para->cvn) {
+	  jlog("CVN");
+	}
+	jlog("\n");
       } else {
 	jlog("no\n");
       }
@@ -246,26 +256,29 @@ print_engine_info(Recog *recog)
 
       jlog("\n");
 
-      if (jconf->decodeopt.realtime_flag && mfcc->para->cmn) {
-	jlog(" MAP-CMN:\n");
-	jlog("      default cep. mean   = ");
+      if (jconf->decodeopt.realtime_flag && (mfcc->para->cmn || mfcc->para->cvn)) {
+	jlog(" MAP-");
+	if (mfcc->para->cmn) jlog("CMN");
+	if (mfcc->para->cmn && mfcc->para->cvn) jlog("+");
+	if (mfcc->para->cvn) jlog("CVN");
+	jlog(":\n");
+	jlog("      initial cep. data   = ");
 	if (mfcc->cmn.load_filename) {
 	  jlog("load from \"%s\"\n", mfcc->cmn.load_filename);
 	} else {
-	  jlog("not specified\n");
+	  jlog("none\n");
 	}
-	jlog("      initial mean weight = %6.2f\n", mfcc->cmn.map_weight);
+	jlog("      beginning data weight = %6.2f\n", mfcc->cmn.map_weight);
 	if (mfcc->cmn.update) {
-	  jlog("      initial mean update = yes, from last inputs at each input\n");
+	  jlog("    beginning data update = yes, from last inputs at each input\n");
 	} else {
-	  jlog("      initial mean update = no, use default as initial at each input\n");
+	  jlog("    beginning data update = no, use default as initial at each input\n");
 	}
 	if (mfcc->cmn.save_filename) {
-	  jlog("      save cep. mean to   = %s at end of each input\n", mfcc->cmn.save_filename);
+	  jlog("        save cep. data to = file \"%s\" at end of each input\n", mfcc->cmn.save_filename);
 	}
 	jlog("\n");
       }
-
     }
   }
 

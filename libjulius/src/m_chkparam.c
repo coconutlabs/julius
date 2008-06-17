@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:31:45 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -232,7 +232,7 @@ j_jconf_finalize(Jconf *jconf)
   if (jconf->decodeopt.realtime_flag) {
     for(am = jconf->am_root; am; am = am->next) {
       if (am->analysis.cmn_update == FALSE && am->analysis.cmnload_filename == NULL) {
-	jlog("ERROR: m_chkparam: when \"-cmnnoupdate\", initial cepstral mean should be given by \"-cmnload\"\n");
+	jlog("ERROR: m_chkparam: when \"-cmnnoupdate\", initial cepstral normalisation data should be given by \"-cmnload\"\n");
 	ok_p = FALSE;
       }
     }

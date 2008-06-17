@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 15:17:26 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -267,6 +267,14 @@
 
 
 #define POWER_REJECT_DEFAULT_THRES 9.0
+
+/**
+ * A test to find optimal warping factor for VTLN (EXPERIMENTAL)
+ * 
+ */
+#undef DEBUG_VTLN_ALPHA_TEST
+#define VTLN_RANGE 0.2
+#define VTLN_STEP  0.02
 
 #endif /* __J_DEFINE_H__ */
 

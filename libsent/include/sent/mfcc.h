@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 03:40:52 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 
@@ -49,6 +49,7 @@
 
 #include <sent/stddefs.h>
 #include <sent/htk_defs.h>
+#include <sent/htk_param.h>
 #include <ctype.h>
 
 #define DEF_SMPPERIOD   625	///< Default sampling period in 100ns (625 = 16kHz)
@@ -90,6 +91,9 @@ typedef struct {
   int raw_e;            ///< 1 if using raw energy, 0 if disabled, corresponds to RAWENERGY in HTK
   int zmeanframe;	///< 1 if apply zero mean frame like ZMEANSOURCE in HTK
   int usepower;		///< 1 if use power instead of magnitude in filterbank analysis
+  float vtln_alpha;	///< warping factor for VTLN, corresponds to WARPFREQ in HTK
+  float vtln_upper;	///< hi freq. cut off for VTLN, corresponds to WARPUCUTOFF in HTK
+  float vtln_lower;	///< low freq. cut off for VTLN, corresponds to WARPLCUTOFF in HTK
 
   /* items below does not need to be embedded, because they can be
      detemined from the acoustic model header, or should be computed
@@ -100,6 +104,7 @@ typedef struct {
   int c0;		///< 1 if use 0'th cepstral parameter, 0 if disabled, corresponds to _0 qualifier in HTK
   int absesup;		///< 1 if absolute energy should be suppressed
   int cmn;              ///< 1 if use Cepstrum Mean Normalization, 0 if disabled, corresponds to _Z qualifier in HTK
+  int cvn;		///< 1 if use cepstral variance normalization, else 0 */
   int mfcc_dim;         ///< Number of MFCC dimensions
   int baselen;		///< Number of base MFCC dimension with energies
   int vecbuflen;	///< Vector length needed for computation
@@ -166,7 +171,8 @@ typedef struct {
  * 
  */
 typedef struct {
-  float *mfcc_sum;		///< values of sum of MFCC parameters
+  float *mfcc_sum;		///< Sum of MFCC parameters
+  float *mfcc_var;		///< Variance sum of MFCC parameters
   int framenum;			///< summed number of frames
 } CMEAN;
 
@@ -178,10 +184,14 @@ typedef struct {
   CMEAN *clist;		///< List of MFCC sum for previous inputs
   int clist_max;		///< Allocated number of CMEAN in clist
   int clist_num;		///< Currentlly filled CMEAN in clist
-  int dim;			///< Local workarea to store the number of MFCC dimension.
   float cweight;		///< Weight of initial cepstral mean
   float *cmean_init;	///< Initial cepstral mean for each input
-  boolean cmean_init_set;	///< TRUE if cmean_init was set
+  float *cvar_init;		///< Inisial cepstral standard deviation for each input
+  int mfcc_dim;			///< base MFCC dimension (to apply CMN)
+  int veclen;			///< full MFCC vector length
+  boolean mean;			///< TRUE if CMN is enabled
+  boolean var;			///< TRUE if CVN is enabled
+  boolean cmean_init_set;	///< TRUE if cmean_init (and cvar_init) was set
   CMEAN now;		///< Work area to hold current cepstral mean
 } CMNWork;
 
@@ -200,7 +210,7 @@ MFCCWork *WMP_work_new(Value *para);
 void WMP_calc(MFCCWork *w, float *mfcc, Value *para);
 void WMP_free(MFCCWork *w);
 /* Get filterbank information */
-void InitFBank(MFCCWork *w, Value *para);
+boolean InitFBank(MFCCWork *w, Value *para);
 void FreeFBank(FBankInfo *fb);
 /* Apply hamming window */
 void Hamming (float *wave, int framesize, MFCCWork *w);
@@ -234,6 +244,7 @@ void Accel(float **c, int frame, Value *para);
 void NormaliseLogE(float **c, int frame_num, Value *para);
 /* Cepstrum Mean Normalization (batch) */
 void CMN(float **mfcc, int frame_num, int dim);
+void MVN(float **mfcc, int frame_num, Value *para);
 
 /**** wav2mfcc-pipe.c ****/
 DeltaBuf *WMP_deltabuf_new(int veclen, int windowlen);
@@ -242,11 +253,11 @@ void WMP_deltabuf_prepare(DeltaBuf *db);
 boolean WMP_deltabuf_proceed(DeltaBuf *db, float *new_mfcc);
 boolean WMP_deltabuf_flush(DeltaBuf *db);
 
-CMNWork *CMN_realtime_new(int dimension, float weight);
+CMNWork *CMN_realtime_new(Value *para, float weight);
 void CMN_realtime_free(CMNWork *c);
 void CMN_realtime_prepare(CMNWork *c);
 void CMN_realtime(CMNWork *c, float *mfcc);
-void CMN_realtime_update(CMNWork *c);
+void CMN_realtime_update(CMNWork *c, HTK_Param *param);
 boolean CMN_load_from_file(CMNWork *c, char *filename);
 boolean CMN_save_to_file(CMNWork *c, char *filename);
 

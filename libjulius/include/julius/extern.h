@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -286,6 +286,7 @@ boolean callback_exist(Recog *recog, int code);
 boolean callback_delete(Recog *recog, int id);
 
 /* recogmain.c */
+int adin_cut_callback_store_buffer(SP16 *now, int len, Recog *recog);
 void result_sentence_malloc(RecogProcess *r, int num);
 void result_sentence_free(RecogProcess *r);
 void clear_result(RecogProcess *r);

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 
@@ -1035,6 +1035,13 @@ j_recognize_stream_core(Recog *recog)
       if (r->config->compute_only_1pass) continue;
       /* if search already failed on 1st pass, skip 2nd pass */
       if (r->result.status < 0) continue;
+      /* prepare result storage */
+      if (r->lmtype == LM_DFA && r->config->output.multigramout_flag) {
+	result_sentence_malloc(r, r->config->output.output_hypo_maxnum * multigram_get_all_num(r->lm));
+      } else {
+	result_sentence_malloc(r, r->config->output.output_hypo_maxnum);
+      }
+      /* do 2nd pass */
       if (r->lmtype == LM_PROB) {
 	wchmm_fbs(r->am->mfcc->param, r, 0, 0);
       } else if (r->lmtype == LM_DFA) {
@@ -1042,12 +1049,17 @@ j_recognize_stream_core(Recog *recog)
 	  /* execute 2nd pass multiple times for each grammar sequencially */
 	  /* to output result for each grammar */
 	  MULTIGRAM *m;
+	  boolean has_success = FALSE;
 	  for(m = r->lm->grammars; m; m = m->next) {
 	    if (m->active) {
 	      jlog("STAT: execute 2nd pass limiting words for gram #%d\n", m->id);
 	      wchmm_fbs(r->am->mfcc->param, r, m->cate_begin, m->dfa->term_num);
+	      if (r->result.status == J_RESULT_STATUS_SUCCESS) {
+		has_success = TRUE;
+	      }
 	    }
 	  }
+	  r->result.status = (has_success == TRUE) ? J_RESULT_STATUS_SUCCESS : J_RESULT_STATUS_FAIL;
 	} else {
 	  /* only the best among all grammar will be output */
 	  wchmm_fbs(r->am->mfcc->param, r, 0, r->lm->dfa->term_num);

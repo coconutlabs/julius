@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -1261,9 +1261,6 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
   dwrk->framemaxscore = (LOGPROB *)mymalloc(sizeof(LOGPROB)*peseqlen);
   envl_init(dwrk, peseqlen);
 #endif /* SCAN_BEAM */
-
-  /* prepare result storage */
-  result_sentence_malloc(r, jconf->output.output_hypo_maxnum);
 
   /* エンベロープ探索用の単語長別展開数カウンタを初期化 */
   /* initialize counters for envelope search */

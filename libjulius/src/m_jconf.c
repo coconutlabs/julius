@@ -37,7 +37,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:16:18 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -321,8 +321,8 @@ expand_env(char *str)
       return str;
     }
     strncpy(env, bgn, len);
-    env[len+1] = '\0';
-    
+    env[len] = '\0';
+
     /* get value */
     if ((envval = getenv(env)) == NULL) {
       jlog("ERROR: failed to expand variable: no such variable \"%s\"\n", env);
@@ -348,6 +348,7 @@ expand_env(char *str)
     }
 
     /* go on to next */
+    if (eb != 0) p++;
   }
 
   free(str);

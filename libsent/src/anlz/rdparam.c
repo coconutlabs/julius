@@ -25,7 +25,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 00:16:44 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -103,6 +103,12 @@ read_param(FILE *fp, HTK_Param *pinfo)
   
   /* read in headers */
   if(!myread((char *)&(hd->samplenum), sizeof(unsigned int), 1, fp)) return(FALSE);
+  /* try to detect wav file */
+  if (hd->samplenum == 1380533830) { /* read string "RIFF" as an integer */
+    jlog("Error: rdparam: input file is WAV file, not a parameter file\n");
+    return FALSE;
+  }
+    
   /* try to detect and read little-endian parameters from wav2mfcc... */
   if (hd->samplenum >= 60000) {	/* more than 10 minutes! */
     jlog("Warning: rdparam: header says it has %d frames (more than 10 minutes)\n", hd->samplenum);

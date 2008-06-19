@@ -82,7 +82,7 @@ void r_makeDFA( FA *fa )
     CLASSFLAGS unifyAccptFlag;
     CLASSFLAGS unifyStartFlag;
 
-    verboseMes( "[func]r_makeDFA(FA %08x)", (unsigned int)fa );
+    verboseMes( "[func]r_makeDFA(FA %08x)", (long)fa );
     DFAtravTotal++;
     if( fa->traversed == 1 ){
 	verboseMes( "traversed..." );
@@ -361,11 +361,11 @@ FALIST *appendGroup( FALIST *groupTop, FA *fa )
     FALIST *preAtom = NULL;
     FALIST *curAtom = groupTop;
     FALIST *srcCurAtom = NULL;
-    int cmp;
+    long cmp;
 
     if( fa->group == NULL ){
 	while( curAtom != NULL ){
-	    cmp = (int)fa - (int)curAtom->fa;
+	    cmp = (long)fa - (long)curAtom->fa;
 	    if( cmp == 0 ) return( groupTop );
 	    if( cmp < 0 ) break;
 	    preAtom = curAtom;
@@ -393,7 +393,7 @@ FALIST *appendGroup( FALIST *groupTop, FA *fa )
 		}
 		break;
 	    }*/
-	    cmp = (int)srcCurAtom->fa - (int)curAtom->fa;
+	    cmp = (long)srcCurAtom->fa - (long)curAtom->fa;
 	    if( cmp == 0 ) continue;
 	    if( cmp < 0 ){
 		groupTop = insertFAlist( groupTop, preAtom, curAtom, srcCurAtom->fa );
@@ -464,20 +464,20 @@ void verboseGroup( FALIST *group )
 {
     verboseMes( "Created New Group" );
     while( group != NULL ){
-	verboseMes( "  FAadr: %08x", (unsigned int)group->fa );
+	verboseMes( "  FAadr: %08x", (long)group->fa );
 	group = group->next;
     }
 }
 
 int cmpFAlist( FALIST *group1, FALIST *group2 )
 {
-    int cmp;
+    long cmp;
 
     while( 1 ){
 	if( group1 == NULL && group2 == NULL ) return( 0 );
 	if( group1 == NULL ) return( -1 );
 	if( group2 == NULL ) return( 1 );
-	cmp = (int)group1->fa - (int)group2->fa;
+	cmp = (long)group1->fa - (long)group2->fa;
 	if( cmp != 0 ) return( cmp );
 	group1 = group1->next;
 	group2 = group2->next;

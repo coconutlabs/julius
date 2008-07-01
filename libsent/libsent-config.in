@@ -12,7 +12,7 @@
 #
 # ripped from gtk's gtk-config.in
 #
-# $Id: libsent-config.in,v 1.2 2007/12/18 08:45:50 sumomo Exp $
+# $Id: libsent-config.in,v 1.3 2008/07/01 04:29:45 sumomo Exp $
 #
 
 #
@@ -28,7 +28,7 @@ info="\
 Julius/Julian libsent library rev.@LIBSENT_VERSION@:
 
 - Audio I/O
-    mic device API          : @altype@ (@aldesc@)
+    primary mic device API  : @altype@ (@aldesc@)
     supported audio format  : @wavefile_support@
     NetAudio support        : @use_netaudio@
 - Language Modeling

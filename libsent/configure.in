@@ -3,7 +3,7 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl  $Id: configure.in,v 1.6 2008/05/27 09:16:39 sumomo Exp $
+dnl  $Id: configure.in,v 1.7 2008/07/01 04:29:45 sumomo Exp $
 dnl
 
 dnl Process this file with autoconf to produce a configure script.
@@ -138,31 +138,46 @@ mingw*)
 	;;
 esac
 
+dnl Check for avaiable common adin files
+# ALSA
+has_alsa=yes
+AC_CHECK_HEADERS(alsa/asoundlib.h,,
+  AC_CHECK_HEADERS(sys/asoundlib.h,,
+    has_alsa=no
+))
+# OSS
+has_oss=yes
+AC_CHECK_HEADERS(sys/soundcard.h,,
+  AC_CHECK_HEADERS(machine/soundcard.h,,
+    has_oss=no
+))
+# ESounD
+has_esd=yes
+AC_CHECK_HEADERS(esd.h,,has_esd=no)
+
 dnl Checks for default audio input API (order is important)
 if test "$with_mictype" = auto; then
   AC_MSG_CHECKING(for input device type)
   altype=no
   case "$host_os" in
   linux*)
-	# ALSA
-	AC_TRY_CPP([#include <alsa/asoundlib.h>],altype=alsa)
-	if test "$altype" = no; then
-	  AC_TRY_CPP([#include <sys/asoundlib.h>],altype=alsa)
-	  if test "$altype" = no; then
-	    # OSS
-	    AC_TRY_CPP([#include <sys/soundcard.h>],altype=oss)
-	    if test "$altype" = no; then
-	      AC_MSG_ERROR([no audio header file!])
-	    fi
-	    AC_MSG_WARN([no ALSA header, use OSS instead])
-	  fi
+	# Linux - availability already checked, set default
+	if test "$has_alsa" = yes; then
+	   altype=alsa
+	elif test "$has_oss" = yes; then
+	   altype=oss
+	elif test "$has_esd" = yes; then
+	   altype=esd
+	else
+	   AC_MSG_ERROR([no audio io avaiable!])
 	fi
 	;;
   freebsd*)
 	# FreeBSD (snd driver)
-	AC_TRY_CPP([#include <sys/soundcard.h>],altype=freebsd)
-	if test "$altype" = no; then
-	    AC_TRY_CPP([#include <machine/soundcard.h>],altype=freebsd)
+	if test "$has_oss" = yes; then
+	    altype=freebsd
+	else
+	    AC_MSG_ERROR([no soundcard.h found])
 	fi
 	;;
   darwin*)
@@ -279,35 +294,58 @@ case $altype in
       ADINOBJ="$ADINOBJ src/adin/adin_portaudio.o"
       ;;
     oss)
-	aldesc="Open Sound System compatible"
-	ADINOBJ=src/adin/adin_mic_linux_oss.o
-	AC_DEFINE(USE_MIC)
-	SOUNDLIB=""
-	;;
+      if test "$has_oss" = no; then
+        AC_MSG_ERROR([no OSS header!])
+      fi
+      aldesc="Open Sound System compatible"
+      AC_DEFINE(USE_MIC)
+      SOUNDLIB=""
+      if test "$has_alsa" = yes; then
+        SOUNDLIB="$SOUNDLIB -lasound"
+      fi
+      if test "$has_esd" = yes; then
+        SOUNDLIB="$SOUNDLIB -lesd"
+      fi
+      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ;;
     alsa)
-	aldesc="Advanced Linux Sound Architecture"
-	ADINOBJ=src/adin/adin_mic_linux_alsa.o
-	AC_DEFINE(USE_MIC)
-	SOUNDLIB="-lasound"
-	AC_CHECK_HEADERS(alsa/asoundlib.h,,
-	  AC_CHECK_HEADERS(sys/asoundlib.h,,
-	    AC_MSG_ERROR([neither alsa/asoundlib.h nor sys/asoundlib.h exist])
-	    ))
-	;;
+      if test "$has_alsa" = no; then
+        AC_MSG_ERROR([no ALSA header!])
+      fi
+      aldesc="Advanced Linux Sound Architecture"
+      AC_DEFINE(USE_MIC)
+      SOUNDLIB=""
+      if test "$has_alsa" = yes; then
+        SOUNDLIB="$SOUNDLIB -lasound"
+      fi
+      if test "$has_esd" = yes; then
+        SOUNDLIB="$SOUNDLIB -lesd"
+      fi
+      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ;;
     esd)
-	aldesc="EsoundD - The Enlightened Sound Daemon"
-	ADINOBJ=src/adin/adin_esd.o
-	AC_DEFINE(USE_MIC)
-	SOUNDLIB="-lesd"
-	;;
+      if test "$has_esd" = no; then
+        AC_MSG_ERROR([no ESounD header!])
+      fi
+      aldesc="EsoundD - The Enlightened Sound Daemon"
+      AC_DEFINE(USE_MIC)
+      SOUNDLIB=""
+      if test "$has_alsa" = yes; then
+        SOUNDLIB="$SOUNDLIB -lasound"
+      fi
+      if test "$has_esd" = yes; then
+        SOUNDLIB="$SOUNDLIB -lesd"
+      fi
+      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ;;
+
     freebsd)
+	if test "$has_oss" = no; then
+	  AC_MSG_ERROR([neither sys/soundcard.h nor machine/soundcard.h exist])
+	fi
 	aldesc="FreeBSD snd driver"
 	ADINOBJ=src/adin/adin_mic_freebsd.o
 	AC_DEFINE(USE_MIC)
-	AC_CHECK_HEADERS(sys/soundcard.h,,
-	    AC_CHECK_HEADERS(machine/soundcard.h,,
-	        AC_MSG_ERROR([neither sys/soundcard.h nor machine/soundcard.h exist])
-		))
 	SOUNDLIB=""
 	;;
     coreaudio)

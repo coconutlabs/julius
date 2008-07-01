@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -767,6 +767,11 @@ typedef struct __Jconf__ {
      * 
      */
     int speech_input;
+    /**
+     * Input device.
+     * 
+     */
+    int device;
     /**
      * Sampling frequency
      * 

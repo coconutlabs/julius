@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -33,12 +33,14 @@
 #include <sent/stddefs.h>
 #include <sent/adin.h>
 
-/* sound header */
-#include <esd.h>
+#ifdef HAS_ESD
 
+#include <esd.h>
 static int sock;		///< Audio socket
 static char name_buf[ESD_NAME_MAX]; ///< Unique identifier of this process that will be passed to EsounD
 static int latency = 50;	///< Lantency time in msec
+
+#endif
 
 /** 
  * Connection initialization: check connectivity and open for recording.
@@ -49,8 +51,12 @@ static int latency = 50;	///< Lantency time in msec
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_standby(int sfreq, void *dummy)
+adin_esd_standby(int sfreq, void *dummy)
 {
+#ifndef HAS_ESD
+  jlog("Error: esd not compiled in\n");
+  return FALSE;
+#else
   esd_format_t format = ESD_BITS16 | ESD_MONO | ESD_STREAM | ESD_RECORD;
 
   /* generate uniq ID */
@@ -65,6 +71,7 @@ adin_mic_standby(int sfreq, void *dummy)
   }
 
   return TRUE;
+#endif
 }
  
 /** 
@@ -73,7 +80,7 @@ adin_mic_standby(int sfreq, void *dummy)
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_esd_begin()
 {
   return(TRUE);
 }
@@ -84,7 +91,7 @@ adin_mic_begin()
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_end()
+adin_esd_end()
 {
   return TRUE;
 }
@@ -102,8 +109,11 @@ adin_mic_end()
  * @return actural number of read samples, -2 if an error occured.
  */
 int
-adin_mic_read(SP16 *buf, int sampnum)
+adin_esd_read(SP16 *buf, int sampnum)
 {
+#ifndef HAS_ESD
+  return -2;
+#else
   int size, cnt;
 
   size = sampnum;
@@ -112,11 +122,12 @@ adin_mic_read(SP16 *buf, int sampnum)
 
   while((cnt = read(sock, buf, size)) <= 0) {
     if (cnt < 0) {
-      perror("adin_mic_read: read error\n");
+      perror("adin_esd_read: read error\n");
       return ( -2 );
     }
     usleep(latency * 1000);
   }
   cnt /= sizeof(SP16);
   return(cnt);
+#endif
 }

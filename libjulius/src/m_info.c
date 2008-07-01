@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -799,6 +799,13 @@ print_engine_info(Recog *recog)
 #endif
   } else if (jconf->input.speech_input == SP_MIC) {
     jlog("microphone\n");
+    jlog("\t    device API          = ");
+    switch(jconf->input.device) {
+    case SP_INPUT_DEFAULT: jlog("default"); break;
+    case SP_INPUT_ALSA: jlog("alsa"); break;
+    case SP_INPUT_OSS: jlog("oss"); break;
+    case SP_INPUT_ESD: jlog("esd"); break;
+    }
   }
   if (jconf->input.speech_input != SP_MFCFILE) {
     if (jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_STDIN || jconf->input.speech_input == SP_ADINNET) {

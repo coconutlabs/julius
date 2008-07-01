@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -34,7 +34,7 @@
  * @return TRUE on success, FALSE if @a source is not available.
  */
 static boolean
-adin_select(ADIn *a, int source)
+adin_select(ADIn *a, int source, int dev)
 {
   switch(source) {
   case SP_RAWFILE:
@@ -63,14 +63,36 @@ adin_select(ADIn *a, int source)
 #ifdef USE_MIC
   case SP_MIC:
     /* microphone input */
-    a->ad_standby 	   = adin_mic_standby;
-    a->ad_begin 	   = adin_mic_begin;
-    a->ad_end 		   = adin_mic_end;
     a->ad_resume 	   = NULL;
     a->ad_pause 	   = NULL;
-    a->ad_read 		   = adin_mic_read;
     a->silence_cut_default = TRUE;
     a->enable_thread 	   = TRUE;
+    switch(dev) {
+    case SP_INPUT_DEFAULT:
+      a->ad_standby 	     = adin_mic_standby;
+      a->ad_begin 	     = adin_mic_begin;
+      a->ad_end 	     = adin_mic_end;
+      a->ad_read 	     = adin_mic_read;
+      break;
+    case SP_INPUT_ALSA:
+      a->ad_standby 	     = adin_alsa_standby;
+      a->ad_begin 	     = adin_alsa_begin;
+      a->ad_end 	     = adin_alsa_end;
+      a->ad_read 	     = adin_alsa_read;
+      break;
+    case SP_INPUT_OSS:
+      a->ad_standby 	     = adin_oss_standby;
+      a->ad_begin 	     = adin_oss_begin;
+      a->ad_end 	     = adin_oss_end;
+      a->ad_read 	     = adin_oss_read;
+      break;
+    case SP_INPUT_ESD:
+      a->ad_standby 	     = adin_esd_standby;
+      a->ad_begin 	     = adin_esd_begin;
+      a->ad_end 	     = adin_esd_end;
+      a->ad_read 	     = adin_esd_read;
+      break;
+    }
     break;
 #endif
 #ifdef USE_NETAUDIO
@@ -203,7 +225,7 @@ adin_initialize(Recog *recog)
   jlog("STAT: ###### initialize input device\n");
 
   /* select input device: file, mic, netaudio, etc... */
-  if (adin_select(adin, jconf->input.speech_input) == FALSE) {
+  if (adin_select(adin, jconf->input.speech_input, jconf->input.device) == FALSE) {
     jlog("ERROR: m_adin: failed to select input device\n");
     return FALSE;
   }

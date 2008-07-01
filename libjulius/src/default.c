@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -57,6 +57,7 @@ void
 jconf_set_default_values(Jconf *j)
 {
   j->input.speech_input			= SP_MFCFILE;
+  j->input.device			= SP_INPUT_DEFAULT;
   j->input.sfreq			= 16000;
   j->input.period			= 625;
   j->input.framesize			= DEF_FRAMESIZE;

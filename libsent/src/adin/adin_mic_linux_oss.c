@@ -51,7 +51,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -62,8 +62,8 @@
  */
 
 #include <sent/stddefs.h>
-#include <sent/adin.h>
 
+#include <sent/adin.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -71,7 +71,13 @@
 #include <fcntl.h>
 
 /* sound header */
+#ifdef HAS_OSS
+#ifdef HAVE_SYS_SOUNDCARD_H
 #include <sys/soundcard.h>
+#elif HAVE_MACHINE_SOUNDCARD_H
+#include <machine/soundcard.h>
+#endif
+#endif
 
 /// Default device name, can be overridden by AUDIODEV environment variable
 #define DEFAULT_DEVICE "/dev/dsp"
@@ -106,8 +112,12 @@ static boolean stereo_rec;	///< TRUE if stereo recording (use left only)
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_standby(int sfreq, void *dummy)
+adin_oss_standby(int sfreq, void *dummy)
 {
+#ifndef HAS_OSS
+  jlog("Error: OSS not compiled in\n");
+  return FALSE;
+#else
   int fmt, fmt_can, fmt1, fmt2, rfmt; /* sampling format */
   int samplerate;	/* 16kHz */
   char *defaultdev = DEFAULT_DEVICE; /* default device */
@@ -325,6 +335,8 @@ adin_mic_standby(int sfreq, void *dummy)
   jlog("Stat: adin_oss: audio I/O Latency = %d msec (fragment size = %d samples)\n", frag_size * 1000/ (sfreq * sizeof(SP16)), frag_size / sizeof(SP16));
 
   return TRUE;
+
+#endif /* HAS_OSS */
 }
  
 /** 
@@ -333,7 +345,7 @@ adin_mic_standby(int sfreq, void *dummy)
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_oss_begin()
 {
   char buf[4];
   /* Read 1 sample (and ignore it) to tell the audio device start recording.
@@ -352,7 +364,7 @@ adin_mic_begin()
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_end()
+adin_oss_end()
 {
   /*
    * Not reset device on each end of speech, just let the buffer overrun...
@@ -381,8 +393,11 @@ adin_mic_end()
  * MAXPOLLINTERVAL msec, -2 if error.
  */
 int
-adin_mic_read(SP16 *buf, int sampnum)
+adin_oss_read(SP16 *buf, int sampnum)
 {
+#ifndef HAS_OSS
+  return -2;
+#else
   int size,cnt,i;
   audio_buf_info info;
   fd_set rfds;
@@ -434,4 +449,6 @@ adin_mic_read(SP16 *buf, int sampnum)
   }
 
   return(cnt);
+#endif /* HAS_OSS */
 }
+

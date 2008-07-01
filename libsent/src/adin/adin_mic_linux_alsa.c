@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -60,6 +60,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#ifdef HAS_ALSA
 
 #ifdef HAVE_ALSA_ASOUNDLIB_H
 #include <alsa/asoundlib.h>
@@ -77,7 +79,9 @@ static int count;		///< Poll descriptor count
 
 #define MAXPOLLINTERVAL 300	///< Read timeout in msec.
 
+#endif /* HAS_ALSA */
 
+#ifdef HAS_ALSA
 /** 
  * Output detailed device information.
  * 
@@ -143,6 +147,7 @@ output_card_info(char *pcm_name, snd_pcm_t *handle)
   snd_ctl_close(ctl);
 
 }
+#endif /* HAS_ALSA */
 
 /** 
  * Device initialization: check device capability and open for recording.
@@ -153,8 +158,12 @@ output_card_info(char *pcm_name, snd_pcm_t *handle)
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_standby(int sfreq, void *dummy)
+adin_alsa_standby(int sfreq, void *dummy)
 {
+#ifndef HAS_ALSA
+  jlog("Error: ALSA not compiled in\n");
+  return FALSE;
+#else
   int err;
   snd_pcm_hw_params_t *hwparams; ///< Pointer to device hardware parameters
 #if (SND_LIB_MAJOR == 0)
@@ -358,8 +367,10 @@ adin_mic_standby(int sfreq, void *dummy)
   output_card_info(pcm_name, handle);
 
   return(TRUE);
+#endif /* HAS_ALSA */
 }
 
+#ifdef HAS_ALSA
 /** 
  * Error recovery when PCM buffer underrun or suspend.
  * 
@@ -388,6 +399,7 @@ xrun_recovery(snd_pcm_t *handle, int err)
   }
   return err;
 }
+#endif /* HAS_ALSA */
 
 /** 
  * Start recording.
@@ -395,8 +407,11 @@ xrun_recovery(snd_pcm_t *handle, int err)
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_alsa_begin()
 {
+#ifndef HAS_ALSA
+  return FALSE;
+#else
   int err;
   snd_pcm_state_t status;
 
@@ -433,6 +448,7 @@ adin_mic_begin()
   }
 
   return(TRUE);
+#endif /* HAS_ALSA */
 }
   
 /** 
@@ -441,7 +457,7 @@ adin_mic_begin()
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_end()
+adin_alsa_end()
 {
   return(TRUE);
 }
@@ -459,8 +475,11 @@ adin_mic_end()
  * @return actural number of read samples, -2 if an error occured.
  */
 int
-adin_mic_read(SP16 *buf, int sampnum)
+adin_alsa_read(SP16 *buf, int sampnum)
 {
+#ifndef HAS_ALSA
+  return -2;
+#else
   int cnt;
 
 #if (SND_LIB_MAJOR == 0)
@@ -502,5 +521,7 @@ adin_mic_read(SP16 *buf, int sampnum)
   }
 
   return(cnt);
+#endif /* HAS_ALSA */
 }
+
 /* end of file */

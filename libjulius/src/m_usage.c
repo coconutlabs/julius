@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -63,6 +63,15 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "                           (format: %s)\n", SUPPORTED_WAVEFILE_FORMAT);
 #ifdef USE_MIC
   fprintf(fp, "         mic               microphone device\n");
+# ifdef HAS_ALSA
+  fprintf(fp, "             alsa            use ALSA interface\n");
+# endif
+# ifdef HAS_OSS
+  fprintf(fp, "             oss             use OSS interface\n");
+# endif
+# ifdef HAS_ESD
+  fprintf(fp, "             esd             use ESounD interface\n");
+# endif
 #endif
 #ifdef USE_NETAUDIO
   fprintf(fp, "         netaudio          DatLink/NetAudio server\n");

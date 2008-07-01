@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.2 $ 
+ * $Revision: 1.3 $ 
  */
 /*
  * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
@@ -34,6 +34,18 @@
 #include <sent/stddefs.h>
 #include <sent/speech.h>
 
+#if defined(HAVE_ALSA_ASOUNDLIB_H) || defined(HAVE_SYS_ASOUNDLIB_H)
+#define HAS_ALSA
+#endif
+#ifdef __linux__
+#if defined(HAVE_SYS_SOUNDCARD_H) || defined(HAVE_MACHINE_SOUNDCARD_H)
+#define HAS_OSS
+#endif
+#endif /* __linux__ */
+#ifdef HAVE_ESD_H
+#define HAS_ESD
+#endif
+
 /// To select speech input source
 enum {
   SP_RAWFILE,			///< Wavefile
@@ -42,6 +54,14 @@ enum {
   SP_MFCFILE,			///< HTK parameter file
   SP_NETAUDIO,			///< Live NetAudio/DatLink input
   SP_STDIN			///< Standard input
+};
+
+/// Input device
+enum {
+  SP_INPUT_DEFAULT,
+  SP_INPUT_ALSA,
+  SP_INPUT_OSS,
+  SP_INPUT_ESD,
 };
 
 /// Default unit size of speech input segment in bytes
@@ -122,6 +142,21 @@ boolean adin_mic_standby(int freq, void *arg);
 boolean adin_mic_begin();
 boolean adin_mic_end();
 int adin_mic_read(SP16 *buf, int sampnum);
+/* adin/adin_mic_linux_alsa.c */
+boolean adin_alsa_standby(int freq, void *arg);
+boolean adin_alsa_begin();
+boolean adin_alsa_end();
+int adin_alsa_read(SP16 *buf, int sampnum);
+/* adin/adin_mic_linux_oss.c */
+boolean adin_oss_standby(int freq, void *arg);
+boolean adin_oss_begin();
+boolean adin_oss_end();
+int adin_oss_read(SP16 *buf, int sampnum);
+/* adin/adin_esd.c */
+boolean adin_esd_standby(int freq, void *arg);
+boolean adin_esd_begin();
+boolean adin_esd_end();
+int adin_esd_read(SP16 *buf, int sampnum);
 /* adin/adin_netaudio.c  and adin/adin_na.c */
 boolean adin_netaudio_standby(int freq, void *arg);
 boolean adin_netaudio_begin();

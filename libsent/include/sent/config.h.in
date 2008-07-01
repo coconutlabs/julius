@@ -33,7 +33,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:48:32 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  *
  */
 
@@ -124,10 +124,10 @@
 /* Define if use sin/cos table for MFCC calculation  */
 #undef MFCC_SINCOS_TABLE
 
-/* Define if <sys/soundcard.h> found in FreeBSD */
+/* Define if <sys/soundcard.h> found */
 #undef HAVE_SYS_SOUNDCARD_H
 
-/* Define if <machine/soundcard.h> found in FreeBSD */
+/* Define if <machine/soundcard.h> found */
 #undef HAVE_MACHINE_SOUNDCARD_H
 
 /* Define if <alsa/asoundlib.h> found */
@@ -135,3 +135,6 @@
 
 /* Define if <sys/asoundlib.h> exist and <alsa/asoundlib.h> not exist */
 #undef HAVE_SYS_ASOUNDLIB_H
+
+/* Define if <esd.h> exist  */
+#undef HAVE_ESD_H

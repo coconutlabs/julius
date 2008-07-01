@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -26,6 +26,7 @@
 #include <sent/util.h>
 #include <sent/ngram2.h>
 #include <sent/speech.h>
+#include <sent/adin.h>
 
 /** 
  * Output version of this libsent library.
@@ -48,16 +49,25 @@ confout_audio(FILE *strm)
 {
   fprintf(strm, " - Audio input\n");
 #ifdef USE_MIC
-  fprintf(strm, "    microphone device API   : %s (%s)\n", AUDIO_API_NAME, AUDIO_API_DESC);
+  fprintf(strm, "    primary A/D-in driver   : %s (%s)\n", AUDIO_API_NAME, AUDIO_API_DESC);
 #else
-  fprintf(strm, "    microphone device API   : N/A\n");
+  fprintf(strm, "    primary A/D-in driver   : N/A\n");
 #endif
-  fprintf(strm, "    wavefile formats        : %s\n", AUDIO_FORMAT_DESC);
+  fprintf(strm, "    available drivers       :");
+#ifdef HAS_ALSA
+  fprintf(strm, " alsa");
+#endif
+#ifdef HAS_OSS
+  fprintf(strm, " oss");
+#endif
+#ifdef HAS_ESD
+  fprintf(strm, " esd");
+#endif
 #ifdef USE_NETAUDIO
-  fprintf(strm, "    DATLink/NetAudio support: yes\n");
-#else
-  fprintf(strm, "    DATLink/NetAudio support: no\n");
+  fprintf(strm, " DATLink/NetAudio");
 #endif
+  fprintf(strm, "\n");
+  fprintf(strm, "    wavefile formats        : %s\n", AUDIO_FORMAT_DESC);
   fprintf(strm, "    max. length of an input : %d samples, %d words\n", MAXSPEECHLEN, MAXSEQNUM);
 }
 

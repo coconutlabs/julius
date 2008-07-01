@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -283,6 +283,19 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 #ifdef USE_MIC
       } else if (strmatch(tmparg,"mic")) {
 	jconf->input.speech_input = SP_MIC;
+	jconf->input.device = SP_INPUT_DEFAULT;
+	jconf->decodeopt.realtime_flag = TRUE;
+      } else if (strmatch(tmparg,"alsa")) {
+	jconf->input.speech_input = SP_MIC;
+	jconf->input.device = SP_INPUT_ALSA;
+	jconf->decodeopt.realtime_flag = TRUE;
+      } else if (strmatch(tmparg,"oss")) {
+	jconf->input.speech_input = SP_MIC;
+	jconf->input.device = SP_INPUT_OSS;
+	jconf->decodeopt.realtime_flag = TRUE;
+      } else if (strmatch(tmparg,"esd")) {
+	jconf->input.speech_input = SP_MIC;
+	jconf->input.device = SP_INPUT_ESD;
 	jconf->decodeopt.realtime_flag = TRUE;
 #endif
       } else if (strmatch(tmparg,"file")) { /* for 1.1 compat */

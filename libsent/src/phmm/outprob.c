@@ -46,7 +46,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 18:45:21 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -185,6 +185,7 @@ outprob_state(HMMWork *wrk, int t, HTK_HMM_State *stateinfo, HTK_Param *param)
 {
   LOGPROB outp;
   int sid;
+  int i, d;
 
   sid = stateinfo->id;
   
@@ -195,8 +196,10 @@ outprob_state(HMMWork *wrk, int t, HTK_HMM_State *stateinfo, HTK_Param *param)
   if (wrk->OP_time != t) {
     wrk->OP_last_time = wrk->OP_time;
     wrk->OP_time = t;
-    wrk->OP_vec = param->parvec[t];
-    wrk->OP_veclen = param->veclen;
+    for(d=0,i=0;i<wrk->OP_nstream;i++) {
+      wrk->OP_vec_stream[i] = &(param->parvec[t][d]);
+      d += wrk->OP_veclen_stream[i];
+    }
 
     outprob_cache_extend(wrk, t);	/* extend cache if needed */
     wrk->last_cache = wrk->outprob_cache[t]; /* reduce 2-d array access */

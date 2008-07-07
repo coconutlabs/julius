@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 03:25:11 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -121,20 +121,20 @@ tmix_create_codebook_index(HTK_HMM_INFO *hmminfo, GCODEBOOK *book)
 
 /** 
  * @brief  Read a codebook name and weights, build the codebook structure
- * on demand, and assigns them to the current state.
+ * on demand, and assigns them to the current mixture PDF.
  *
  * The required codebook on the current token will be assigned to this
- * state.  If the corresponding codebook structure is not built yet,
+ * mpdf.  If the corresponding codebook structure is not built yet,
  * it will be constructed here on demand by gathering corresponding mixture
- * density definitions.  Then this state will store the pointer to the
+ * density definitions.  Then this mpdf will store the pointer to the
  * codebook, together with its own mixture weights in the following tokens.
  * 
  * @param fp [in] file pointer
- * @param state [i/o] current %HMM state to hold pointer to the codebook and their weights
+ * @param mpdf [i/o] current %HMM mixture PDF to hold pointer to the codebook and their weights
  * @param hmm [i/o] %HMM definition data, codebook statistics and tied-mixture marker will be modified.
  */
 void
-tmix_read(FILE *fp, HTK_HMM_State *state, HTK_HMM_INFO *hmm)
+tmix_read(FILE *fp, HTK_HMM_PDF *mpdf, HTK_HMM_INFO *hmm)
 {
   char *bookname;
   GCODEBOOK *thebook;
@@ -147,7 +147,7 @@ tmix_read(FILE *fp, HTK_HMM_State *state, HTK_HMM_INFO *hmm)
     /* create GCODEBOOK global index structure from mixture macros */
     thebook = (GCODEBOOK *)mybmalloc2(sizeof(GCODEBOOK), &(hmm->mroot));
     thebook->name = mybstrdup2(bookname, &(hmm->mroot));
-    thebook->num = state->mix_num;
+    thebook->num = mpdf->mix_num;
     /* map codebook id to HTK_HMM_Dens* */
     tmix_create_codebook_index(hmm, thebook);
     /* register the new codebook */
@@ -158,23 +158,23 @@ tmix_read(FILE *fp, HTK_HMM_State *state, HTK_HMM_INFO *hmm)
     if (hmm->maxcodebooksize < thebook->num) hmm->maxcodebooksize = thebook->num;
   } else {
     /* check coherence */
-    if (state->mix_num != thebook->num) {
+    if (mpdf->mix_num != thebook->num) {
       rderr("tmix_read: TMIX weight num don't match the codebook size");
     }
   }
 
   /* set pointer to the GCODEBOOK structure  */
-  state->b = (HTK_HMM_Dens **)thebook;
+  mpdf->b = (HTK_HMM_Dens **)thebook;
 
-  /* store the weights to `state->bweight[]' */
+  /* store the weights to `mpdf->bweight[]' */
   read_token(fp);
-  state->bweight = (PROB *) mybmalloc2(sizeof(PROB) * state->mix_num, &(hmm->mroot));
+  mpdf->bweight = (PROB *) mybmalloc2(sizeof(PROB) * mpdf->mix_num, &(hmm->mroot));
   {
     int len;
     double w;
 
     mid = 0;
-    while (mid < state->mix_num)
+    while (mid < mpdf->mix_num)
     {
       char *p, q;
       NoTokErr("missing some TMIX weights");
@@ -190,7 +190,7 @@ tmix_read(FILE *fp, HTK_HMM_State *state, HTK_HMM_INFO *hmm)
       }
       read_token(fp);
       for(i=0;i<len;i++) {
-	state->bweight[mid] = (PROB)log(w);
+	mpdf->bweight[mid] = (PROB)log(w);
 	mid++;
       }
     }

@@ -16,7 +16,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 19:36:47 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -68,7 +68,7 @@
 /// @ingroup hmminfo
 
 /// Possible maximum value of state ID (in unsigned short)
-#define MAX_STATE_NUM 65535
+#define MAX_STATE_NUM 2147483647
 
 /// Delimiter strings/characters to generate logical triphone names
 #define HMM_RC_DLIM "+"		///< Right context delimiter in string
@@ -80,7 +80,7 @@
 #define SPMODEL_NAME_DEFAULT "sp"
 
 /// Length limit of HMM name (including ones generated in Julius)
-#define MAX_HMMNAME_LEN 64
+#define MAX_HMMNAME_LEN 256
 
 /// Specify method of calculating approximated acoustic score at inter-word context pseudo phones on word edge
 enum iwcd_type {
@@ -95,7 +95,7 @@ enum iwcd_type {
 /// Stream information (although current Julius supports only single stream)
 typedef struct {
   short num;			///< Number of stream
-  short vsize[50];		///< Vector size for each stream
+  short vsize[MAXSTREAMNUM];	///< Vector size for each stream
 } HTK_HMM_StreamInfo;
 
 /// %HMM Option
@@ -137,19 +137,42 @@ typedef struct _HTK_HMM_dens {
   struct _HTK_HMM_dens *next;	///< Pointer to next data, NULL if last
 } HTK_HMM_Dens;
 
+/// %HMM stream weight definition
+typedef struct _HTK_HMM_stream_weight {
+  char *name;			///< Name (NULL for in-line definition)
+  VECT *weight;			///< Weight of each stream in log scale
+  short len;			///< Length of above
+  struct _HTK_HMM_stream_weight *next; ///< Pointer to next data, NULL on last
+} HTK_HMM_StreamWeight;
+
 /**
- * @brief %HMM state data
- *
+ * @brief %HMM mixture PDF for a stream
+ * 
  * @note
  * In a tied-mixture model, @a b points to a codebook defined as GCODEBOOK
  * intead of the array of densities.
+ * 
+ */
+typedef struct _HTK_HMM_PDF {
+  char *name;			///< Name (NULL for in-line definition)
+  boolean tmix;			///< TRUE if this is assigned to tied-mixture codebook
+  short stream_id;		///< Stream ID to which this pdf is assigned, begins from 0
+  short mix_num;		///< Number of densities (mixtures) assigned.
+  HTK_HMM_Dens **b;		///< Link array to assigned densities, or pointer to GCODEBOOK in tied-mixture model
+  PROB *bweight;		///< Weights corresponding to above
+  struct _HTK_HMM_PDF *next;	///< Pointer to next data, or NULL at last
+} HTK_HMM_PDF;
+
+/**
+ * @brief %HMM state data
+ *
  */
 typedef struct _HTK_HMM_state {
   char *name;			///< Name (NULL if not defined as Macro)
-  short mix_num;		///< Number of densities (mixtures) assigned
-  HTK_HMM_Dens **b;		///< Link array to assigned densities, or pointer to GCODEBOOK in tied-mixture model
-  PROB *bweight;		///< Weights corresponding to above
-  unsigned short id;		///< Uniq state id starting from 0 for caching of output probability
+  short nstream;		///< Num of stream
+  HTK_HMM_StreamWeight *w;	///< Pointer to stream weight data, or NULL is not specified
+  HTK_HMM_PDF **pdf;	        ///< Array of mixture PDFs for each stream
+  int id; 			///< Uniq state id starting from 0 for caching of output probability
   struct _HTK_HMM_state *next;  ///< Pointer to next data, NULL if last
 } HTK_HMM_State;
 
@@ -316,6 +339,8 @@ typedef struct {
   HTK_HMM_Trans *trstart;	///< Root pointer to the list of transition matrixes
   HTK_HMM_Var *vrstart;		///< Root pointer to the list of variance data
   HTK_HMM_Dens *dnstart;	///< Root pointer to the list of density (mixture) data
+  HTK_HMM_PDF *pdfstart;	///< Root pointer to the list of mixture pdf data
+  HTK_HMM_StreamWeight *swstart; ///< Root pointer to the list of stream weight data
   HTK_HMM_State *ststart;	///< Root pointer to the list of state data
   HTK_HMM_Data *start;		///< Root pointer to the list of models
   //@}
@@ -333,7 +358,9 @@ typedef struct {
   //@{
   APATNODE *tr_root;		///< Root index node for transition matrixes
   APATNODE *vr_root;		///< Root index node for variance data
+  APATNODE *sw_root;		///< Root index node for stream weight data
   APATNODE *dn_root;		///< Root index node for density data
+  APATNODE *pdf_root;		///< Root index node for mixture PDF
   APATNODE *st_root;		///< Root index node for state data
   APATNODE *physical_root;	///< Root index node for defined %HMM name
   APATNODE *logical_root;	///< Root index node for logical %HMM name
@@ -367,6 +394,7 @@ typedef struct {
   int totalhmmnum;		///< Total number of physical %HMM
   int totallogicalnum;		///< Total number of logical %HMM
   int totalpseudonum;		///< Total number of pseudo %HMM
+  int totalpdfnum;		///< Total number of mixture PDF
   int codebooknum;		///< Total number of codebook on tied-mixture model
   int maxcodebooksize;		///< Maximum size of codebook on tied-mixture model
   int maxmixturenum;		///< Maximum number of Gaussian per mixture
@@ -374,6 +402,12 @@ typedef struct {
 
   BMALLOC_BASE *mroot;		///< Pointer for block memory allocation
   BMALLOC_BASE *lroot;		///< Pointer for block memory allocation for logical HMM
+
+  int *tmp_mixnum;		///< Work area for state reading
+
+#ifdef ENABLE_MSD
+  boolean has_msd;		///< TRUE if this model contains MSD part
+#endif
 
   //@}
 } HTK_HMM_INFO;
@@ -385,8 +419,11 @@ void rderr(char *str);
 char *read_token(FILE *fp);
 boolean rdhmmdef(FILE *, HTK_HMM_INFO *);
 void htk_hmm_inverse_variances(HTK_HMM_INFO *hmm);
+#ifdef ENABLE_MSD
+void htk_hmm_check_msd(HTK_HMM_INFO *hmm);
+#endif
 /* rdhmmdef_options.c */
-void set_global_opt(FILE *fp, HTK_HMM_INFO *hmm);
+boolean set_global_opt(FILE *fp, HTK_HMM_INFO *hmm);
 char *get_cov_str(short covtype);
 char *get_dur_str(short durtype);
 /* rdhmmdef_trans.c */
@@ -398,6 +435,11 @@ HTK_HMM_State *get_state_data(FILE *, HTK_HMM_INFO *);
 void def_state_macro(char *, FILE *, HTK_HMM_INFO *);
 HTK_HMM_State *state_lookup(HTK_HMM_INFO *hmm, char *keyname);
 void state_add(HTK_HMM_INFO *hmm, HTK_HMM_State *new);
+/* rdhmmdef_mpdf.c */
+void mpdf_add(HTK_HMM_INFO *hmm, HTK_HMM_PDF *new);
+HTK_HMM_PDF *mpdf_lookup(HTK_HMM_INFO *hmm, char *keyname);
+HTK_HMM_PDF *get_mpdf_data(FILE *fp, HTK_HMM_INFO *hmm, int mix_num, short stream_id);
+void def_mpdf_macro(char *name, FILE *fp, HTK_HMM_INFO *hmm);
 /* rdhmmdef_dens.c */
 HTK_HMM_Dens *get_dens_data(FILE *, HTK_HMM_INFO *);
 void def_dens_macro(char *, FILE *, HTK_HMM_INFO *);
@@ -407,12 +449,16 @@ void dens_add(HTK_HMM_INFO *hmm, HTK_HMM_Dens *new);
 HTK_HMM_Var *get_var_data(FILE *, HTK_HMM_INFO *);
 void def_var_macro(char *, FILE *, HTK_HMM_INFO *);
 void var_add(HTK_HMM_INFO *hmm, HTK_HMM_Var *new);
+/* rdhmmdef_streamweight.c */
+HTK_HMM_StreamWeight *get_streamweight_data(FILE *fp, HTK_HMM_INFO *hmm);
+void def_streamweight_macro(char *, FILE *, HTK_HMM_INFO *);
+void sw_add(HTK_HMM_INFO *hmm, HTK_HMM_StreamWeight *new);
 /* rdhmmdef_data.c */
 void def_HMM(char *, FILE *, HTK_HMM_INFO *);
 HTK_HMM_Data *htk_hmmdata_new(HTK_HMM_INFO *);
 void htk_hmmdata_add(HTK_HMM_INFO *hmm, HTK_HMM_Data *new);
 /* rdhmmdef_tiedmix.c */
-void tmix_read(FILE *fp, HTK_HMM_State *state, HTK_HMM_INFO *hmm);
+void tmix_read(FILE *fp, HTK_HMM_PDF *mpdf, HTK_HMM_INFO *hmm);
 void codebook_add(HTK_HMM_INFO *hmm, GCODEBOOK *new);
 /* rdhmmdef_regtree.c */
 void def_regtree_macro(char *name, FILE *fp, HTK_HMM_INFO *hmm);
@@ -422,6 +468,7 @@ boolean rdhmmlist(FILE *fp, HTK_HMM_INFO *hmminfo);
 void put_htk_trans(FILE *fp, HTK_HMM_Trans *t);
 void put_htk_var(FILE *fp, HTK_HMM_Var *v);
 void put_htk_dens(FILE *fp, HTK_HMM_Dens *d);
+void put_htk_mpdf(FILE *fp, HTK_HMM_PDF *m);
 void put_htk_state(FILE *fp, HTK_HMM_State *s);
 void put_htk_hmm(FILE *fp, HTK_HMM_Data *h);
 void put_logical_hmm(FILE *fp, HMM_Logical *l);

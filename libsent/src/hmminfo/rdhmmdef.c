@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 00:17:18 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -134,11 +134,40 @@ htk_hmm_inverse_variances(HTK_HMM_INFO *hmm)
 
   for (v = hmm->vrstart; v; v = v->next) {
     for(i=0;i<v->len;i++) {
-      v->vec[i] = 1 / v->vec[i];
+      v->vec[i] = 1.0 / v->vec[i];
     }
   }
 }
 
+#ifdef ENABLE_MSD
+/** 
+ * Check if this HMM contains MSD-HMM.  The status will be set to hmm->has_msd.
+ * 
+ * @param hmm [i/o] %HMM definition data to check.
+ */
+void
+htk_hmm_check_msd(HTK_HMM_INFO *hmm)
+{
+  HTK_HMM_PDF *m;
+  int vlen;
+  int i;
+
+  hmm->has_msd = FALSE;
+  for (m = hmm->pdfstart; m; m = m->next) {
+    /* skip tied-mixture pdf */
+    if (m->tmix) continue;
+    /* check if vector length are the same */
+    vlen = hmm->opt.stream_info.vsize[m->stream_id];
+    for(i=0;i<m->mix_num;i++) {
+      if (m->b[i]->meanlen != vlen) {
+	jlog("Stat: rdhmmdef: assume MSD-HMM since Gaussian dimension are not consistent\n");
+	hmm->has_msd = TRUE;
+	return;
+      }
+    }
+  }
+}
+#endif
 
 /** 
  * @brief  Main top routine to read in HTK %HMM definition file.
@@ -172,7 +201,9 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
     read_token(fp);		/* read next token after the "~.."  */
     switch(macrosw) {
     case 'o':			/* global option */
-      set_global_opt(fp,hmm);
+      if (set_global_opt(fp,hmm) == FALSE) {
+	return FALSE;
+      }
       break;
     case 't':			/* transition macro */
       name = mybstrdup2(rdhmmdef_token, &(hmm->mroot));
@@ -204,11 +235,23 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
       read_token(fp);
       def_var_macro(name, fp, hmm);
       break;
+    case 'w':			/* Stream weight macro */
+      name = mybstrdup2(rdhmmdef_token, &(hmm->mroot));
+      if (strlen(name) >= MAX_HMMNAME_LEN) rderr("Macro name too long");
+      read_token(fp);
+      def_streamweight_macro(name, fp, hmm);
+      break;
     case 'r':			/* Regression class macro (ignore) */
       name = mybstrdup2(rdhmmdef_token, &(hmm->mroot));
       if (strlen(name) >= MAX_HMMNAME_LEN) rderr("Macro name too long");
       read_token(fp);
       def_regtree_macro(name, fp, hmm);
+      break;
+    case 'p':			/* Mixture pdf macro (extension of HTS) */
+      name = mybstrdup2(rdhmmdef_token, &(hmm->mroot));
+      if (strlen(name) >= MAX_HMMNAME_LEN) rderr("Macro name too long");
+      read_token(fp);
+      def_mpdf_macro(name, fp, hmm);
       break;
     }
   }
@@ -250,15 +293,17 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
   /* also calculate the maximum number of mixture */
   {
     HTK_HMM_State *stmp;
-    int n, max;
+    int n, max, s, mix;
     n = 0;
     max = 0;
     for (stmp = hmm->ststart; stmp; stmp = stmp->next) {
-      if (max < stmp->mix_num) max = stmp->mix_num;
+      for(s=0;s<stmp->nstream;s++) {
+	mix = stmp->pdf[s]->mix_num;
+	if (max < mix) max = mix;
+      }
       stmp->id = n++;
       if (n >= MAX_STATE_NUM) {
 	jlog("Error: rdhmmdef: too much states in a model > %d\n", MAX_STATE_NUM);
-	jlog("Error: you can try changing value of MAX_STATE_NUM\n");
 	return FALSE;
       }
     }
@@ -278,7 +323,7 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
     hmm->maxstatenum = maxlen;
     hmm->totalhmmnum = n;
   }
-  /* compute total number of mixtures */
+  /* compute total number of Gaussians */
   {
     HTK_HMM_Dens *dtmp;
     int n = 0;
@@ -296,6 +341,19 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
     }
     hmm->totalmixnum = n;
   }
+  /* compute total number of mixture PDFs */
+  {
+    HTK_HMM_PDF *p;
+    int n = 0;
+    for (p = hmm->pdfstart; p; p = p->next) {
+      n++;
+    }
+    hmm->totalpdfnum = n;
+  }
+#ifdef ENABLE_MSD
+  /* check if MSD-HMM */
+  htk_hmm_check_msd(hmm);
+#endif
 
   return(TRUE);			/* success */
 }

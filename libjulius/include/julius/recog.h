@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -259,6 +259,11 @@ typedef struct __gmm_calc__{
   LOGPROB *gmm_score;   ///< Current accumurated scores for each GMM
   boolean *is_voice;		///< True if corresponding model designates speech, FALSE if noise
   int framecount;               ///< Current frame count
+
+  short OP_nstream;		///< Number of input stream for GMM
+  VECT *OP_vec_stream[MAXSTREAMNUM]; ///< input vector for each stream at that frame
+  short OP_veclen_stream[MAXSTREAMNUM]; ///< vector length for each stream
+
   LOGPROB *OP_calced_score; ///< Work area for Gaussian pruning on GMM: scores
   int *OP_calced_id; ///< Work area for Gaussian pruning on GMM: id
   int OP_calced_num; ///< Work area for Gaussian pruning on GMM: number of above

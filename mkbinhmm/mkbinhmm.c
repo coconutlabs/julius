@@ -7,7 +7,7 @@
 
 /* mkbinhmm --- read in ascii hmmdefs file and write in binary format */
 
-/* $Id: mkbinhmm.c,v 1.2 2007/12/18 08:45:55 sumomo Exp $ */
+/* $Id: mkbinhmm.c,v 1.3 2008/07/07 05:50:12 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
@@ -69,7 +69,10 @@ main(int argc, char *argv[])
 
   /* read hmmdef file */
   undef_para(&para);
-  init_hmminfo(hmminfo, infile, NULL, &para);
+  if (init_hmminfo(hmminfo, infile, NULL, &para) == FALSE) {
+    fprintf(stderr, "--- terminated\n");
+    return -1;
+  }
 
   if (conffile != NULL) {
     /* if input HMMDEFS already has embedded parameter

@@ -33,7 +33,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:48:32 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  *
  */
 
@@ -138,3 +138,6 @@
 
 /* Define if <esd.h> exist  */
 #undef HAVE_ESD_H
+
+/* Define if MSD-HMM support is enabled */
+#undef ENABLE_MSD

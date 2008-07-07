@@ -41,7 +41,7 @@
  * @author Akinobu LEE
  * @date   Tue Mar 15 05:14:10 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 
@@ -258,11 +258,11 @@ gmm_gprune_safe_init(GMMCalc *gc, HTK_HMM_INFO *hmminfo, int prune_num)
 {
   /* store the pruning num to local area */
   gc->OP_gprune_num = prune_num;
-  /* maximum Gaussian set size = maximum mixture size */
-  gc->OP_calced_maxnum = hmminfo->maxmixturenum;
+  /* maximum Gaussian set size = maximum mixture size * nstream */
+  gc->OP_calced_maxnum = hmminfo->maxmixturenum * gc->OP_nstream;
   /* allocate memory for storing list of currently computed Gaussian in a frame */
-  gc->OP_calced_score = (LOGPROB *)mymalloc(sizeof(LOGPROB) * gc->OP_gprune_num);
-  gc->OP_calced_id = (int *)mymalloc(sizeof(int) * gc->OP_gprune_num);
+  gc->OP_calced_score = (LOGPROB *)mymalloc(sizeof(LOGPROB) * gc->OP_calced_maxnum);
+  gc->OP_calced_id = (int *)mymalloc(sizeof(int) * gc->OP_calced_maxnum);
 }
 
 /** 
@@ -317,7 +317,7 @@ gmm_gprune_safe(GMMCalc *gc, HTK_HMM_Dens **g, int gnum)
  * あるGMM状態の現フレームに対する出力確率を計算する. 
  * 
  * @param gc [i/o] GMM計算用ワークエリア
- * @param s [in] GMM 状態
+ * @param state [in] GMM 状態
  * 
  * @return 出力確率の対数スコア
  * </JA>
@@ -325,29 +325,48 @@ gmm_gprune_safe(GMMCalc *gc, HTK_HMM_Dens **g, int gnum)
  * Compute the output probability of a GMM state for the current frame.
  * 
  * @param gc [i/o] work area for GMM calculation
- * @param s [in] GMM state
+ * @param state [in] GMM state
  * 
  * @return the log probability.
  * </EN>
  */
 static LOGPROB
-gmm_calc_mix(GMMCalc *gc, HTK_HMM_State *s)
+gmm_calc_mix(GMMCalc *gc, HTK_HMM_State *state)
 {
   int i;
-  LOGPROB logprob = LOG_ZERO;
+  LOGPROB logprob, logprobsum;
+  int s;
+  PROB stream_weight;
+
 
   /* compute Gaussian set */
-  gmm_gprune_safe(gc, s->b, s->mix_num);
-  /* computed Gaussians will be set in:
-     score ... OP_calced_score[0..OP_calced_num]
-     id    ... OP_calced_id[0..OP_calced_num] */
-  
+  logprobsum = 0.0;
+  for(s=0;s<gc->OP_nstream;s++) {
+    /* set stream weight */
+    if (state->w) stream_weight = state->w->weight[s];
+    else stream_weight = 1.0;
+    /* setup storage pointer for this mixture pdf */
+    gc->OP_vec = gc->OP_vec_stream[s];
+    gc->OP_veclen = gc->OP_veclen_stream[s];
+    /* compute output probabilities */
+    gmm_gprune_safe(gc, state->pdf[s]->b, state->pdf[s]->mix_num);
+    /* computed Gaussians will be set in:
+       score ... OP_calced_score[0..OP_calced_num]
+       id    ... OP_calced_id[0..OP_calced_num] */
   /* sum */
-  for(i=0;i<gc->OP_calced_num;i++) {
-    gc->OP_calced_score[i] += s->bweight[gc->OP_calced_id[i]];
+    for(i=0;i<gc->OP_calced_num;i++) {
+      gc->OP_calced_score[i] += state->pdf[s]->bweight[gc->OP_calced_id[i]];
+    }
+    /* add log probs */
+    logprob = addlog_array(gc->OP_calced_score, gc->OP_calced_num);
+    /* if outprob of a stream is zero, skip this stream */
+    if (logprob <= LOG_ZERO) continue;
+    /* sum all the obtained mixture scores */
+    logprobsum += logprob * stream_weight;
+
   }
-  logprob = addlog_array(gc->OP_calced_score, gc->OP_calced_num);
-  if (logprob <= LOG_ZERO) return LOG_ZERO;
+  if (logprobsum == 0.0) return(LOG_ZERO); /* no valid stream */
+  if (logprobsum <= LOG_ZERO) return(LOG_ZERO);	/* lowest == LOG_ZERO */
   return (logprob * INV_LOG_TEN);
 }
 
@@ -377,9 +396,12 @@ gmm_calc_mix(GMMCalc *gc, HTK_HMM_State *s)
 static LOGPROB
 outprob_state_nocache(GMMCalc *gc, int t, HTK_HMM_State *stateinfo, HTK_Param *param)
 {
+  int d, i;
   /* set global values for outprob functions to access them */
-  gc->OP_vec = param->parvec[t];
-  gc->OP_veclen = param->veclen;
+  for(d=0,i=0;i<gc->OP_nstream;i++) {
+    gc->OP_vec_stream[i] = &(param->parvec[t][d]);
+    d += gc->OP_veclen_stream[i];
+  }
   return(gmm_calc_mix(gc, stateinfo));
 }
 
@@ -433,6 +455,8 @@ gmm_init(Recog *recog)
   if (recog->gc == NULL) {
     gc = (GMMCalc *)mymalloc(sizeof(GMMCalc));
     recog->gc = gc;
+  } else {
+    gc = recog->gc;
   }
   
   /* allocate buffers */
@@ -462,6 +486,10 @@ gmm_init(Recog *recog)
   }
 
   /* initialize work area */
+  gc->OP_nstream = gmm->opt.stream_info.num;
+  for(i=0;i<gc->OP_nstream;i++) {
+    gc->OP_veclen_stream[i] = gmm->opt.stream_info.vsize[i];
+  }
   gmm_gprune_safe_init(gc, gmm, recog->jconf->reject.gmm_gprune_num);
 
   /* check if variances are inversed */
@@ -648,6 +676,7 @@ gmm_end(Recog *recog)
   i = 0;
   maxprob = LOG_ZERO;
   dmax = NULL;
+  maxid = 0;
   for(d=gmm->start;d;d=d->next) {
     if (maxprob < score[i]) {
       dmax = d;

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 19:11:50 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -39,14 +39,18 @@ check_hmm_options(HTK_HMM_INFO *hmm)
 {
   boolean ret_flag = TRUE;
   
-  if (hmm->opt.stream_info.num > 1) {
-    jlog("Error: check_hmmtype: Input stream must be single\n");
-    ret_flag = FALSE;
-  }
-  if (hmm->opt.dur_type != D_NULL) {
-    jlog("Error: check_hmmtype: Duration types other than NULLD are not supported.\n");
-    ret_flag = FALSE;
-  }
+  /* 
+   * if (hmm->opt.stream_info.num > 1) {
+   *   jlog("Error: check_hmmtype: Input stream must be single\n");
+   *   ret_flag = FALSE;
+   * }
+   */
+/* 
+ *   if (hmm->opt.dur_type != D_NULL) {
+ *     jlog("Error: check_hmmtype: Duration types other than NULLD are not supported.\n");
+ *     ret_flag = FALSE;
+ *   }
+ */
   if (hmm->opt.cov_type != C_DIAG_C) {
     jlog("Error: check_hmmtype: Covariance matrix type must be DIAGC, others not supported.\n");
     ret_flag = FALSE;

@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -917,7 +917,7 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
   PROCESS_AM *am;
   PROCESS_LM *lm;
 
-  jlog("STAT: *** composing recognizer instance SR%02d %s (AM%02d %s, LM%02d %s)\n", sconf->id, sconf->name, sconf->amconf->id, sconf->amconf->name, sconf->lmconf->id, sconf->lmconf->name);
+  jlog("STAT: composing recognizer instance SR%02d %s (AM%02d %s, LM%02d %s)\n", sconf->id, sconf->name, sconf->amconf->id, sconf->amconf->name, sconf->lmconf->id, sconf->lmconf->name);
 
   /* allocate recognition instance */
   p = j_recogprocess_new(recog, sconf);
@@ -1111,7 +1111,7 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
     max_successor_cache_init(p->wchmm);
   }
 
-  jlog("STAT: *** SR%02d %s composed\n", sconf->id, sconf->name);
+  jlog("STAT: SR%02d %s composed\n", sconf->id, sconf->name);
 
   if (sconf->sw.start_inactive) {
     /* start inactive */
@@ -1187,8 +1187,9 @@ j_final_fusion(Recog *recog)
   PROCESS_AM *am;
   PROCESS_LM *lm;
 
-  jlog("STAT: now all modules into fire for fusion...\n");
-  
+  jlog("STAT: ------\n");
+  jlog("STAT: All models are ready, go for final fusion\n");
+  jlog("STAT: [1] create MFCC instance(s)\n");
   if (recog->jconf->input.speech_input != SP_MFCFILE) {
     /***************************************************/
     /* create MFCC calculation instance from AM config */
@@ -1200,6 +1201,7 @@ j_final_fusion(Recog *recog)
   /****************************************/
   /* create recognition process instances */
   /****************************************/
+  jlog("STAT: [2] ignite Recognizer instances]\n");
   for(sconf=recog->jconf->search_root;sconf;sconf=sconf->next) {
     if (j_launch_recognition_instance(recog, sconf) == FALSE) return FALSE;
   }
@@ -1208,6 +1210,7 @@ j_final_fusion(Recog *recog)
   /****** initialize GMM ******/
   /****************************/
   if (recog->gmm != NULL) {
+    jlog("STAT: [2.5] ignite GMM instance]\n");
     if (gmm_init(recog) == FALSE) {
       jlog("ERROR: m_fusion: error in initializing GMM\n");
       return FALSE;
@@ -1215,16 +1218,22 @@ j_final_fusion(Recog *recog)
   }
 
   /* stage 4: setup output probability function for each AM */
+  jlog("STAT: [3] set up acoustic prob calculator]\n");
   for(am=recog->amlist;am;am=am->next) {
     if (am->config->hmm_gs_filename != NULL) {/* with GMS */
-      outprob_init(&(am->hmmwrk), am->hmminfo, am->hmm_gs, am->config->gs_statenum, am->config->gprune_method, am->config->mixnum_thres);
+      if (outprob_init(&(am->hmmwrk), am->hmminfo, am->hmm_gs, am->config->gs_statenum, am->config->gprune_method, am->config->mixnum_thres) == FALSE) {
+	return FALSE;
+      }
     } else {
-      outprob_init(&(am->hmmwrk), am->hmminfo, NULL, 0, am->config->gprune_method, am->config->mixnum_thres);
+      if (outprob_init(&(am->hmmwrk), am->hmminfo, NULL, 0, am->config->gprune_method, am->config->mixnum_thres) == FALSE) {
+	return FALSE;
+      }
     }
   }
 
   /* stage 5: initialize work area for input and realtime decoding */
 
+  jlog("STAT: [4] set up input MFCC handler]\n");
   if (recog->jconf->input.speech_input == SP_MFCFILE) {
     /* create an MFCC instance for MFCC input */
     /* create new mfcc instance */
@@ -1259,6 +1268,7 @@ j_final_fusion(Recog *recog)
   }
 
   if (recog->jconf->decodeopt.realtime_flag) {
+    jlog("STAT: [5] initialize real-time decoding]\n");
     /* prepare for 1st pass pipeline processing */
     if (RealTimeInit(recog) == FALSE) {
       jlog("ERROR: m_fusion: failed to initialize recognition process\n");

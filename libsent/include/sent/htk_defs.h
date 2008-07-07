@@ -24,7 +24,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 19:36:47 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -104,5 +104,15 @@ typedef struct {
 
 /// A header qualifier string for V2: variance inversed
 #define BINHMM_HEADER_V2_VARINV 'V'
+
+/// A header qualifier string for V2: has mixture pdf macro def
+#define BINHMM_HEADER_V2_MPDFMACRO 'M'
+
+/// Maximum number of input stream
+#define MAXSTREAMNUM 50
+
+#ifdef ENABLE_MSD
+#define LZERO (-1.0E10) 		///< log(0) value of void dimension for MSD-HMM */
+#endif
 
 #endif /* __SENT_HTK_DEFS_H__ */

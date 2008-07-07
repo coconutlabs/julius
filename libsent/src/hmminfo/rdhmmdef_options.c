@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 01:53:45 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -58,6 +58,7 @@ read_global_opt(FILE *fp, HTK_HMM_Options *op)
 {
   int i;
   short tmptype;
+  int num;
 
   for (;;) {
     if (rdhmmdef_token == NULL) break;
@@ -69,8 +70,8 @@ read_global_opt(FILE *fp, HTK_HMM_Options *op)
       NoTokErr("missing STREAMINFO num");
       op->stream_info.num = atoi(rdhmmdef_token);
       /*DM("%d STREAMs:", op->stream_info.num);*/
-      if (op->stream_info.num > 50) {
-	jlog("Error: rdhmmdef_options: stream num exceeded %d\n", 50);
+      if (op->stream_info.num > MAXSTREAMNUM) {
+	jlog("Error: rdhmmdef_options: stream num exceeded %d\n", MAXSTREAMNUM);
 	rderr(NULL);
       }
       for (i=0;i<op->stream_info.num;i++) {
@@ -87,6 +88,15 @@ read_global_opt(FILE *fp, HTK_HMM_Options *op)
       op->vec_size = atoi(rdhmmdef_token);
       /*DM("vector size: %d\n", op->vec_size);*/
       
+    } else if (currentis("MSDINFO")) { /* <MSDINFO> by HTS */
+      /* Julius can auto-detect MSD-HMM, so just skip this */
+      read_token(fp);
+      NoTokErr("missing MSDINFO num");
+      num = atoi(rdhmmdef_token);
+      for (i=0;i<num;i++) {
+	read_token(fp);
+      }
+
     } else {
       /* covariance matrix type */
       for (i=0;optcov[i].name!=NULL;i++) {
@@ -129,11 +139,29 @@ read_global_opt(FILE *fp, HTK_HMM_Options *op)
  * 
  * @param fp [in] file pointer
  * @param hmm [out] %HMM definition data to store the global options
+ *
+ * @return TRUE on success, FALSE on failure or error.
  */
-void
+boolean
 set_global_opt(FILE *fp, HTK_HMM_INFO *hmm)
 {
+  int i,n;
   read_global_opt(fp,&(hmm->opt));
+  if (hmm->opt.stream_info.num == 0) { /* no STREAMINFO */
+    hmm->opt.stream_info.num = 1;
+    hmm->opt.stream_info.vsize[0] = hmm->opt.vec_size;
+  } else {
+    /* vector length check */
+    n = 0;
+    for(i=0;i<hmm->opt.stream_info.num;i++) {
+      n += hmm->opt.stream_info.vsize[i];
+    }
+    if (n != hmm->opt.vec_size) {
+      jlog("Error: rdhmmdef_options: total length in <StreamInfo> and <VecSize> does not match! (%d, %d)\n", n, hmm->opt.vec_size);
+      return FALSE;
+    }
+  }
+  return TRUE;
 }
 
 

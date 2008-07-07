@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:31:45 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -170,6 +170,10 @@ j_jconf_finalize(Jconf *jconf)
 	lm->lmtype = LM_DFA;
 	lm->lmvar  = LM_DFA_WORD;
       }
+    }
+    if (lm->lmtype == LM_UNDEF) { /* an LM is not specified */
+      jlog("ERROR: m_chkparam: you should specify at least one LM to run Julius!\n");
+      return FALSE;
     }
     if (lm->lmtype == LM_PROB) {
       if (lm->dictfilename == NULL) {

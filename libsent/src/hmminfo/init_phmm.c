@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 23:05:33 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -39,22 +39,27 @@ hmminfo_new()
 
   new->mroot = NULL;
   new->lroot = NULL;
+  new->tmp_mixnum = NULL;
 
-  new->opt.stream_info.num = 1;
+  new->opt.stream_info.num = 0;
   new->opt.cov_type = C_DIAG_C;
   new->opt.dur_type = D_NULL;
 
   new->trstart = NULL;
   new->vrstart = NULL;
+  new->swstart = NULL;
   new->ststart = NULL;
   new->dnstart = NULL;
+  new->pdfstart = NULL;
   new->start   = NULL;
   new->lgstart = NULL;
   new->physical_root = NULL;
   new->logical_root = NULL;
   new->tr_root = NULL;
   new->vr_root = NULL;
+  new->sw_root = NULL;
   new->dn_root = NULL;
+  new->pdf_root = NULL;
   new->st_root = NULL;
   new->codebooknum = 0;
   new->codebook_root = NULL;
@@ -72,6 +77,10 @@ hmminfo_new()
   new->basephone.root = NULL;
   new->cdset_info.cdtree = NULL;
   new->variance_inversed = FALSE;
+
+#ifdef ENABLE_MSD
+  new->has_msd = FALSE;
+#endif
 
   return(new);
 }
@@ -91,7 +100,9 @@ hmminfo_free(HTK_HMM_INFO *hmm)
 
   /* free lookup indexes */
   free_aptree(hmm->tr_root);
+  free_aptree(hmm->sw_root);
   free_aptree(hmm->vr_root);
+  free_aptree(hmm->pdf_root);
   free_aptree(hmm->dn_root);
   free_aptree(hmm->st_root);
   free_aptree(hmm->physical_root);

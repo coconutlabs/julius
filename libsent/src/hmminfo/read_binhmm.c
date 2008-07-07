@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 05:23:59 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -54,6 +54,9 @@ static boolean
 rdnfunc(FILE *fp, void *buf, size_t unitbyte, int unitnum)
 {
   size_t tmp;
+
+  if (unitnum == 0) return TRUE;
+
   if (gzfile) {
     tmp = myfread(buf, unitbyte, unitnum, fp);
   } else {
@@ -169,12 +172,13 @@ rd_para(FILE *fp, Value *para)
  * @param fp [in] file pointer
  * @param hmm [out] pointer to %HMM definition data to store the values.
  * @param para [out] store embedded acoustic parameters if any (V2)
+ * @param mpdf_macro_ret [out] will be set to TRUE if the file contains mixture pdf macro defined by "~p"
  * 
  * @return TRUE if a correct header was read, FALSE if header string does not
  * match the current version.
  */
 static boolean
-rd_header(FILE *fp, HTK_HMM_INFO *hmm, Value *para)
+rd_header(FILE *fp, HTK_HMM_INFO *hmm, Value *para, boolean *mpdf_macro_ret)
 {
   char *p, *q;
   boolean emp, inv;
@@ -194,10 +198,19 @@ rd_header(FILE *fp, HTK_HMM_INFO *hmm, Value *para)
 	case BINHMM_HEADER_V2_EMBEDPARA:
 	  /* read in embedded acoutic condition parameters */
 	  emp = TRUE;
+	  jlog("Stat: binhmm-header: analysis parameter embedded\n");
 	  break;
 	case BINHMM_HEADER_V2_VARINV:
 	  inv = TRUE;
+	  jlog("Stat: binhmm-header: variance inversed\n");
 	  break;
+	case BINHMM_HEADER_V2_MPDFMACRO:
+	  *mpdf_macro_ret = TRUE;
+	  jlog("Stat: binhmm-header: mixture PDF macro used\n");
+	  break;
+	default:
+	  jlog("Error: unknown format qualifier in header: \"%c\"\n", *q);
+	  return FALSE;
 	}
 	q++;
       }
@@ -236,7 +249,7 @@ static boolean
 rd_opt(FILE *fp, HTK_HMM_Options *opt)
 {
   rdn(fp, &(opt->stream_info.num), sizeof(short), 1);
-  rdn(fp, opt->stream_info.vsize, sizeof(short), 50);
+  rdn(fp, opt->stream_info.vsize, sizeof(short), MAXSTREAMNUM);
   rdn(fp, &(opt->vec_size), sizeof(short), 1);
   rdn(fp, &(opt->cov_type), sizeof(short), 1);
   rdn(fp, &(opt->dur_type), sizeof(short), 1);
@@ -401,6 +414,50 @@ rd_dens(FILE *fp, HTK_HMM_INFO *hmm)
 }
 
 
+/* read stream weight data */
+static HTK_HMM_StreamWeight **streamweight_index; ///< Map stream weights id to its pointer
+static unsigned int streamweight_num;	///< Length of above
+
+/** 
+ * @brief  Read a sequence of stream weights for @a streamweight_num.
+ *
+ * The stream weights are stored into @a hmm, and their references
+ * to lower structure (variance etc.) are recovered from the id-to-pointer
+ * index.  Their pointers are also stored in @a dens_index for
+ * later data mapping operation from upper structure (state etc.).
+ * 
+ * @param fp [in] file pointer
+ * @param hmm [out] %HMM definition structure to hold the read stream weights.
+ */
+static boolean
+rd_streamweight(FILE *fp, HTK_HMM_INFO *hmm)
+{
+  HTK_HMM_StreamWeight *sw;
+  unsigned int idx;
+  char *p;
+
+  rdn(fp, &streamweight_num, sizeof(unsigned int), 1);
+  streamweight_index = (HTK_HMM_StreamWeight **)mymalloc(sizeof(HTK_HMM_StreamWeight *) * streamweight_num);
+
+  hmm->swstart = NULL;
+  hmm->sw_root = NULL;
+  for (idx = 0; idx < streamweight_num; idx++) {
+    sw = (HTK_HMM_StreamWeight *)mybmalloc2(sizeof(HTK_HMM_StreamWeight), &(hmm->mroot));
+    rdn_str(fp, hmm, p);
+    sw->name = (*p == '\0') ? NULL : p;
+    rdn(fp, &(sw->len), sizeof(short), 1);
+    sw->weight = (VECT *)mybmalloc2(sizeof(VECT) * sw->len, &(hmm->mroot));
+    rdn(fp, sw->weight, sizeof(VECT), sw->len);
+    streamweight_index[idx] = sw;
+    sw_add(hmm, sw);
+  }
+#ifdef DMES
+  jlog("Stat: read_binhmm: %d stream weights read\n", streamweight_num);
+#endif
+  return TRUE;
+}
+
+
 /* read tmix data */
 static GCODEBOOK **tm_index;	///< Map codebook id to its pointer
 static unsigned int tm_num;	///< Length of above
@@ -456,6 +513,91 @@ rd_tmix(FILE *fp, HTK_HMM_INFO *hmm)
   return TRUE;
 }
 
+
+/* read mpdf data */
+static HTK_HMM_PDF **mpdf_index; ///< Map mixture pdf id to its pointer
+static unsigned int mpdf_num;	///< Length of above
+
+/**
+ * Read a mixture PDF.
+ * 
+ * @param fp [in] file pointer
+ * @param hmm [out] %HMM definition structure to hold the read codebooks.
+ * @param m [out] pointer where to store the input mixture PDF.
+ * 
+ * @return TRUE on success, FALSE on error.
+ * 
+ */
+static boolean
+rd_pdf_sub(FILE *fp, HTK_HMM_INFO *hmm, HTK_HMM_PDF *m)
+{
+  int i;
+  unsigned int did;
+
+  rdn(fp, &(m->mix_num), sizeof(short), 1);
+  if (m->mix_num == -1) {
+    /* tmix */
+    rdn(fp, &did, sizeof(unsigned int), 1);
+    m->b = (HTK_HMM_Dens **)tm_index[did];
+    m->mix_num = (tm_index[did])->num;
+  } else {
+    /* mixture */
+    m->b = (HTK_HMM_Dens **)mybmalloc2(sizeof(HTK_HMM_Dens *) * m->mix_num, &(hmm->mroot));
+    for (i=0;i<m->mix_num;i++) {
+      rdn(fp, &did, sizeof(unsigned int), 1);
+      if (did >= dens_num) {
+	m->b[i] = NULL;
+      } else {
+	m->b[i] = dens_index[did];
+      }
+    }
+  }
+  m->bweight = (PROB *)mybmalloc2(sizeof(PROB) * m->mix_num, &(hmm->mroot));
+  rdn(fp, m->bweight, sizeof(PROB), m->mix_num);
+
+  return TRUE;
+}
+
+
+/** 
+ * @brief  Read a sequence of mixture pdf for @a mpdf_num.
+ *
+ * The mixture pdfs are stored into @a hmm, and their references
+ * to lower structure (variance etc.) are recovered from the id-to-pointer
+ * index.  Their pointers are also stored in @a mpdf_index for
+ * later data mapping operation from upper structure (state etc.).
+ * 
+ * @param fp [in] file pointer
+ * @param hmm [out] %HMM definition structure to hold the read data.
+ */
+static boolean
+rd_mpdf(FILE *fp, HTK_HMM_INFO *hmm)
+{
+  HTK_HMM_PDF *m;
+  unsigned int idx;
+  char *p;
+
+  rdn(fp, &mpdf_num, sizeof(unsigned int), 1);
+  mpdf_index = (HTK_HMM_PDF **)mymalloc(sizeof(HTK_HMM_PDF *) * mpdf_num);
+
+  hmm->pdfstart = NULL;
+  hmm->pdf_root = NULL;
+  for (idx = 0; idx < mpdf_num; idx++) {
+    m = (HTK_HMM_PDF *)mybmalloc2(sizeof(HTK_HMM_PDF), &(hmm->mroot));
+    rdn_str(fp, hmm, p);
+    m->name = (*p == '\0') ? NULL : p;
+    rdn(fp, &(m->stream_id), sizeof(short), 1);
+    if (rd_pdf_sub(fp, hmm, m) == FALSE) return FALSE;
+    mpdf_index[idx] = m;
+    mpdf_add(hmm, m);
+  }
+#ifdef DMES
+  jlog("Stat: read_binhmm: %d mixture PDFs read\n", mpdf_num);
+#endif
+  return TRUE;
+}
+
+
 /* read state data */
 static HTK_HMM_State **st_index; ///< Map state id to its pointer
 static unsigned int st_num;	///< Length of above
@@ -471,15 +613,16 @@ static unsigned int st_num;	///< Length of above
  * 
  * @param fp [in] file pointer
  * @param hmm [out] %HMM definition structure to hold the read states.
+ * @param mpdf_macro [in] TRUE if mixture pdfs are already read separatedly, or FALSE if they are all defined in-line
  */
 static boolean
-rd_state(FILE *fp, HTK_HMM_INFO *hmm)
+rd_state(FILE *fp, HTK_HMM_INFO *hmm, boolean mpdf_macro)
 {
   HTK_HMM_State *s;
   unsigned int idx;
-  unsigned int did;
-  int i;
-  char *p;
+  unsigned int mid, swid;
+  int m;
+  char *buf;
 
   rdn(fp, &st_num, sizeof(unsigned int), 1);
   hmm->totalstatenum = st_num;
@@ -489,28 +632,39 @@ rd_state(FILE *fp, HTK_HMM_INFO *hmm)
   hmm->st_root = NULL;
   for (idx = 0; idx < st_num; idx++) {
     s = (HTK_HMM_State *)mybmalloc2(sizeof(HTK_HMM_State), &(hmm->mroot));
-    rdn_str(fp, hmm, p);
-    s->name = (*p == '\0') ? NULL : p;
-    rdn(fp, &(s->mix_num), sizeof(short), 1);
-    if (s->mix_num == -1) {
-      /* tmix */
-      rdn(fp, &did, sizeof(unsigned int), 1);
-      s->b = (HTK_HMM_Dens **)tm_index[did];
-      s->mix_num = (tm_index[did])->num;
-    } else {
-      /* mixture */
-      s->b = (HTK_HMM_Dens **)mybmalloc2(sizeof(HTK_HMM_Dens *) * s->mix_num, &(hmm->mroot));
-      for (i=0;i<s->mix_num;i++) {
-	rdn(fp, &did, sizeof(unsigned int), 1);
-	if (did >= dens_num) {
-	  s->b[i] = NULL;
+    rdn_str(fp, hmm, buf);
+    s->name = (*buf == '\0') ? NULL : buf;
+    s->nstream = hmm->opt.stream_info.num;
+    s->pdf = (HTK_HMM_PDF **)mybmalloc2(sizeof(HTK_HMM_PDF *) * s->nstream, &(hmm->mroot));
+    if (mpdf_macro) {
+      /* mpdf are stored separatedly, so read index */
+      for(m=0;m<s->nstream;m++) {
+	rdn(fp, &mid, sizeof(unsigned int), 1);
+	if (mid >= mpdf_num) {
+	  s->pdf[m] = NULL;
 	} else {
-	  s->b[i] = dens_index[did];
+	  s->pdf[m] = mpdf_index[mid];
 	}
       }
+    } else {
+      /* mpdf are stored sequencially, so read the content here */
+      for(m=0;m<s->nstream;m++) {
+	s->pdf[m] = (HTK_HMM_PDF *)mybmalloc2(sizeof(HTK_HMM_PDF), &(hmm->mroot));
+	if (rd_pdf_sub(fp, hmm, s->pdf[m]) == FALSE) return FALSE;
+	s->pdf[m]->stream_id = m;
+      }
     }
-    s->bweight = (PROB *)mybmalloc2(sizeof(PROB) * s->mix_num, &(hmm->mroot));
-    rdn(fp, s->bweight, sizeof(PROB), s->mix_num);
+    if (hmm->opt.stream_info.num > 1) {
+      /* read steam weight info */
+      rdn(fp, &swid, sizeof(unsigned int), 1);
+      if (swid >= streamweight_num) {
+	s->w = NULL;
+      } else {
+	s->w = streamweight_index[swid];
+      }
+    } else {
+      s->w = NULL;
+    }
     s->id = idx;
     st_index[idx] = s;
     state_add(hmm, s);
@@ -586,11 +740,12 @@ rd_data(FILE *fp, HTK_HMM_INFO *hmm)
 boolean
 read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
 {
+  boolean mpdf_macro = FALSE;
 
   gzfile = gzfile_p;
 
   /* read header */
-  if (rd_header(fp, hmm, para) == FALSE) {
+  if (rd_header(fp, hmm, para, &mpdf_macro) == FALSE) {
     return FALSE;
   }
 
@@ -626,6 +781,14 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
     return FALSE;
   }
 
+  /* read stream weight data */
+  if (hmm->opt.stream_info.num > 1) {
+    if (rd_streamweight(fp, hmm) == FALSE) {
+      jlog("Error: read_binhmm: failed to read stream weights data\n");
+      return FALSE;
+    }
+  }
+
   /* read tmix data */
   if (hmm->is_tied_mixture) {
     if (rd_tmix(fp, hmm) == FALSE) {
@@ -634,8 +797,16 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
     }
   }
 
+  /* read mixture pdf data */
+  if (mpdf_macro) {
+    if (rd_mpdf(fp, hmm) == FALSE) {
+      jlog("Error: read_binhmm: failed to read mixture PDF data\n");
+      return FALSE;
+    }
+  }
+
   /* read state data */
-  if (rd_state(fp, hmm) == FALSE) {
+  if (rd_state(fp, hmm, mpdf_macro) == FALSE) {
     jlog("Error: read_binhmm: failed to read HMM state data\n");
     return FALSE;
   }
@@ -647,8 +818,10 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
   }
 
   /* free pointer->index work area */
+  if (mpdf_macro) free(mpdf_index);
   free(tr_index);
   free(vr_index);
+  if (hmm->opt.stream_info.num > 1) free(streamweight_index);
   free(dens_index);
   if (hmm->is_tied_mixture) free(tm_index);
   free(st_index);
@@ -661,6 +834,16 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
       if (maxlen < dtmp->state_num) maxlen = dtmp->state_num;
     }
     hmm->maxstatenum = maxlen;
+  }
+
+  /* compute total number of mixture PDFs */
+  {
+    HTK_HMM_PDF *p;
+    int n = 0;
+    for (p = hmm->pdfstart; p; p = p->next) {
+      n++;
+    }
+    hmm->totalpdfnum = n;
   }
 
   /* determine whether this model needs multi-path handling */
@@ -676,6 +859,11 @@ read_binhmm(FILE *fp, HTK_HMM_INFO *hmm, boolean gzfile_p, Value *para)
     htk_hmm_inverse_variances(hmm);
     hmm->variance_inversed = TRUE;
   }
+
+#ifdef ENABLE_MSD
+  /* check if MSD-HMM */
+  htk_hmm_check_msd(hmm);
+#endif
 
   return (TRUE);
 }

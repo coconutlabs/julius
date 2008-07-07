@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 06:03:36 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -31,7 +31,7 @@
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.3 2008/05/09 05:58:17 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.4 2008/07/07 05:50:11 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
@@ -53,6 +53,9 @@
 static boolean
 wrtfunc(FILE *fp, void *buf, size_t unitbyte, size_t unitnum)
 {
+
+  if (unitnum == 0) return TRUE;
+
 #ifndef WORDS_BIGENDIAN
   if (unitbyte != 1) {
     swap_bytes((char *)buf, unitbyte, unitnum);
@@ -97,9 +100,12 @@ static char *binhmm_header_v2 = BINHMM_HEADER_V2; ///< Header string for V2
  * Write header string as binary HMM file (ver. 2)
  * 
  * @param fp [in] file pointer
+ * @param emp [in] TRUE if parameter embedded
+ * @param inv [in] TRUE if variances are inversed
+ * @param mpdfmacro [in] TRUE if some mixture pdfs are defined as macro
  */
 static boolean
-wt_header(FILE *fp, boolean emp, boolean inv)
+wt_header(FILE *fp, boolean emp, boolean inv, boolean mpdfmacro)
 {
   char buf[50];
   char *p;
@@ -114,8 +120,13 @@ wt_header(FILE *fp, boolean emp, boolean inv)
     *p++ = '_';
     *p++ = BINHMM_HEADER_V2_VARINV;
   }
+  if (mpdfmacro) {
+    *p++ = '_';
+    *p++ = BINHMM_HEADER_V2_MPDFMACRO;
+  }
   *p = '\0';
   wrt_str(fp, buf);
+  jlog("Stat: write_binhmm: written header: \"%s%s\"\n", binhmm_header_v2, buf);
 
   return TRUE;
 }
@@ -167,7 +178,7 @@ static boolean
 wt_opt(FILE *fp, HTK_HMM_Options *opt)
 {
   wrt(fp, &(opt->stream_info.num), sizeof(short), 1);
-  wrt(fp, opt->stream_info.vsize, sizeof(short), 50);
+  wrt(fp, opt->stream_info.vsize, sizeof(short), MAXSTREAMNUM);
   wrt(fp, &(opt->vec_size), sizeof(short), 1);
   wrt(fp, &(opt->cov_type), sizeof(short), 1);
   wrt(fp, &(opt->dur_type), sizeof(short), 1);
@@ -452,6 +463,90 @@ search_did(HTK_HMM_Dens *d)
   return(left);
 }
 
+/* write stream weight data */
+static HTK_HMM_StreamWeight **streamweight_index; ///< Sorted data pointers for mapping from pointer to id
+static unsigned int streamweight_num;	///< Length of above
+
+/** 
+ * qsort callback function to sort stream weight pointers by their
+ * address for indexing.
+ * 
+ * @param d1 [in] data 1
+ * @param d2 [in] data 2
+ * 
+ * @return value required for qsort.
+ */
+static int
+qsort_streamweight_index(HTK_HMM_StreamWeight **d1, HTK_HMM_StreamWeight **d2)
+{
+  if (*d1 > *d2) return 1;
+  else if (*d1 < *d2) return -1;
+  else return 0;
+}
+
+/** 
+ * @brief  Write all stream weight data.
+ *
+ * The pointers of all stream weights are first gathered,
+ * sorted by the address.  Then the stream weights are written
+ * by the sorted order.  The pointers to the lower structure (variance etc.)
+ * in the data are written in a corresponding scholar id.
+ * The pointer index of this data will be used later to convert any pointer
+ * reference to a data into scholar id.
+ * 
+ * @param fp [in] file pointer
+ * @param hmm [in] writing %HMM definition data 
+ */
+static boolean
+wt_streamweight(FILE *fp, HTK_HMM_INFO *hmm)
+{
+  HTK_HMM_StreamWeight *sw;
+  unsigned int idx;
+
+  streamweight_num = 0;
+  for(sw=hmm->swstart;sw;sw=sw->next) streamweight_num++;
+  streamweight_index = (HTK_HMM_StreamWeight **)mymalloc(sizeof(HTK_HMM_StreamWeight *) * streamweight_num);
+  idx = 0;
+  for(sw = hmm->swstart; sw; sw = sw->next) streamweight_index[idx++] = sw;
+  qsort(streamweight_index, streamweight_num, sizeof(HTK_HMM_StreamWeight *), (int (*)(const void *, const void *))qsort_streamweight_index);
+  
+  wrt(fp, &streamweight_num, sizeof(unsigned int), 1);
+  for (idx = 0; idx < streamweight_num; idx++) {
+    sw = streamweight_index[idx];
+    wrt_str(fp, sw->name);
+    wrt(fp, &(sw->len), sizeof(short), 1);
+    wrt(fp, sw->weight, sizeof(VECT), sw->len);
+  }
+  jlog("Stat: write_binhmm: %d stream weights written\n", streamweight_num);
+
+  return TRUE;
+}
+
+/** 
+ * Binary search function to convert stream weight pointer to a scholar ID.
+ * 
+ * @param d [in] pointer to a mixture density
+ * 
+ * @return the corresponding scholar ID.
+ */
+static unsigned int
+search_swid(HTK_HMM_StreamWeight *sw)
+{
+  unsigned int left = 0;
+  unsigned int right = streamweight_num - 1;
+  unsigned int mid;
+
+  while (left < right) {
+    mid = (left + right) / 2;
+    if (streamweight_index[mid] < sw) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  return(left);
+}
+
 
 /* write tmix data */
 static GCODEBOOK **tm_index; ///< Sorted data pointers for mapping from pointer to id
@@ -565,6 +660,153 @@ search_tmid(GCODEBOOK *tm)
 }
 
 
+/* write mixture pdf data */
+static HTK_HMM_PDF **mpdf_index; ///< Sorted data pointers for mapping from pointer to id
+static unsigned int mpdf_num;	///< Length of above
+
+/** 
+ * qsort callback function to sort mixture PDF pointers by their
+ * address for indexing.
+ * 
+ * @param d1 [in] data 1
+ * @param d2 [in] data 2
+ * 
+ * @return value required for qsort.
+ */
+static int
+qsort_mpdf_index(HTK_HMM_PDF **d1, HTK_HMM_PDF **d2)
+{
+  if (*d1 > *d2) return 1;
+  else if (*d1 < *d2) return -1;
+  else return 0;
+}
+
+/**
+ * Write a mixture PDF.
+ * 
+ * @param fp [in] file pointer
+ * @param hmm [in] writing %HMM definition data 
+ * @param m [out] mixture PDF to be written
+ * 
+ * @return TRUE on success, FALSE on error.
+ * 
+ */
+static boolean
+wt_pdf_sub(FILE *fp, HTK_HMM_INFO *hmm, HTK_HMM_PDF *m)
+{
+  unsigned int did;
+  int i;
+  short dummy;
+  
+  if (hmm->is_tied_mixture) {
+    /* try tmix */
+    did = search_tmid((GCODEBOOK *)(m->b));
+    if ((GCODEBOOK *)m->b == tm_index[did]) {
+      /* tmix */
+      dummy = -1;
+      wrt(fp, &dummy, sizeof(short), 1);
+      wrt(fp, &did, sizeof(unsigned int), 1);
+    } else {
+      /* tmix failed -> normal mixture */
+      wrt(fp, &(m->mix_num), sizeof(short), 1);
+      for (i=0;i<m->mix_num;i++) {
+	if (m->b[i] == NULL) {
+	  did = dens_num;
+	} else {
+	  did = search_did(m->b[i]);
+	  if (m->b[i] != dens_index[did]) {
+	    jlog("Error: write_binhmm: index not match!!!\n");
+	    return FALSE;
+	  }
+	}
+	wrt(fp, &did, sizeof(unsigned int), 1);
+      }
+    }
+  } else {			/* not tied mixture */
+    wrt(fp, &(m->mix_num), sizeof(short), 1);
+    for (i=0;i<m->mix_num;i++) {
+      if (m->b[i] == NULL) {
+	did = dens_num;
+      } else {
+	did = search_did(m->b[i]);
+	if (m->b[i] != dens_index[did]) {
+	  jlog("Error: write_binhmm: index not match!!!\n");
+	  return FALSE;
+	}
+      }
+      wrt(fp, &did, sizeof(unsigned int), 1);
+    }
+  }
+  wrt(fp, m->bweight, sizeof(PROB), m->mix_num);
+
+  return TRUE;
+}
+
+/** 
+ * @brief  Write all mixture pdf data.
+ *
+ * The pointers of all mixture pdfs are first gathered,
+ * sorted by the address.  Then the mixture pdfs are written
+ * by the sorted order.  The pointers to the lower structure (variance etc.)
+ * in the data are written in a corresponding scholar id.
+ * The pointer index of this data will be used later to convert any pointer
+ * reference to a data into scholar id.
+ * 
+ * @param fp [in] file pointer
+ * @param hmm [in] writing %HMM definition data 
+ */
+static boolean
+wt_mpdf(FILE *fp, HTK_HMM_INFO *hmm)
+{
+  HTK_HMM_PDF *m;
+  unsigned int idx;
+
+  mpdf_num = 0;
+  for(m=hmm->pdfstart;m;m=m->next) mpdf_num++;
+  mpdf_index = (HTK_HMM_PDF **)mymalloc(sizeof(HTK_HMM_PDF *) * mpdf_num);
+  idx = 0;
+  for(m=hmm->pdfstart;m;m=m->next) mpdf_index[idx++] = m;
+  qsort(mpdf_index, mpdf_num, sizeof(HTK_HMM_PDF *), (int (*)(const void *, const void *))qsort_mpdf_index);
+  
+  wrt(fp, &mpdf_num, sizeof(unsigned int), 1);
+  for (idx = 0; idx < mpdf_num; idx++) {
+    m = mpdf_index[idx];
+    wrt_str(fp, m->name);
+    wrt(fp, &(m->stream_id), sizeof(short), 1);
+    if (wt_pdf_sub(fp, hmm, m) == FALSE) return FALSE;
+  }
+
+  jlog("Stat: write_binhmm: %d mixture PDF written\n", mpdf_num);
+
+  return TRUE;
+}
+
+/** 
+ * Binary search function to convert mixture pdf pointer to a scholar ID.
+ * 
+ * @param m [in] pointer to a mixture pdf
+ * 
+ * @return the corresponding scholar ID.
+ */
+static unsigned int
+search_mpdfid(HTK_HMM_PDF *m)
+{
+  unsigned int left = 0;
+  unsigned int right = mpdf_num - 1;
+  unsigned int mid;
+
+  while (left < right) {
+    mid = (left + right) / 2;
+    if (mpdf_index[mid] < m) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  return(left);
+}
+
+
 /* write state data */
 static HTK_HMM_State **st_index; ///< Sorted data pointers for mapping from pointer to id
 static unsigned int st_num;	///< Length of above
@@ -597,16 +839,17 @@ qsort_st_index(HTK_HMM_State **s1, HTK_HMM_State **s2)
  * reference to a state data into scholar id.
  * 
  * @param fp [in] file pointer
- * @param hmm [in] writing %HMM definition data 
+ * @param hmm [in] writing %HMM definition data
+ * @param mpdf_macro [in] TRUE if mixture PDFs are already read as separated definitions
  */
 static boolean
-wt_state(FILE *fp, HTK_HMM_INFO *hmm)
+wt_state(FILE *fp, HTK_HMM_INFO *hmm, boolean mpdf_macro)
 {
   HTK_HMM_State *s;
   unsigned int idx;
-  unsigned int did;
-  int i;
-  short dummy;
+  unsigned int mid;
+  unsigned int swid;
+  int m;
 
   st_num = hmm->totalstatenum;
   st_index = (HTK_HMM_State **)mymalloc(sizeof(HTK_HMM_State *) * st_num);
@@ -618,47 +861,42 @@ wt_state(FILE *fp, HTK_HMM_INFO *hmm)
   for (idx = 0; idx < st_num; idx++) {
     s = st_index[idx];
     wrt_str(fp, s->name);
-    if (hmm->is_tied_mixture) {
-      /* try tmix */
-      did = search_tmid((GCODEBOOK *)(s->b));
-      if ((GCODEBOOK *)s->b == tm_index[did]) {
-	/* tmix */
-	dummy = -1;
-	wrt(fp, &dummy, sizeof(short), 1);
-	wrt(fp, &did, sizeof(unsigned int), 1);
-      } else {
-	/* tmix failed -> normal mixture */
-	wrt(fp, &(s->mix_num), sizeof(short), 1);
-	for (i=0;i<s->mix_num;i++) {
-	  if (s->b[i] == NULL) {
-	    did = dens_num;
-	  } else {
-	    did = search_did(s->b[i]);
-	    if (s->b[i] != dens_index[did]) {
-	      jlog("Error: write_binhmm: index not match!!!\n");
-	      return FALSE;
-	    }
-	  }
-	  wrt(fp, &did, sizeof(unsigned int), 1);
-	}
-      }
-    } else {			/* not tied mixture */
-      wrt(fp, &(s->mix_num), sizeof(short), 1);
-      for (i=0;i<s->mix_num;i++) {
-	if (s->b[i] == NULL) {
-	  did = dens_num;
+    if (mpdf_macro) {
+      /* mpdf are already written, so write index */
+      for(m=0;m<s->nstream;m++) {
+	if (s->pdf[m] == NULL) {
+	  mid = mpdf_num;
 	} else {
-	  did = search_did(s->b[i]);
-	  if (s->b[i] != dens_index[did]) {
+	  mid = search_mpdfid(s->pdf[m]);
+	  if (s->pdf[m] != mpdf_index[mid]) {
 	    jlog("Error: write_binhmm: index not match!!!\n");
 	    return FALSE;
 	  }
 	}
-	wrt(fp, &did, sizeof(unsigned int), 1);
+	wrt(fp, &mid, sizeof(unsigned int), 1);
+      }
+    } else {
+      /* mpdf should be written here */
+      for(m=0;m<s->nstream;m++) {
+	/* stream_id will not be written */
+	if (wt_pdf_sub(fp, hmm, s->pdf[m]) == FALSE) return FALSE;
       }
     }
-    wrt(fp, s->bweight, sizeof(PROB), s->mix_num);
+    if (hmm->opt.stream_info.num > 1) {
+      /* write steam weight */
+      if (s->w == NULL) {
+	swid = streamweight_num;
+      } else {
+	swid = search_swid(s->w);
+	if (s->w != streamweight_index[swid]) {
+	  jlog("Error: write_binhmm: index not match!!!\n");
+	  return FALSE;
+	}
+      }
+      wrt(fp, &swid, sizeof(unsigned int), 1);
+    }
   }
+
   jlog("Stat: write_binhmm: %d states written\n", st_num);
 
   return TRUE;
@@ -753,9 +991,19 @@ wt_data(FILE *fp, HTK_HMM_INFO *hmm)
 boolean
 write_binhmm(FILE *fp, HTK_HMM_INFO *hmm, Value *para)
 {
+  boolean mpdf_macro;
+
+  if (hmm->pdf_root != NULL) {
+    /* "~p" macro definition exist */
+    /* save mixture pdf separatedly from state definition */
+    mpdf_macro = TRUE;
+    jlog("Stat: write_binhmm: mixture PDF macro \"~p\" used, use qualifier \'M\'\n");
+  } else {
+    mpdf_macro = FALSE;
+  }
 
   /* write header */
-  if (wt_header(fp, (para ? TRUE : FALSE), hmm->variance_inversed) == FALSE) {
+  if (wt_header(fp, (para ? TRUE : FALSE), hmm->variance_inversed, mpdf_macro) == FALSE) {
     jlog("Error: write_binhmm: failed to write header\n");
     return FALSE;
   }
@@ -798,6 +1046,14 @@ write_binhmm(FILE *fp, HTK_HMM_INFO *hmm, Value *para)
     return FALSE;
   }
 
+  /* write stream weight data */
+  if (hmm->opt.stream_info.num > 1) {
+    if (wt_streamweight(fp, hmm) == FALSE) {
+      jlog("Error: write_binhmm: failed to write stream weights data\n");
+      return FALSE;
+    }
+  }
+
   /* write tmix data */
   if (hmm->is_tied_mixture) {
     if (wt_tmix(fp, hmm) == FALSE) {
@@ -806,8 +1062,16 @@ write_binhmm(FILE *fp, HTK_HMM_INFO *hmm, Value *para)
     }
   }
 
+  /* write mixture pdf data */
+  if (mpdf_macro) {
+    if (wt_mpdf(fp, hmm) == FALSE) {
+      jlog("Error: write_binhmm: failed to write mixture pdf data\n");
+      return FALSE;
+    }
+  }
+    
   /* write state data */
-  if (wt_state(fp, hmm) == FALSE) {
+  if (wt_state(fp, hmm, mpdf_macro) == FALSE) {
     jlog("Error: write_binhmm: failed to write HMM state data\n");
     return FALSE;
   }
@@ -819,8 +1083,10 @@ write_binhmm(FILE *fp, HTK_HMM_INFO *hmm, Value *para)
   }
 
   /* free pointer->index work area */
+  if (mpdf_macro) free(mpdf_index);
   free(tr_index);
   free(vr_index);
+  if (hmm->opt.stream_info.num > 1) free(streamweight_index);
   free(dens_index);
   if (hmm->is_tied_mixture) free(tm_index);
   free(st_index);

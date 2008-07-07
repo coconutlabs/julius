@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:05:08 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -42,7 +42,11 @@
 void
 gms_gprune_init(HMMWork *wrk)
 {
-  wrk->gms_last_max_id = (int *)mymalloc(sizeof(int) * wrk->gsset_num);
+  int i;
+  wrk->gms_last_max_id_list = (int **)mymalloc(sizeof(int *) * wrk->gsset_num);
+  for(i=0;i<wrk->gsset_num;i++) {
+    wrk->gms_last_max_id_list[i] = (int *)mymalloc(sizeof(int) * wrk->OP_nstream);
+  }
 }
 
 /** 
@@ -54,9 +58,11 @@ gms_gprune_init(HMMWork *wrk)
 void
 gms_gprune_prepare(HMMWork *wrk)
 {
-  int i;
+  int i, j;
   for(i=0;i<wrk->gsset_num;i++) {
-    wrk->gms_last_max_id[i] = -1;
+    for(j=0;j<wrk->OP_nstream;j++) {
+      wrk->gms_last_max_id_list[i][j] = -1;
+    }
   }
 }
 
@@ -69,7 +75,9 @@ gms_gprune_prepare(HMMWork *wrk)
 void
 gms_gprune_free(HMMWork *wrk)
 {
-  free(wrk->gms_last_max_id);
+  int i;
+  for(i=0;i<wrk->gsset_num;i++) free(wrk->gms_last_max_id_list[i]);
+  free(wrk->gms_last_max_id_list);
 }
 
 /**********************************************************************/
@@ -122,39 +130,51 @@ calc_contprob_with_safe_pruning(HMMWork *wrk, HTK_HMM_Dens *binfo, LOGPROB thres
  * @return the log likelihood.
  */
 static LOGPROB
-compute_g_max(HMMWork *wrk, HTK_HMM_State *stateinfo, int last_maxi, int *maxi_ret)
+compute_g_max(HMMWork *wrk, HTK_HMM_State *stateinfo, int *last_maxi)
 {
   int i, maxi;
   LOGPROB prob;
   LOGPROB maxprob = LOG_ZERO;
+  int s;
+  PROB stream_weight;
+  LOGPROB logprob, logprobsum;
 
-  if (last_maxi != -1) {
-    maxi = last_maxi;
-    maxprob = calc_contprob_with_safe_pruning(wrk, stateinfo->b[maxi], LOG_ZERO);
-    for (i = stateinfo->mix_num - 1; i >= 0; i--) {
-      if (i == last_maxi) continue;
-      prob = calc_contprob_with_safe_pruning(wrk, stateinfo->b[i], maxprob);
-      if (prob > maxprob) {
-	maxprob = prob;
-	maxi = i;
+  logprobsum = 0.0;
+  for(s=0;s<wrk->OP_nstream;s++) {
+    /* set stream weight */
+    if (stateinfo->w) stream_weight = stateinfo->w->weight[s];
+    else stream_weight = 1.0;
+    /* setup storage pointer for this mixture pdf */
+    wrk->OP_vec = wrk->OP_vec_stream[s];
+    wrk->OP_veclen = wrk->OP_veclen_stream[s];
+
+    if (last_maxi[s] != -1) {
+      maxi = last_maxi[s];
+      maxprob = calc_contprob_with_safe_pruning(wrk, stateinfo->pdf[s]->b[maxi], LOG_ZERO);
+      for (i = stateinfo->pdf[s]->mix_num - 1; i >= 0; i--) {
+	if (i == last_maxi[s]) continue;
+	prob = calc_contprob_with_safe_pruning(wrk, stateinfo->pdf[s]->b[i], maxprob);
+	if (prob > maxprob) {
+	  maxprob = prob;
+	  maxi = i;
+	}
       }
-    }
-    *maxi_ret = maxi;
-  } else {
-    maxi = stateinfo->mix_num - 1;
-    maxprob = calc_contprob_with_safe_pruning(wrk, stateinfo->b[maxi],  LOG_ZERO);
-    i = maxi - 1;
-    for (; i >= 0; i--) {
-      prob = calc_contprob_with_safe_pruning(wrk, stateinfo->b[i], maxprob);
-      if (prob > maxprob) {
-	maxprob = prob;
-	maxi = i;
+      last_maxi[s] = maxi;
+    } else {
+      maxi = stateinfo->pdf[s]->mix_num - 1;
+      maxprob = calc_contprob_with_safe_pruning(wrk, stateinfo->pdf[s]->b[maxi],  LOG_ZERO);
+      for (i = maxi - 1; i >= 0; i--) {
+	prob = calc_contprob_with_safe_pruning(wrk, stateinfo->pdf[s]->b[i], maxprob);
+	if (prob > maxprob) {
+	  maxprob = prob;
+	  maxi = i;
+	}
       }
+      last_maxi[s] = maxi;
     }
-    *maxi_ret = maxi;
+    logprobsum += (maxprob + stateinfo->pdf[s]->bweight[maxi]) * stream_weight;
   }
-
-  return((maxprob + stateinfo->bweight[maxi]) * INV_LOG_TEN);
+  return (logprobsum * INV_LOG_TEN);
 }
   
 #else  /* ~LAST_BEST */
@@ -174,16 +194,30 @@ compute_g_max(HMMWork *wrk, HTK_HMM_State *stateinfo)
   int i, maxi;
   LOGPROB prob;
   LOGPROB maxprob = LOG_ZERO;
+  int s;
+  PROB stream_weight;
+  LOGPROB logprob, logprobsum;
 
-  i = maxi = stateinfo->mix_num - 1;
-  for (; i >= 0; i--) {
-    prob = calc_contprob_with_safe_pruning(wrk, stateinfo->b[i], maxprob);
-    if (prob > maxprob) {
-      maxprob = prob;
-      maxi = i;
+  logprobsum = 0.0;
+  for(s=0;s<wrk->OP_nstream;s++) {
+    /* set stream weight */
+    if (stateinfo->w) stream_weight = stateinfo->w->weight[s];
+    else stream_weight = 1.0;
+    /* setup storage pointer for this mixture pdf */
+    wrk->OP_vec = wrk->OP_vec_stream[s];
+    wrk->OP_veclen = wrk->OP_veclen_stream[s];
+
+    i = maxi = stateinfo->pdf[s]->mix_num - 1;
+    for (; i >= 0; i--) {
+      prob = calc_contprob_with_safe_pruning(wrk, stateinfo->pdf[s]->b[i], maxprob);
+      if (prob > maxprob) {
+	maxprob = prob;
+	maxi = i;
+      }
     }
+    logprobsum += (maxprob + stateinfo->pdf[s]->bweight[maxi]) * stream_weight;
   }
-  return((maxprob + stateinfo->bweight[maxi]) * INV_LOG_TEN);
+  return (logprobsum * INV_LOG_TEN);
 }
 #endif
 
@@ -204,16 +238,12 @@ void
 compute_gs_scores(HMMWork *wrk)
 {
   int i;
-#ifdef LAST_BEST
-  int max_id;
-#endif
 
   for (i=0;i<wrk->gsset_num;i++) {
 #ifdef GS_MAX_PROB
 #ifdef LAST_BEST
     /* compute only the maximum with pruning (last best first) */
-    wrk->t_fs[i] = compute_g_max(wrk, wrk->gsset[i].state, wrk->gms_last_max_id[i], &max_id);
-    wrk->gms_last_max_id[i] = max_id;
+    wrk->t_fs[i] = compute_g_max(wrk, wrk->gsset[i].state, wrk->gms_last_max_id_list[i]);
 #else
     wrk->t_fs[i] = compute_g_max(wrk, wrk->gsset[i].state);
 #endif /* LAST_BEST */

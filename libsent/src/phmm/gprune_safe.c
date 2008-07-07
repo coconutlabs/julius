@@ -39,7 +39,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 05:28:12 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -52,7 +52,7 @@
 /* gprune_safe.c --- calculate probability of Gaussian densities */
 /*                   with Gaussian pruning (safe) */
 
-/* $Id: gprune_safe.c,v 1.2 2007/12/18 08:45:54 sumomo Exp $ */
+/* $Id: gprune_safe.c,v 1.3 2008/07/07 05:50:12 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
@@ -108,10 +108,10 @@ gprune_safe_init(HMMWork *wrk)
 {
   int i;
 
-  /* maximum Gaussian set size = maximum mixture size */
-  wrk->OP_calced_maxnum = wrk->OP_hmminfo->maxmixturenum;
-  wrk->OP_calced_score = (LOGPROB *)mymalloc(sizeof(LOGPROB) * wrk->OP_gprune_num);
-  wrk->OP_calced_id = (int *)mymalloc(sizeof(int) * wrk->OP_gprune_num);
+  /* maximum Gaussian set size = maximum mixture size * nstream */
+  wrk->OP_calced_maxnum = wrk->OP_hmminfo->maxmixturenum * wrk->OP_nstream;
+  wrk->OP_calced_score = (LOGPROB *)mymalloc(sizeof(LOGPROB) * wrk->OP_calced_maxnum);
+  wrk->OP_calced_id = (int *)mymalloc(sizeof(int) * wrk->OP_calced_maxnum);
   wrk->mixcalced = (boolean *)mymalloc(sizeof(int) * wrk->OP_calced_maxnum);
   for(i=0;i<wrk->OP_calced_maxnum;i++) wrk->mixcalced[i] = FALSE;
   return TRUE;

@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.4 2008/02/13 08:40:54 sumomo Exp $
+# $Id: Makefile.in,v 1.5 2008/07/07 05:50:11 sumomo Exp $
 #
 
 SHELL=/bin/sh
@@ -58,11 +58,13 @@ src/dfa/dfa_util.o \
 src/dfa/dfa_malloc.o \
 src/hmminfo/rdhmmdef.o \
 src/hmminfo/rdhmmdef_data.o \
+src/hmminfo/rdhmmdef_mpdf.o \
 src/hmminfo/rdhmmdef_dens.o \
 src/hmminfo/rdhmmdef_options.o \
 src/hmminfo/rdhmmdef_state.o \
 src/hmminfo/rdhmmdef_trans.o \
 src/hmminfo/rdhmmdef_var.o \
+src/hmminfo/rdhmmdef_streamweight.o \
 src/hmminfo/rdhmmdef_tiedmix.o \
 src/hmminfo/rdhmmdef_regtree.o \
 src/hmminfo/hmm_lookup.o \

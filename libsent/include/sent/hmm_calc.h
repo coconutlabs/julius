@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 14:54:06 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  *
  */
 /*
@@ -54,7 +54,7 @@ enum{GPRUNE_SEL_UNDEF, GPRUNE_SEL_NONE, GPRUNE_SEL_SAFE, GPRUNE_SEL_HEURISTIC, G
 /// A component of per-codebook probability cache while search
 typedef struct {
   LOGPROB score;		///< Cached probability of below
-  unsigned short id;		///< ID of the cached Gaussian in the codebook
+  int id;		///< ID of the cached Gaussian in the codebook
 } MIXCACHE;
 
 /**
@@ -89,14 +89,19 @@ typedef struct __hmmwork__{
   int OP_gprune_num; ///< Current number of computed mixtures for pruning
   int OP_time;		///< Current time
   int OP_last_time;	///< last time
-  VECT *OP_vec;		///< Current input vector
-  short OP_veclen;		///< Current vector length
 
   /* current computing state */
   HTK_HMM_State *OP_state;	///< Current state
   int OP_state_id;		///< Current state ID
 
-  /* buffers to hold result of mixture computation */
+  /* for multi-stream input */
+  short OP_nstream;		///< Number of input stream (copy from header)
+  VECT *OP_vec_stream[MAXSTREAMNUM]; ///< input vector for each stream at current frame
+  short OP_veclen_stream[MAXSTREAMNUM]; ///< vector length for each stream
+
+  /* temporal buffers to hold result of mixture computation at each stream */
+  VECT *OP_vec;		///< Current input vector to be computed
+  short OP_veclen;		///< Current vector length to be computed
   int OP_calced_maxnum; ///< Allocated length of below
   LOGPROB *OP_calced_score; ///< Scores of computed mixtures
   int *OP_calced_id; ///< IDs of computed mixtures
@@ -111,6 +116,7 @@ typedef struct __hmmwork__{
 
   /* mixture level cache for tied-mixture model */
   MIXCACHE ***mixture_cache; ///< Codebook cache: [time][book_id][0..computed_mixture_num]
+  short **mixture_cache_num; ///< Num of mixtures to be calculated and stored in mixture_cache
   BMALLOC_BASE *mroot;	///< Root alloc pointer to state outprob cache
 
   /* work area for tied-mixture computation */
@@ -145,7 +151,7 @@ typedef struct __hmmwork__{
   int *gsindex;		///< Index buffer
   LOGPROB *t_fs;		///< Current fallback_score
   /* GMS gprune local cache */
-  int *gms_last_max_id;	///< maximum mixture id of last call for each states
+  int **gms_last_max_id_list;	///< maximum mixture id of last call for each states
 
 } HMMWork;  
 
@@ -189,6 +195,7 @@ boolean calc_tied_mix_init(HMMWork *wrk);
 boolean calc_tied_mix_prepare(HMMWork *wrk, int framenum);
 void calc_tied_mix_free(HMMWork *wrk);
 LOGPROB calc_tied_mix(HMMWork *wrk);
+LOGPROB calc_compound_mix(HMMWork *wrk);
 
 /* gprune_common.c */
 int cache_push(HMMWork *wrk, int id, LOGPROB score, int len);

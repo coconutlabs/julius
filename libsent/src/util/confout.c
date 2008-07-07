@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -109,7 +109,10 @@ confout_am(FILE *strm)
  *   fprintf(strm, "	multi-path HMM handling : no\n");
  * #endif
  */
-  fprintf(strm, "	multi-path HMM handling : auto\n");
+  fprintf(strm, "    multi-path treatment    : autodetect\n");
+#ifdef ENABLE_MSD
+  fprintf(strm, "    MSD-HMM support         : yes\n");
+#endif
 }
 
 /** 

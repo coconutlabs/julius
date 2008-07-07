@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 14:22:44 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -51,9 +51,10 @@ boolean
 calc_tied_mix_init(HMMWork *wrk)
 {
   wrk->mixture_cache = NULL;
+  wrk->mixture_cache_num = NULL;
   wrk->tmix_allocframenum = 0;
   wrk->mroot = NULL;
-  wrk->tmix_last_id = (int *)mymalloc(sizeof(int) * wrk->OP_hmminfo->maxmixturenum);
+  wrk->tmix_last_id = (int *)mymalloc(sizeof(int) * wrk->OP_hmminfo->maxmixturenum * wrk->OP_nstream);
   return TRUE;
 }
 
@@ -73,7 +74,7 @@ calc_tied_mix_prepare(HMMWork *wrk, int framenum)
   /* clear */
   for(t=0;t<wrk->tmix_allocframenum;t++) {
     for(bid=0;bid<wrk->OP_hmminfo->codebooknum;bid++) {
-      wrk->mixture_cache[t][bid][0].score = LOG_ZERO;
+      wrk->mixture_cache_num[t][bid] = 0;
     }
   }
 
@@ -102,21 +103,24 @@ calc_tied_mix_extend(HMMWork *wrk, int reqframe)
 
   if (wrk->mixture_cache == NULL) {
     wrk->mixture_cache = (MIXCACHE ***)mymalloc(sizeof(MIXCACHE **) * newnum);
+    wrk->mixture_cache_num = (short **)mymalloc(sizeof(short *) * newnum);
   } else {
     wrk->mixture_cache = (MIXCACHE ***)myrealloc(wrk->mixture_cache, sizeof(MIXCACHE **) * newnum);
+    wrk->mixture_cache_num = (short **)myrealloc(wrk->mixture_cache_num, sizeof(short *) * newnum);
   }
 
   size = wrk->OP_gprune_num * wrk->OP_hmminfo->codebooknum;
 
   for(t = wrk->tmix_allocframenum; t < newnum; t++) {
     wrk->mixture_cache[t] = (MIXCACHE **)mybmalloc2(sizeof(MIXCACHE *) * wrk->OP_hmminfo->codebooknum, &(wrk->mroot));
+    wrk->mixture_cache_num[t] = (short *)mybmalloc2(sizeof(short) * wrk->OP_hmminfo->codebooknum, &(wrk->mroot));
     wrk->mixture_cache[t][0] = (MIXCACHE *)mybmalloc2(sizeof(MIXCACHE) * size, &(wrk->mroot));
     for(bid=1;bid<wrk->OP_hmminfo->codebooknum;bid++) {
       wrk->mixture_cache[t][bid] = &(wrk->mixture_cache[t][0][wrk->OP_gprune_num * bid]);
     }
     /* clear the new part */
     for(bid=0;bid<wrk->OP_hmminfo->codebooknum;bid++) {
-      wrk->mixture_cache[t][bid][0].score = LOG_ZERO;
+      wrk->mixture_cache_num[t][bid] = 0;
     }
   }
 
@@ -133,8 +137,12 @@ void
 calc_tied_mix_free(HMMWork *wrk)
 {
   if (wrk->mroot != NULL) mybfree2(&(wrk->mroot));
+  if (wrk->mixture_cache_num != NULL) free(wrk->mixture_cache_num);
   if (wrk->mixture_cache != NULL) free(wrk->mixture_cache);
   free(wrk->tmix_last_id);
+  wrk->mroot = NULL;
+  wrk->mixture_cache_num = NULL;
+  wrk->mixture_cache = NULL;
 }
 
 /** 
@@ -153,61 +161,183 @@ calc_tied_mix_free(HMMWork *wrk)
 LOGPROB
 calc_tied_mix(HMMWork *wrk)
 {
-  GCODEBOOK *book = (GCODEBOOK *)(wrk->OP_state->b);
-  LOGPROB logprob;
+  GCODEBOOK *book;
+  LOGPROB logprob, logprobsum;
   int i, id;
   MIXCACHE *ttcache;
+  short ttcachenum;
   MIXCACHE *last_ttcache;
   PROB *weight;
+  PROB stream_weight;
+  int s;
+  int num;
 
-  weight = wrk->OP_state->bweight;
-
-#if 0
-  if (wrk->OP_last_time != wrk->OP_time) { /* different frame */
-    if (wrk->OP_time >= 1) {
-      last_tcache = wrk->mixture_cache[wrk->OP_time-1];
+  logprobsum = 0.0;
+  for(s=0;s<wrk->OP_nstream;s++) {
+    book = (GCODEBOOK *)(wrk->OP_state->pdf[s]->b);
+    weight = wrk->OP_state->pdf[s]->bweight;
+    /* set stream weight */
+    if (wrk->OP_state->w) stream_weight = wrk->OP_state->w->weight[s];
+    else stream_weight = 1.0;
+    /* setup storage pointer for this mixture pdf */
+    wrk->OP_vec = wrk->OP_vec_stream[s];
+    wrk->OP_veclen = wrk->OP_veclen_stream[s];
+    /* extend cache if needed */
+    calc_tied_mix_extend(wrk, wrk->OP_time);
+    /* prepare cache for this codebook at this time */
+    ttcache = wrk->mixture_cache[wrk->OP_time][book->id];
+    ttcachenum = wrk->mixture_cache_num[wrk->OP_time][book->id];
+    /* consult cache */
+    if (ttcachenum > 0) {
+      /* calculate using cache and weight */
+      for (i=0;i<ttcachenum;i++) {
+	wrk->OP_calced_score[i] = ttcache[i].score + weight[ttcache[i].id];
+      }
+      num = ttcachenum;
     } else {
-      last_tcache = NULL;
-    }
-  }
-#endif
-
-  /* extend cache if needed */
-  calc_tied_mix_extend(wrk, wrk->OP_time);
-  ttcache = wrk->mixture_cache[wrk->OP_time][book->id];
-  if (ttcache[0].score != LOG_ZERO) { /* already calced */
-    /* calculate using cache and weight */
-    for (i=0;i<wrk->OP_calced_num;i++) {
-      wrk->OP_calced_score[i] = ttcache[i].score + weight[ttcache[i].id];
-    }
-  } else { /* not calced yet */
-    /* compute Gaussian set */
-    if (wrk->OP_time >= 1) {
-      last_ttcache = wrk->mixture_cache[wrk->OP_time-1][book->id];
-      if (last_ttcache[0].score != LOG_ZERO) {
-	for(i=0;i<wrk->OP_gprune_num;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
-	/* tell last calced best */
-	(*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id);
+      /* compute Gaussian set */
+      /* computed Gaussians will be set in:
+	 score ... OP_calced_score[0..OP_calced_num]
+	 id    ... OP_calced_id[0..OP_calced_num] */
+      if (wrk->OP_time >= 1) {
+	last_ttcache = wrk->mixture_cache[wrk->OP_time-1][book->id];
+	if (last_ttcache[0].score != LOG_ZERO) {
+	  for(i=0;i<wrk->OP_gprune_num;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
+	  /* tell last calced best */
+	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id);
+	} else {
+	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	}
       } else {
 	(*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
       }
-    } else {
-      (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+      /* store to cache */
+      wrk->mixture_cache_num[wrk->OP_time][book->id] = wrk->OP_calced_num;
+      for (i=0;i<wrk->OP_calced_num;i++) {
+	id = wrk->OP_calced_id[i];
+	ttcache[i].id = id;
+	ttcache[i].score = wrk->OP_calced_score[i];
+	/* now OP_calced_{id|score} can be used for work area */
+	/* add weights */
+	wrk->OP_calced_score[i] += weight[id];
+      }
+      num = wrk->OP_calced_num;
     }
-    /* computed Gaussians will be set in:
-       score ... OP_calced_score[0..OP_calced_num]
-       id    ... OP_calced_id[0..OP_calced_num] */
-    /* OP_gprune_num = required, OP_calced_num = actually calced */
-    /* store to cache */
-    for (i=0;i<wrk->OP_calced_num;i++) {
-      id = wrk->OP_calced_id[i];
-      ttcache[i].id = id;
-      ttcache[i].score = wrk->OP_calced_score[i];
-      /* now OP_calced_{id|score} can be used for work area */
-      wrk->OP_calced_score[i] += weight[id];
-    }
+    /* add log probs */
+    logprob = addlog_array(wrk->OP_calced_score, num);
+    /* if outprob of a stream is zero, skip this stream */
+    if (logprob <= LOG_ZERO) continue;
+    /* sum all the obtained mixture scores */
+    logprobsum += logprob * stream_weight;
   }
-  logprob = addlog_array(wrk->OP_calced_score, wrk->OP_calced_num);
-  if (logprob <= LOG_ZERO) return LOG_ZERO;
-  return (logprob * INV_LOG_TEN);
+  if (logprobsum == 0.0) return(LOG_ZERO); /* no valid stream */
+  if (logprobsum <= LOG_ZERO) return(LOG_ZERO);	/* lowest == LOG_ZERO */
+  return (logprobsum * INV_LOG_TEN);
 }  
+
+
+/** 
+ * @brief  Compute the output probability of current state OP_State,
+ * regardless of tied-mixture model or state-level mixture PDF.
+ * 
+ * This function switches calculation function of calc_mix() and
+ * calc_tied_mix() based on the mixture PDF information.
+ * This will be used on a system which has tied-mixture codebook
+ * but some states still has their own mixture PDF.
+ *
+ * The initialization functions should be the same as calc_tied_mix(),
+ * since calc_mix() has no specific initialization.
+ *
+ * @param wrk [i/o] HMM computation work area
+ * 
+ * @return the computed output probability in log10.
+ */
+LOGPROB
+calc_compound_mix(HMMWork *wrk)
+{
+  HTK_HMM_PDF *m;
+  GCODEBOOK *book;
+  LOGPROB logprob, logprobsum;
+  int i, id;
+  MIXCACHE *ttcache;
+  short ttcachenum;
+  MIXCACHE *last_ttcache;
+  PROB *weight;
+  PROB stream_weight;
+  int s;
+  int num;
+
+  logprobsum = 0.0;
+  for(s=0;s<wrk->OP_nstream;s++) {
+    /* set stream weight */
+    if (wrk->OP_state->w) stream_weight = wrk->OP_state->w->weight[s];
+    else stream_weight = 1.0;
+    m = wrk->OP_state->pdf[s];
+    /* setup storage pointer for this mixture pdf */
+    wrk->OP_vec = wrk->OP_vec_stream[s];
+    wrk->OP_veclen = wrk->OP_veclen_stream[s];
+    weight = wrk->OP_state->pdf[s]->bweight;
+    if (m->tmix) {
+      /* tied-mixture PDF */
+      book = (GCODEBOOK *)(m->b);
+      /* extend cache if needed */
+      calc_tied_mix_extend(wrk, wrk->OP_time);
+      /* prepare cache for this codebook at this time */
+      ttcache = wrk->mixture_cache[wrk->OP_time][book->id];
+      ttcachenum = wrk->mixture_cache_num[wrk->OP_time][book->id];
+      /* consult cache */
+      if (ttcachenum > 0) {
+	/* calculate using cache and weight */
+	for (i=0;i<ttcachenum;i++) {
+	  wrk->OP_calced_score[i] = ttcache[i].score + weight[ttcache[i].id];
+	}
+	num = ttcachenum;
+      } else {
+	/* compute Gaussian set */
+	/* computed Gaussians will be set in:
+	   score ... OP_calced_score[0..OP_calced_num]
+	   id    ... OP_calced_id[0..OP_calced_num] */
+	if (wrk->OP_time >= 1) {
+	  last_ttcache = wrk->mixture_cache[wrk->OP_time-1][book->id];
+	  if (last_ttcache[0].score != LOG_ZERO) {
+	    for(i=0;i<wrk->OP_gprune_num;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
+	    /* tell last calced best */
+	    (*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id);
+	  } else {
+	    (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	  }
+	} else {
+	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	}
+	/* store to cache */
+	wrk->mixture_cache_num[wrk->OP_time][book->id] = wrk->OP_calced_num;
+	for (i=0;i<wrk->OP_calced_num;i++) {
+	  id = wrk->OP_calced_id[i];
+	  ttcache[i].id = id;
+	  ttcache[i].score = wrk->OP_calced_score[i];
+	  /* now OP_calced_{id|score} can be used for work area */
+	  /* add weights */
+	  wrk->OP_calced_score[i] += weight[id];
+	}
+	num = wrk->OP_calced_num;
+      }
+    } else {
+      /* normal state */
+      (*(wrk->compute_gaussset))(wrk, m->b, m->mix_num, NULL);
+      /* add weights */
+      for(i=0;i<wrk->OP_calced_num;i++) {
+	wrk->OP_calced_score[i] += weight[wrk->OP_calced_id[i]];
+      }
+      num = wrk->OP_calced_num;
+    }
+    /* add log probs */
+    logprob = addlog_array(wrk->OP_calced_score, num);
+    /* if outprob of a stream is zero, skip this stream */
+    if (logprob <= LOG_ZERO) continue;
+    /* sum all the obtained mixture scores */
+    logprobsum += logprob * stream_weight;
+  }
+  if (logprobsum == 0.0) return(LOG_ZERO); /* no valid stream */
+  if (logprobsum <= LOG_ZERO) return(LOG_ZERO);	/* lowest == LOG_ZERO */
+  return (logprobsum * INV_LOG_TEN);
+}

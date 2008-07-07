@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 13:35:37 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -70,6 +70,7 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
 	     int gprune_method, int gprune_mixnum
 	     )
 {
+  int i;
   /* check if variances are inversed */
   if (!hmminfo->variance_inversed) {
     /* here, inverse all variance values for faster computation */
@@ -88,6 +89,13 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
   /** select functions **/
   /* select pruning function to compute likelihood of a mixture component
      and set the pointer to global */
+#ifdef ENABLE_MSD
+  /* currently MSD model works only for non pruning mode */
+  if (hmminfo->has_msd && gprune_method != GPRUNE_SEL_NONE) {
+    jlog("Error: outprob_init: Julius support only \"-gprune none\" when ENABLE_MSD defined\n");
+    return FALSE;
+  }
+#endif
   switch(gprune_method) {
   case GPRUNE_SEL_NONE:
     wrk->compute_gaussset = gprune_none;
@@ -112,8 +120,26 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
   }
   /* select caching function to compute output probability of a mixture */
   if (hmminfo->is_tied_mixture) {
-    wrk->calc_outprob = calc_tied_mix; /* enable book-level cache, typically for a tied-mixture model */
+    /* check if all mixture PDFs are tied-mixture */
+    {
+      HTK_HMM_PDF *p;
+      boolean ok_p = TRUE;
+      for (p = hmminfo->pdfstart; p; p = p->next) {
+	if (p->tmix == FALSE) {
+	  ok_p = FALSE;
+	  break;
+	}
+      }
+      if (ok_p) {
+	jlog("Stat: outprob_init: all mixture PDFs are tied-mixture, use calc_tied_mix()\n");
+	wrk->calc_outprob = calc_tied_mix; /* enable book-level cache, typically for a tied-mixture model */
+      } else {
+	jlog("Stat: outprob_init: tied-mixture PDF exist (not all), calc_compound_mix()\n");
+	wrk->calc_outprob = calc_compound_mix; /* enable book-level cache, typically for a tied-mixture model */
+      }
+    }
   } else {
+    jlog("Stat: outprob_init: state-level mixture PDFs, use calc_mix()\n");
     wrk->calc_outprob = calc_mix; /* no mixture-level cache, for a shared-state, non tied-mixture model */
   }
   
@@ -128,6 +154,12 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
   wrk->OP_hmminfo = hmminfo;
   wrk->OP_gshmm = gshmm;		/* NULL if GMS not used */
   wrk->OP_gprune_num = gprune_mixnum;
+
+  /* store multi-stream data */
+  wrk->OP_nstream = hmminfo->opt.stream_info.num;
+  for(i=0;i<wrk->OP_nstream;i++) {
+    wrk->OP_veclen_stream[i] = hmminfo->opt.stream_info.vsize[i];
+  }
 
   /* generate addlog table */
   make_log_tbl();

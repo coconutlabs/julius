@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 03:07:44 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -36,13 +36,16 @@ static HTK_HMM_State *
 state_new(HTK_HMM_INFO *hmm)
 {
   HTK_HMM_State *new;
+  int i;
 
   new = (HTK_HMM_State *)mybmalloc2(sizeof(HTK_HMM_State), &(hmm->mroot));
-
   new->name = NULL;
-  new->mix_num = 0;
-  new->b = NULL;
-  new->bweight = NULL;
+  new->nstream = hmm->opt.stream_info.num;
+  new->w = NULL;
+  new->pdf = (HTK_HMM_PDF **)mybmalloc2(sizeof(HTK_HMM_PDF *) * new->nstream, &(hmm->mroot));
+  for(i=0;i<new->nstream;i++) {
+    new->pdf[i] = NULL;
+  }
   new->id = 0;
   new->next = NULL;
 
@@ -120,55 +123,50 @@ static HTK_HMM_State *
 state_read(FILE *fp, HTK_HMM_INFO *hmm)
 {
   HTK_HMM_State *new;
-  int mid;
-  int i;
-  boolean single_gaussian;
+  int s, k;
+  boolean no_nummixes;
 
   new = state_new(hmm);
 
   if (currentis("NUMMIXES")) {
+    if (hmm->tmp_mixnum == NULL) {
+      hmm->tmp_mixnum = (int *)mybmalloc2(sizeof(int) * hmm->opt.stream_info.num, &(hmm->mroot));
+    }
+    for(s=0;s<new->nstream;s++) {
+      read_token(fp);
+      NoTokErr("missing NUMMIXES value");
+      hmm->tmp_mixnum[s] = atoi(rdhmmdef_token);
+    }
     read_token(fp);
-    NoTokErr("missing NUMMIXES value");
-    new->mix_num = atoi(rdhmmdef_token);
-    read_token(fp);
-    single_gaussian = FALSE;
+    no_nummixes = FALSE;
   } else {
-    new->mix_num = 1;
-    single_gaussian = TRUE;
+    no_nummixes = TRUE;
   }
 
-  if (currentis("TMIX")) {
-    read_token(fp);
-    /* read in TMIX */
-    tmix_read(fp, new, hmm);
-  } else {
-    
-    new->b = (HTK_HMM_Dens **) mybmalloc2(sizeof(HTK_HMM_Dens *) * new->mix_num, &(hmm->mroot));
-    new->bweight = (PROB *) mybmalloc2(sizeof(PROB) * new->mix_num, &(hmm->mroot));
-    for (i=0;i<new->mix_num;i++) {
-      new->b[i] = NULL;
-      new->bweight[i] = LOG_ZERO;
+  if (currentis("SWEIGHTS") || currentis("~w")) {
+    new->w = get_streamweight_data(fp, hmm);
+    if (new->w == NULL) {
+      rderr("error reading stream weights");
     }
+  }
 
-    if (single_gaussian) {
-      mid = 0;
-      new->bweight[mid] = 0.0;
-      new->b[mid] = get_dens_data(fp, hmm);
+  for(k = 0; k < new->nstream; k++) {
+
+    if (currentis("STREAM")) {
+      read_token(fp);
+      NoTokErr("missing STREAM value");
+      s = atoi(rdhmmdef_token) - 1;
+      read_token(fp);
     } else {
-      for (;;) {
-	if (!currentis("MIXTURE")) break;
-	read_token(fp);
-	NoTokErr("missing MIXTURE id");
-	mid = atoi(rdhmmdef_token) - 1;
-	read_token(fp);
-	NoTokErr("missing MIXTURE weight");
-	new->bweight[mid] = (PROB)log(atof(rdhmmdef_token));
-	read_token(fp);
-	new->b[mid] = get_dens_data(fp, hmm);
+      s = 0;
+      if (k != 0) {		/* not a first time */
+	rderr("a state does not has mixture for all streams");
       }
     }
-  }
 
+    new->pdf[s] = get_mpdf_data(fp, hmm, no_nummixes ? -1 : hmm->tmp_mixnum[s], s);
+
+  }
   return (new);
 }
 
@@ -190,7 +188,7 @@ get_state_data(FILE *fp, HTK_HMM_INFO *hmm)
 {
   HTK_HMM_State *tmp;
 
-  if (currentis("NUMMIXES")||currentis("MEAN")||currentis("RCLASS")) {
+  if (currentis("NUMMIXES")||currentis("SWEIGHTS")||currentis("~w")||currentis("STREAM")||currentis("MIXTURE")||currentis("TMIX")||currentis("MEAN")||currentis("~m")||currentis("RCLASS")) {
     /* definition: define state data, and return the pointer */
     tmp = state_read(fp, hmm);
     tmp->name = NULL; /* no name */

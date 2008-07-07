@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 23:36:00 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -102,7 +102,38 @@ put_htk_dens(FILE *fp, HTK_HMM_Dens *d)
 }
 
 /** 
- * Output mixture component of a state.
+ * Output a mixture component.
+ * 
+ * @param fp [in] file descriptor
+ * @param m [in] pointer to %HMM mixture PDF
+ */
+void
+put_htk_mpdf(FILE *fp, HTK_HMM_PDF *m)
+{
+  int i;
+  GCODEBOOK *book;
+
+  if (m == NULL) {
+    fprintf(fp, "no mixture pdf\n");
+    return;
+  }
+  if (m->name != NULL) fprintf(fp, "  [~p \"%s\"] (stream %d)\n", m->name, m->stream_id + 1);
+  if (m->tmix) {
+    book = (GCODEBOOK *)m->b;
+    fprintf(fp, "  tmix codebook = \"%s\" (size=%d)\n", book->name, book->num);
+    for (i=0;i<m->mix_num;i++) {
+      fprintf(fp, "    weight%d = %f\n", exp(m->bweight[i]));
+    }
+  } else {
+    for (i=0;i<m->mix_num;i++) {
+      fprintf(fp, "-- d%d (weight=%f)--\n",i+1,exp(m->bweight[i]));
+      put_htk_dens(fp, m->b[i]);
+    }
+  }
+}
+
+/** 
+ * Output a state.
  * 
  * @param fp [in] file descriptor
  * @param s [in] pointer to %HMM state
@@ -110,16 +141,24 @@ put_htk_dens(FILE *fp, HTK_HMM_Dens *d)
 void
 put_htk_state(FILE *fp, HTK_HMM_State *s)
 {
-  int i;
+  int st, i;
 
   if (fp == NULL) return;
   if (s == NULL) {
     fprintf(fp, "no output state\n");
   } else {
-    fprintf(fp, "mixture num: %d\n", s->mix_num);
-    for (i=0;i<s->mix_num;i++) {
-      fprintf(fp, "-- d%d (weight=%f)--\n",i+1,pow(10.0, s->bweight[i]));
-      put_htk_dens(fp, s->b[i]);
+    if (s->name != NULL) fprintf(fp, "[~s \"%s\"]\n", s->name);
+    for (st=0;st<s->nstream;st++) {
+      fprintf(fp, "stream %d:", st + 1);
+      if (s->w != NULL) {
+	fprintf(fp, " (weight=%f", s->w->weight[st]);
+	if (s->w->name != NULL) {
+	  fprintf(fp, " <- ~w \"%s\"", s->w->name);
+	}
+	fprintf(fp, ")");
+      }
+      fprintf(fp, "\n");
+      put_htk_mpdf(fp, s->pdf[st]);
     }
   }
 }
@@ -300,26 +339,6 @@ put_param_info(FILE *fp, HTK_Param *pinfo)
 }
 
 /** 
- * Get the maximum number of mixtures per state in a %HMM definition.
- * 
- * @param hmminfo [in] %HMM definition data.
- * 
- * @return the maximum number of mixtures per state.
- */
-static int
-get_max_mixture_num(HTK_HMM_INFO *hmminfo)
-{
-  HTK_HMM_State *st;
-  int maxmixnum;
-
-  maxmixnum = 0;
-  for (st = hmminfo->ststart; st; st = st->next) {
-    if (maxmixnum < st->mix_num) maxmixnum = st->mix_num;
-  }
-  return(maxmixnum);
-}
-
-/** 
  * Output total statistic informations of the %HMM definition data.
  * 
  * @param fp [in] file descriptor
@@ -329,18 +348,33 @@ void
 print_hmmdef_info(FILE *fp, HTK_HMM_INFO *hmminfo)
 {
   char buf[128];
+  int i, d;
 
   if (fp == NULL) return;
   fprintf(fp, " HMM Info:\n");
-  fprintf(fp, "    %d models, %d states, %d mixtures are defined\n",
-	   hmminfo->totalhmmnum, hmminfo->totalstatenum, hmminfo->totalmixnum);
+  fprintf(fp, "    %d models, %d states, %d mpdfs, %d Gaussians are defined\n", hmminfo->totalhmmnum, hmminfo->totalstatenum, hmminfo->totalpdfnum, hmminfo->totalmixnum);
   fprintf(fp, "\t      model type = ");
-  if (hmminfo->is_tied_mixture) fprintf(fp, "tied-mixture, ");
+  if (hmminfo->is_tied_mixture) fprintf(fp, "has tied-mixture, ");
+  if (hmminfo->opt.stream_info.num > 1) fprintf(fp, "multi-stream, ");
+#ifdef ENABLE_MSD
+  if (hmminfo->has_msd) fprintf(fp, "MSD-HMM, ");
+#endif
   fprintf(fp, "context dependency handling %s\n",
 	     (hmminfo->is_triphone) ? "ON" : "OFF");
 
   fprintf(fp, "      training parameter = %s\n",param_code2str(buf, hmminfo->opt.param_type, FALSE));
   fprintf(fp, "\t   vector length = %d\n", hmminfo->opt.vec_size);
+  fprintf(fp, "\tnumber of stream = %d\n", hmminfo->opt.stream_info.num);
+  fprintf(fp, "\t     stream info =");
+  for(d=0,i=0;i<hmminfo->opt.stream_info.num;i++) {
+    if (hmminfo->opt.stream_info.vsize[i] == 1) {
+      fprintf(fp, " [%d]", d);
+    } else {
+      fprintf(fp, " [%d-%d]", d, d + hmminfo->opt.stream_info.vsize[i] - 1);
+    }
+    d += hmminfo->opt.stream_info.vsize[i];
+  }
+  fprintf(fp, "\n");
   fprintf(fp, "\tcov. matrix type = %s\n", get_cov_str(hmminfo->opt.cov_type));
   fprintf(fp, "\t   duration type = %s\n", get_dur_str(hmminfo->opt.dur_type));
 
@@ -348,16 +382,16 @@ print_hmmdef_info(FILE *fp, HTK_HMM_INFO *hmminfo)
     fprintf(fp, "\t    codebook num = %d\n", hmminfo->codebooknum);
     fprintf(fp, "       max codebook size = %d\n", hmminfo->maxcodebooksize);
   }
-  fprintf(fp, "\t max mixture num = %d\n", get_max_mixture_num(hmminfo));
-  fprintf(fp, "\t   max state num = %d\n", hmminfo->maxstatenum);
+  fprintf(fp, "\tmax mixture size = %d Gaussians\n", hmminfo->maxmixturenum);
+  fprintf(fp, "     max length of model = %d states\n", hmminfo->maxstatenum);
 
   fprintf(fp, "     logical base phones = %d\n", hmminfo->basephone.num);
 
-  fprintf(fp, "\t   skipping path = ");
+  fprintf(fp, "       model skip trans. = ");
   if (hmminfo->need_multipath) {
-    fprintf(fp, "exist, multi-path handling needed\n");
+    fprintf(fp, "exist, require multi-path handling\n");
   } else {
-    fprintf(fp, "not exist\n");
+    fprintf(fp, "not exist, no multi-path handling\n");
   }
 
   if (hmminfo->need_multipath) {

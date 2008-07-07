@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 05:09:46 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -69,6 +69,12 @@ compute_g_base(HMMWork *wrk, HTK_HMM_Dens *binfo)
   var = binfo->var->vec;
   tmp = binfo->gconst;
   for (; veclen > 0; veclen--) {
+#ifdef ENABLE_MSD
+    if (*vec == LZERO) {
+      vec++;
+      continue;
+    }
+#endif
     x = *(vec++) - *(mean++);
     tmp += x * x * *(var++);
   }
@@ -85,8 +91,8 @@ compute_g_base(HMMWork *wrk, HTK_HMM_Dens *binfo)
 boolean
 gprune_none_init(HMMWork *wrk)
 {
-  /* maximum Gaussian set size = maximum mixture size */
-  wrk->OP_calced_maxnum = wrk->OP_hmminfo->maxmixturenum;
+  /* maximum Gaussian set size = maximum mixture size * nstream */
+  wrk->OP_calced_maxnum = wrk->OP_hmminfo->maxmixturenum * wrk->OP_nstream;
   wrk->OP_calced_score = (LOGPROB *)mymalloc(sizeof(LOGPROB) * wrk->OP_calced_maxnum);
   wrk->OP_calced_id = (int *)mymalloc(sizeof(int) * wrk->OP_calced_maxnum);
   /* force gprune_num to the max number */
@@ -129,6 +135,40 @@ gprune_none(HMMWork *wrk, HTK_HMM_Dens **g, int num, int *last_id)
   HTK_HMM_Dens *dens;
   LOGPROB *prob = wrk->OP_calced_score;
   int *id = wrk->OP_calced_id;
+#ifdef ENABLE_MSD
+  int valid_dim;
+  int calced_num;
+#endif
+
+#ifdef ENABLE_MSD
+
+  valid_dim = 0;
+  for(i=0; i<wrk->OP_veclen; i++) {
+    if (wrk->OP_vec[i] != LZERO) valid_dim++;
+  }
+  calced_num = 0;
+  for(i=0; i<num; i++) {
+    dens = *(g++);
+    if (dens->meanlen != valid_dim) continue;
+    if (dens->meanlen == 0) {
+      *(prob++) = 0.0;
+    } else {
+      *(prob++) = compute_g_base(wrk, dens);
+    }
+    *(id++) = i;
+    calced_num++;
+  }
+  if (calced_num == 0) {
+    jlog("Error: MSD: input data dim = %d / %d, but no Gaussian defined for it\n", valid_dim, wrk->OP_veclen);
+    jlog("Error: MSD: Gaussian dimensions in this mixture:");
+    for(i=0;i<num;i++) {
+      jlog(" %d", g[i]->meanlen);
+    }
+    jlog("\n");
+  }
+  wrk->OP_calced_num = calced_num;
+
+#else
 
   for(i=0; i<num; i++) {
     dens = *(g++);
@@ -136,4 +176,6 @@ gprune_none(HMMWork *wrk, HTK_HMM_Dens **g, int num, int *last_id)
     *(id++) = i;
   }
   wrk->OP_calced_num = num;
+
+#endif
 }

@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -286,17 +286,32 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	jconf->input.device = SP_INPUT_DEFAULT;
 	jconf->decodeopt.realtime_flag = TRUE;
       } else if (strmatch(tmparg,"alsa")) {
+#ifdef HAS_ALSA
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_ALSA;
 	jconf->decodeopt.realtime_flag = TRUE;
+#else
+	jlog("ERROR: m_options: \"-input alsa\": ALSA support is not built-in\n");
+	return FALSE;
+#endif
       } else if (strmatch(tmparg,"oss")) {
+#ifdef HAS_OSS
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_OSS;
 	jconf->decodeopt.realtime_flag = TRUE;
+#else
+	jlog("ERROR: m_options: \"-input oss\": OSS support is not built-in\n");
+	return FALSE;
+#endif
       } else if (strmatch(tmparg,"esd")) {
+#ifdef HAS_ESD
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_ESD;
 	jconf->decodeopt.realtime_flag = TRUE;
+#else
+	jlog("ERROR: m_options: \"-input oss\": OSS support is not built-in\n");
+	return FALSE;
+#endif
 #endif
       } else if (strmatch(tmparg,"file")) { /* for 1.1 compat */
 	jconf->input.speech_input = SP_RAWFILE;

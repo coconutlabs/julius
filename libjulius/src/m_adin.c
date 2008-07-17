@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -74,24 +74,32 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_end 	     = adin_mic_end;
       a->ad_read 	     = adin_mic_read;
       break;
+#ifdef HAS_ALSA
     case SP_INPUT_ALSA:
       a->ad_standby 	     = adin_alsa_standby;
       a->ad_begin 	     = adin_alsa_begin;
       a->ad_end 	     = adin_alsa_end;
       a->ad_read 	     = adin_alsa_read;
       break;
+#endif
+#ifdef HAS_OSS
     case SP_INPUT_OSS:
       a->ad_standby 	     = adin_oss_standby;
       a->ad_begin 	     = adin_oss_begin;
       a->ad_end 	     = adin_oss_end;
       a->ad_read 	     = adin_oss_read;
       break;
+#endif
+#ifdef HAS_ESD
     case SP_INPUT_ESD:
       a->ad_standby 	     = adin_esd_standby;
       a->ad_begin 	     = adin_esd_begin;
       a->ad_end 	     = adin_esd_end;
       a->ad_read 	     = adin_esd_read;
       break;
+#endif
+    default:
+      jlog("ERROR: m_adin: invalid input device specified\n");
     }
     break;
 #endif

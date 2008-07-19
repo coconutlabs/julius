@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -297,7 +297,7 @@ multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm)
   new->next = lm->grammars;
   lm->grammars = new;
 
-  jlog("STAT: Gram #%d %s: read\n", new->id, new->name);
+  jlog("STAT: Gram #%d %s registered\n", new->id, new->name);
   lm->gram_maxid++;
 
   return new->id;
@@ -626,7 +626,7 @@ multigram_update(PROCESS_LM *lm)
     /* setup additional grammar info of new ones */
     for(m=lm->grammars;m;m=m->next) {
       if (m->newbie) {
-	jlog("STAT: Gram #%d %s: new grammar found, setup it for recognition\n", m->id, m->name);
+	jlog("STAT: Gram #%d %s: new grammar loaded, now mash it up for recognition\n", m->id, m->name);
 	/* map dict item to dfa terminal symbols */
 	if (make_dfa_voca_ref(m->dfa, m->winfo) == FALSE) {
 	  jlog("ERROR: failed to map dict <-> DFA. This grammar will be deleted\n");
@@ -637,8 +637,9 @@ multigram_update(PROCESS_LM *lm)
 	/* set dfa->sp_id and dfa->is_sp */
 	dfa_find_pause_word(m->dfa, m->winfo, lm->am->hmminfo);
 	/* build catergory-pair information */
+	jlog("STAT: Gram #%d %s: extracting category-pair constraint for the 1st pass\n", m->id, m->name);
 	if (extract_cpair(m->dfa) == FALSE) {
-	  jlog("ERROR: failed to extracting category pair. This grammar will be deleted\n");
+	  jlog("ERROR: failed to extract category pair. This grammar will be deleted\n");
 	  /* mark as to be deleted */
 	  m->hook |= MULTIGRAM_DELETE;
 	}
@@ -859,8 +860,6 @@ multigram_read_file_and_add(char *dfa_file, char *dict_file, PROCESS_LM *lm)
   
   /* register the new grammar to multi-gram tree */
   multigram_add(new_dfa, new_winfo, buf, lm);
-
-  jlog("STAT: gram \"%s\" registered\n", buf);
 
   return TRUE;
 

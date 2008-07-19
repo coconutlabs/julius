@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -1189,7 +1189,7 @@ j_final_fusion(Recog *recog)
 
   jlog("STAT: ------\n");
   jlog("STAT: All models are ready, go for final fusion\n");
-  jlog("STAT: [1] create MFCC instance(s)\n");
+  jlog("STAT: [1] create MFCC extraction instance(s)\n");
   if (recog->jconf->input.speech_input != SP_MFCFILE) {
     /***************************************************/
     /* create MFCC calculation instance from AM config */
@@ -1201,7 +1201,7 @@ j_final_fusion(Recog *recog)
   /****************************************/
   /* create recognition process instances */
   /****************************************/
-  jlog("STAT: [2] ignite Recognizer instances]\n");
+  jlog("STAT: [2] create recognition processing instance(s) with AM and LM\n");
   for(sconf=recog->jconf->search_root;sconf;sconf=sconf->next) {
     if (j_launch_recognition_instance(recog, sconf) == FALSE) return FALSE;
   }
@@ -1210,7 +1210,7 @@ j_final_fusion(Recog *recog)
   /****** initialize GMM ******/
   /****************************/
   if (recog->gmm != NULL) {
-    jlog("STAT: [2.5] ignite GMM instance]\n");
+    jlog("STAT: [2.5] create GMM instance\n");
     if (gmm_init(recog) == FALSE) {
       jlog("ERROR: m_fusion: error in initializing GMM\n");
       return FALSE;
@@ -1218,7 +1218,7 @@ j_final_fusion(Recog *recog)
   }
 
   /* stage 4: setup output probability function for each AM */
-  jlog("STAT: [3] set up acoustic prob calculator]\n");
+  jlog("STAT: [3] initialize for acoustic HMM calculation\n");
   for(am=recog->amlist;am;am=am->next) {
     if (am->config->hmm_gs_filename != NULL) {/* with GMS */
       if (outprob_init(&(am->hmmwrk), am->hmminfo, am->hmm_gs, am->config->gs_statenum, am->config->gprune_method, am->config->mixnum_thres) == FALSE) {
@@ -1233,7 +1233,7 @@ j_final_fusion(Recog *recog)
 
   /* stage 5: initialize work area for input and realtime decoding */
 
-  jlog("STAT: [4] set up input MFCC handler]\n");
+  jlog("STAT: [4] prepare MFCC storage(s)\n");
   if (recog->jconf->input.speech_input == SP_MFCFILE) {
     /* create an MFCC instance for MFCC input */
     /* create new mfcc instance */
@@ -1268,7 +1268,7 @@ j_final_fusion(Recog *recog)
   }
 
   if (recog->jconf->decodeopt.realtime_flag) {
-    jlog("STAT: [5] initialize real-time decoding]\n");
+    jlog("STAT: [5] prepare for real-time decoding\n");
     /* prepare for 1st pass pipeline processing */
     if (RealTimeInit(recog) == FALSE) {
       jlog("ERROR: m_fusion: failed to initialize recognition process\n");

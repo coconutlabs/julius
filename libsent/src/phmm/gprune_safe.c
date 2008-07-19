@@ -39,7 +39,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 05:28:12 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -52,7 +52,7 @@
 /* gprune_safe.c --- calculate probability of Gaussian densities */
 /*                   with Gaussian pruning (safe) */
 
-/* $Id: gprune_safe.c,v 1.3 2008/07/07 05:50:12 sumomo Exp $ */
+/* $Id: gprune_safe.c,v 1.4 2008/07/19 16:51:35 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
@@ -154,16 +154,17 @@ gprune_safe_free(HMMWork *wrk)
  * @param gnum [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,
  * or NULL if not exist
+ * @param lnum [in] length of last_id
  */
 void
-gprune_safe(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id)
+gprune_safe(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id, int lnum)
 {
   int i, j, num = 0;
   LOGPROB score, thres;
 
   if (last_id != NULL) {	/* compute them first to form threshold */
     /* 1. calculate first $OP_gprune_num and set initial threshold */
-    for (j=0; j<wrk->OP_gprune_num; j++) {
+    for (j=0; j<lnum; j++) {
       i = last_id[j];
       score = compute_g_base(wrk, g[i]);
       num = cache_push(wrk, i, score, num);

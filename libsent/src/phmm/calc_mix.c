@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 14:18:52 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -60,7 +60,7 @@ calc_mix(HMMWork *wrk)
     /* computed Gaussians will be set in:
        score ... OP_calced_score[0..OP_calced_num]
        id    ... OP_calced_id[0..OP_calced_num] */    
-    (*(wrk->compute_gaussset))(wrk, wrk->OP_state->pdf[s]->b, wrk->OP_state->pdf[s]->mix_num, NULL);
+    (*(wrk->compute_gaussset))(wrk, wrk->OP_state->pdf[s]->b, wrk->OP_state->pdf[s]->mix_num, NULL, 0);
     /* add weights */
     id = wrk->OP_calced_id;
     w = wrk->OP_state->pdf[s]->bweight;

@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 14:22:44 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -167,6 +167,7 @@ calc_tied_mix(HMMWork *wrk)
   MIXCACHE *ttcache;
   short ttcachenum;
   MIXCACHE *last_ttcache;
+  short last_ttcachenum;
   PROB *weight;
   PROB stream_weight;
   int s;
@@ -201,15 +202,16 @@ calc_tied_mix(HMMWork *wrk)
 	 id    ... OP_calced_id[0..OP_calced_num] */
       if (wrk->OP_time >= 1) {
 	last_ttcache = wrk->mixture_cache[wrk->OP_time-1][book->id];
-	if (last_ttcache[0].score != LOG_ZERO) {
-	  for(i=0;i<wrk->OP_gprune_num;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
+	last_ttcachenum = wrk->mixture_cache_num[wrk->OP_time-1][book->id];
+	if (last_ttcachenum > 0) {
+	  for(i=0;i<last_ttcachenum;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
 	  /* tell last calced best */
-	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id);
+	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id, last_ttcachenum);
 	} else {
-	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL, 0);
 	}
       } else {
-	(*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	(*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL, 0);
       }
       /* store to cache */
       wrk->mixture_cache_num[wrk->OP_time][book->id] = wrk->OP_calced_num;
@@ -262,6 +264,7 @@ calc_compound_mix(HMMWork *wrk)
   MIXCACHE *ttcache;
   short ttcachenum;
   MIXCACHE *last_ttcache;
+  short last_ttcachenum;
   PROB *weight;
   PROB stream_weight;
   int s;
@@ -299,15 +302,16 @@ calc_compound_mix(HMMWork *wrk)
 	   id    ... OP_calced_id[0..OP_calced_num] */
 	if (wrk->OP_time >= 1) {
 	  last_ttcache = wrk->mixture_cache[wrk->OP_time-1][book->id];
-	  if (last_ttcache[0].score != LOG_ZERO) {
-	    for(i=0;i<wrk->OP_gprune_num;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
+	  last_ttcachenum = wrk->mixture_cache_num[wrk->OP_time-1][book->id];
+	  if (last_ttcachenum > 0) {
+	    for(i=0;i<last_ttcachenum;i++) wrk->tmix_last_id[i] = last_ttcache[i].id;
 	    /* tell last calced best */
-	    (*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id);
+	    (*(wrk->compute_gaussset))(wrk, book->d, book->num, wrk->tmix_last_id, last_ttcachenum);
 	  } else {
-	    (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	    (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL, 0);
 	  }
 	} else {
-	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL);
+	  (*(wrk->compute_gaussset))(wrk, book->d, book->num, NULL, 0);
 	}
 	/* store to cache */
 	wrk->mixture_cache_num[wrk->OP_time][book->id] = wrk->OP_calced_num;
@@ -323,7 +327,7 @@ calc_compound_mix(HMMWork *wrk)
       }
     } else {
       /* normal state */
-      (*(wrk->compute_gaussset))(wrk, m->b, m->mix_num, NULL);
+      (*(wrk->compute_gaussset))(wrk, m->b, m->mix_num, NULL, 0);
       /* add weights */
       for(i=0;i<wrk->OP_calced_num;i++) {
 	wrk->OP_calced_score[i] += weight[wrk->OP_calced_id[i]];

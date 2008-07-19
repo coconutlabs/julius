@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 05:23:59 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -540,6 +540,7 @@ rd_pdf_sub(FILE *fp, HTK_HMM_INFO *hmm, HTK_HMM_PDF *m)
     rdn(fp, &did, sizeof(unsigned int), 1);
     m->b = (HTK_HMM_Dens **)tm_index[did];
     m->mix_num = (tm_index[did])->num;
+    m->tmix = TRUE;
   } else {
     /* mixture */
     m->b = (HTK_HMM_Dens **)mybmalloc2(sizeof(HTK_HMM_Dens *) * m->mix_num, &(hmm->mroot));
@@ -551,6 +552,7 @@ rd_pdf_sub(FILE *fp, HTK_HMM_INFO *hmm, HTK_HMM_PDF *m)
 	m->b[i] = dens_index[did];
       }
     }
+    m->tmix = FALSE;
   }
   m->bweight = (PROB *)mybmalloc2(sizeof(PROB) * m->mix_num, &(hmm->mroot));
   rdn(fp, m->bweight, sizeof(PROB), m->mix_num);
@@ -650,8 +652,10 @@ rd_state(FILE *fp, HTK_HMM_INFO *hmm, boolean mpdf_macro)
       /* mpdf are stored sequencially, so read the content here */
       for(m=0;m<s->nstream;m++) {
 	s->pdf[m] = (HTK_HMM_PDF *)mybmalloc2(sizeof(HTK_HMM_PDF), &(hmm->mroot));
+	s->pdf[m]->name = NULL;
 	if (rd_pdf_sub(fp, hmm, s->pdf[m]) == FALSE) return FALSE;
 	s->pdf[m]->stream_id = m;
+	mpdf_add(hmm, s->pdf[m]);
       }
     }
     if (hmm->opt.stream_info.num > 1) {

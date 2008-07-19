@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 14:54:06 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  *
  */
 /*
@@ -72,7 +72,7 @@ typedef struct __hmmwork__{
   LOGPROB (*calc_outprob_state)(struct __hmmwork__ *);
 
   /// Pruning function to compute likelihood of a mixture component
-  void (*compute_gaussset)(struct __hmmwork__ *, HTK_HMM_Dens **g, int num, int *last_id);
+  void (*compute_gaussset)(struct __hmmwork__ *, HTK_HMM_Dens **g, int num, int *last_id, int lnum);
 
   /// Initialization function that corresponds to compute_gaussset.
   boolean (*compute_gaussset_init)(struct __hmmwork__ *);
@@ -203,19 +203,19 @@ int cache_push(HMMWork *wrk, int id, LOGPROB score, int len);
 LOGPROB compute_g_base(HMMWork *wrk, HTK_HMM_Dens *binfo);
 boolean gprune_none_init(HMMWork *wrk);
 void gprune_none_free(HMMWork *wrk);
-void gprune_none(HMMWork *wrk, HTK_HMM_Dens **g, int num, int *last_id);
+void gprune_none(HMMWork *wrk, HTK_HMM_Dens **g, int num, int *last_id, int lnum);
 /* gprune_safe.c */
 LOGPROB compute_g_safe(HMMWork *wrk, HTK_HMM_Dens *binfo, LOGPROB thres);
 boolean gprune_safe_init(HMMWork *wrk);
 void gprune_safe_free(HMMWork *wrk);
-void gprune_safe(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id);
+void gprune_safe(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id, int lnum);
 /* gprune_heu.c */
 boolean gprune_heu_init(HMMWork *wrk);
 void gprune_heu_free(HMMWork *wrk);
-void gprune_heu(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id);
+void gprune_heu(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id, int lnum);
 /* gprune_beam.c */
 boolean gprune_beam_init(HMMWork *wrk);
 void gprune_beam_free(HMMWork *wrk);
-void gprune_beam(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id);
+void gprune_beam(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id, int lnum);
 
 #endif /* __SENT_HMM_CALC_H__ */

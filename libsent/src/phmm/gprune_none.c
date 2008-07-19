@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 05:09:46 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -127,9 +127,10 @@ gprune_none_free(HMMWork *wrk)
  * @param num [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,
  * or NULL if not exist
+ * @param lnum [in] length of last_id
  */
 void
-gprune_none(HMMWork *wrk, HTK_HMM_Dens **g, int num, int *last_id)
+gprune_none(HMMWork *wrk, HTK_HMM_Dens **g, int num, int *last_id, int lnum)
 {
   int i;
   HTK_HMM_Dens *dens;

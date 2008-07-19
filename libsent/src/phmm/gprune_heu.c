@@ -38,7 +38,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 05:44:52 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -289,9 +289,10 @@ gprune_heu_free(HMMWork *wrk)
  * @param gnum [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,
  * or NULL if not exist
+ * @param lnum [in] length of last_id
  */
 void
-gprune_heu(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id)
+gprune_heu(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id, int lnum)
 {
   int i, j, num = 0;
   LOGPROB score, thres;
@@ -300,7 +301,7 @@ gprune_heu(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id)
     /* 1. clear backmax */
     init_backmax(wrk);
     /* 2. calculate first $OP_gprune_num with setting max for each dimension */
-    for (j=0; j<wrk->OP_gprune_num; j++) {
+    for (j=0; j<lnum; j++) {
       i = last_id[j];
       score = compute_g_heu_updating(wrk, g[i]);
       num = cache_push(wrk, i, score, num);

@@ -40,7 +40,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 03:27:53 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -285,9 +285,10 @@ gprune_beam_free(HMMWork *wrk)
  * @param gnum [in] length of above
  * @param last_id [in] ID list of N-best mixture in previous input frame,
  * or NULL if not exist
+ * @param lnum [in] length of last_id
  */
 void
-gprune_beam(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id)
+gprune_beam(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id, int lnum)
 {
   int i, j, num = 0;
   LOGPROB score, thres;
@@ -296,7 +297,7 @@ gprune_beam(HMMWork *wrk, HTK_HMM_Dens **g, int gnum, int *last_id)
     /* 1. clear dimthres */
     clear_dimthres(wrk);
     /* 2. calculate first $OP_gprune_num and set initial thresholds */
-    for (j=0; j<wrk->OP_gprune_num; j++) {
+    for (j=0; j<lnum; j++) {
       i = last_id[j];
 #ifdef TEST2
       if (!g[i]) {

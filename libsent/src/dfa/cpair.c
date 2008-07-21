@@ -18,7 +18,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 13:54:44 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -31,10 +31,52 @@
 #include <sent/stddefs.h>
 #include <sent/dfa.h>
 
-/// Bit mask to access category-pair matrix
-static unsigned char cp_table[] = {
-  0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
-};
+/** 
+ * Search for a terminal ID in a cp list.  Set its location to loc.
+ * When not found, the location where to insert the key data iwill be set.
+ * 
+ * @param list [in] cp list
+ * @param len [in] length of list
+ * @param key [in] a terminal ID value to find
+ * @param loc [out] return the to-be-inserted location of the key
+ * 
+ * @return its location when found, or -1 when not found.
+ * 
+ */
+static int
+cp_find(int *list, int len, int key, int *loc)
+{
+  int left, right, mid;
+  int ret;
+  
+  if (len == 0) {
+    *loc = 0;
+    return -1;
+  }
+
+  left = 0;
+  right = len - 1;
+  while (left < right) {
+    mid = (left + right) / 2;
+    if (list[mid] < key) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  if (list[left] == key) {
+    *loc = left;
+    ret = left;
+  } else {
+    ret = -1;
+    if (list[left] > key) {
+      *loc = left;
+    } else {
+      *loc = left + 1;
+    }
+  }
+  return ret;
+}
 
 /** 
  * Return whether the given two category can be connected or not.
@@ -48,8 +90,11 @@ static unsigned char cp_table[] = {
 boolean
 dfa_cp(DFA_INFO *dfa, int i, int j)
 {
+  int loc;
+
   /*return(dfa->cp[i][j]);*/
-  return((dfa->cp[i][j>>3] & cp_table[j&7]) ? TRUE : FALSE);
+  //return((dfa->cp[i][j>>3] & cp_table[j&7]) ? TRUE : FALSE);
+  return(cp_find(dfa->cp[i], dfa->cplen[i], j, &loc) != -1 ? TRUE : FALSE);
 }
 
 /** 
@@ -63,8 +108,10 @@ dfa_cp(DFA_INFO *dfa, int i, int j)
 boolean
 dfa_cp_begin(DFA_INFO *dfa, int i)
 {
+  int loc;
   /*return(dfa->cp_begin[i]);*/
-  return((dfa->cp_begin[i>>3] & cp_table[i&7]) ? TRUE : FALSE);
+  //return((dfa->cp_begin[i>>3] & cp_table[i&7]) ? TRUE : FALSE);
+  return(cp_find(dfa->cp_begin, dfa->cp_begin_len, i, &loc) != -1 ? TRUE : FALSE);
 }
 
 /** 
@@ -78,12 +125,71 @@ dfa_cp_begin(DFA_INFO *dfa, int i)
 boolean
 dfa_cp_end(DFA_INFO *dfa, int i)
 {
+  int loc;
   /*return(dfa->cp_end[i]);*/
-  return((dfa->cp_end[i>>3] & cp_table[i&7]) ? TRUE : FALSE);
+  //return((dfa->cp_end[i>>3] & cp_table[i&7]) ? TRUE : FALSE);
+  return(cp_find(dfa->cp_end, dfa->cp_end_len, i, &loc) != -1 ? TRUE : FALSE);
 }
 
 /** 
- * Set the category-pair matrix bit
+ * Add an terminal ID to a specified location in the cp list.
+ *
+ * @param list [i/o] cp list
+ * @param len [i/o] data num in the list
+ * @param alloclen [i/o] allocated length of the list
+ * @param val [in] value to be added
+ * @param loc [in] location where to add the val
+ * 
+ * @return TRUE on success, FALSE on failure.
+ * 
+ */
+static boolean
+cp_add(int **list, int *len, int *alloclen, int val, int loc)
+{
+  if (loc > *len) {
+    jlog("InternalError: skip?\n");
+    return FALSE;
+  }
+  if (*len + 1 > *alloclen) {
+    /* expand cplist if necessary */
+    *alloclen *= 2;
+    *list = (int *)myrealloc(*list, sizeof(int) * (*alloclen));
+  }
+  if (loc < *len) {
+    memmove(&((*list)[loc+1]), &((*list)[loc]), sizeof(int) * (*len - loc));
+  }
+  (*list)[loc] = val;
+  (*len)++;
+  return TRUE;
+}
+
+/** 
+ * Remove an element from the cp list.
+ * 
+ * @param list [i/o] cp list
+ * @param len [i/o] data num in the list
+ * @param loc [in] location of removing value
+ * 
+ * @return TRUE on success, FALSE on error.
+ * 
+ */static boolean
+cp_remove(int **list, int *len, int loc)
+{
+  if (*len == 0) return TRUE;
+  if (loc >= *len) {
+    jlog("InternalError: skip?\n");
+    return FALSE;
+  }
+  if (loc < *len - 1) {
+    memmove(&((*list)[loc]), &((*list)[loc+1]), sizeof(int) * (*len - loc - 1));
+  }
+  (*len) --;
+  return TRUE;
+}
+
+
+/** 
+ * Set a category-pair matrix bit.
  * 
  * @param dfa [out] DFA grammar holding category pair matrix
  * @param i [in] category id of left word
@@ -93,16 +199,22 @@ dfa_cp_end(DFA_INFO *dfa, int i)
 void
 set_dfa_cp(DFA_INFO *dfa, int i, int j, boolean value)
 {
-  /*dfa->cp[i][j] = value;*/
+  int loc;
   if (value) {
-    dfa->cp[i][j>>3] |= cp_table[j&7];
+    /* add j to cp list of i */
+    if (cp_find(dfa->cp[i], dfa->cplen[i], j, &loc) == -1) { /* not exist */
+      cp_add(&(dfa->cp[i]), &(dfa->cplen[i]), &(dfa->cpalloclen[i]), j, loc);
+    }
   } else {
-    dfa->cp[i][j>>3] &= ~ cp_table[j&7];
+    /* remove j from cp list of i */
+    if (cp_find(dfa->cp[i], dfa->cplen[i], j, &loc) != -1) { /* already exist */
+      cp_remove(&(dfa->cp[i]), &(dfa->cplen[i]), loc);
+    }
   }
 }
 
 /** 
- * Set the category-pair matrix bit at the beginning of sentence
+ * Set a category-pair matrix bit for the beginning of sentence
  * 
  * @param dfa [out] DFA grammar holding category pair matrix
  * @param i [in] category id of the word
@@ -112,16 +224,23 @@ set_dfa_cp(DFA_INFO *dfa, int i, int j, boolean value)
 void
 set_dfa_cp_begin(DFA_INFO *dfa, int i, boolean value)
 {
-  /*dfa->cp_begin[i] = value;*/
+  int loc;
+
   if (value) {
-    dfa->cp_begin[i>>3] |= cp_table[i&7];
+    /* add j to cp list of i */
+    if (cp_find(dfa->cp_begin, dfa->cp_begin_len, i, &loc) == -1) { /* not exist */
+      cp_add(&(dfa->cp_begin), &(dfa->cp_begin_len), &(dfa->cp_begin_alloclen), i, loc);
+    }
   } else {
-    dfa->cp_begin[i>>3] &= ~ cp_table[i&7];
+    /* remove j from cp list of i */
+    if (cp_find(dfa->cp_begin, dfa->cp_begin_len, i, &loc) != -1) { /* already exist */
+      cp_remove(&(dfa->cp_begin), &(dfa->cp_begin_len), loc);
+    }
   }
 }
 
 /** 
- * Set the category-pair matrix bit at the end of sentence
+ * Set a category-pair matrix bit for the end of sentence
  * 
  * @param dfa [out] DFA grammar holding category pair matrix
  * @param i [in] category id of the word
@@ -131,11 +250,18 @@ set_dfa_cp_begin(DFA_INFO *dfa, int i, boolean value)
 void
 set_dfa_cp_end(DFA_INFO *dfa, int i, boolean value)
 {
-  /*dfa->cp_end[i] = value;*/
+  int loc;
+
   if (value) {
-    dfa->cp_end[i>>3] |= cp_table[i&7];
+    /* add j to cp list of i */
+    if (cp_find(dfa->cp_end, dfa->cp_end_len, i, &loc) == -1) { /* not exist */
+      cp_add(&(dfa->cp_end), &(dfa->cp_end_len), &(dfa->cp_end_alloclen), i, loc);
+    }
   } else {
-    dfa->cp_end[i>>3] &= ~ cp_table[i&7];
+    /* remove j from cp list of i */
+    if (cp_find(dfa->cp_end, dfa->cp_end_len, i, &loc) != -1) { /* already exist */
+      cp_remove(&(dfa->cp_end), &(dfa->cp_end_len), loc);
+    }
   }
 }
 
@@ -147,10 +273,7 @@ set_dfa_cp_end(DFA_INFO *dfa, int i, boolean value)
 void
 init_dfa_cp(DFA_INFO *dfa)
 {
-  dfa->cp_root = NULL;
   dfa->cp = NULL;
-  dfa->cp_begin = NULL;
-  dfa->cp_end = NULL;
 }
 
 /** 
@@ -158,92 +281,111 @@ init_dfa_cp(DFA_INFO *dfa)
  * 
  * @param dfa [out] DFA grammar to hold category pair matrix
  * @param term_num [in] number of categories in the grammar
+ * @param size [in] memory allocation length for each cp list as initial
  */
 void
-malloc_dfa_cp(DFA_INFO *dfa, int term_num)
+malloc_dfa_cp(DFA_INFO *dfa, int term_num, int size)
 {
   int i, j, x;
+  int maxlen;
 
-  x = (term_num + 7) >> 3;
-  dfa->cp_root = (unsigned char *)mymalloc(sizeof(unsigned char) * term_num * x);
-  dfa->cp = (unsigned char **)mymalloc(sizeof(unsigned char *) * term_num);
+  dfa->cp = (int **)mymalloc(sizeof(int *) * term_num);
+  dfa->cplen = (int *)mymalloc(sizeof(int) * term_num);
+  dfa->cpalloclen = (int *)mymalloc(sizeof(int) * term_num);
   for(i=0;i<term_num;i++) {
-    dfa->cp[i] = &(dfa->cp_root[x*i]);
-    for(j=0;j<term_num;j++) {
-      set_dfa_cp(dfa, i, j, FALSE);
-    }
+    dfa->cp[i] = (int *)mymalloc(sizeof(int) * size);
+    dfa->cpalloclen[i] = size;
+    dfa->cplen[i] = 0;
   }
-  dfa->cp_begin = (unsigned char *)mymalloc(sizeof(unsigned char) * x);
-  dfa->cp_end = (unsigned char *)mymalloc(sizeof(unsigned char) * x);
-  for(i=0;i<term_num;i++) {
-    set_dfa_cp_begin(dfa, i, FALSE);
-    set_dfa_cp_end(dfa, i, FALSE);
-  }
-  dfa->term_num = term_num;
+  dfa->cp_begin = (int *)mymalloc(sizeof(int) * size);
+  dfa->cp_begin_alloclen = size;
+  dfa->cp_begin_len = 0;
+  dfa->cp_end = (int *)mymalloc(sizeof(int) * size);
+  dfa->cp_end_alloclen = size;
+  dfa->cp_end_len = 0;
 }
 
 /** 
- * Re-allocate memory for category pair matrix, can be called when
- * the number of category is expanded.
+ * Append a categori-pair matrix to another.
+ * This function assumes that other grammar information has been already
+ * appended and dfa->term_num contains the new size.
  * 
- * @param dfa [I/O] DFA grammar holding category pair matrix
- * @param old_term_num [in] number of categories when the last category pair matrix was allocated
- * @param new_term_num [in] new number of categories in the grammar
+ * @param dfa [i/o] DFA grammar to which the new category pair will be appended
+ * @param src [in] source DFA 
+ * @param offset [in] appending point at dfa
+ *
+ * @return TRUE on success, FALSE on error.
  */
-void
-realloc_dfa_cp(DFA_INFO *dfa, int old_term_num, int new_term_num)
+boolean
+dfa_cp_append(DFA_INFO *dfa, DFA_INFO *src, int offset)
 {
-  int i, j, n, x, old_x;
-  unsigned char *oldroot, *oldbegin, *oldend;
-  unsigned char **oldcp;
+  int i, j, size;
 
   if (dfa->cp == NULL) {
-    malloc_dfa_cp(dfa, new_term_num);
-    return;
-  }
-
-  x = (new_term_num + 7) >> 3;
-  old_x = (old_term_num + 7) >> 3;
-
-  oldroot = dfa->cp_root;
-  oldcp   = dfa->cp;
-  
-  dfa->cp_root = (unsigned char *)mymalloc(sizeof(unsigned char) * new_term_num * x);
-  dfa->cp = (unsigned char **)mymalloc(sizeof(unsigned char *) * new_term_num);
-  for(i=0;i<new_term_num;i++) {
-    dfa->cp[i] = &(dfa->cp_root[x*i]);
-  }
-  for(i=0;i<old_term_num;i++) {
-    for(n=0;n<old_x;n++) {
-      dfa->cp[i][n] = oldcp[i][n];
+    /* no category pair information exist on target */
+    if (dfa->term_num != src->term_num) {
+      jlog("InternalError: dfa_cp_append\n");
+      return FALSE;
     }
-  }
-  for(i=old_term_num;i<new_term_num;i++) {
-    for(j=0;j<old_term_num;j++) {
-      set_dfa_cp(dfa, i, j, FALSE);
-      set_dfa_cp(dfa, j, i, FALSE);
+    /* just malloc and copy */
+    dfa->cp = (int **)mymalloc(sizeof(int *) * dfa->term_num);
+    dfa->cplen = (int *)mymalloc(sizeof(int) * dfa->term_num);
+    dfa->cpalloclen = (int *)mymalloc(sizeof(int) * dfa->term_num);
+    for(i=0;i<dfa->term_num;i++) {
+      size = src->cplen[i];
+      if (size < DFA_CP_MINSTEP) size = DFA_CP_MINSTEP;
+      dfa->cp[i] = (int *)mymalloc(sizeof(int) * size);
+      dfa->cpalloclen[i] = size;
+      memcpy(dfa->cp[i], src->cp[i], sizeof(int) * src->cplen[i]);
+      dfa->cplen[i] = src->cplen[i];
     }
-    set_dfa_cp(dfa, i, i, FALSE);
+    size = src->cp_begin_len;
+    if (size < DFA_CP_MINSTEP) size = DFA_CP_MINSTEP;
+    dfa->cp_begin = (int *)mymalloc(sizeof(int) * size);
+    dfa->cp_begin_alloclen = size;
+    memcpy(dfa->cp_begin, src->cp_begin, sizeof(int) * src->cp_begin_len);
+    dfa->cp_begin_len = src->cp_begin_len;
+    size = src->cp_end_len;
+    if (size < DFA_CP_MINSTEP) size = DFA_CP_MINSTEP;
+    dfa->cp_end = (int *)mymalloc(sizeof(int) * size);
+    dfa->cp_end_alloclen = size;
+    memcpy(dfa->cp_end, src->cp_end, sizeof(int) * src->cp_end_len);
+    dfa->cp_end_len = src->cp_end_len;
+    return TRUE;
   }
-  free(oldcp);
-  free(oldroot);
+  /* expand index */
+  dfa->cp = (int **)myrealloc(dfa->cp, sizeof(int *) * dfa->term_num);
+  dfa->cplen = (int *)myrealloc(dfa->cplen, sizeof(int) * dfa->term_num);
+  dfa->cpalloclen = (int *)myrealloc(dfa->cpalloclen, sizeof(int) * dfa->term_num);
+  /* copy src->cp[i][j] to target->cp[i+offset][j+offset] */
+  for(i=offset;i<dfa->term_num;i++) {
+    size = src->cplen[i-offset];
+    if (size < DFA_CP_MINSTEP) size = DFA_CP_MINSTEP;
+    dfa->cp[i] = (int *)mymalloc(sizeof(int) * size);
+    dfa->cpalloclen[i] = size;
+    for(j=0;j<src->cplen[i-offset];j++) {
+      dfa->cp[i][j] = src->cp[i-offset][j] + offset;
+    }
+    dfa->cplen[i] = src->cplen[i-offset];
+  }
+  if (dfa->cp_begin_alloclen < dfa->cp_begin_len + src->cp_begin_len) {
+    dfa->cp_begin_alloclen = dfa->cp_begin_len + src->cp_begin_len;
+    dfa->cp_begin = (int *)myrealloc(dfa->cp_begin, sizeof(int) * dfa->cp_begin_alloclen);
+  }
+  for(j=0;j<src->cp_begin_len;j++) {
+    dfa->cp_begin[dfa->cp_begin_len + j] = src->cp_begin[j] + offset;
+  }
+  dfa->cp_begin_len += src->cp_begin_len;
+  if (dfa->cp_end_alloclen < dfa->cp_end_len + src->cp_end_len) {
+    dfa->cp_end_alloclen = dfa->cp_end_len + src->cp_end_len;
+    dfa->cp_end = (int *)myrealloc(dfa->cp_end, sizeof(int) * dfa->cp_end_alloclen);
+  }
+  for(j=0;j<src->cp_end_len;j++) {
+    dfa->cp_end[dfa->cp_end_len + j] = src->cp_end[j] + offset;
+  }
+  dfa->cp_end_len += src->cp_end_len;
 
-  oldbegin = dfa->cp_begin;
-  oldend = dfa->cp_end;
-  dfa->cp_begin = (unsigned char *)mymalloc(sizeof(unsigned char) * x);
-  dfa->cp_end = (unsigned char *)mymalloc(sizeof(unsigned char) * x);
-  for(n=0;n<old_x;n++) {
-    dfa->cp_begin[n] = oldbegin[n];
-    dfa->cp_end[n] = oldend[n];
-  }
-  for(i=old_term_num;i<new_term_num;i++) {
-    set_dfa_cp_begin(dfa, i, FALSE);
-    set_dfa_cp_end(dfa, i, FALSE);
-  }
-  free(oldbegin);
-  free(oldend);
-
-  dfa->term_num = new_term_num;
+  return TRUE;
 }
 
 /** 
@@ -254,10 +396,62 @@ realloc_dfa_cp(DFA_INFO *dfa, int old_term_num, int new_term_num)
 void
 free_dfa_cp(DFA_INFO *dfa)
 {
+  int i;
+
   if (dfa->cp != NULL) {
-    free(dfa->cp_begin);
     free(dfa->cp_end);
+    free(dfa->cp_begin);
+    for(i=0;i<dfa->term_num;i++) free(dfa->cp[i]);
+    free(dfa->cpalloclen);
+    free(dfa->cplen);
     free(dfa->cp);
-    free(dfa->cp_root);
+    dfa->cp = NULL;
   }
+}
+
+void
+dfa_cp_output_rawdata(FILE *fp, DFA_INFO *dfa)
+{
+  int i, j;
+
+  for(i=0;i<dfa->term_num;i++) {
+    fprintf(fp, "%d:", i);
+    for(j=0;j<dfa->cplen[i];j++) {
+      fprintf(fp, " %d", dfa->cp[i][j]);
+    }
+    fprintf(fp, "\n");
+  }
+  fprintf(fp, "bgn:", i);
+  for(j=0;j<dfa->cp_begin_len;j++) {
+    fprintf(fp, " %d", dfa->cp_begin[j]);
+  }
+  fprintf(fp, "\n");
+  fprintf(fp, "end:", i);
+  for(j=0;j<dfa->cp_end_len;j++) {
+    fprintf(fp, " %d", dfa->cp_end[j]);
+  }
+  fprintf(fp, "\n");
+}
+
+void
+dfa_cp_count_size(DFA_INFO *dfa, unsigned long *size_ret, unsigned long *allocsize_ret)
+{
+  int i;
+  unsigned long size, allocsize;
+
+  size = 0;
+  allocsize = 0;
+  for(i=0;i<dfa->term_num;i++) {
+    size += sizeof(int) * dfa->cplen[i];
+    allocsize += sizeof(int) * dfa->cpalloclen[i];
+  }
+  size += sizeof(int) * dfa->cp_begin_len;
+  allocsize += sizeof(int) * dfa->cp_begin_alloclen;
+  size += sizeof(int) * dfa->cp_end_len;
+  allocsize += sizeof(int) * dfa->cp_end_alloclen;
+
+  allocsize += (sizeof(int *) + sizeof(int) + sizeof(int)) * dfa->term_num;
+
+  *size_ret = size;
+  *allocsize_ret = allocsize;
 }

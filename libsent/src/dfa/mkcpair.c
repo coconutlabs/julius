@@ -38,7 +38,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 14:35:33 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -63,9 +63,13 @@ extract_cpair(DFA_INFO *dinfo)
   int i;
   DFA_ARC *arc_l, *arc_r, *arc_r2;
   int left, right;
+  int size;
 
   /* initialize */
-  malloc_dfa_cp(dinfo, dinfo->term_num);
+  /* initial size = average fun-out num per state */
+  size = dinfo->arc_num / dinfo->state_num;
+  if (size < DFA_CP_MINSTEP) size = DFA_CP_MINSTEP;
+  malloc_dfa_cp(dinfo, dinfo->term_num, size);
 
   /* extract cpair info */
   for (i=0;i<dinfo->state_num;i++) {
@@ -129,16 +133,7 @@ cpair_append(DFA_INFO *dst, DFA_INFO *src, int coffset)
   }
 
   /* allocate appended area */
-  realloc_dfa_cp(dst, coffset, dst->term_num);
-  
-  /* append cp */
-  for(i=coffset;i<dst->term_num;i++) {
-    for(j=coffset;j<dst->term_num;j++) {
-      set_dfa_cp(dst, i, j, dfa_cp(src, i-coffset, j-coffset));
-    }
-    set_dfa_cp_begin(dst, i, dfa_cp_begin(src, i-coffset));
-    set_dfa_cp_end(dst, i, dfa_cp_end(src, i-coffset));
-  }
+  if (dfa_cp_append(dst, src, coffset) == FALSE) return FALSE;
 
   return TRUE;
 }

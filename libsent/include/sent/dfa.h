@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 18:21:27 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -45,6 +45,8 @@
 #include <sent/stddefs.h>
 
 #define DFA_STATESTEP 1000	///< Allocation step of DFA state
+
+#define DFA_CP_MINSTEP 20	///< Minimum initial CP data size per category
 
 #define INITIAL_S 0x10000000	///< Status flag mask specifying an initial state
 #define ACCEPT_S  0x00000001	///< Status flag mask specifying an accept state
@@ -77,19 +79,15 @@ typedef struct {
   int state_num;		///< Total number of states actually defined
   int arc_num;			///< Total number of arcs
   int term_num;			///< Total number of categories
-  /**
-   * Category-pair constraint is stored in bit, i.e.,
-   * @code
-   * cp[c1][c2] -> (c2%8)th bit on cp[c1][c2/8]
-   * cp_begin[c2] -> (c2%8)th bit on cp_begin[c2/8]
-   * cp_end[c2] -> (c2%8)th bit on cp_end[c2/8]
-   * @endcode
-   * If bit is 1, the combination is allowed to connect.
-   */
-  unsigned char **cp;           ///< Store constraint whether @c c2 can follow @c c1
-  unsigned char *cp_begin;      ///< Store constraint whether @c c can appear at beginning of sentence
-  unsigned char *cp_end;	///< Store constraint whether @c c can appear at end of sentence
-  unsigned char *cp_root;	///< Root pointer of @c cp informations
+  int **cp;           ///< Store constraint whether @c c2 can follow @c c1
+  int *cplen;			///< Lengthes of each bcp 
+  int *cpalloclen;		///< Allocated lengthes of each cp
+  int *cp_begin;      ///< Store constraint whether @c c can appear at beginning of sentence
+  int cp_begin_len;		///< Length of cp_begin
+  int cp_begin_alloclen;		///< Allocated length of cp_begin
+  int *cp_end;	///< Store constraint whether @c c can appear at end of sentence
+  int cp_end_len;		///< Length of cp_end
+  int cp_end_alloclen;		///< Allocated length of cp_end
   TERM_INFO term;		///< Information of terminal symbols (category)
   boolean *is_sp;		///< TRUE if the category contains only \a sp word
   WORD_ID sp_id;		///< Word ID of short pause word
@@ -118,11 +116,12 @@ void set_dfa_cp(DFA_INFO *dfa, int i, int j, boolean value);
 void set_dfa_cp_begin(DFA_INFO *dfa, int i, boolean value);
 void set_dfa_cp_end(DFA_INFO *dfa, int i, boolean value);
 void init_dfa_cp(DFA_INFO *dfa);
-void malloc_dfa_cp(DFA_INFO *dfa, int term_num);
+void malloc_dfa_cp(DFA_INFO *dfa, int term_num, int size);
 void realloc_dfa_cp(DFA_INFO *dfa, int old_term_num, int new_term_num);
 void free_dfa_cp(DFA_INFO *dfa);
-
-
+void dfa_cp_output_rawdata(FILE *fp, DFA_INFO *dfa);
+void dfa_cp_count_size(DFA_INFO *dfa, unsigned long *size_ret, unsigned long *allocsize_ret);
+boolean dfa_cp_append(DFA_INFO *dfa, DFA_INFO *src, int offset);
 
 #include <sent/vocabulary.h>
 boolean make_dfa_voca_ref(DFA_INFO *dinfo, WORD_INFO *winfo);

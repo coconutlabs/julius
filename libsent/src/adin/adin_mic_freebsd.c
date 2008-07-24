@@ -39,7 +39,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -62,9 +62,9 @@
 #include <poll.h>
 
 /* sound header */
-#ifdef HAVE_SYS_SOUNDCARD_H
+#if defined(HAVE_SYS_SOUNDCARD_H)
 #include <sys/soundcard.h>
-#elif HAVE_MACHINE_SOUNDCARD_H
+#elif defined(HAVE_MACHINE_SOUNDCARD_H)
 #include <machine/soundcard.h>
 #endif
 

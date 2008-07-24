@@ -51,7 +51,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -72,9 +72,9 @@
 
 /* sound header */
 #ifdef HAS_OSS
-#ifdef HAVE_SYS_SOUNDCARD_H
+#if defined(HAVE_SYS_SOUNDCARD_H)
 #include <sys/soundcard.h>
-#elif HAVE_MACHINE_SOUNDCARD_H
+#elif defined(HAVE_MACHINE_SOUNDCARD_H)
 #include <machine/soundcard.h>
 #endif
 #endif

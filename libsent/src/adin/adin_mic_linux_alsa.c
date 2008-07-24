@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -63,9 +63,9 @@
 
 #ifdef HAS_ALSA
 
-#ifdef HAVE_ALSA_ASOUNDLIB_H
+#if defined(HAVE_ALSA_ASOUNDLIB_H)
 #include <alsa/asoundlib.h>
-#elif  HAVE_SYS_ASOUNDLIB_H
+#elif defined(HAVE_SYS_ASOUNDLIB_H)
 #include <sys/asoundlib.h>
 #endif
 

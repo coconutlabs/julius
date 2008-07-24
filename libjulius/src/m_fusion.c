@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -474,11 +474,11 @@ j_load_am(Recog *recog, JCONF_AM *amconf)
   if (am->config->gprune_method == GPRUNE_SEL_UNDEF) {/* set default if not specified */
     if (am->hmminfo->is_tied_mixture) {
       /* enabled by default for tied-mixture models */
-#ifdef GPRUNE_DEFAULT_SAFE
+#if defined(GPRUNE_DEFAULT_SAFE)
       am->config->gprune_method = GPRUNE_SEL_SAFE;
-#elif GPRUNE_DEFAULT_HEURISTIC
+#elif defined(GPRUNE_DEFAULT_HEURISTIC)
       am->config->gprune_method = GPRUNE_SEL_HEURISTIC;
-#elif GPRUNE_DEFAULT_BEAM
+#elif defined(GPRUNE_DEFAULT_BEAM)
       am->config->gprune_method = GPRUNE_SEL_BEAM;
 #endif
     } else {

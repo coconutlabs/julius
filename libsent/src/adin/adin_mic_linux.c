@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -44,11 +44,11 @@
 boolean
 adin_mic_standby(int sfreq, void *dummy)
 {
-#ifdef HAS_ALSA
+#if defined(HAS_ALSA)
   return(adin_alsa_standby(sfreq, dummy));
-#elif HAS_OSS
+#elif defined(HAS_OSS)
   return(adin_oss_standby(sfreq, dummy));
-#elif HAS_ESD
+#elif defined(HAS_ESD)
   return(adin_esd_standby(sfreq, dummy));
 #else  /* other than Linux */
   jlog("Error: neither of alsa/oss/esd device is available\n");
@@ -64,11 +64,11 @@ adin_mic_standby(int sfreq, void *dummy)
 boolean
 adin_mic_begin()
 {
-#ifdef HAS_ALSA
+#if defined(HAS_ALSA)
   return(adin_alsa_begin());
-#elif HAS_OSS
+#elif defined(HAS_OSS)
   return(adin_oss_begin());
-#elif HAS_ESD
+#elif defined(HAS_ESD)
   return(adin_esd_begin());
 #else  /* other than Linux */
   jlog("Error: neither of alsa/oss/esd device is available\n");
@@ -84,11 +84,11 @@ adin_mic_begin()
 boolean
 adin_mic_end()
 {
-#ifdef HAS_ALSA
+#if defined(HAS_ALSA)
   return(adin_alsa_end());
-#elif HAS_OSS
+#elif defined(HAS_OSS)
   return(adin_oss_end());
-#elif HAS_ESD
+#elif defined(HAS_ESD)
   return(adin_esd_end());
 #else  /* other than Linux */
   jlog("Error: neither of alsa/oss/esd device is available\n");
@@ -111,11 +111,11 @@ adin_mic_end()
 int
 adin_mic_read(SP16 *buf, int sampnum)
 {
-#ifdef HAS_ALSA
+#if defined(HAS_ALSA)
   return(adin_alsa_read(buf, sampnum));
-#elif HAS_OSS
+#elif defined(HAS_OSS)
   return(adin_oss_read(buf, sampnum));
-#elif HAS_ESD
+#elif defined(HAS_ESD)
   return(adin_esd_read(buf, sampnum));
 #else  /* other than Linux */
   jlog("Error: neither of alsa/oss/esd device is available\n");

@@ -172,14 +172,13 @@ put_dfainfo()
 int main(int argc, char *argv[])
 {
   int i, len;
-  char *prefix;
+  char *prefix = NULL;
   char *dfafile, *dictfile, *termfile;
   int gnum = 10;
   char *spname_default = SPNAME_DEF;
   char *spname = NULL;
 #define NEXTARG (++i >= argc) ? (char *)usage(argv[0]) : argv[i]
 
-  if (argc == 1) usage(argv[0]);
   /* argument */
   for(i=1;i<argc;i++) {
     if (argv[i][0] == '-') {
@@ -208,6 +207,8 @@ int main(int argc, char *argv[])
       prefix = argv[i];
     }
   }
+  if (prefix == NULL) usage(argv[0]);
+
   if (spname == NULL) spname = spname_default;
 
   len = strlen(prefix) + 10;

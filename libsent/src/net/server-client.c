@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:18:13 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -49,14 +49,14 @@ ready_as_server(int port_num)
   /* init winsock */
   if (!winsock_initialized) {
     WSADATA data;
-    WSAStartup(0x1010, &data);
+    WSAStartup(MAKEWORD(2,0), &data);
     winsock_initialized = TRUE;
   }
 #endif
 
   /* create socket */
 #ifdef WINSOCK
-  if((sd = socket(PF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET){
+  if((sd = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, 0)) == INVALID_SOCKET){
     jlog("Error: server-client: socket() error\n");
     jlog("Error: server-client: error code = %d\n", WSAGetLastError());
     switch(WSAGetLastError()) {

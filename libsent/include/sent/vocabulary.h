@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:38:13 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -96,8 +96,7 @@ void voca_load_start(WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri
 boolean voca_load_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);
 boolean voca_load_end(WORD_INFO *winfo);
 boolean voca_load_htkdict(FILE *, WORD_INFO *, HTK_HMM_INFO *, boolean);
-boolean	voca_load_htkdict_fd(int, WORD_INFO *, HTK_HMM_INFO *, boolean);
-boolean	voca_load_htkdict_sd(int, WORD_INFO *, HTK_HMM_INFO *, boolean);
+boolean	voca_load_htkdict_fp(FILE *, WORD_INFO *, HTK_HMM_INFO *, boolean);
 boolean voca_append_htkdict(char *entry, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv);
 boolean voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset);
 boolean voca_load_htkdict_line(char *buf, WORD_ID *vnum, int linenum, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean do_conv, boolean *ok_flag);

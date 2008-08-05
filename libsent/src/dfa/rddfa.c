@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 14:54:40 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -69,7 +69,7 @@ dfa_state_expand(DFA_INFO *dinfo, int needed)
 }
 
 /** 
- * Top loop function to read DFA grammar via file pointer
+ * Top loop function to read DFA grammar via file pointer (gzip enabled)
  * 
  * @param fp [in] file pointer that points to the DFA grammar data
  * @param dinfo [out] the read data will be stored in this DFA grammar structure
@@ -101,13 +101,13 @@ rddfa(FILE *fp, DFA_INFO *dinfo)
 /** 
  * Top loop function to read DFA grammar via file descriptor
  * 
- * @param fd [in] file descriptor that points to the DFA grammar data
+ * @param fp [in] file pointer that points to the DFA grammar data
  * @param dinfo [out] the read data will be stored in this DFA grammar structure
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-rddfa_fd(int fd, DFA_INFO *dinfo)
+rddfa_fp(FILE *fp, DFA_INFO *dinfo)
 {
   int state_max, arc_num, terminal_max;
 
@@ -117,37 +117,7 @@ rddfa_fd(int fd, DFA_INFO *dinfo)
   arc_num = 0;
   terminal_max = 0;
 
-  while(getl_fd(buf, MAXLINELEN, fd) != NULL) {
-    if (rddfa_line(buf, dinfo, &state_max, &arc_num, &terminal_max) == FALSE) {
-      break;
-    }
-  }
-  dinfo->state_num = state_max + 1;
-  dinfo->arc_num = arc_num;
-  dinfo->term_num = terminal_max + 1;
-  return(TRUE);
-}
-
-/** 
- * Top loop function to read DFA grammar via socket descriptor
- * 
- * @param sd [in] socket descriptor that points to the DFA grammar data
- * @param dinfo [out] the read data will be stored in this DFA grammar structure
- * 
- * @return TRUE on success, FALSE on failure.
- */
-boolean
-rddfa_sd(int sd, DFA_INFO *dinfo)
-{
-  int state_max, arc_num, terminal_max;
-
-  /* initialize */
-  dfa_state_init(dinfo);
-  state_max = 0;
-  arc_num = 0;
-  terminal_max = 0;
-
-  while(getl_sd(buf, MAXLINELEN, sd) != NULL) {
+  while(getl_fp(buf, MAXLINELEN, fp) != NULL) {
     if (rddfa_line(buf, dinfo, &state_max, &arc_num, &terminal_max) == FALSE) {
       break;
     }

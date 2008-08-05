@@ -7,6 +7,7 @@
 static int module_mode = FALSE;
 static int module_port = DEFAULT_MODULEPORT;
 int module_sd = -1;
+static FILE *module_fp;
 static RecogProcess *cur = NULL;
 
 #define MAXBUFLEN 4096 ///< Maximum line length of a message sent from a client
@@ -55,6 +56,59 @@ module_send(int sd, char *fmt, ...)
   }
   return(ret);
 }
+
+static char *
+myfgets(char *buf, int maxlen, FILE *fp)
+{
+  char *ret;
+  int len;
+  
+  if ((ret = fgets(buf, maxlen, fp)) != NULL) {
+    len = strlen(buf);
+    if (buf[len-1] == '\n') {
+      buf[len-1] = '\0';
+      if (len >= 2 && buf[len-2] == '\r') {
+	buf[len-2] = '\0';
+      }
+    }
+  }
+  return ret;
+}
+
+/** 
+ * Read grammar (DFA and dictionary) from socket and returns newly allocated
+ * grammars.
+ * 
+ * @param sd [in] socket descpriter
+ * @param ret_dfa [out] read DFA
+ * @param ret_winfo [out] read dictionary
+ * @param hmminfo [in] HMM definition
+ * 
+ * @return TRUE on success, or FALSE on failure.
+ * </EN>
+ */
+static boolean
+read_grammar(FILE *fp, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo)
+{
+  DFA_INFO *dfa;
+  WORD_INFO *winfo;
+
+  /* load grammar: dfa and dict in turn */
+  dfa = dfa_info_new();
+  if (!rddfa_fp(fp, dfa)) {
+    return FALSE;
+  }
+  winfo = word_info_new();
+  /* ignore MONOTREE */
+  if (!voca_load_htkdict_fp(fp, winfo, hmminfo, FALSE)) {
+    dfa_info_free(dfa);
+    return FALSE;
+  }
+  *ret_dfa = dfa;
+  *ret_winfo = winfo;
+  return TRUE;
+}
+
 
 static void
 send_process_stat(RecogProcess *r)
@@ -162,11 +216,7 @@ msock_exec_command(char *command, Recog *recog)
   } else if (strmatch(command, "INPUTONCHANGE")) {
     /* change grammar switching timing policy */
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else	
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(INPUTONCHANGE): no argument\n");
       return;
@@ -196,7 +246,7 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar_from_socket(module_sd, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
+    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
       if (cur->lmtype == LM_DFA) {
@@ -207,6 +257,8 @@ msock_exec_command(char *command, Recog *recog)
 	/* need to rebuild the global lexicon */
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(recog);
+	/* make sure this process will be activated */
+	cur->active = 1;
 	/* tell module client  */
 	module_send(module_sd, "<GRAMMAR STATUS=\"RECEIVED\"/>\n.\n");
 	send_gram_info(cur);
@@ -228,13 +280,15 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar_from_socket(module_sd, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
+    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
       if (cur->lmtype == LM_DFA) {
 	/* add it to multi-gram tree */
 	multigram_add(new_dfa, new_winfo, p, cur->lm);
 	/* need to rebuild the global lexicon */
+	/* make sure this process will be activated */
+	cur->active = 1;
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(recog);
 	/* tell module client  */
@@ -248,11 +302,7 @@ msock_exec_command(char *command, Recog *recog)
     /* remove the grammar specified by ID or name */
     /* read a list of grammar IDs to be deleted */
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(DELGRAM): no argument\n");
       return;
@@ -288,11 +338,7 @@ msock_exec_command(char *command, Recog *recog)
     /* activate grammar in this engine */
     /* read a list of grammar IDs or names to be activated */
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(ACTIVATEGRAM): no argument\n");
       return;
@@ -328,11 +374,7 @@ msock_exec_command(char *command, Recog *recog)
     /* deactivate grammar in this engine */
     /* read a list of grammar IDs or names to be de-activated */
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(DEACTIVATEGRAM): no argument\n");
       return;
@@ -381,11 +423,7 @@ msock_exec_command(char *command, Recog *recog)
     JCONF_SEARCH *sconf;
     RecogProcess *r;
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       /* when no argument, just return current process */
       send_current_process(cur);
@@ -433,11 +471,7 @@ msock_exec_command(char *command, Recog *recog)
     RecogProcess *r;
 
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(ADDPROCESS): no argument\n");
       module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
@@ -476,11 +510,7 @@ msock_exec_command(char *command, Recog *recog)
     RecogProcess *r;
 
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(DELPROCESS): no argument\n");
       module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
@@ -531,11 +561,7 @@ msock_exec_command(char *command, Recog *recog)
 
   else if (strmatch(command, "ACTIVATEPROCESS")) {
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(ACTIVATEPROCESS): no argument\n");
       module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
@@ -549,11 +575,7 @@ msock_exec_command(char *command, Recog *recog)
   }
   else if (strmatch(command, "DEACTIVATEPROCESS")) {
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(DEACTIVATEPROCESS): no argument\n");
       module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
@@ -573,11 +595,7 @@ msock_exec_command(char *command, Recog *recog)
 
     /* get gramamr ID to add */
     if (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	== NULL) {
       fprintf(stderr, "Error: msock(DEACTIVATEPROCESS): no argument\n");
       module_send(module_sd, "<RECOGPROCESS STATUS=\"ERROR\" REASON=\"NO ARGUMENT\"/>\n.\n");
@@ -589,11 +607,7 @@ msock_exec_command(char *command, Recog *recog)
     words = word_info_new();
     voca_load_start(words, cur->am->hmminfo, FALSE);
     while (
-#ifdef WINSOCK
-	getl_sd(buf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(buf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(buf, MAXBUFLEN, module_fp)
 	!= NULL) {
       if (cur->lmvar == LM_DFA_WORD) {
 	ret = voca_load_word_line(buf, words, cur->am->hmminfo, 
@@ -667,11 +681,7 @@ msock_check_and_process_command(Recog *recog, void *dummy)
     /* there is data to read */
     /* process command and change status if necessaty */
     while(select(module_sd+1, &rfds, NULL, NULL, &tv) > 0 &&
-#ifdef WINSOCK
-	  getl_sd(mbuf, MAXBUFLEN, module_sd)
-#else
-	  getl_fd(mbuf, MAXBUFLEN, module_sd)
-#endif
+	  myfgets(mbuf, MAXBUFLEN, module_fp)
 	  != NULL) {
       msock_exec_command(mbuf, recog);
     }
@@ -699,11 +709,7 @@ msock_process_command(Recog *recog, void *dummy)
 
   while(!recog->process_active) {
     if (
-#ifdef WINSOCK
-	getl_sd(mbuf, MAXBUFLEN, module_sd)
-#else
-	getl_fd(mbuf, MAXBUFLEN, module_sd)
-#endif
+	myfgets(mbuf, MAXBUFLEN, module_fp)
 	!= NULL) {
       msock_exec_command(mbuf, recog);
     }
@@ -760,6 +766,9 @@ void
 module_server()
 {
   int listen_sd;	///< Socket to listen to a client
+#if defined(_WIN32) && !defined(__CYGWIN32__)
+  int sd;
+#endif
   
   /* prepare socket to listen */
   if ((listen_sd = ready_as_server(module_port)) < 0) {
@@ -778,6 +787,22 @@ module_server()
     fprintf(stderr, "Error: failed to accept connection\n");
     return;
   }
+#if defined(_WIN32) && !defined(__CYGWIN32__)
+  /* call winsock function to make the socket capable of reading/writing */
+  if ((sd = _open_osfhandle(module_sd, O_RDWR|O_BINARY)) < 0) {
+    fprintf(stderr, "Error: failed to open_osfhandle\n");
+    return;
+  }
+  if ((module_fp = fdopen(sd, "rb+")) == NULL) {
+    fprintf(stderr, "Error: failed to fdopen socket\n");
+    return;
+  }
+#else
+  if ((module_fp = fdopen(module_sd, "r+")) == NULL) {
+    fprintf(stderr, "Error; failed to fdopen socket\n");
+    return;
+  }
+#endif
 }
 
 void

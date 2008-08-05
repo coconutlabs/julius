@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:30:40 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -60,8 +60,6 @@ typedef struct _bmalloc_base {
 /* readfile.c */
 char *getl(char *, int, FILE *);
 char *getl_fp(char *, int, FILE *);
-char *getl_fd(char *, int, int);
-char *getl_sd(char *, int, int);
 char *get_line_from_stdin(char *buf, int buflen, char *prompt);
 
 /* gzfile.c */

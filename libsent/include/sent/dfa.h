@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 18:21:27 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -98,8 +98,7 @@ void dfa_info_free(DFA_INFO *dfa);
 void dfa_state_init(DFA_INFO *dinfo);
 void dfa_state_expand(DFA_INFO *dinfo, int needed);
 boolean rddfa(FILE *fp, DFA_INFO *dinfo);
-boolean rddfa_fd(int fd, DFA_INFO *dinfo);
-boolean rddfa_sd(int sd, DFA_INFO *dinfo);
+boolean rddfa_fp(FILE *fp, DFA_INFO *dinfo);
 boolean rddfa_line(char *line, DFA_INFO *dinfo, int *state_max, int *arc_num, int *terminal_max);
 void dfa_append(DFA_INFO *dst, DFA_INFO *src, int soffset, int coffset);
 
@@ -131,6 +130,5 @@ void terminfo_append(TERM_INFO *dst, TERM_INFO *src, int coffset, int woffset);
 #include <sent/htk_hmm.h>
 void dfa_find_pause_word(DFA_INFO *dfa, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);
 boolean dfa_pause_word_append(DFA_INFO *dst, DFA_INFO *src, int coffset);
-boolean read_grammar_from_socket(int sd, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo);
 
 #endif /* __SENT_DFA_H__ */

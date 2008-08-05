@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -292,7 +292,7 @@ voca_load_end(WORD_INFO *winfo)
 
 
 /** 
- * Top function to read word dictionary via file pointer
+ * Top function to read word dictionary via file pointer (gzip enabled)
  * 
  * @param fp [in] file pointer
  * @param winfo [out] pointer to word dictionary to store the read data.
@@ -317,9 +317,9 @@ voca_load_htkdict(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ign
 
 
 /** 
- * Top function to read word dictionary via file descriptor.
+ * Top function to read word dictionary via normal file pointer.
  * 
- * @param fd [in] file descriptor
+ * @param fp [in] file pointer
  * @param winfo [out] pointer to word dictionary to store the read data.
  * @param hmminfo [in] HTK %HMM definition data.  if NULL, phonemes are ignored.
  * @param ignore_tri_conv [in] TRUE if triphone conversion is ignored
@@ -327,36 +327,12 @@ voca_load_htkdict(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ign
  * @return TRUE on success, FALSE on any error word.
  */
 boolean
-voca_load_htkdict_fd(int fd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
+voca_load_htkdict_fp(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
 {
   boolean ret;
 
   voca_load_start(winfo, hmminfo, ignore_tri_conv);
-  while(getl_fd(buf, MAXLINELEN, fd) != NULL) {
-    if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
-  }
-  ret = voca_load_end(winfo);
-
-  return(ret);
-}
-
-/** 
- * Top function to read word dictionary via socket descriptor.
- * 
- * @param sd [in] socket descriptor
- * @param winfo [out] pointer to word dictionary to store the read data.
- * @param hmminfo [in] HTK %HMM definition data.  if NULL, phonemes are ignored.
- * @param ignore_tri_conv [in] TRUE if triphone conversion is ignored
- * 
- * @return TRUE on success, FALSE on any error word.
- */
-boolean
-voca_load_htkdict_sd(int sd, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean ignore_tri_conv)
-{
-  boolean ret;
-
-  voca_load_start(winfo, hmminfo, ignore_tri_conv);
-  while(getl_sd(buf, MAXLINELEN, sd) != NULL) {
+  while(getl_fp(buf, MAXLINELEN, fp) != NULL) {
     if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
   }
   ret = voca_load_end(winfo);

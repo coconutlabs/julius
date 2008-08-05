@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 14:20:43 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -162,48 +162,3 @@ dfa_pause_word_append(DFA_INFO *dst, DFA_INFO *src, int coffset)
   return TRUE;
 }
 
-/** 
- * Read grammar (DFA and dictionary) from socket and returns newly allocated
- * grammars.
- * 
- * @param sd [in] socket descpriter
- * @param ret_dfa [out] read DFA
- * @param ret_winfo [out] read dictionary
- * @param hmminfo [in] HMM definition
- * 
- * @return TRUE on success, or FALSE on failure.
- * </EN>
- */
-boolean
-read_grammar_from_socket(int sd, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo)
-{
-  DFA_INFO *dfa;
-  WORD_INFO *winfo;
-
-  /* load grammar: dfa and dict in turn */
-  dfa = dfa_info_new();
-  if (!
-#ifdef WINSOCK
-      rddfa_sd(sd, dfa)
-#else
-      rddfa_fd(sd, dfa)
-#endif
-      ) {
-    return FALSE;
-  }
-  winfo = word_info_new();
-  /* ignore MONOTREE */
-  if (!
-#ifdef WINSOCK
-      voca_load_htkdict_sd(sd, winfo, hmminfo, FALSE)
-#else
-      voca_load_htkdict_fd(sd, winfo, hmminfo, FALSE)
-#endif
-      ) {
-    dfa_info_free(dfa);
-    return FALSE;
-  }
-  *ret_dfa = dfa;
-  *ret_winfo = winfo;
-  return TRUE;
-}

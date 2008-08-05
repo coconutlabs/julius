@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:41:58 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -99,82 +99,6 @@ getl_fp(char *buf, int maxlen, FILE *fp)
     return buf;
   }
   return NULL;
-}
-
-/** 
- * Read one line from a file descriptor.
- * Blank line will be skipped.
- * 
- * @param buf [out] data buffer
- * @param maxlen [in] maximum length of above
- * @param fd [in] file descriptor
- * 
- * @return the buffer @a buf, or NULL on EOF or error.
- */
-char *
-getl_fd(char *buf, int maxlen, int fd)
-{
-  int cnt;
-  char *p;
-  p = buf;
-  while(1) {
-    cnt = read(fd, p, 1);
-    if (cnt <= 0) return NULL;		/* eof or error */
-    if (*p == '\n') {
-      *p = '\0';
-      if (p - 1 >= buf && *(p-1) == '\r') *(p-1) = '\0';
-      if (buf[0] == '\0') {
-	p = buf;
-	continue;
-      } else {
-	break;
-      }
-    } else {
-      if (++p >= buf + maxlen) {
-	jlog("Error: readfile: line too long (> %d)\n", maxlen);
-	return NULL;
-      }
-    }
-  }
-  return buf;
-}
-
-/** 
- * Read one line from a socket descriptor.
- * Blank line will be skipped.
- * 
- * @param buf [out] data buffer
- * @param maxlen [in] maximum length of above
- * @param sd [in] socket descpritor
- * 
- * @return the buffer @a buf, or NULL on EOF or error.
- */
-char *
-getl_sd(char *buf, int maxlen, int sd)
-{
-  int cnt;
-  char *p;
-  p = buf;
-  while(1) {
-    cnt = recv(sd, p, 1, 0);
-    if (cnt <= 0) return NULL;                /* eof or error */
-    if (*p == '\n') {
-      *p = '\0';
-      if (p - 1 >= buf && *(p-1) == '\r') *(p-1) = '\0';
-      if (buf[0] == '\0') {
-      p = buf;
-      continue;
-      } else {
-      break;
-      }
-    } else {
-      if (++p >= buf + maxlen) {
-	jlog("Error: readfile: line too long (> %d)\n", maxlen);
-	return NULL;
-      }
-    }
-  }
-  return buf;
 }
 
 /* get 1 line input from stdin with prompt */

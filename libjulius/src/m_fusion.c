@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -1100,16 +1100,14 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
     /* set beam width */
     /* guess beam width from models, when not specified */
     p->trellis_beam_width = set_beam_width(p->wchmm, p->config->pass1.specified_trellis_beam_width);
+
+    /* initialize cache for factoring */
+    max_successor_cache_init(p->wchmm);
   }
 
   /* backtrellis initialization */
   p->backtrellis = (BACKTRELLIS *)mymalloc(sizeof(BACKTRELLIS));
   bt_init(p->backtrellis);
-
-  /* initialize cache for factoring */
-  if (p->lmtype == LM_PROB) {
-    max_successor_cache_init(p->wchmm);
-  }
 
   jlog("STAT: SR%02d %s composed\n", sconf->id, sconf->name);
 
@@ -1119,6 +1117,13 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
   } else {
     /* book activation for the recognition */
     p->active = 1;
+  }
+  if (p->lmtype == LM_DFA) {
+    if (p->lm->winfo == NULL ||
+	(p->lmvar == LM_DFA_GRAMMAR && p->lm->dfa == NULL)) {
+      /* make this instance inactive */
+      p->active = -1;
+    }
   }
 
   return TRUE;

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -640,19 +640,21 @@ print_engine_info(Recog *recog)
 	jlog("\t all possible words will be expanded in 2nd pass\n");
       }
     }
-    if (r->wchmm->category_tree) {
-      if (r->config->pass1.old_tree_function_flag) {
-	jlog("\t build_wchmm() used\n");
-      } else {
-	jlog("\t build_wchmm2() used\n");
-      }
+    if (r->wchmm != NULL) {
+      if (r->wchmm->category_tree) {
+	if (r->config->pass1.old_tree_function_flag) {
+	  jlog("\t build_wchmm() used\n");
+	} else {
+	  jlog("\t build_wchmm2() used\n");
+	}
 #ifdef PASS1_IWCD
 #ifdef USE_OLD_IWCD
-      jlog("\t full lcdset used\n");
+	jlog("\t full lcdset used\n");
 #else
-      jlog("\t lcdset limited by word-pair constraint\n");
+	jlog("\t lcdset limited by word-pair constraint\n");
 #endif
 #endif /* PASS1_IWCD */
+      }
     }
     if (r->config->output.progout_flag) {
       jlog("\tprogressive output on 1st pass\n");

@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -178,10 +178,10 @@ multigram_build(RecogProcess *r)
       jlog("ERROR: multi-gram: failed to re-build tree lexicon\n");
       return FALSE;
     }
-  }
 #ifdef MDEBUG
-  jlog("STAT: wchmm (re)build completed\n");
+    jlog("STAT: wchmm (re)build completed\n");
 #endif
+  }
   return(TRUE);
 }
 

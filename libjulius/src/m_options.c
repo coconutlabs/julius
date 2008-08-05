@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -692,6 +692,10 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       multigram_remove_gramlist(jconf->lmnow);
       FREE_MEMORY(jconf->lmnow->dfa_filename);
       FREE_MEMORY(jconf->lmnow->dictfilename);
+      if (jconf->lmnow->lmtype == LM_UNDEF) {
+	jconf->lmnow->lmtype = LM_DFA;
+	jconf->lmnow->lmvar  = LM_DFA_GRAMMAR;
+      }
       continue;
     } else if (strmatch(argv[i],"-dfa")) { /* DFA filename */
       FREE_MEMORY(jconf->lmnow->dfa_filename);

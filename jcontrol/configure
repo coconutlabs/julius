@@ -1160,7 +1160,7 @@ fi
 
 case "$host_os" in
 mingw*)
-	EXTRALIB="$EXTRALIB -lwsock32"
+	EXTRALIB="$EXTRALIB -lws2_32"
 	;;
 esac
 

@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -1225,14 +1225,8 @@ main(int argc, char *argv[])
 
       /* loop condition check */
       is_continues = FALSE;
-      if (pause_each) {
-	if (continuous_segment && (ret > 0 || ret == -2)) {
-	  is_continues = TRUE;
-	}
-      } else {
-	if (continuous_segment && ret > 0) {
-	  is_continues = TRUE;
-	}
+      if (continuous_segment && (ret > 0 || ret == -2)) {
+	is_continues = TRUE;
       }
       
     } while (is_continues); /* to the next segment in this input stream */

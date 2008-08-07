@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -1022,7 +1022,7 @@ store_result_pass2(NODE *hypo, RecogProcess *r)
   if (r->lmtype == LM_DFA) {
     /* output which grammar the hypothesis belongs to on multiple grammar */
     /* determine only by the last word */
-    if (multigram_get_all_num(r->lm) > 1) {
+    if (multigram_get_all_num(r->lm) > 0) {
       s->gram_id = multigram_get_gram_from_category(r->lm->winfo->wton[hypo->seq[0]], r->lm);
     } else {
       s->gram_id = 0;

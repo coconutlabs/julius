@@ -29,7 +29,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:13:54 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -184,7 +184,6 @@ record_sample_write(Recog *recog, SP16 *speech, int samplenum, void *dummy)
 
   if (recfile_fp == NULL) {
     if (! open_error) record_sample_open(recog, dummy);
-    return;
   }
 
   if (wrwav_data(recfile_fp, speech, samplenum) == FALSE) {

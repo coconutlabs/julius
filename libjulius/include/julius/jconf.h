@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -997,7 +997,28 @@ typedef struct __Jconf__ {
    */
   JCONF_AM *gmm;
 
+  /**
+   * Current option declaration mode while loading options
+   * 
+   */
+  short optsection;
+
+  /**
+   * Whether option sectioning ristriction should be applied or not
+   * 
+   */
+  boolean optsectioning;
+
+
 } Jconf;
+
+enum {
+  JCONF_OPT_GLOBAL,
+  JCONF_OPT_AM,
+  JCONF_OPT_LM,
+  JCONF_OPT_SR,
+  SIZEOF_JCONF_OPT
+};
 
 #endif /* __J_JCONF_H__ */
 

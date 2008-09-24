@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -134,6 +134,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-LM]               start a new language model instance\n");
   fprintf(fp, "    [-SR]               start a new recognizer (search) instance\n");
   fprintf(fp, "    [-AM_GMM]           start an AM feature instance for GMM\n");
+  fprintf(fp, "    [-nosectioncheck]   disable option location check\n");
   fprintf(fp, "\n--- Acoustic Model Options (-AM) ---------------------------------\n");
 
   fprintf(fp, "\n Acoustic analysis:\n");

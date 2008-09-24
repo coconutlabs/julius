@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -96,6 +96,37 @@ next_arg(int *cur, int argc, char *argv[])
     return NULL;
   }
   return(argv[*cur]);
+}
+
+static boolean
+check_section(Jconf *jconf, char *optname, short sec)
+{
+  if (! jconf->optsectioning) return TRUE;
+
+  if (jconf->optsection == sec) return TRUE;
+
+  if (jconf->optsection == JCONF_OPT_GLOBAL) return TRUE;
+
+  switch(sec) {
+  case JCONF_OPT_GLOBAL:
+    jlog("ERROR: \"%s\" is global option (should be before any instance declaration)", optname); break;
+  case JCONF_OPT_AM:
+    jlog("ERROR: \"%s\" is AM option", optname); break;
+  case JCONF_OPT_LM:
+    jlog("ERROR: \"%s\" is LM option", optname); break;
+  case JCONF_OPT_SR:
+    jlog("ERROR: \"%s\" is SR (search) option", optname); break;
+  }
+  switch(jconf->optsection) {
+  case JCONF_OPT_AM:
+    jlog(", but exists at AM section (-AM \"%s\")\n", jconf->amnow->name); break;
+  case JCONF_OPT_LM:
+    jlog(", but exists at LM section (-LM \"%s\")\n", jconf->lmnow->name); break;
+  case JCONF_OPT_SR:
+    jlog(", but exists at recognizer section (-SR \"%s\")\n", jconf->searchnow->name); break;
+  }
+  jlog("ERROR: fix it, or you can disable this check by \"-nosectioncheck\"\n");
+  return FALSE;
 }
 
 /** 
@@ -179,6 +210,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	return FALSE;
       }
       jconf->amnow = amconf;
+      jconf->optsection = JCONF_OPT_AM;
       continue;
     } else if (strmatch(argv[i],"-AM_GMM") || strmatch(argv[i], "[AM_GMM]")) {
       /* switch current to GMM */
@@ -187,6 +219,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	jconf->gmm = j_jconf_am_new();
       }
       jconf->amnow = jconf->gmm;
+      jconf->optsection = JCONF_OPT_AM;
       continue;
     } else if (strmatch(argv[i],"-LM") || strmatch(argv[i], "[LM]")) {
       GET_TMPARG;
@@ -208,6 +241,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	return FALSE;
       }
       jconf->lmnow = lmconf;
+      jconf->optsection = JCONF_OPT_LM;
       continue;
     } else if (strmatch(argv[i],"-SR") || strmatch(argv[i], "[SR]")) {
       GET_TMPARG;
@@ -254,8 +288,16 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	return FALSE;
       }
       jconf->searchnow = sconf;
+      jconf->optsection = JCONF_OPT_SR;
+      continue;
+    } else if (strmatch(argv[i],"-sectioncheck")) { /* enable section check */
+      jconf->optsectioning = TRUE;
+      continue;
+    } else if (strmatch(argv[i],"-nosectioncheck")) { /* disable section check */
+      jconf->optsectioning = FALSE;
       continue;
     } else if (strmatch(argv[i],"-input")) { /* speech input */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       if (strmatch(tmparg,"file")) {
 	jconf->input.speech_input = SP_RAWFILE;
@@ -325,22 +367,26 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       continue;
     } else if (strmatch(argv[i],"-filelist")) {	/* input file list */
-      FREE_MEMORY(jconf->input.inputlist_filename);
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
+      FREE_MEMORY(jconf->input.inputlist_filename);
       //jconf->input.inputlist_filename = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       jconf->input.inputlist_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-rejectshort")) { /* short input rejection */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->reject.rejectshortlen = atoi(tmparg);
       continue;
 #ifdef POWER_REJECT
     } else if (strmatch(argv[i],"-powerthres")) { /* short input rejection */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->reject.powerthres = atoi(tmparg);
       continue;
 #endif
     } else if (strmatch(argv[i],"-force_realtime")) { /* force realtime */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       if (strmatch(tmparg, "on")) {
 	jconf->decodeopt.forced_realtime = TRUE;
@@ -353,17 +399,21 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->decodeopt.force_realtime_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-realtime")) {	/* equal to "-force_realtime on" */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->decodeopt.forced_realtime = TRUE;
       jconf->decodeopt.force_realtime_flag = TRUE;
       continue;
     } else if (strmatch(argv[i], "-norealtime")) { /* equal to "-force_realtime off" */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->decodeopt.forced_realtime = FALSE;
       jconf->decodeopt.force_realtime_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-forcedict")) { /* skip dict error */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       jconf->lmnow->forcedict_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-check")) { /* interactive model check mode */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       if (strmatch(tmparg, "wchmm")) {
 	jconf->searchnow->sw.wchmm_check_flag = TRUE;
@@ -377,10 +427,12 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       continue;
     } else if (strmatch(argv[i],"-notypecheck")) { /* don't check param type */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->input.paramtype_check_flag = FALSE;
       continue;
     } else if (strmatch(argv[i],"-nlimit")) { /* limit N token in a node */
 #ifdef WPAIR_KEEP_NLIMIT
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->pass1.wpair_keep_nlimit = atoi(tmparg);
 #else
@@ -388,68 +440,84 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 #endif
       continue;
     } else if (strmatch(argv[i],"-lookuprange")) { /* trellis neighbor range */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->pass2.lookup_range = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-graphout")) { /* enable graph output */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.enabled = TRUE;
       jconf->searchnow->graph.lattice = TRUE;
       jconf->searchnow->graph.confnet = FALSE;
       continue;
     } else if (strmatch(argv[i],"-lattice")) { /* enable graph output */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.enabled = TRUE;
       jconf->searchnow->graph.lattice = TRUE;
       continue;
     } else if (strmatch(argv[i],"-nolattice")) { /* disable graph output */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.enabled = FALSE;
       jconf->searchnow->graph.lattice = FALSE;
       continue;
     } else if (strmatch(argv[i],"-confnet")) { /* enable confusion network */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.enabled = TRUE;
       jconf->searchnow->graph.confnet = TRUE;
       continue;
     } else if (strmatch(argv[i],"-noconfnet")) { /* disable graph output */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.enabled = FALSE;
       jconf->searchnow->graph.confnet = FALSE;
       continue;
     } else if (strmatch(argv[i],"-graphrange")) { /* neighbor merge range frame */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->graph.graph_merge_neighbor_range = atoi(tmparg);
       continue;
 #ifdef GRAPHOUT_DEPTHCUT
     } else if (strmatch(argv[i],"-graphcut")) { /* cut graph word by depth */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->graph.graphout_cut_depth = atoi(tmparg);
       continue;
 #endif
 #ifdef GRAPHOUT_LIMIT_BOUNDARY_LOOP
     } else if (strmatch(argv[i],"-graphboundloop")) { /* neighbor merge range frame */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->graph.graphout_limit_boundary_loop_num = atoi(tmparg);
       continue;
 #endif
 #ifdef GRAPHOUT_SEARCH_DELAY_TERMINATION
     } else if (strmatch(argv[i],"-graphsearchdelay")) { /* not do graph search termination before the 1st sentence is found */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.graphout_search_delay = TRUE;
       continue;
     } else if (strmatch(argv[i],"-nographsearchdelay")) { /* not do graph search termination before the 1st sentence is found */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->graph.graphout_search_delay = FALSE;
       continue;
 #endif
     } else if (strmatch(argv[i],"-looktrellis")) { /* activate loopuprange */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->pass2.looktrellis_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-multigramout")) { /* enable per-grammar decoding on 2nd pass */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->output.multigramout_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-nomultigramout")) { /* disable per-grammar decoding on 2nd pass */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->output.multigramout_flag = FALSE;
       continue;
     } else if (strmatch(argv[i],"-oldtree")) { /* use old tree function */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->pass1.old_tree_function_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-sb")) { /* score envelope width in 2nd pass */
 #ifdef SCAN_BEAM
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->pass2.scan_beam_thres = atof(tmparg);
 #else
@@ -460,114 +528,144 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jlog("WARNING: m_options: option \"-discount\" is now bogus, ignored\n");
       continue;
     } else if (strmatch(argv[i],"-cutsilence")) { /* force (long) silence detection on */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->detect.silence_cut = 1;
       continue;
     } else if (strmatch(argv[i],"-nocutsilence")) { /* force (long) silence detection off */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->detect.silence_cut = 0;
       continue;
     } else if (strmatch(argv[i],"-pausesegment")) { /* force (long) silence detection on (for backward compatibility) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->detect.silence_cut = 1;
       continue;
     } else if (strmatch(argv[i],"-nopausesegment")) { /* force (long) silence detection off (for backward comatibility) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->detect.silence_cut = 0;
       continue;
     } else if (strmatch(argv[i],"-lv")) { /* silence detection threshold level */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.level_thres = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-zc")) { /* silence detection zero cross num */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.zero_cross_num = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-headmargin")) { /* head silence length */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.head_margin_msec = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-tailmargin")) { /* tail silence length */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.tail_margin_msec = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-hipass")||strmatch(argv[i],"-hifreq")) { /* frequency of upper band limit */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.hipass = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-lopass")||strmatch(argv[i],"-lofreq")) { /* frequency of lower band limit */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.lopass = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-smpPeriod")) { /* sample period (ns) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.smp_period = atoi(tmparg);
       jconf->amnow->analysis.para.smp_freq = period2freq(jconf->amnow->analysis.para.smp_period);
       continue;
     } else if (strmatch(argv[i],"-smpFreq")) { /* sample frequency (Hz) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.smp_freq = atoi(tmparg);
       jconf->amnow->analysis.para.smp_period = freq2period(jconf->amnow->analysis.para.smp_freq);
       continue;
     } else if (strmatch(argv[i],"-fsize")) { /* Window size */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.framesize = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-fshift")) { /* Frame shiht */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.frameshift = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-preemph")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.preEmph = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-fbank")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.fbank_num = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-ceplif")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.lifter = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-rawe")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.raw_e = TRUE;
       continue;
     } else if (strmatch(argv[i],"-norawe")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.raw_e = FALSE;
       continue;
     } else if (strmatch(argv[i],"-enormal")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.enormal = TRUE;
       continue;
     } else if (strmatch(argv[i],"-noenormal")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.enormal = FALSE;
       continue;
     } else if (strmatch(argv[i],"-escale")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.escale = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-silfloor")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.silFloor = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-delwin")) { /* Delta window length */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.delWin = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-accwin")) { /* Acceleration window length */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.accWin = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-ssalpha")) { /* alpha coef. for SS */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->frontend.ss_alpha = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-ssfloor")) { /* spectral floor for SS */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->frontend.ss_floor = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-cvn")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.cvn = 1;
       continue;
     } else if (strmatch(argv[i],"-nocvn")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.cvn = 0;
       continue;
     } else if (strmatch(argv[i],"-vtln")) { /* VTLN */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.para.vtln_alpha = (float)atof(tmparg);
       GET_TMPARG;
@@ -576,9 +674,11 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->amnow->analysis.para.vtln_upper = (float)atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-novtln")) { /* disable VTLN */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.vtln_alpha = 1.0;
       continue;
     } else if (strmatch(argv[i],"-48")) { /* use 48kHz input and down to 16kHz */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->input.use_ds48to16 = TRUE;
       continue;
     } else if (strmatch(argv[i],"-version") || strmatch(argv[i], "--version") || strmatch(argv[i], "-setting") || strmatch(argv[i], "--setting")) { /* print version and exit */
@@ -597,9 +697,11 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       callback_debug_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-progout")) { /* enable progressive output */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->output.progout_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-proginterval")) { /* interval for -progout */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->output.progout_interval = atoi(tmparg);
       continue;
@@ -608,39 +710,48 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->searchnow->output.progout_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-walign")) { /* do forced alignment by word */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->annotate.align_result_word_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-palign")) { /* do forced alignment by phoneme */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->annotate.align_result_phoneme_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-salign")) { /* do forced alignment by state */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->annotate.align_result_state_flag = TRUE;
       continue;
     } else if (strmatch(argv[i],"-output")) { /* output up to N candidate */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->output.output_hypo_maxnum = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-1pass")) { /* do only 1st pass */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->compute_only_1pass = TRUE;
       continue;
     } else if (strmatch(argv[i],"-hlist")) { /* HMM list file */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->mapfilename);
       GET_TMPARG;
       jconf->amnow->mapfilename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-nlr")) { /* word LR n-gram (ARPA) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       FREE_MEMORY(jconf->lmnow->ngram_filename_lr_arpa);
       GET_TMPARG;
       jconf->lmnow->ngram_filename_lr_arpa = filepath(tmparg, cwd);
       FREE_MEMORY(jconf->lmnow->ngram_filename);
       continue;
     } else if (strmatch(argv[i],"-nrl")) { /* word RL n-gram (ARPA) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       FREE_MEMORY(jconf->lmnow->ngram_filename_rl_arpa);
       GET_TMPARG;
       jconf->lmnow->ngram_filename_rl_arpa = filepath(tmparg, cwd);
       FREE_MEMORY(jconf->lmnow->ngram_filename);
       continue;
     } else if (strmatch(argv[i],"-lmp")) { /* LM weight and penalty (pass1) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->lmp.lm_weight = (LOGPROB)atof(tmparg);
       GET_TMPARG;
@@ -648,6 +759,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->searchnow->lmp.lmp_specified = TRUE;
       continue;
     } else if (strmatch(argv[i],"-lmp2")) { /* LM weight and penalty (pass2) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->lmp.lm_weight2 = (LOGPROB)atof(tmparg);
       GET_TMPARG;
@@ -655,10 +767,12 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->searchnow->lmp.lmp2_specified = TRUE;
       continue;
     } else if (strmatch(argv[i],"-transp")) { /* penalty for transparent word */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->lmp.lm_penalty_trans = (LOGPROB)atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-gram")) { /* comma-separatedlist of grammar prefix */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       GET_TMPARG;
       if (multigram_add_prefix_list(tmparg, cwd, jconf->lmnow, LM_DFA_GRAMMAR) == FALSE) {
 	jlog("ERROR: m_options: failed to read some grammars\n");
@@ -666,6 +780,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       continue;
     } else if (strmatch(argv[i],"-gramlist")) { /* file of grammar prefix list */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       GET_TMPARG;
       tmparg = filepath(tmparg, cwd);
       if (multigram_add_prefix_filelist(tmparg, jconf->lmnow, LM_DFA_GRAMMAR) == FALSE) {
@@ -676,6 +791,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       free(tmparg);
       continue;
     } else if (strmatch(argv[i],"-userlm")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       /* just set lm flags here */
       if (jconf->lmnow->lmtype != LM_PROB && jconf->lmnow->lmtype != LM_UNDEF) {
 	jlog("ERROR: m_options: LM type conflicts: multiple LM specified?\n");
@@ -689,6 +805,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->lmnow->lmvar  = LM_NGRAM_USER;
       continue;
     } else if (strmatch(argv[i],"-nogram")) { /* remove grammar list */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       multigram_remove_gramlist(jconf->lmnow);
       FREE_MEMORY(jconf->lmnow->dfa_filename);
       FREE_MEMORY(jconf->lmnow->dictfilename);
@@ -698,53 +815,65 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       continue;
     } else if (strmatch(argv[i],"-dfa")) { /* DFA filename */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       FREE_MEMORY(jconf->lmnow->dfa_filename);
       GET_TMPARG;
       jconf->lmnow->dfa_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-penalty1")) {	/* word insertion penalty (pass1) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->lmp.penalty1 = (LOGPROB)atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-penalty2")) {	/* word insertion penalty (pass2) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->lmp.penalty2 = (LOGPROB)atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-spmodel") || strmatch(argv[i], "-sp")) { /* name of short pause word */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->spmodel_name);
       GET_TMPARG;
       jconf->amnow->spmodel_name = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       continue;
     } else if (strmatch(argv[i],"-multipath")) { /* force multipath mode */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->force_multipath = TRUE;
       continue;
     } else if (strmatch(argv[i],"-iwsp")) { /* enable inter-word short pause handing (for multipath) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       jconf->lmnow->enable_iwsp = TRUE;
       continue;
     } else if (strmatch(argv[i],"-iwsppenalty")) { /* set inter-word short pause transition penalty (for multipath) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->iwsp_penalty = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-silhead")) { /* head silence word name */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       FREE_MEMORY(jconf->lmnow->head_silname);
       GET_TMPARG;
       jconf->lmnow->head_silname = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       continue;
     } else if (strmatch(argv[i],"-siltail")) { /* tail silence word name */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       FREE_MEMORY(jconf->lmnow->tail_silname);
       GET_TMPARG;
       jconf->lmnow->tail_silname = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       continue;
     } else if (strmatch(argv[i],"-iwspword")) { /* add short pause word */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       jconf->lmnow->enable_iwspword = TRUE;
       continue;
     } else if (strmatch(argv[i],"-iwspentry")) { /* content of the iwspword */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       FREE_MEMORY(jconf->lmnow->iwspentry);
       GET_TMPARG;
       jconf->lmnow->iwspentry = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       continue;
     } else if (strmatch(argv[i],"-iwcache")) { /* control cross-word LM cache */
 #ifdef HASH_CACHE_IW
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->pass1.iw_cache_rate = atof(tmparg);
       if (jconf->searchnow->pass1.iw_cache_rate > 100) jconf->searchnow->pass1.iw_cache_rate = 100;
@@ -755,6 +884,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
     } else if (strmatch(argv[i],"-sepnum")) { /* N-best frequent word will be separated from tree */
 #ifdef SEPARATE_BY_UNIGRAM
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       GET_TMPARG;
       jconf->lmnow->separate_wnum = atoi(tmparg);
 #else
@@ -764,59 +894,74 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
 #ifdef USE_NETAUDIO
     } else if (strmatch(argv[i],"-NA")) { /* netautio device name */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       FREE_MEMORY(jconf->input.netaudio_devname);
       GET_TMPARG;
       jconf->input.netaudio_devname = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       continue;
 #endif
     } else if (strmatch(argv[i],"-adport")) { /* adinnet port num */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->input.adinnet_port = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-nostrip")) { /* do not strip zero samples */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->preprocess.strip_zero_sample = FALSE;
       continue;
     } else if (strmatch(argv[i],"-zmean")) { /* enable DC offset by zero mean */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->preprocess.use_zmean = TRUE;
       continue;
     } else if (strmatch(argv[i],"-nozmean")) { /* disable DC offset by zero mean */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->preprocess.use_zmean = FALSE;
       continue;
     } else if (strmatch(argv[i],"-zmeanframe")) { /* enable frame-wise DC offset by zero mean */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.zmeanframe = TRUE;
       continue;
     } else if (strmatch(argv[i],"-nozmeanframe")) { /* disable frame-wise DC offset by zero mean */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.zmeanframe = FALSE;
       continue;
     } else if (strmatch(argv[i],"-usepower")) { /* use power instead of magnitude in filterbank analysis */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.usepower = TRUE;
       continue;
     } else if (strmatch(argv[i],"-nousepower")) { /* use magnitude in fbank analysis (default)  */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.para.usepower = FALSE;
       continue;
     } else if (strmatch(argv[i],"-spsegment")) { /* enable short-pause segmentation */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->successive.enabled = TRUE;
       continue;
     } else if (strmatch(argv[i],"-spdur")) { /* speech down-trigger duration threshold in frame */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->successive.sp_frame_duration = atoi(tmparg);
       continue;
 #ifdef SPSEGMENT_NAIST
     } else if (strmatch(argv[i],"-spmargin")) { /* speech up-trigger backstep margin in frame */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->successive.sp_margin = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-spdelay")) { /* speech up-trigger delay frame */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->successive.sp_delay = atoi(tmparg);
       continue;
 #endif
     } else if (strmatch(argv[i],"-pausemodels")) { /* short-pause duration threshold */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       FREE_MEMORY(jconf->searchnow->successive.pausemodelname);
       GET_TMPARG;
       jconf->searchnow->successive.pausemodelname = strcpy((char*)mymalloc(strlen(tmparg)+1),tmparg);
       continue;
     } else if (strmatch(argv[i],"-gprune")) { /* select Gaussian pruning method */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       if (strmatch(tmparg,"safe")) { /* safest, slowest */
 	jconf->amnow->gprune_method = GPRUNE_SEL_SAFE;
@@ -839,14 +984,17 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
  *	 continue;
  */
     } else if (strmatch(argv[i],"-no_ccd")) { /* force triphone handling = OFF */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->ccd_handling = FALSE;
       jconf->searchnow->force_ccd_handling = TRUE;
       continue;
     } else if (strmatch(argv[i],"-force_ccd")) { /* force triphone handling = ON */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->ccd_handling = TRUE;
       jconf->searchnow->force_ccd_handling = TRUE;
       continue;
     } else if (strmatch(argv[i],"-iwcd1")) { /* select cross-word triphone computation method */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       if (strmatch(tmparg, "max")) { /* use maximum score in triphone variants */
 	jconf->amnow->iwcdmethod = IWCD_MAX;
@@ -862,61 +1010,75 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       continue;
     } else if (strmatch(argv[i],"-tmix")) { /* num of mixture to select */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       if (i + 1 < argc && isdigit(argv[i+1][0])) {
 	jconf->amnow->mixnum_thres = atoi(argv[++i]);
       }
       continue;
     } else if (strmatch(argv[i],"-b2") || strmatch(argv[i],"-bw") || strmatch(argv[i],"-wb")) {	/* word beam width in 2nd pass */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->pass2.enveloped_bestfirst_width = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-hgs")) { /* Gaussian selection model file */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->hmm_gs_filename);
       GET_TMPARG;
       jconf->amnow->hmm_gs_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-booknum")) { /* num of state to select in GS */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->gs_statenum = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-gshmm")) { /* same as "-hgs" */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->hmm_gs_filename);
       GET_TMPARG;
       jconf->amnow->hmm_gs_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-gsnum")) { /* same as "-booknum" */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->gs_statenum = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-cmnload")) { /* load CMN parameter from file */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->analysis.cmnload_filename);
       GET_TMPARG;
       jconf->amnow->analysis.cmnload_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-cmnsave")) { /* save CMN parameter to file */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->analysis.cmnsave_filename);
       GET_TMPARG;
       jconf->amnow->analysis.cmnsave_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-cmnupdate")) { /* update CMN parameter */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.cmn_update = TRUE;
       continue;
     } else if (strmatch(argv[i],"-cmnnoupdate")) { /* not update CMN parameter */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->analysis.cmn_update = FALSE;
       continue;
     } else if (strmatch(argv[i],"-cmnmapweight")) { /* CMN weight for MAP */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->analysis.cmn_map_weight = (float)atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-sscalc")) { /* do spectral subtraction (SS) for raw file input */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       jconf->amnow->frontend.sscalc = TRUE;
       FREE_MEMORY(jconf->amnow->frontend.ssload_filename);
       continue;
     } else if (strmatch(argv[i],"-sscalclen")) { /* head silence length used to compute SS (in msec) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       jconf->amnow->frontend.sscalc_len = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-ssload")) { /* load SS parameter from file */
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       FREE_MEMORY(jconf->amnow->frontend.ssload_filename);
       GET_TMPARG;
       jconf->amnow->frontend.ssload_filename = filepath(tmparg, cwd);
@@ -924,6 +1086,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
 #ifdef CONFIDENCE_MEASURE
     } else if (strmatch(argv[i],"-cmalpha")) { /* CM log score scaling factor */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
 #ifdef CM_MULTIPLE_ALPHA
       GET_TMPARG;
       jconf->searchnow->annotate.cm_alpha_bgn = (LOGPROB)atof(tmparg);
@@ -943,46 +1106,55 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
 #ifdef CM_SEARCH_LIMIT
     } else if (strmatch(argv[i],"-cmthres")) { /* CM cut threshold for CM decoding */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->annotate.cm_cut_thres = (LOGPROB)atof(tmparg);
       continue;
 #endif
 #ifdef CM_SEARCH_LIMIT_POP
     } else if (strmatch(argv[i],"-cmthres2")) { /* CM cut threshold for CM decoding */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->annotate.cm_cut_thres_pop = (LOGPROB)atof(tmparg);
       continue;
 #endif
 #endif /* CONFIDENCE_MEASURE */
     } else if (strmatch(argv[i],"-gmm")) { /* load SS parameter from file */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       FREE_MEMORY(jconf->reject.gmm_filename);
       GET_TMPARG;
       jconf->reject.gmm_filename = filepath(tmparg, cwd);
       continue;
     } else if (strmatch(argv[i],"-gmmnum")) { /* num of Gaussian pruning for GMM */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->reject.gmm_gprune_num = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-gmmreject")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       FREE_MEMORY(jconf->reject.gmm_reject_cmn_string);
       jconf->reject.gmm_reject_cmn_string = strcpy((char *)mymalloc(strlen(tmparg)+1), tmparg);
       continue;
 #ifdef GMM_VAD
     } else if (strmatch(argv[i],"-gmmmargin")) { /* backstep margin */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.gmm_margin = atoi(tmparg);
       continue;
     } else if (strmatch(argv[i],"-gmmup")) { /* uptrigger threshold */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.gmm_uptrigger_thres = atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-gmmdown")) { /* uptrigger threshold */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->detect.gmm_downtrigger_thres = atof(tmparg);
       continue;
 #endif
     } else if (strmatch(argv[i],"-htkconf")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
       GET_TMPARG;
       if (htk_config_file_parse(tmparg, &(jconf->amnow->analysis.para_htk)) == FALSE) {
 	jlog("ERROR: m_options: failed to read %s\n", tmparg);
@@ -990,6 +1162,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       continue;
     } else if (strmatch(argv[i], "-wlist")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       GET_TMPARG;
       tmparg = filepath(tmparg, cwd);
       if (multigram_add_prefix_filelist(tmparg, jconf->lmnow, LM_DFA_WORD) == FALSE) {
@@ -1006,6 +1179,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
        *   return FALSE;
        * }
        */
+      if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
       GET_TMPARG;
       strncpy(jconf->lmnow->wordrecog_head_silence_model_name, tmparg, MAX_HMMNAME_LEN);
       GET_TMPARG;
@@ -1023,6 +1197,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       //jlog("ERROR: \"-wed\" only valid for isolated word recognition mode\n");
       //return FALSE;
       //}
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       GET_TMPARG;
       jconf->searchnow->pass1.determine_score_thres = atof(tmparg);
       GET_TMPARG;
@@ -1030,12 +1205,15 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
 #endif
     } else if (strmatch(argv[i], "-inactive")) { /* start inactive */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->sw.start_inactive = TRUE;
       continue;
     } else if (strmatch(argv[i], "-active")) { /* start active (default) */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->sw.start_inactive = FALSE;
       continue;
     } else if (strmatch(argv[i],"-fallback1pass")) { /* use 1st pass result on search failure */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->sw.fallback_pass1_flag = TRUE;
       continue;
     }
@@ -1043,16 +1221,19 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       /* 1-letter options */
       switch(argv[i][1]) {
       case 'h':			/* hmmdefs */
+	if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 
 	FREE_MEMORY(jconf->amnow->hmmfilename);
 	GET_TMPARG;
 	jconf->amnow->hmmfilename = filepath(tmparg, cwd);
 	break;
       case 'v':			/* dictionary */
+	if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
 	FREE_MEMORY(jconf->lmnow->dictfilename);
 	GET_TMPARG;
 	jconf->lmnow->dictfilename = filepath(tmparg, cwd);
 	break;
       case 'w':			/* word list (isolated word recognition) */
+	if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
 	GET_TMPARG;
 	if (multigram_add_prefix_list(tmparg, cwd, jconf->lmnow, LM_DFA_WORD) == FALSE) {
 	  jlog("ERROR: m_options: failed to read some word list\n");
@@ -1061,6 +1242,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	break;
       case 'd':			/* binary N-gram */
 	/* lmvar should be overriden by the content of the binary N-gram */
+	if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
 	FREE_MEMORY(jconf->lmnow->ngram_filename);
 	FREE_MEMORY(jconf->lmnow->ngram_filename_lr_arpa);
 	FREE_MEMORY(jconf->lmnow->ngram_filename_rl_arpa);
@@ -1068,18 +1250,22 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	jconf->lmnow->ngram_filename = filepath(tmparg, cwd);
 	break;
       case 'b':			/* beam width in 1st pass */
+	if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
 	GET_TMPARG;
 	jconf->searchnow->pass1.specified_trellis_beam_width = atoi(tmparg);
 	break;
       case 's':			/* stack size in 2nd pass */
+	if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
 	GET_TMPARG;
 	jconf->searchnow->pass2.stack_size = atoi(tmparg);
 	break;
       case 'n':			/* N-best search */
+	if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
 	GET_TMPARG;
 	jconf->searchnow->pass2.nbest = atoi(tmparg);
 	break;
       case 'm':			/* upper limit of hypothesis generation */
+	if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
 	GET_TMPARG;
 	jconf->searchnow->pass2.hypo_overflow = atoi(tmparg);
 	break;

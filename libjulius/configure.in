@@ -4,7 +4,7 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl $Id: configure.in,v 1.4 2008/05/27 09:16:39 sumomo Exp $
+dnl $Id: configure.in,v 1.5 2008/09/25 05:00:04 sumomo Exp $
 dnl
 
 AC_INIT(src/search_bestfirst_main.c)
@@ -201,7 +201,13 @@ want_power_reject=$enableval
 ,want_power_reject=no
 )
 
-
+dnl plugin support
+AC_ARG_ENABLE(plugin,
+[  --disable-plugin           disable plugin support],
+if test "$enableval" = yes; then
+	AC_DEFINE(ENABLE_PLUGIN)
+fi
+,AC_DEFINE(ENABLE_PLUGIN))
 
 dnl CM options check
 if test "$use_cm" = yes; then

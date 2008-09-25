@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -169,16 +169,7 @@ print_engine_info(Recog *recog)
   /* print current argument setting to log */
   print_jconf_overview(jconf);
 
-  /* for backward compatibility with scoring tool (IPA99)... :-( */
-#if 0
-  if (jconf->input.speech_input == SP_RAWFILE) {
-    jlog("Speech input source: file\n\n");
-  } else if (jconf->input.speech_input == SP_MFCFILE) {
-    jlog("Speech input source: MFCC parameter file (HTK format)\n\n");
-  }
-#endif
-
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
 
     /* acoustic parameter conditions for this model */
     jlog("------------------------------------------------------------\n");
@@ -201,7 +192,7 @@ print_engine_info(Recog *recog)
 
       put_para(fp, mfcc->para);
 
-      if (jconf->input.speech_input != SP_MFCFILE) {
+      if (jconf->input.type == INPUT_WAVEFORM) {
 	jlog("    spectral subtraction = ");
 	if (mfcc->frontend.ssload_filename || mfcc->frontend.sscalc) {
 	  if (mfcc->frontend.sscalc) {
@@ -329,9 +320,11 @@ print_engine_info(Recog *recog)
     case GPRUNE_SEL_BEAM: jlog("beam"); break;
     case GPRUNE_SEL_HEURISTIC: jlog("heuristic"); break;
     case GPRUNE_SEL_SAFE: jlog("safe"); break;
+    case GPRUNE_SEL_USER: jlog("(use plugin function)"); break;
     }
     jlog("  (-gprune)\n");
-    if (am->config->gprune_method != GPRUNE_SEL_NONE) {
+    if (am->config->gprune_method != GPRUNE_SEL_NONE
+	&& am->config->gprune_method != GPRUNE_SEL_USER) {
       jlog("  top N mixtures to calc = %d / %d  (-tmix)\n", am->config->mixnum_thres, am->hmminfo->maxcodebooksize);
     }
     if (am->config->hmm_gs_filename != NULL) {
@@ -765,21 +758,32 @@ print_engine_info(Recog *recog)
   jlog("------------------------------------------------------------\n");
   jlog("FrontEnd:\n\n");
 
-  jlog(" Speech input:\n");
-  jlog("\t    speech input source = ");
-  if (jconf->input.speech_input == SP_RAWFILE) {
-    jlog("speech file\n");
+  jlog(" Input stream:\n");
+  jlog("\t             input type = ");
+  switch(jconf->input.type) {
+  case INPUT_WAVEFORM:
+    jlog("waveform\n");
+    break;
+  case INPUT_VECTOR:
+    jlog("feature vector sequence\n");
+    break;
+  }
+  jlog("\t           input source = ");
+  if (jconf->input.plugin_source != -1) {
+    jlog("plugin\n");
+  } else if (jconf->input.speech_input == SP_RAWFILE) {
+    jlog("waveform file\n");
     jlog("\t          input filelist = ");
     if (jconf->input.inputlist_filename == NULL) {
-      jlog("(none, enter filenames from stdin)\n");
+      jlog("(none, get file name from stdin)\n");
     } else {
       jlog("%s\n", jconf->input.inputlist_filename);
     }
   } else if (jconf->input.speech_input == SP_MFCFILE) {
-    jlog("MFCC parameter file (HTK format)\n");
+    jlog("feature vector file (HTK format)\n");
     jlog("\t                filelist = ");
     if (jconf->input.inputlist_filename == NULL) {
-      jlog("(none, enter filenames from stdin)\n");
+      jlog("(none, get file name from stdin)\n");
     } else {
       jlog("%s\n", jconf->input.inputlist_filename);
     }
@@ -803,13 +807,13 @@ print_engine_info(Recog *recog)
     jlog("microphone\n");
     jlog("\t    device API          = ");
     switch(jconf->input.device) {
-    case SP_INPUT_DEFAULT: jlog("default"); break;
-    case SP_INPUT_ALSA: jlog("alsa"); break;
-    case SP_INPUT_OSS: jlog("oss"); break;
-    case SP_INPUT_ESD: jlog("esd"); break;
+    case SP_INPUT_DEFAULT: jlog("default\n"); break;
+    case SP_INPUT_ALSA: jlog("alsa\n"); break;
+    case SP_INPUT_OSS: jlog("oss\n"); break;
+    case SP_INPUT_ESD: jlog("esd\n"); break;
     }
   }
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
     if (jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_STDIN || jconf->input.speech_input == SP_ADINNET) {
       if (jconf->input.use_ds48to16) {
 	jlog("\t          sampling freq. = assume 48000Hz, then down to %dHz\n", jconf->input.sfreq);
@@ -824,7 +828,7 @@ print_engine_info(Recog *recog)
       }
     }
   }
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
     jlog("\t         threaded A/D-in = ");
 #ifdef HAVE_PTHREAD
     if (recog->adin->enable_thread) {
@@ -841,7 +845,7 @@ print_engine_info(Recog *recog)
   } else {
     jlog("\t   zero frames stripping = off\n");
   }
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
     if (recog->adin->adin_cut_on) {
       jlog("\t         silence cutting = on\n");
       jlog("\t             level thres = %d / 32767\n", jconf->detect.level_thres);

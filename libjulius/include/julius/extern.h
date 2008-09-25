@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -143,6 +143,7 @@ boolean RealTimeParam(Recog *recog);
 void RealTimeCMNUpdate(MFCCCalc *mfcc, Recog *recog);
 void RealTimeTerminate(Recog *recog);
 void realbeam_free(Recog *recog);
+int mfcc_go(Recog *recog, int (*ad_check)(Recog *));
 
 /* word_align.c */
 void word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
@@ -173,7 +174,6 @@ void print_engine_info(Recog *recog);
 void system_bootup(Recog *recog);
 /* m_adin.c */
 boolean adin_initialize(Recog *recog);
-boolean adin_initialize_user(Recog *recog, void *arg);
 /* m_fusion.c */
 boolean j_load_am(Recog *recog, JCONF_AM *amconf);
 boolean j_load_lm(Recog *recog, JCONF_LM *lmconf);
@@ -290,3 +290,24 @@ int adin_cut_callback_store_buffer(SP16 *now, int len, Recog *recog);
 void result_sentence_malloc(RecogProcess *r, int num);
 void result_sentence_free(RecogProcess *r);
 void clear_result(RecogProcess *r);
+
+/* plugin.c */
+int plugin_get_id(char *name);
+void plugin_init();
+boolean plugin_load_file(char *file);
+boolean plugin_load_dir(char *dir);
+void plugin_load_dirs(char *dirent);
+int plugin_find_optname(char *optfuncname, char *str);
+FUNC_VOID plugin_get_func(int sid, char *name);
+boolean plugin_exec_engine_startup(Recog *recog);
+void plugin_exec_adin_captured(short *buf, int len);
+void plugin_exec_adin_triggered(short *buf, int len);
+void plugin_exec_vector_postprocess(VECT *vecbuf, int veclen, int nframe);
+void plugin_exec_vector_postprocess_all(HTK_Param *param);
+void plugin_exec_process_result(Recog *recog);
+boolean mfc_module_init(MFCCCalc *mfcc, Recog *recog);
+boolean mfc_module_set_header(MFCCCalc *mfcc, Recog *recog);
+boolean mfc_module_standby(MFCCCalc *mfcc);
+boolean mfc_module_begin(MFCCCalc *mfcc);
+boolean mfc_module_end(MFCCCalc *mfcc);
+int mfc_module_read(MFCCCalc *mfcc, int *new_t);

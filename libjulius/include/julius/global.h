@@ -14,7 +14,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 18 23:53:17 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -31,6 +31,7 @@
 #include <sent/vocabulary.h>
 #include <julius/wchmm.h>
 #include <julius/search.h>
+#include <julius/plugin.h>
 
 /**
  * If GLOBAL_VARIABLE_DEFINE is defined, global variables are actually made.
@@ -49,5 +50,9 @@
 GLOBAL boolean verbose_flag GLOBAL_VAL(TRUE);
 GLOBAL boolean debug2_flag GLOBAL_VAL(FALSE);
 GLOBAL boolean callback_debug_flag GLOBAL_VAL(FALSE);
+
+/* function list for adin process callback */
+GLOBAL PLUGIN_ENTRY **global_plugin_list GLOBAL_VAL(NULL);
+GLOBAL int global_plugin_loaded_file_num GLOBAL_VAL(0);
 
 #endif /* __J_GLOBAL_H__ */

@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.3 $ 
+ * $Revision: 1.4 $ 
  */
 /*
  * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
@@ -46,14 +46,21 @@
 #define HAS_ESD
 #endif
 
-/// To select speech input source
+/// Speech input type
+enum {
+  INPUT_WAVEFORM,
+  INPUT_VECTOR
+};
+
+/// Speech input source
 enum {
   SP_RAWFILE,			///< Wavefile
-  SP_MIC,			///< Live microphone device
+  SP_MIC,			///< Live microphone device, or plugin
   SP_ADINNET,			///< Network client (adintool etc.)
   SP_MFCFILE,			///< HTK parameter file
   SP_NETAUDIO,			///< Live NetAudio/DatLink input
-  SP_STDIN			///< Standard input
+  SP_STDIN,			///< Standard input
+  SP_MFCMODULE			///< parameter module
 };
 
 /// Input device

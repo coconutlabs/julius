@@ -5,7 +5,7 @@
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.3 2008/01/22 13:01:55 sumomo Exp $
+# $Id: Makefile.in,v 1.4 2008/09/25 05:00:04 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -18,7 +18,7 @@ LIBSENT=../libsent
 CC=@CC@
 CFLAGS=@CFLAGS@
 CPPFLAGS=-Iinclude -I$(LIBSENT)/include @CPPFLAGS@ `$(LIBSENT)/libsent-config --cflags`
-LDFLAGS=@LDFLAGS@ -L$(LIBSENT) -lsent @LIBS@ `$(LIBSENT)/libsent-config --libs` -lm 
+LDFLAGS=@LDFLAGS@ @LIBS@ -L$(LIBSENT) `$(LIBSENT)/libsent-config --libs` 
 RM=@RM@ -f
 AR=@AR@ r
 RANLIB=@RANLIB@
@@ -74,6 +74,7 @@ src/graphout.o \
 src/confnet.o \
 src/gmm.o \
 src/word_align.o \
+src/plugin.o \
 src/version.o
 
 ############################################################

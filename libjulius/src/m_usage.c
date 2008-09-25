@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -45,7 +45,13 @@ void
 j_output_argument_help(FILE *fp)
 {
   Jconf *jconf;
-
+#ifdef ENABLE_PLUGIN
+  int id;
+  char buf[64];
+  PLUGIN_ENTRY *p;
+  FUNC_VOID func;
+#endif
+    
   /* load default values */
   jconf = j_jconf_new();
 
@@ -59,18 +65,17 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    (Can extract only MFCC based features from waveform)\n");
   fprintf(fp, "    [-input devname]    input source  (default = htkparam)\n");
   fprintf(fp, "         htkparam/mfcfile  HTK parameter file\n");
-  fprintf(fp, "         file/rawfile      waveform file\n");
-  fprintf(fp, "                           (format: %s)\n", SUPPORTED_WAVEFILE_FORMAT);
+  fprintf(fp, "         file/rawfile      waveform file (%s)\n", SUPPORTED_WAVEFILE_FORMAT);
 #ifdef USE_MIC
-  fprintf(fp, "         mic               microphone device\n");
+  fprintf(fp, "         mic               default microphone device\n");
 # ifdef HAS_ALSA
-  fprintf(fp, "             alsa            use ALSA interface\n");
+  fprintf(fp, "         alsa              use ALSA interface\n");
 # endif
 # ifdef HAS_OSS
-  fprintf(fp, "             oss             use OSS interface\n");
+  fprintf(fp, "         oss               use OSS interface\n");
 # endif
 # ifdef HAS_ESD
-  fprintf(fp, "             esd             use ESounD interface\n");
+  fprintf(fp, "         esd               use ESounD interface\n");
 # endif
 #endif
 #ifdef USE_NETAUDIO
@@ -78,6 +83,24 @@ j_output_argument_help(FILE *fp)
 #endif
   fprintf(fp, "         adinnet           adinnet client (TCP/IP)\n");
   fprintf(fp, "         stdin             standard input\n");
+#ifdef ENABLE_PLUGIN
+  if (global_plugin_list) {
+    if ((id = plugin_get_id("adin_get_optname")) >= 0) {
+      for(p=global_plugin_list[id];p;p=p->next) {
+	func = (FUNC_VOID) p->func;
+	(*func)(buf, (int)64);
+	fprintf(fp, "         %-18s(adin plugin #%d)\n", buf, p->source_id);
+      }
+    }
+    if ((id = plugin_get_id("fvin_get_optname")) >= 0) {
+      for(p=global_plugin_list[id];p;p=p->next) {
+	func = (FUNC_VOID) p->func;
+	(*func)(buf, (int)64);
+	fprintf(fp, "         %-18s(feature vector input plugin #%d)\n", buf, p->source_id);
+      }
+    }
+  }
+#endif
   fprintf(fp, "    [-filelist file]    filename of input file list\n");
 #ifdef USE_NETAUDIO
   fprintf(fp, "    [-NA host:unit]     get audio from NetAudio server at host:unit\n");
@@ -200,6 +223,17 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "             beam          beam pruning\n");
 #endif
   fprintf(fp, "             none          no pruning (default for non tmix models)\n");
+#ifdef ENABLE_PLUGIN
+  if (global_plugin_list) {
+    if ((id = plugin_get_id("calcmix_get_optname")) >= 0) {
+      for(p=global_plugin_list[id];p;p=p->next) {
+	func = (FUNC_VOID) p->func;
+	(*func)(buf, (int)64);
+	fprintf(fp, "             %-14s(calculation plugin #%d)\n", buf, p->source_id);
+      }
+    }
+  }
+#endif
   fprintf(fp, "    [-tmix gaussnum]    Gaussian num threshold per mixture for pruning (%d)\n", jconf->am_root->mixnum_thres);
   fprintf(fp, "    [-gshmm hmmdefs]    monophone hmmdefs for GS\n");
   fprintf(fp, "    [-gsnum N]          N-best state will be selected        (%d)\n", jconf->am_root->gs_statenum);

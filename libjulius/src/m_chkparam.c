@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:31:45 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -223,9 +223,9 @@ j_jconf_finalize(Jconf *jconf)
 
   /* set default realtime flag according to input mode */
   if (jconf->decodeopt.force_realtime_flag) {
-    if (jconf->input.speech_input == SP_MFCFILE) {
-      jlog("WARNING: m_chkparam: realtime decoding of mfcfile is not supported yet\n");
-      jlog("WARNING: m_chkparam: realtime turned off\n");
+    if (jconf->input.type == INPUT_VECTOR) {
+      jlog("WARNING: m_chkparam: real-time concurrent processing is not needed on feature vector input\n");
+      jlog("WARNING: m_chkparam: real-time flag has turned off\n");
       jconf->decodeopt.realtime_flag = FALSE;
     } else {
       jconf->decodeopt.realtime_flag = jconf->decodeopt.forced_realtime;

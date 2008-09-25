@@ -19,7 +19,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 15:04:28 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -57,10 +57,16 @@ j_request_pause(Recog *recog)
     recog->process_want_reload = TRUE;
     recog->process_active = FALSE;
   }
-  if (recog->jconf->input.speech_input == SP_ADINNET) {
-    /* when taking speech from adinnet client,
-       always tell the client to stop recording */
-    adin_tcpip_send_pause();
+  /* control the A/D-in module to stop recording */
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    if (recog->adin->ad_pause != NULL) {
+      (*(recog->adin->ad_pause))();
+    }
+  } else {
+    /* feature vector input */
+    if (recog->jconf->input.speech_input == SP_MFCMODULE) {
+      if (recog->mfcclist->func.fv_pause) recog->mfcclist->func.fv_pause();
+    }
   }
 }
 
@@ -92,10 +98,16 @@ j_request_terminate(Recog *recog)
     recog->process_want_reload = TRUE;
     recog->process_active = FALSE;
   }
-  if (recog->jconf->input.speech_input == SP_ADINNET) {
-    /* when taking speech input from adinnet client,
-       always tell the client to stop recording immediately */
-    adin_tcpip_send_terminate();
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    if (recog->adin->ad_terminate != NULL) {
+      /* control the A/D-in module to terminate recording imemdiately */
+      (*(recog->adin->ad_terminate))();
+    }
+  } else {
+    /* feature vector input */
+    if (recog->jconf->input.speech_input == SP_MFCMODULE) {
+      if (recog->mfcclist->func.fv_terminate) recog->mfcclist->func.fv_terminate();
+    }
   }
 }
 
@@ -120,10 +132,16 @@ j_request_resume(Recog *recog)
     recog->process_want_terminate = FALSE;
     recog->process_active = TRUE;
   }
-  if (recog->jconf->input.speech_input == SP_ADINNET) {
-    /* when taking speech from adinnet client,
-       tell the client to restart recording */
-    adin_tcpip_send_resume();
+  /* control the A/D-in module to restart recording now */
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    if (recog->adin->ad_resume != NULL) {
+      (*(recog->adin->ad_resume))();
+    }
+  } else {
+    /* feature vector input */
+    if (recog->jconf->input.speech_input == SP_MFCMODULE) {
+      if (recog->mfcclist->func.fv_resume) recog->mfcclist->func.fv_resume();
+    }
   }
 }
 
@@ -522,63 +540,22 @@ j_adin_init(Recog *recog)
 {
   boolean ret;
 
+  if (recog->jconf->input.type == INPUT_VECTOR) {
+    /* feature vector input */
+    if (recog->jconf->input.speech_input == SP_MFCMODULE) {
+      if (mfc_module_init(recog->mfcclist, recog) == FALSE) {
+	return FALSE;
+      }
+      ret = mfc_module_standby(recog->mfcclist);
+    } else {
+      ret = TRUE;
+    }
+    return ret;
+  }
+  
+  /* initialize A/D-in device */
   ret = adin_initialize(recog);
 
-    /* initialize A/D-in device */
-    /* create A/D-in thread here */
-#ifdef HAVE_PTHREAD
-  if (ret) {
-    if (recog->adin->enable_thread) {
-      if (adin_thread_create(recog) == FALSE) {
-	return FALSE;
-      }
-    }
-  }
-#endif
-
-  return(ret);
-}
-
-/** 
- * <EN>
- * Initialize function when using user-defined A/D-in function.
- * Almost the same with j_adin_init() except that it does not initialize
- * an input device.
- * 
- * </EN>
- * <JA>
- * ユーザ定義のA/D-in関数使用時の初期化関数. デバイスの初期化を行わない
- * 以外は j_adin_init() と同じである. 
-* 
- * </JA>
- * 
- * @param recog [in] engine instance
- * @param arg [in] argument
- * 
- * @return TRUE on success, else FALSE on error.
- * 
- * @callgraph
- * @callergraph
- * @ingroup engine
- */
-boolean
-j_adin_init_user(Recog *recog, void *arg)
-{
-  boolean ret;
-
-  ret = adin_initialize_user(recog, arg);
-
-    /* initialize A/D-in device */
-    /* create A/D-in thread here */
-#ifdef HAVE_PTHREAD
-  if (ret) {
-    if (recog->adin->enable_thread) {
-      if (adin_thread_create(recog) == FALSE) {
-	return FALSE;
-      }
-    }
-  }
-#endif
   return(ret);
 }
 

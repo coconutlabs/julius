@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -101,6 +101,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "    file        speech file (filename given from prompt)\n");
   fprintf(stderr, "    adinnet     from adinnet client (I'm server)\n");
   fprintf(stderr, "    stdin       standard tty input\n");
+  fprintf(stderr, "    (\"-input xxx\" can be used instead, as same as Julius)\n");
   fprintf(stderr, "outputdev: output data to:\n");
   fprintf(stderr, "    file        speech file (\"foo.0000.wav\" - \"foo.N.wav\"\n");
   fprintf(stderr, "    adinnet     to adinnet server (I'm client)\n");
@@ -143,6 +144,8 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 static boolean
 opt_in(Jconf *jconf, char *arg[], int argnum)
 {
+  jconf->input.plugin_source = -1;
+  jconf->input.type = INPUT_WAVEFORM;
   switch(arg[0][0]) {
   case 'm':
 #ifdef USE_MIC
@@ -331,18 +334,50 @@ put_status(Recog *recog)
   Jconf *jconf = recog->jconf;
 
   fprintf(stderr,"----\n");
-  fprintf(stderr,"Input-Source: ");
-  switch(jconf->input.speech_input) {
-  case SP_RAWFILE: fprintf(stderr,"Wave File (filename from stdin)\n"); break;
-#ifdef USE_MIC
-  case SP_MIC: fprintf(stderr,"Microphone\n"); break;
-#endif
-#ifdef USE_NETAUDIO
-  case SP_NETAUDIO: fprintf(stderr,"NetAudio(DatLink) server on %s\n", jconf->input.netaudio_devname); break;
-#endif
-  case SP_STDIN: fprintf(stderr,"Standard Input\n"); break;
-  case SP_ADINNET: fprintf(stderr,"adinnet client (port %d)\n", adinnet_port_in); break;
+  fprintf(stderr, "Input stream:\n");
+  fprintf(stderr, "\t             input type = ");
+  switch(jconf->input.type) {
+  case INPUT_WAVEFORM:
+    fprintf(stderr, "waveform\n");
+    break;
+  case INPUT_VECTOR:
+    fprintf(stderr, "feature vector sequence\n");
+    break;
   }
+  fprintf(stderr, "\t           input source = ");
+  if (jconf->input.plugin_source != -1) {
+    fprintf(stderr, "plugin\n");
+  } else if (jconf->input.speech_input == SP_RAWFILE) {
+    fprintf(stderr, "waveform file\n");
+  } else if (jconf->input.speech_input == SP_MFCFILE) {
+    fprintf(stderr, "feature vector file (HTK format)\n");
+  } else if (jconf->input.speech_input == SP_STDIN) {
+    fprintf(stderr, "standard input\n");
+  } else if (jconf->input.speech_input == SP_ADINNET) {
+    fprintf(stderr, "adinnet client\n");
+#ifdef USE_NETAUDIO
+  } else if (jconf->input.speech_input == SP_NETAUDIO) {
+    char *p;
+    fprintf(stderr, "NetAudio server on ");
+    if (jconf->input.netaudio_devname != NULL) {
+      fprintf(stderr, "%s\n", jconf->input.netaudio_devname);
+    } else if ((p = getenv("AUDIO_DEVICE")) != NULL) {
+      fprintf(stderr, "%s\n", p);
+    } else {
+      fprintf(stderr, "local port\n");
+    }
+#endif
+  } else if (jconf->input.speech_input == SP_MIC) {
+    fprintf(stderr, "microphone\n");
+    fprintf(stderr, "\t    device API          = ");
+    switch(jconf->input.device) {
+    case SP_INPUT_DEFAULT: fprintf(stderr, "default\n"); break;
+    case SP_INPUT_ALSA: fprintf(stderr, "alsa\n"); break;
+    case SP_INPUT_OSS: fprintf(stderr, "oss\n"); break;
+    case SP_INPUT_ESD: fprintf(stderr, "esd\n"); break;
+    }
+  }
+
   fprintf(stderr,"Segmentation: ");
   if (jconf->detect.silence_cut) {
     if (continuous_segment) {

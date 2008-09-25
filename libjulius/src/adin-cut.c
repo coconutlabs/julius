@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -152,7 +152,7 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   adin->strip_flag = jconf->preprocess.strip_zero_sample;
   adin->thres = jconf->detect.level_thres;
 #ifdef HAVE_PTHREAD
-  if (jconf->input.speech_input == SP_MIC && jconf->decodeopt.segment) {
+  if (adin->enable_thread && jconf->decodeopt.segment) {
     adin->ignore_speech_while_recog = FALSE;
   } else {
     adin->ignore_speech_while_recog = TRUE;
@@ -334,14 +334,9 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
   /****************/
   /* resume input */
   /****************/
-  /* restart speech input if paused on the last call */
-  if (a->ad_resume != NULL) {
-    if ((*(a->ad_resume))() == FALSE)  return(-1);
-  }
-
-  if (!a->adin_cut_on && a->is_valid_data == TRUE) {
-    callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
-  }
+  //  if (!a->adin_cut_on && a->is_valid_data == TRUE) {
+  //    callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
+  //  }
 
   /*************/
   /* main loop */
@@ -378,8 +373,19 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
       }
       if (cnt < 0) {		/* end of stream / segment or error */
 	/* set the end status */
-	if (cnt == -2) end_status = -1; /* end by error */
-	else if (cnt == -1) end_status = 0; /* end by normal end of stream */
+	switch(cnt) {
+	case -1:		/* end of stream */
+	  a->input_side_segment = FALSE;
+	  end_status = 0;
+	  break;
+	case -2:
+	  a->input_side_segment = FALSE;
+	  end_status = -1;
+	  break;
+	case -3:
+	  a->input_side_segment = TRUE;
+	  end_status = 0;
+	}
 	/* now the input has been ended, 
 	   we should not get further speech input in the next loop, 
 	   instead just process the samples in the temporary buffer until
@@ -407,6 +413,9 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
       /* length can be modified in the functions.      */
       /*************************************************/
       if (cnt > 0) {
+#ifdef ENABLE_PLUGIN
+	plugin_exec_adin_captured(&(a->buffer[a->bp]), cnt);
+#endif
 	callback_exec_adin(CALLBACK_ADIN_CAPTURED, recog, &(a->buffer[a->bp]), cnt);
       }
 
@@ -452,9 +461,13 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
       if ((i = (*ad_check)(recog)) < 0) { /* -1: soft termination -2: hard termination */
 	//	if ((i == -1 && current_len == 0) || i == -2) {
  	if (i == -2 ||
- 	    (i == -1 && a->adin_cut_on && a->is_valid_data == FALSE) ||
- 	    (i == -1 && !a->adin_cut_on && a->current_len == 0)) {
+	    (i == -1 && a->is_valid_data == FALSE)) {
 	  end_status = -2;	/* recognition terminated by outer function */
+	  /* execute callback */
+	  if (a->current_len > 0) {
+	    callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
+	  }
+	  a->need_init = TRUE; /* bufer status shoule be reset at next call */
 	  goto break_input;
 	}
       }
@@ -571,6 +584,9 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 #ifdef THREAD_DEBUG
 		jlog("DEBUG: callback for buffered samples (%d bytes)\n", len - wstep);
 #endif
+#ifdef ENABLE_PLUGIN
+		plugin_exec_adin_triggered(a->cbuf, len - wstep);
+#endif
 		callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->cbuf, len - wstep);
 		ad_process_ret = (*ad_process)(a->cbuf, len - wstep, recog);
 		switch(ad_process_ret) {
@@ -640,6 +656,9 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	      if (a->sblen > 0) {
 #ifdef THREAD_DEBUG
 		jlog("DEBUG: callback for swapped %d samples\n", a->sblen);
+#endif
+#ifdef ENABLE_PLUGIN
+		plugin_exec_adin_triggered(a->swapbuf, a->sblen);
 #endif
 		callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, a->swapbuf, a->sblen);
 		ad_process_ret = (*ad_process)(a->swapbuf, a->sblen, recog);
@@ -763,6 +782,9 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	    jlog("DEBUG: callback for input sample [%d-%d]\n", i, i+wstep);
 #endif
 	    /* call external function */
+#ifdef ENABLE_PLUGIN
+	    plugin_exec_adin_triggered(&(a->buffer[i]), wstep);
+#endif
 	    callback_exec_adin(CALLBACK_ADIN_TRIGGERED, recog, &(a->buffer[i]), wstep);
 	    ad_process_ret = (*ad_process)(&(a->buffer[i]), wstep, recog);
 	    switch(ad_process_ret) {
@@ -843,13 +865,6 @@ break_input:
   /****************/
   /* pause input */
   /****************/
-  /* stop speech input */
-  if (a->ad_pause != NULL) {
-    if ((*(a->ad_pause))() == FALSE) {
-      jlog("ERROR: adin_cut: failed to pause recording\n");
-      end_status = -1;
-    }
-  }
   if (a->end_of_stream) {			/* input already ends */
     /* execute callback */
     callback_exec(CALLBACK_EVENT_SPEECH_STOP, recog);
@@ -924,10 +939,20 @@ static void
 adin_thread_input_main(void *dummy)
 {
   Recog *recog;
+  int ret;
 
   recog = dummy;
 
-  adin_cut(adin_store_buffer, NULL, recog);
+  ret = adin_cut(adin_store_buffer, NULL, recog);
+
+  if (ret == -1) {		/* error */
+    jlog("Error: adin thread exit with error\n");
+  } else if (ret == 0) {	/* EOF */
+    jlog("Stat: adin thread end with EOF\n");
+  }
+  recog->adin->adinthread_ended = TRUE;
+
+  /* return to end this thread */
 }
 
 /**
@@ -956,6 +981,7 @@ adin_thread_create(Recog *recog)
 
   a->transfer_online = FALSE; /* tell adin-mic thread to wait at initial */
   a->adinthread_buffer_overflowed = FALSE;
+  a->adinthread_ended = FALSE;
 
   if (pthread_mutex_init(&(a->mutex), NULL) != 0) { /* error */
     jlog("ERROR: adin_thread_create: failed to initialize mutex\n");
@@ -1009,6 +1035,7 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
   int i;
   boolean overflowed_p;
   boolean transfer_online_local;
+  boolean ended_p;
   ADIn *a;
 
   a = recog->adin;
@@ -1030,7 +1057,13 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
     nowlen = a->speechlen;
     overflowed_p = a->adinthread_buffer_overflowed;
     transfer_online_local = a->transfer_online;
+    ended_p = a->adinthread_ended;
     pthread_mutex_unlock(&(a->mutex));
+    /* check if thread is alive */
+    if (ended_p) {
+      /* adin thread has already exited, so return EOF to stop this input */
+      return(0);
+    }
     /* check if other input thread has overflowed */
     if (overflowed_p) {
       jlog("WARNING: adin_thread_process: too long input (> %d samples), segmented now\n", MAXSPEECHLEN);
@@ -1215,8 +1248,11 @@ adin_standby(ADIn *a, int freq, void *arg)
 boolean
 adin_begin(ADIn *a)
 {
-  if (a->need_zmean) zmean_reset();
-  if (a->ad_begin != NULL) return(a->ad_begin());
+  if (debug2_flag && a->input_side_segment) jlog("Stat: adin_begin: skip\n");
+  if (a->input_side_segment == FALSE) {
+    if (a->need_zmean) zmean_reset();
+    if (a->ad_begin != NULL) return(a->ad_begin());
+  }
   return TRUE;
 }
 /** 
@@ -1237,7 +1273,10 @@ adin_begin(ADIn *a)
 boolean
 adin_end(ADIn *a)
 {
-  if (a->ad_end != NULL) return(a->ad_end());
+  if (debug2_flag && a->input_side_segment) jlog("Stat: adin_end: skip\n");
+  if (a->input_side_segment == FALSE) {
+    if (a->ad_end != NULL) return(a->ad_end());
+  }
   return TRUE;
 }
 

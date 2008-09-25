@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 13:35:37 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -92,7 +92,7 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
 #ifdef ENABLE_MSD
   /* currently MSD model works only for non pruning mode */
   if (hmminfo->has_msd && gprune_method != GPRUNE_SEL_NONE) {
-    jlog("Error: outprob_init: Julius support only \"-gprune none\" when ENABLE_MSD defined\n");
+    jlog("Error: outprob_init: only \"-gprune none\" is supported when MSD-HMM enabled\n");
     return FALSE;
   }
 #endif
@@ -116,6 +116,9 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
     wrk->compute_gaussset = gprune_beam;
     wrk->compute_gaussset_init = gprune_beam_init;
     wrk->compute_gaussset_free = gprune_beam_free;
+    break;
+  case GPRUNE_SEL_USER:
+    /* assume user functions are already registered to the entries */
     break;
   }
   /* select caching function to compute output probability of a mixture */

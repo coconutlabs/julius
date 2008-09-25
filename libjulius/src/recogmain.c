@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 
@@ -399,16 +399,6 @@ callback_check_in_adin(Recog *recog)
      perform immediate termination at this callback, but just ignore the
      results in the main.c.  */
 #if 1
-/* 
- *   if (recog->jconf->input.speech_input != SP_ADINNET) {
- *     if (recog->process_want_terminate) {
- *	 return(-2);
- *     }
- *     if (recog->process_want_reload) {
- *	 return(-1);
- *     }
- *   }
- */
   if (recog->process_want_terminate) { /* TERMINATE ... force termination */
     return(-2);
   }
@@ -454,33 +444,45 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
 
   jconf = recog->jconf;
 
-  if (jconf->input.speech_input == SP_MFCFILE) {
-    /* read parameter file */
-    param_init_content(recog->mfcclist->param);
-    if (rdparam(file_or_dev_name, recog->mfcclist->param) == FALSE) {
-      jlog("ERROR: error in reading parameter file: %s\n", file_or_dev_name);
-      return -1;
-    }
-    /* check and strip invalid frames */
-    if (jconf->preprocess.strip_zero_sample) {
-      param_strip_zero(recog->mfcclist->param);
-    }
-
-    /* output frame length */
-    callback_exec(CALLBACK_STATUS_PARAM, recog);
-  } else {			/* raw speech input */
+  if (jconf->input.type == INPUT_WAVEFORM) {
     /* begin A/D input */
     if (adin_begin(recog->adin) == FALSE) {
       return -2;
     }
-  }
-    
-#if 0
-    /* if not module mode, process becomes online after all initialize done */
-    process_online = TRUE;
-    callback_exec(CALLBACK_EVENT_PROCESS_ONLINE, recog);
+    /* create A/D-in thread here */
+#ifdef HAVE_PTHREAD
+    if (recog->adin->enable_thread && ! recog->adin->input_side_segment) {
+      if (adin_thread_create(recog) == FALSE) {
+	return -2;
+      }
+    }
 #endif
-
+  } else {
+    switch(jconf->input.speech_input) {
+    case SP_MFCMODULE:
+      param_init_content(recog->mfcclist->param);
+      if (mfc_module_begin(recog->mfcclist) == FALSE) return -2;
+      break;
+    case SP_MFCFILE:
+      /* read parameter file */
+      param_init_content(recog->mfcclist->param);
+      if (rdparam(file_or_dev_name, recog->mfcclist->param) == FALSE) {
+	jlog("ERROR: error in reading parameter file: %s\n", file_or_dev_name);
+	return -1;
+      }
+      /* check and strip invalid frames */
+      if (jconf->preprocess.strip_zero_sample) {
+	param_strip_zero(recog->mfcclist->param);
+      }
+      /* output frame length */
+      callback_exec(CALLBACK_STATUS_PARAM, recog);
+      break;
+    default:
+      jlog("ERROR: none of SP_MFC_*??\n");
+      return -2;
+    }
+  }
+      
   return 0;
 
 }
@@ -520,6 +522,9 @@ result_error(Recog *recog, int status)
   if (ok_p) {			/* had some input */
     /* output as rejected */
     callback_exec(CALLBACK_RESULT, recog);
+#ifdef ENABLE_PLUGIN
+    plugin_exec_process_result(recog);
+#endif
   }
 }
 
@@ -570,10 +575,33 @@ j_recognize_stream_core(Recog *recog)
   PROCESS_LM *lm;
   boolean ok_p;
   boolean process_segment_last;
+  boolean on_the_fly;
 
   jconf = recog->jconf;
 
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  /* determine whether on-the-fly decoding should be done */
+  on_the_fly = FALSE;
+  switch(jconf->input.type) {
+  case INPUT_VECTOR:
+    switch(jconf->input.speech_input) {
+    case SP_MFCFILE: 
+      on_the_fly = FALSE;
+      break;
+    case SP_MFCMODULE:
+      on_the_fly = TRUE;
+      break;
+    }
+    break;
+  case INPUT_WAVEFORM:
+    if (jconf->decodeopt.realtime_flag) {
+      on_the_fly = TRUE;
+    } else {
+      on_the_fly = FALSE;
+    }
+    break;
+  }
+
+  if (jconf->input.type == INPUT_WAVEFORM || jconf->input.speech_input == SP_MFCMODULE) {
     for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
       param_init_content(mfcc->param);
     }
@@ -692,106 +720,48 @@ j_recognize_stream_core(Recog *recog)
       goto start_recog;
     }
 
-    /**************************************/
-    /* getting input and perform 1st pass */
-    /**************************************/
-    if (jconf->input.speech_input == SP_MFCFILE) {
-      /************************/
-      /* parameter file input */
-      /************************/
-      /********************************/
-      /* check the analized parameter */
-      /********************************/
-      /* parameter type check --- compare the type to that of HMM,
-	 and adjust them if necessary */
-      if (jconf->input.paramtype_check_flag) {
-	for(am=recog->amlist;am;am=am->next) {
-	  /* return param itself or new malloced param */
-	  if (param_check_and_adjust(am->hmminfo, am->mfcc->param, verbose_flag) == -1) {	/* failed */
-	    
-	    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
-	      param_init_content(mfcc->param);
-	    }
-	    /* tell failure */
-	    result_error(recog, J_RESULT_STATUS_FAIL);
-	    goto end_recog;
-	  }
+
+    /******************/
+    /* start 1st pass */
+    /******************/
+    if (on_the_fly) {
+
+      /********************************************/
+      /* REALTIME ON-THE-FLY DECODING OF 1ST-PASS */
+      /********************************************/
+      /* store, analysis and search in a pipeline  */
+      /* main function is RealTimePipeLine() at realtime-1stpass.c, and
+	 it will be periodically called for each incoming input segment
+	 from the AD-in function adin_go().  RealTimePipeLine() will be
+	 called as a callback function from adin_go() */
+      /* after this part, directly jump to the beginning of the 2nd pass */
+      
+      if (recog->process_segment) {
+	/*****************************************************************/
+	/* short-pause segmentation: process last remaining frames first */
+	/*****************************************************************/
+	/* last was segmented by short pause */
+	/* the margin segment in the last input will be re-processed first,
+	   and then the speech input will be processed */
+	/* process the last remaining parameters */
+	ret = RealTimeResume(recog);
+	if (ret < 0) {		/* error end in the margin */
+	  jlog("ERROR: failed to process last remaining samples on RealTimeResume\n"); /* exit now! */
+	  return -1;
 	}
-      }
-      /* whole input is already read, so set input status to end of stream */
-      /* and jump to the start point of 1st pass */
-      ret = 0;
-    } else {
-      /****************************************************/
-      /* raw wave data input (mic, file, adinnet, etc...) */
-      /****************************************************/
-      if (jconf->decodeopt.realtime_flag) {
-	/********************************************/
-	/* REALTIME ON-THE-FLY DECODING OF 1ST-PASS */
-	/********************************************/
-	/* store, analysis and search in a pipeline  */
-	/* main function is RealTimePipeLine() at realtime-1stpass.c, and
-	   it will be periodically called for each incoming input segment
-	   from the AD-in function adin_go().  RealTimePipeLine() will be
-	   called as a callback function from adin_go() */
-	/* after this part, directly jump to the beginning of the 2nd pass */
-
-	if (recog->process_segment) {
-	  /*****************************************************************/
-	  /* short-pause segmentation: process last remaining frames first */
-	  /*****************************************************************/
-	  /* last was segmented by short pause */
-	  /* the margin segment in the last input will be re-processed first,
-	     and then the speech input will be processed */
-	  /* process the last remaining parameters */
-	  ret = RealTimeResume(recog);
-	  if (ret < 0) {		/* error end in the margin */
-	    jlog("ERROR: failed to process last remaining samples on RealTimeResume\n"); /* exit now! */
-	    return -1;
-	  }
-	  if (ret != 1) {	/* if segmented again in the margin, not process the rest */
-	    /* last parameters has been processed, so continue with the
-	       current input as normal */
-	    /* process the incoming input */
-	    ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
-	    if (ret < 0) {		/* error end in adin_go */
-	      if (ret == -2 || recog->process_want_terminate) {
-		/* terminated by callback */
-		RealTimeTerminate(recog);
-		/* reset param */
-		for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
-		  param_init_content(mfcc->param);
-		}
-		/* execute callback at end of pass1 */
-		if (recog->triggered) {
-		  callback_exec(CALLBACK_EVENT_PASS1_END, recog);
-		  /* output result terminate */
-		  result_error(recog, J_RESULT_STATUS_TERMINATE);
-		}
-		goto end_recog; /* cancel this recognition */
-	      }
-	      jlog("ERROR: an error occured at on-the-fly 1st pass decoding\n");          /* exit now! */
-	      return(-1);
-	    }
-	  }
-	  
-	} else {
-
-	  /***********************************************************/
-	  /* last was not segmented, process the new incoming input  */
-	  /***********************************************************/
-	  /* end of this input will be determined by either end of stream
-	     (in case of file input), or silence detection by adin_go(), or
-	     'TERMINATE' command from module (if module mode) */
-	  /* prepare work area for on-the-fly processing */
-	  if (RealTimePipeLinePrepare(recog) == FALSE) {
-	    jlog("ERROR: failed to prepare for on-the-fly 1st pass decoding");
-	    return (-1);
-	  }
+	if (ret != 1) {	/* if segmented again in the margin, not process the rest */
+	  /* last parameters has been processed, so continue with the
+	     current input as normal */
 	  /* process the incoming input */
-	  ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
+	  if (jconf->input.type == INPUT_WAVEFORM) {
+	    /* get speech and process it on real-time */
+	    ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
+	  } else {
+	    /* get feature vector and process it */
+	    ret = mfcc_go(recog, callback_check_in_adin);
+	  }
 	  if (ret < 0) {		/* error end in adin_go */
-	    if (ret == -2 || recog->process_want_terminate) {	
+	    if (ret == -2 || recog->process_want_terminate) {
 	      /* terminated by callback */
 	      RealTimeTerminate(recog);
 	      /* reset param */
@@ -804,168 +774,244 @@ j_recognize_stream_core(Recog *recog)
 		/* output result terminate */
 		result_error(recog, J_RESULT_STATUS_TERMINATE);
 	      }
-	      goto end_recog;
+	      goto end_recog; /* cancel this recognition */
 	    }
 	    jlog("ERROR: an error occured at on-the-fly 1st pass decoding\n");          /* exit now! */
 	    return(-1);
 	  }
 	}
-	/******************************************************************/
-	/* speech stream has been processed on-the-fly, and 1st pass ends */
-	/******************************************************************/
-	/* last procedure of 1st-pass */
-	if (RealTimeParam(recog) == FALSE) {
-	  jlog("ERROR: fatal error occured, program terminates now\n");
-	  return -1;
-	}
-
-#ifdef BACKEND_VAD
-	/* if not triggered, skip this segment */
-	if (recog->jconf->decodeopt.segment && ! recog->triggered) {
-	  goto end_recog;
-	}
-#endif
-
-	/* execute callback for 1st pass result */
-	/* result.status <0 must be skipped inside callback */
-	callback_exec(CALLBACK_RESULT_PASS1, recog);
-#ifdef WORD_GRAPH
-	/* result.wg1 == NULL should be skipped inside callback */
-	callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
-#endif
-	/* execute callback at end of pass1 */
-	callback_exec(CALLBACK_EVENT_PASS1_END, recog);
-	/* output frame length */
-	callback_exec(CALLBACK_STATUS_PARAM, recog);
-	/* if terminate signal has been received, discard this input */
-	if (recog->process_want_terminate) {
-	  result_error(recog, J_RESULT_STATUS_TERMINATE);
-	  goto end_recog;
-	}
-
-	/* end of 1st pass, jump to 2nd pass */
-	goto end_1pass;
 	
-      } /* end of realtime_flag && speech stream input */
-      
-      /******************************************/
-      /* buffered speech input (not on-the-fly) */
-      /******************************************/
-      if (!recog->process_segment) { /* no segment left */
+      } else {
 
-	/****************************************/
-	/* store raw speech samples to speech[] */
-	/****************************************/
-	recog->speechlen = 0;
-	for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
-	  param_init_content(mfcc->param);
-	}
-	/* tell module to start recording */
-	/* the "adin_cut_callback_store_buffer" simply stores
-	   the input speech to a buffer "speech[]" */
+	/***********************************************************/
+	/* last was not segmented, process the new incoming input  */
+	/***********************************************************/
 	/* end of this input will be determined by either end of stream
 	   (in case of file input), or silence detection by adin_go(), or
 	   'TERMINATE' command from module (if module mode) */
-	ret = adin_go(adin_cut_callback_store_buffer, callback_check_in_adin, recog);
+	/* prepare work area for on-the-fly processing */
+	if (RealTimePipeLinePrepare(recog) == FALSE) {
+	  jlog("ERROR: failed to prepare for on-the-fly 1st pass decoding\n");
+	  return (-1);
+	}
+	/* process the incoming input */
+	if (jconf->input.type == INPUT_WAVEFORM) {
+	  /* get speech and process it on real-time */
+	  ret = adin_go(RealTimePipeLine, callback_check_in_adin, recog);
+	} else {
+	  /* get feature vector and process it */
+	  ret = mfcc_go(recog, callback_check_in_adin);
+	}
+	
 	if (ret < 0) {		/* error end in adin_go */
-	  if (ret == -2 || recog->process_want_terminate) {
-	    /* terminated by module */
-	    /* output fail */
+	  if (ret == -2 || recog->process_want_terminate) {	
+	    /* terminated by callback */
+	    RealTimeTerminate(recog);
+	    /* reset param */
+	    for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	      param_init_content(mfcc->param);
+	    }
+	    /* execute callback at end of pass1 */
+	    if (recog->triggered) {
+	      callback_exec(CALLBACK_EVENT_PASS1_END, recog);
+	      /* output result terminate */
+	      result_error(recog, J_RESULT_STATUS_TERMINATE);
+	    }
+	    goto end_recog;
+	  }
+	  jlog("ERROR: an error occured at on-the-fly 1st pass decoding\n");          /* exit now! */
+	  return(-1);
+	}
+      }
+      /******************************************************************/
+      /* speech stream has been processed on-the-fly, and 1st pass ends */
+      /******************************************************************/
+      /* last procedure of 1st-pass */
+      if (RealTimeParam(recog) == FALSE) {
+	jlog("ERROR: fatal error occured, program terminates now\n");
+	return -1;
+      }
+      
+#ifdef BACKEND_VAD
+      /* if not triggered, skip this segment */
+      if (recog->jconf->decodeopt.segment && ! recog->triggered) {
+	goto end_recog;
+      }
+#endif
+
+      /* execute callback for 1st pass result */
+      /* result.status <0 must be skipped inside callback */
+      callback_exec(CALLBACK_RESULT_PASS1, recog);
+#ifdef WORD_GRAPH
+      /* result.wg1 == NULL should be skipped inside callback */
+      callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
+#endif
+      /* execute callback at end of pass1 */
+      callback_exec(CALLBACK_EVENT_PASS1_END, recog);
+      /* output frame length */
+      callback_exec(CALLBACK_STATUS_PARAM, recog);
+      /* if terminate signal has been received, discard this input */
+      if (recog->process_want_terminate) {
+	result_error(recog, J_RESULT_STATUS_TERMINATE);
+	goto end_recog;
+      }
+
+      /* END OF ON-THE-FLY INPUT AND DECODING OF 1ST PASS */
+
+    } else {
+
+      /******************/
+      /* buffered input */
+      /******************/
+
+      if (jconf->input.type == INPUT_VECTOR) {
+	/***********************/
+	/* feature vector input */
+	/************************/
+	if (jconf->input.speech_input == SP_MFCFILE) {
+	  /************************/
+	  /* parameter file input */
+	  /************************/
+	  /* parameter type check --- compare the type to that of HMM,
+	     and adjust them if necessary */
+	  if (jconf->input.paramtype_check_flag) {
+	    for(am=recog->amlist;am;am=am->next) {
+	      /* return param itself or new malloced param */
+	      if (param_check_and_adjust(am->hmminfo, am->mfcc->param, verbose_flag) == -1) {	/* failed */
+		
+		for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+		  param_init_content(mfcc->param);
+		}
+		/* tell failure */
+		result_error(recog, J_RESULT_STATUS_FAIL);
+		goto end_recog;
+	      }
+	    }
+	  }
+	  /* whole input is already read, so set input status to end of stream */
+	  /* and jump to the start point of 1st pass */
+	  ret = 0;
+	}
+      } else {
+	/*************************/
+	/* buffered speech input */
+	/*************************/
+	if (!recog->process_segment) { /* no segment left */
+
+	  /****************************************/
+	  /* store raw speech samples to speech[] */
+	  /****************************************/
+	  recog->speechlen = 0;
+	  for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
+	    param_init_content(mfcc->param);
+	  }
+	  /* tell module to start recording */
+	  /* the "adin_cut_callback_store_buffer" simply stores
+	     the input speech to a buffer "speech[]" */
+	  /* end of this input will be determined by either end of stream
+	     (in case of file input), or silence detection by adin_go(), or
+	     'TERMINATE' command from module (if module mode) */
+	  ret = adin_go(adin_cut_callback_store_buffer, callback_check_in_adin, recog);
+	  if (ret < 0) {		/* error end in adin_go */
+	    if (ret == -2 || recog->process_want_terminate) {
+	      /* terminated by module */
+	      /* output fail */
+	      result_error(recog, J_RESULT_STATUS_TERMINATE);
+	      goto end_recog;
+	    }
+	    jlog("ERROR: an error occured while recording input\n");
+	    return -1;
+	  }
+	  
+	  /* output recorded length */
+	  seclen = (float)recog->speechlen / (float)jconf->input.sfreq;
+	  jlog("STAT: %d samples (%.2f sec.)\n", recog->speechlen, seclen);
+	  
+	  /* -rejectshort 指定時, 入力が指定時間以下であれば
+	     ここで入力を棄却する */
+	  /* when using "-rejectshort", and input was shorter than
+	     specified, reject the input here */
+	  if (jconf->reject.rejectshortlen > 0) {
+	    if (seclen * 1000.0 < jconf->reject.rejectshortlen) {
+	      result_error(recog, J_RESULT_STATUS_REJECT_SHORT);
+	      goto end_recog;
+	    }
+	  }
+	
+	  /**********************************************/
+	  /* acoustic analysis and encoding of speech[] */
+	  /**********************************************/
+	  jlog("STAT: ### speech analysis (waveform -> MFCC)\n");
+	  /* CMN will be computed for the whole buffered input */
+	  if (wav2mfcc(recog->speech, recog->speechlen, recog) == FALSE) {
+	    /* error end, end stream */
+	    ret = -1;
+	    /* tell failure */
+	    result_error(recog, J_RESULT_STATUS_FAIL);
+	    goto end_recog;
+	  }
+	  
+	  /* if terminate signal has been received, cancel this input */
+	  if (recog->process_want_terminate) {
 	    result_error(recog, J_RESULT_STATUS_TERMINATE);
 	    goto end_recog;
 	  }
-	  jlog("ERROR: an error occured while recording input\n");
-	  return -1;
+	  
+	  /* output frame length */
+	  callback_exec(CALLBACK_STATUS_PARAM, recog);
 	}
-	
-	/* output recorded length */
-	seclen = (float)recog->speechlen / (float)jconf->input.sfreq;
-	jlog("STAT: %d samples (%.2f sec.)\n", recog->speechlen, seclen);
-	
-	/* -rejectshort 指定時, 入力が指定時間以下であれば
-	   ここで入力を棄却する */
-	/* when using "-rejectshort", and input was shorter than
-	   specified, reject the input here */
-	if (jconf->reject.rejectshortlen > 0) {
-	  if (seclen * 1000.0 < jconf->reject.rejectshortlen) {
-	    result_error(recog, J_RESULT_STATUS_REJECT_SHORT);
-	    goto end_recog;
-	  }
-	}
-	
-	/**********************************************/
-	/* acoustic analysis and encoding of speech[] */
-	/**********************************************/
-	jlog("STAT: ### speech analysis (waveform -> MFCC)\n");
-	/* CMN will be computed for the whole buffered input */
-	if (wav2mfcc(recog->speech, recog->speechlen, recog) == FALSE) {
-	  /* error end, end stream */
-	  ret = -1;
-	  /* tell failure */
-	  result_error(recog, J_RESULT_STATUS_FAIL);
-	  goto end_recog;
-	}
-	
-	/* if terminate signal has been received, cancel this input */
-	if (recog->process_want_terminate) {
-	  result_error(recog, J_RESULT_STATUS_TERMINATE);
-	  goto end_recog;
-	}
-	
-	/* output frame length */
-	callback_exec(CALLBACK_STATUS_PARAM, recog);
-	
       }
-    }	/* end of data input */
-    /* parameter has been got in 'param' */
-    
-    /******************************************************/
-    /* 1st-pass --- backward search to compute heuristics */
-    /******************************************************/
-    /* (for buffered speech input and HTK parameter file input) */
-    if (!jconf->decodeopt.realtime_flag) {
-      /* prepare for outprob cache for each HMM state and time frame */
-      /* assume all MFCCCalc has params of the same sample num */
-      for(am=recog->amlist;am;am=am->next) {
-	outprob_prepare(&(am->hmmwrk), am->mfcc->param->samplenum);
+
+#ifdef ENABLE_PLUGIN
+      /* call post-process plugin if exist */
+      plugin_exec_vector_postprocess_all(recog->mfcclist->param);
+#endif
+
+      /******************************************************/
+      /* 1st-pass --- backward search to compute heuristics */
+      /******************************************************/
+      if (!jconf->decodeopt.realtime_flag) {
+	/* prepare for outprob cache for each HMM state and time frame */
+	/* assume all MFCCCalc has params of the same sample num */
+	for(am=recog->amlist;am;am=am->next) {
+	  outprob_prepare(&(am->hmmwrk), am->mfcc->param->samplenum);
+	}
       }
-    }
-
-    /* if terminate signal has been received, cancel this input */
-    if (recog->process_want_terminate) {
-      result_error(recog, J_RESULT_STATUS_TERMINATE);
-      goto end_recog;
-    }
+      
+      /* if terminate signal has been received, cancel this input */
+      if (recog->process_want_terminate) {
+	result_error(recog, J_RESULT_STATUS_TERMINATE);
+	goto end_recog;
+      }
     
-
-    /****************************************************/
-    /* execute computation of left-to-right backtrellis */
-    /****************************************************/
-    if (get_back_trellis(recog) == FALSE) {
-      jlog("ERROR: fatal error occured, program terminates now\n");
-      return -1;
-    }
+      /* execute computation of left-to-right backtrellis */
+      if (get_back_trellis(recog) == FALSE) {
+	jlog("ERROR: fatal error occured, program terminates now\n");
+	return -1;
+      }
 #ifdef BACKEND_VAD
-    /* if not triggered, skip this segment */
-    if (recog->jconf->decodeopt.segment && ! recog->triggered) {
-      goto end_recog;
-    }
+      /* if not triggered, skip this segment */
+      if (recog->jconf->decodeopt.segment && ! recog->triggered) {
+	goto end_recog;
+      }
 #endif
-
-    /* execute callback for 1st pass result */
-    /* result.status <0 must be skipped inside callback */
-    callback_exec(CALLBACK_RESULT_PASS1, recog);
+      
+      /* execute callback for 1st pass result */
+      /* result.status <0 must be skipped inside callback */
+      callback_exec(CALLBACK_RESULT_PASS1, recog);
 #ifdef WORD_GRAPH
-    /* result.wg1 == NULL should be skipped inside callback */
-    callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
+      /* result.wg1 == NULL should be skipped inside callback */
+      callback_exec(CALLBACK_RESULT_PASS1_GRAPH, recog);
 #endif
+      
+      /* execute callback at end of pass1 */
+      if (recog->triggered) {
+	callback_exec(CALLBACK_EVENT_PASS1_END, recog);
+      }
 
-    /* execute callback at end of pass1 */
-    if (recog->triggered) {
-      callback_exec(CALLBACK_EVENT_PASS1_END, recog);
+      /* END OF BUFFERED 1ST PASS */
+
     }
-
-  end_1pass:
 
     /**********************************/
     /* end processing of the 1st-pass */
@@ -1069,6 +1115,9 @@ j_recognize_stream_core(Recog *recog)
 
     /* output result */
     callback_exec(CALLBACK_RESULT, recog);
+#ifdef ENABLE_PLUGIN
+    plugin_exec_process_result(recog);
+#endif
     /* output graph */
     /* r->result.wg == NULL should be skipped inside the callback */
     ok_p = FALSE;
@@ -1108,7 +1157,7 @@ j_recognize_stream_core(Recog *recog)
     /**********************/
 
     /* update CMN info for next input (in case of realtime wave input) */
-    if (jconf->input.speech_input != SP_MFCFILE && jconf->decodeopt.realtime_flag) {
+    if (jconf->input.type == INPUT_WAVEFORM && jconf->decodeopt.realtime_flag) {
       for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
 	if (mfcc->param->samplenum > 0) {
 	  RealTimeCMNUpdate(mfcc, recog);
@@ -1167,16 +1216,12 @@ j_recognize_stream_core(Recog *recog)
       
   } /* END OF STREAM LOOP */
     
-    /* input stream ended. it will happen when
-       - input speech file has reached the end of file, 
-       - adinnet input has received end of segment mark from client,
-       - adinnet input has received end of input from client,
-       - adinnet client disconnected.
-    */
-
-  if (jconf->input.speech_input != SP_MFCFILE) {
-    /* close the stream */
-    adin_end(recog->adin);
+  /* close the stream */
+  if (jconf->input.type == INPUT_WAVEFORM) {
+    if (adin_end(recog->adin) == FALSE) return -1;
+  }
+  if (jconf->input.speech_input == SP_MFCMODULE) {
+    if (mfc_module_end(recog->mfcclist) == FALSE) return -1;
   }
 
   /* return to the opening of input stream */

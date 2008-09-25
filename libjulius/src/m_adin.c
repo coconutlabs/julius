@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -45,6 +45,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_end 		   = adin_sndfile_end;
     a->ad_resume 	   = NULL;
     a->ad_pause 	   = NULL;
+    a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_sndfile_read;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
@@ -55,6 +56,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_end 		   = adin_file_end;
     a->ad_resume 	   = NULL;
     a->ad_pause 	   = NULL;
+    a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_file_read;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
@@ -65,6 +67,7 @@ adin_select(ADIn *a, int source, int dev)
     /* microphone input */
     a->ad_resume 	   = NULL;
     a->ad_pause 	   = NULL;
+    a->ad_terminate 	   = NULL;
     a->silence_cut_default = TRUE;
     a->enable_thread 	   = TRUE;
     switch(dev) {
@@ -111,6 +114,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_end 		   = adin_netaudio_end;
     a->ad_resume 	   = NULL;
     a->ad_pause 	   = NULL;
+    a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_netaudio_read;
     a->silence_cut_default = TRUE;
     a->enable_thread 	   = TRUE;
@@ -121,8 +125,9 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_standby 	   = adin_tcpip_standby;
     a->ad_begin 	   = adin_tcpip_begin;
     a->ad_end 		   = adin_tcpip_end;
-    a->ad_resume 	   = NULL;
-    a->ad_pause 	   = NULL;
+    a->ad_resume	   = adin_tcpip_send_resume;
+    a->ad_pause		   = adin_tcpip_send_pause;
+    a->ad_terminate	   = adin_tcpip_send_terminate;
     a->ad_read 		   = adin_tcpip_read;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
@@ -134,6 +139,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_end 		   = NULL;
     a->ad_resume 	   = NULL;
     a->ad_pause 	   = NULL;
+    a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_stdin_read;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
@@ -195,7 +201,9 @@ adin_setup_all(ADIn *adin, Jconf *jconf, void *arg)
   if (adin_setup_param(adin, jconf) == FALSE) {
     jlog("ERROR: m_adin: failed to set parameter for input device\n");
     return FALSE;
-  }    
+  }
+
+  adin->input_side_segment = FALSE;
 
   return TRUE;
 }
@@ -222,47 +230,76 @@ adin_initialize(Recog *recog)
   char *arg = NULL;
   ADIn *adin;
   Jconf *jconf;
+#ifdef ENABLE_PLUGIN
+  FUNC_INT func;
+  int sid;
+#endif
 
   adin = recog->adin;
   jconf = recog->jconf;
 
-  if (jconf->input.speech_input == SP_MFCFILE) {
-    return TRUE; /* no need to initialize */
-  }
-  
   jlog("STAT: ###### initialize input device\n");
 
   /* select input device: file, mic, netaudio, etc... */
-  if (adin_select(adin, jconf->input.speech_input, jconf->input.device) == FALSE) {
-    jlog("ERROR: m_adin: failed to select input device\n");
-    return FALSE;
-  }
-
-  /* set sampling frequency and device-dependent configuration
-     (argument is device-dependent) */
-  switch(jconf->input.speech_input) {
-  case SP_ADINNET:		/* arg: port number */
-    arg = mymalloc(100);
-    sprintf(arg, "%d", jconf->input.adinnet_port);
-    break;
-  case SP_RAWFILE:		/* arg: filename of file list (if any) */
-    if (jconf->input.inputlist_filename != NULL) {
-      arg = mymalloc(strlen(jconf->input.inputlist_filename)+1);
-      strcpy(arg, jconf->input.inputlist_filename);
-    } else {
-      arg = NULL;
+#ifdef ENABLE_PLUGIN
+  sid = jconf->input.plugin_source;
+  if (sid >= 0) {
+    /* set plugin properties and functions to adin */
+    func = (FUNC_INT) plugin_get_func(sid, "adin_get_configuration");
+    if (func == NULL) {
+      jlog("ERROR: invalid plugin: adin_get_configuration() not exist\n");
+      return FALSE;
     }
-    break;
-  case SP_STDIN:
-    arg = NULL;
-    break;
-#ifdef USE_NETAUDIO
-  case SP_NETAUDIO:		/* netaudio server/port name */
-    arg = mymalloc(strlen(jconf->input.netaudio_devname)+1);
-    strcpy(arg, jconf->input.netaudio_devname);
-    break;
+    adin->silence_cut_default = (*func)(1);
+    adin->enable_thread = (*func)(2);
+
+    adin->ad_standby 	   = (boolean (*)(int, void *)) plugin_get_func(sid, "adin_standby");
+    adin->ad_begin 	   = (boolean (*)()) plugin_get_func(sid, "adin_open");
+    adin->ad_end 	   = (boolean (*)()) plugin_get_func(sid, "adin_close");
+    adin->ad_resume 	   = (boolean (*)()) plugin_get_func(sid, "adin_resume");
+    adin->ad_pause 	   = (boolean (*)()) plugin_get_func(sid, "adin_pause");
+    adin->ad_terminate 	   = (boolean (*)()) plugin_get_func(sid, "adin_terminate");
+    adin->ad_read 	   = (int (*)(SP16 *, int)) plugin_get_func(sid, "adin_read");
+    if (adin->ad_read == NULL) {
+      jlog("ERROR: m_adin: selected plugin has no function adin_read()\n");
+      return FALSE;
+    }
+  } else {
 #endif
+    /* built-in */
+    if (adin_select(adin, jconf->input.speech_input, jconf->input.device) == FALSE) {
+      jlog("ERROR: m_adin: failed to select input device\n");
+      return FALSE;
+    }
+
+    /* set sampling frequency and device-dependent configuration
+       (argument is device-dependent) */
+    switch(jconf->input.speech_input) {
+    case SP_ADINNET:		/* arg: port number */
+      arg = mymalloc(100);
+      sprintf(arg, "%d", jconf->input.adinnet_port);
+      break;
+    case SP_RAWFILE:		/* arg: filename of file list (if any) */
+      if (jconf->input.inputlist_filename != NULL) {
+	arg = mymalloc(strlen(jconf->input.inputlist_filename)+1);
+	strcpy(arg, jconf->input.inputlist_filename);
+      } else {
+	arg = NULL;
+      }
+      break;
+    case SP_STDIN:
+      arg = NULL;
+      break;
+#ifdef USE_NETAUDIO
+    case SP_NETAUDIO:		/* netaudio server/port name */
+      arg = mymalloc(strlen(jconf->input.netaudio_devname)+1);
+      strcpy(arg, jconf->input.netaudio_devname);
+      break;
+#endif
+    }
+#ifdef ENABLE_PLUGIN
   }
+#endif
 
   if (adin_setup_all(adin, jconf, arg) == FALSE) {
     return FALSE;
@@ -273,44 +310,4 @@ adin_initialize(Recog *recog)
   return TRUE;
 }
 
-/** 
- * <JA>
- * ユーザ指定のA/D-in関数を用いて音声入力デバイスをセットアップする. 
- * recog->adin にデバイス用の各種関数 (ad->*) とパラメータ 
- * (silence_cut_default, enable_thread)があらかじめ格納されていること. 
- * 詳細は adin_select() を参照のこと. 
- *
- * @param recog [i/o] エンジンインスタンス
- * @param arg [in] adin_initialize 用引数
- * 
- * </JA>
- * <EN>
- * Initialize audio input device using user-specified A/D-in functions.
- * The user functions and parameters (silence_cut_default and enable_thread)
- * should be defined beforehand.  See adin_select() for details.
- *
- * @param recog [i/o] engine instance
- * @param arg [in] argument for adin_initialize
- * 
- * </EN>
- * @callgraph
- * @callergraph
- */
-boolean
-adin_initialize_user(Recog *recog, void *arg)
-{
-  boolean ret;
-  ADIn *adin;
-  Jconf *jconf;
-
-  adin = recog->adin;
-  jconf = recog->jconf;
-
-  jlog("STAT: ###### initialize input device (user defined)\n");
-  /* skip adin_select() */
-  ret = adin_setup_all(adin, jconf, arg);
-  /* create A/D-in thread here */
-
-  return ret;
-}
 /* end of file */

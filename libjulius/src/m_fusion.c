@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -101,7 +101,7 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
   /* only MFCC is supported for audio input */
   /* MFCC_{0|E}[_D][_A][_Z][_N] is supported */
   /* check parameter type of this acoustic HMM */
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
     /* Decode parameter extraction type according to the training
        parameter type in the header of the given acoustic HMM */
     if ((hmminfo->opt.param_type & F_BASEMASK) != F_MFCC) {
@@ -228,7 +228,7 @@ initialize_GMM(Jconf *jconf)
     return NULL;
   }
   /* check parameter type of this acoustic HMM */
-  if (jconf->input.speech_input != SP_MFCFILE) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
     /* Decode parameter extraction type according to the training
        parameter type in the header of the given acoustic HMM */
     if ((gmm->opt.param_type & F_BASEMASK) != F_MFCC) {
@@ -638,9 +638,6 @@ j_load_all(Recog *recog, Jconf *jconf)
 {
   JCONF_AM *amconf;
   JCONF_LM *lmconf;
-  JCONF_SEARCH *sh;
-  PROCESS_AM *am;
-  PROCESS_LM *lm;
 
   /* set global jconf */
   recog->jconf = jconf;
@@ -1186,16 +1183,14 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
 boolean
 j_final_fusion(Recog *recog)
 {
-  RecogProcess *p;
   MFCCCalc *mfcc;
   JCONF_SEARCH *sconf;
   PROCESS_AM *am;
-  PROCESS_LM *lm;
 
   jlog("STAT: ------\n");
   jlog("STAT: All models are ready, go for final fusion\n");
   jlog("STAT: [1] create MFCC extraction instance(s)\n");
-  if (recog->jconf->input.speech_input != SP_MFCFILE) {
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
     /***************************************************/
     /* create MFCC calculation instance from AM config */
     /* according to the fixated parameter information  */
@@ -1225,6 +1220,26 @@ j_final_fusion(Recog *recog)
   /* stage 4: setup output probability function for each AM */
   jlog("STAT: [3] initialize for acoustic HMM calculation\n");
   for(am=recog->amlist;am;am=am->next) {
+#ifdef ENABLE_PLUGIN
+    /* set plugin function if specified */
+    if (am->config->gprune_method == GPRUNE_SEL_USER) {
+      am->hmmwrk.compute_gaussset = (void (*)(HMMWork *, HTK_HMM_Dens **, int, int *, int)) plugin_get_func(am->config->gprune_plugin_source, "calcmix");
+      if (am->hmmwrk.compute_gaussset == NULL) {
+	jlog("ERROR: calcmix plugin has no function \"calcmix\"\n");
+	return FALSE;
+      }
+      am->hmmwrk.compute_gaussset_init = (boolean (*)(HMMWork *)) plugin_get_func(am->config->gprune_plugin_source, "calcmix_init");
+      if (am->hmmwrk.compute_gaussset_init == NULL) {
+	jlog("ERROR: calcmix plugin has no function \"calcmix_init\"\n");
+	return FALSE;
+      }
+      am->hmmwrk.compute_gaussset_free = (void (*)(HMMWork *)) plugin_get_func(am->config->gprune_plugin_source, "calcmix_free");
+      if (am->hmmwrk.compute_gaussset_free == NULL) {
+	jlog("ERROR: calcmix plugin has no function \"calcmix_free\"\n");
+	return FALSE;
+      }
+    }
+#endif
     if (am->config->hmm_gs_filename != NULL) {/* with GMS */
       if (outprob_init(&(am->hmmwrk), am->hmminfo, am->hmm_gs, am->config->gs_statenum, am->config->gprune_method, am->config->mixnum_thres) == FALSE) {
 	return FALSE;
@@ -1239,7 +1254,7 @@ j_final_fusion(Recog *recog)
   /* stage 5: initialize work area for input and realtime decoding */
 
   jlog("STAT: [4] prepare MFCC storage(s)\n");
-  if (recog->jconf->input.speech_input == SP_MFCFILE) {
+  if (recog->jconf->input.type == INPUT_VECTOR) {
     /* create an MFCC instance for MFCC input */
     /* create new mfcc instance */
     recog->mfcclist = j_mfcccalc_new(NULL);
@@ -1256,7 +1271,7 @@ j_final_fusion(Recog *recog)
   }
   
   /* initialize SS calculation work area */
-  if (recog->jconf->input.speech_input != SP_MFCFILE) {
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
     for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {
       if (mfcc->frontend.sscalc) {
 	mfcc->frontend.mfccwrk_ss = WMP_work_new(mfcc->para);
@@ -1275,14 +1290,24 @@ j_final_fusion(Recog *recog)
   if (recog->jconf->decodeopt.realtime_flag) {
     jlog("STAT: [5] prepare for real-time decoding\n");
     /* prepare for 1st pass pipeline processing */
-    if (RealTimeInit(recog) == FALSE) {
-      jlog("ERROR: m_fusion: failed to initialize recognition process\n");
-      return FALSE;
+    if (recog->jconf->input.type == INPUT_WAVEFORM) {
+      if (RealTimeInit(recog) == FALSE) {
+	jlog("ERROR: m_fusion: failed to initialize recognition process\n");
+	return FALSE;
+      }
     }
   }
 
   /* finished! */
   jlog("STAT: All init successfully done\n\n");
+
+  /* set-up callback plugin if any */
+#ifdef ENABLE_PLUGIN
+  if (plugin_exec_engine_startup(recog) == FALSE) {
+    jlog("ERROR: m_fusion: failed to execute callback setup in plugin\n");
+    return FALSE;
+  }
+#endif
 
   return TRUE;
 }

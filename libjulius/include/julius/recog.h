@@ -45,13 +45,13 @@
  *    +- MFCCCalc[] (linked list) (generated from HMM + GMM)
  *    +- PROCESS_AM[] (linked list)
  *       +- *pointer to JCONF_AM
- * 	 +- *pointer to MFCCCalc
+ *       +- *pointer to MFCCCalc
  *       +- hmminfo, hmm_gs
  *       +- hmmwrk
- * 	 +- multipath, ccd_flag, cmn_loaded
+ *       +- multipath, ccd_flag, cmn_loaded
  *    +- PROCESS_LM[] (linked list)
  *       +- *pointer to JCONF_LM
- * 	 +- *pointer to PROCESS_AM
+ *       +- *pointer to PROCESS_AM
  *       +- lmtype, lmvar
  *       +- winfo
  *       +- ngram or grammars
@@ -60,8 +60,8 @@
  *       +- *pointer to JCONF_SEARCH
  *       +- *pointer to PROCESS_AM
  *       +- *pointer to PROCESS_LM
- * 	 +- lmtype, lmvar
- * 	 +- misc. param
+ *       +- lmtype, lmvar
+ *       +- misc. param
  *    +- GMMCalc
  *       +- *JCONF_AM for GMM
  *       +- *pointer to MFCCCalc
@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -129,9 +129,9 @@ typedef struct __FSBeam__ {
 #ifdef UNIGRAM_FACTORING
   /* for wordend processing with 1-gram factoring */
   LOGPROB wordend_best_score; ///< Best score of word-end nodes
-  int wordend_best_node;	///< Node id of the best wordend nodes
+  int wordend_best_node;        ///< Node id of the best wordend nodes
   TRELLIS_ATOM *wordend_best_tre; ///< Trellis word corresponds to above
-  WORD_ID wordend_best_last_cword;	///< Last context-aware word of above
+  WORD_ID wordend_best_last_cword;      ///< Last context-aware word of above
 #endif
 
   int totalnodenum;     ///< Allocated number of nodes in @a token
@@ -155,15 +155,15 @@ typedef struct __FSBeam__ {
   boolean first_sparea;  ///< TRUE when we are in the first pause area
   int sp_duration;   ///< Number of current successive sp frame
 #ifdef SPSEGMENT_NAIST
-  boolean after_trigger;	///< TRUE if speech already triggered 
-  int trigger_duration;		///< Current speech duration at uptrigger detection
-  boolean want_rewind;		///< TRUE if process wants mfcc rewinding
-  int rewind_frame;		///< Place to rewind to
+  boolean after_trigger;        ///< TRUE if speech already triggered 
+  int trigger_duration;         ///< Current speech duration at uptrigger detection
+  boolean want_rewind;          ///< TRUE if process wants mfcc rewinding
+  int rewind_frame;             ///< Place to rewind to
   boolean want_rewind_reprocess; ///< TRUE if requires re-processing after rewind
 #endif
-  char *pausemodelnames;	///< pause model name string to detect segment
-  char **pausemodel;		///< each pause model name to detect segment
-  int pausemodelnum;		///< num of pausemodel
+  char *pausemodelnames;        ///< pause model name string to detect segment
+  char **pausemodel;            ///< each pause model name to detect segment
+  int pausemodelnum;            ///< num of pausemodel
 } FSBeam;
 
 
@@ -205,38 +205,38 @@ typedef struct __StackDecode__ {
   NODE *current;                ///< Current node for debug
 
 #ifdef CONFIDENCE_MEASURE
-  LOGPROB cm_alpha;		///< alpha scaling value from jconf
+  LOGPROB cm_alpha;             ///< alpha scaling value from jconf
 # ifdef CM_MULTIPLE_ALPHA
-  LOGPROB *cmsumlist;	     ///< Sum of cm score for each alpha coef.
-  int cmsumlistlen;		///< Allocated length of cmsumlist.
+  LOGPROB *cmsumlist;        ///< Sum of cm score for each alpha coef.
+  int cmsumlistlen;             ///< Allocated length of cmsumlist.
 # endif
 # ifdef CM_SEARCH
   LOGPROB cm_tmpbestscore; ///< Temporal best score for summing up scores
 #  ifndef CM_MULTIPLE_ALPHA
-  LOGPROB cm_tmpsum;		///< Sum of CM score
+  LOGPROB cm_tmpsum;            ///< Sum of CM score
 #  endif
-  int l_stacksize;		///< Local stack size for CM
-  int l_stacknum;		///< Num of hypo. in local stack for CM
-  NODE *l_start;	///< Top node of local stack for CM
-  NODE *l_bottom;	///< bottom node of local stack for CM
+  int l_stacksize;              ///< Local stack size for CM
+  int l_stacknum;               ///< Num of hypo. in local stack for CM
+  NODE *l_start;        ///< Top node of local stack for CM
+  NODE *l_bottom;       ///< bottom node of local stack for CM
 # endif
 # ifdef CM_NBEST
-  LOGPROB *sentcm = NULL;	///< Confidence score of each sentence
-  LOGPROB *wordcm = NULL;	///< Confidence score of each word voted from @a sentcm
-  int sentnum;		///< Allocated length of @a sentcm
+  LOGPROB *sentcm = NULL;       ///< Confidence score of each sentence
+  LOGPROB *wordcm = NULL;       ///< Confidence score of each word voted from @a sentcm
+  int sentnum;          ///< Allocated length of @a sentcm
 # endif
 #endif /* CONFIDENCE_MEASURE */
 
   LOGPROB *wordtrellis[2]; ///< Buffer to compute viterbi path of a word
-  LOGPROB *g;		///< Buffer to hold source viterbi scores
-  HMM_Logical **phmmseq;	///< Phoneme sequence to be computed
-  int phmmlen_max;		///< Maximum length of @a phmmseq.
-  boolean *has_sp;		///< Mark which phoneme allow short pause for multi-path mode
+  LOGPROB *g;           ///< Buffer to hold source viterbi scores
+  HMM_Logical **phmmseq;        ///< Phoneme sequence to be computed
+  int phmmlen_max;              ///< Maximum length of @a phmmseq.
+  boolean *has_sp;              ///< Mark which phoneme allow short pause for multi-path mode
 #ifdef GRAPHOUT_PRECISE_BOUNDARY
   short *wend_token_frame[2]; ///< Propagating token of word-end frame to detect corresponding end-of-words at word head
   LOGPROB *wend_token_gscore[2]; ///< Propagating token of scores at word-end to detect corresponding end-of-words at word head
-  short *wef;		///< Work area for word-end frame tokens for v2
-  LOGPROB *wes;		///< Work area for word-end score tokens for v2
+  short *wef;           ///< Work area for word-end frame tokens for v2
+  LOGPROB *wes;         ///< Work area for word-end score tokens for v2
 #endif
 
 } StackDecode;
@@ -257,10 +257,10 @@ typedef struct {
  */
 typedef struct __gmm_calc__{
   LOGPROB *gmm_score;   ///< Current accumurated scores for each GMM
-  boolean *is_voice;		///< True if corresponding model designates speech, FALSE if noise
+  boolean *is_voice;            ///< True if corresponding model designates speech, FALSE if noise
   int framecount;               ///< Current frame count
 
-  short OP_nstream;		///< Number of input stream for GMM
+  short OP_nstream;             ///< Number of input stream for GMM
   VECT *OP_vec_stream[MAXSTREAMNUM]; ///< input vector for each stream at that frame
   short OP_veclen_stream[MAXSTREAMNUM]; ///< vector length for each stream
 
@@ -272,24 +272,24 @@ typedef struct __gmm_calc__{
   VECT *OP_vec;         ///< Local workarea to hold the input vector of current frame
   short OP_veclen;              ///< Local workarea to hold the length of above
   HTK_HMM_Data *max_d;  ///< Hold model of the maximum score
-  int max_i;			///< Index of max_d
+  int max_i;                    ///< Index of max_d
 #ifdef CONFIDENCE_MEASURE
   LOGPROB gmm_max_cm;   ///< Hold maximum score
 #endif
 #ifdef GMM_VAD
   LOGPROB *rates;   ///< voice rate of recent N frames (cycle buffer)
-  int nframe;			///< Length of rates
+  int nframe;                   ///< Length of rates
   boolean filled;
-  int framep;			///< Current frame pointer
+  int framep;                   ///< Current frame pointer
 
-  boolean in_voice;		///< TRUE if currently in voice area
-  boolean up_trigger;		///< TRUE when detect up trigger
-  boolean down_trigger;		///< TRUE when detect down trigger
-  boolean after_trigger;	///< TRUE when currently we are processing speech segment
-  boolean want_rewind;		///< TRUE if GMM wants rewinding its MFCC
+  boolean in_voice;             ///< TRUE if currently in voice area
+  boolean up_trigger;           ///< TRUE when detect up trigger
+  boolean down_trigger;         ///< TRUE when detect down trigger
+  boolean after_trigger;        ///< TRUE when currently we are processing speech segment
+  boolean want_rewind;          ///< TRUE if GMM wants rewinding its MFCC
   boolean want_rewind_reprocess; ///< TRUE if GMM wants re-processing after rewind
-  int rewind_frame;		///< Frame to rewind
-  int duration;			///< Current GMM duration work
+  int rewind_frame;             ///< Frame to rewind
+  int duration;                 ///< Current GMM duration work
 #endif
 } GMMCalc;
 
@@ -298,7 +298,7 @@ typedef struct __gmm_calc__{
  * 
  */
 typedef struct __sentence__ {
-  WORD_ID word[MAXSEQNUM];	///< Sequence of word ID 
+  WORD_ID word[MAXSEQNUM];      ///< Sequence of word ID 
   int word_num;                 ///< Number of words in the sentence
   LOGPROB score;                ///< Likelihood (LM+AM)
   LOGPROB confidence[MAXSEQNUM]; ///< Word confidence scores
@@ -345,6 +345,8 @@ typedef struct __adin__ {
   boolean (*ad_resume)();
   /// Pointer to function to pause recording
   boolean (*ad_pause)();
+  /// Pointer to function to terminate current recording immediately
+  boolean (*ad_terminate)();
   /// Pointer to function to read samples
   int (*ad_read)(SP16 *, int);
 
@@ -366,7 +368,7 @@ typedef struct __adin__ {
   int sblen;    ///< Current length of @a swapbuf
   int rest_tail;                ///< Samples not processed yet in swap buffer
 
-  ZEROCROSS zc;			///< Work area for zero-cross computation
+  ZEROCROSS zc;                 ///< Work area for zero-cross computation
 
 #ifdef HAVE_PTHREAD
   /* Variables related to POSIX threading */
@@ -388,6 +390,11 @@ typedef struct __adin__ {
    * 
    */
   boolean adinthread_buffer_overflowed;
+  /**
+   * TRUE if adin thread ended
+   * 
+   */
+  boolean adinthread_ended;
 
   boolean ignore_speech_while_recog; ///< TRUE if ignore speech input between call, while waiting recognition process
 
@@ -408,9 +415,12 @@ typedef struct __adin__ {
   boolean end_of_stream;        ///< TRUE if we have reached the end of stream
   boolean need_init;    ///< if TRUE, initialize buffer on startup
 
-  DS_BUFFER *ds;	   ///< Filter buffer for 48-to-16 conversion
+  DS_BUFFER *ds;           ///< Filter buffer for 48-to-16 conversion
 
   boolean rehash; ///< TRUE is want rehash at rewinding on decoder-based VAD
+
+  boolean input_side_segment;   ///< TRUE if segmentation requested by ad_read
+
 } ADIn;
 
 /**
@@ -440,7 +450,7 @@ typedef struct __Output__ {
 
   WordGraph *wg;                ///< List of word graph
 
-  CN_CLUSTER *confnet;		///< List of confusion network clusters
+  CN_CLUSTER *confnet;          ///< List of confusion network clusters
 
   Sentence pass1;               ///< Recognition result on the 1st pass
 
@@ -641,6 +651,39 @@ typedef struct __mfcc_calc__ {
    * 
    */
   boolean segmented;
+
+  /**
+   * TRUE if an input functionhas decided segmented
+   * 
+   */
+  boolean segmented_by_input;
+
+  /**
+   * id of an plugin module if MFCC should be obtained via plugin
+   * 
+   */
+  int plugin_source;
+
+  /**
+   * Function entry points for plugin input
+   * 
+   */
+  struct {
+    /// Pointer to function for device initialization (call once on startup)
+    boolean (*fv_standby)();
+    /// Pointer to function to open audio stream for capturing
+    boolean (*fv_begin)();
+    /// Pointer to function to read samples
+    int (*fv_read)(VECT *, int);
+    /// Pointer to function to close audio stream capturing
+    boolean (*fv_end)();
+    /// Pointer to function to begin / restart recording
+    boolean (*fv_resume)();
+    /// Pointer to function to pause recording
+    boolean (*fv_pause)();
+    /// Pointer to function to terminate current recording immediately
+    boolean (*fv_terminate)();
+  } func;
 
 #ifdef POWER_REJECT
   float avg_power;

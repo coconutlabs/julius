@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  * 
  */
 /*
@@ -178,8 +178,12 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
   boolean unknown_opt;
   JCONF_AM *amconf, *atmp;
   JCONF_LM *lmconf, *ltmp;
-  JCONF_SEARCH *sconf, *stmp;
+  JCONF_SEARCH *sconf;
   char sname[JCONF_MODULENAME_MAXLEN];
+#ifdef ENABLE_PLUGIN
+  int sid;
+  FUNC_INT func;
+#endif
 #define GET_TMPARG  if ((tmparg = next_arg(&i, argc, argv)) == NULL) return FALSE
 
   for (i=1;i<argc;i++) {
@@ -304,36 +308,38 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
     } else if (strmatch(argv[i],"-input")) { /* speech input */
       if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
-      if (strmatch(tmparg,"file")) {
+      jconf->input.plugin_source = -1;
+      if (strmatch(tmparg,"file") || strmatch(tmparg,"rawfile")) {
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_RAWFILE;
 	jconf->decodeopt.realtime_flag = FALSE;
-      } else if (strmatch(tmparg,"rawfile")) {
-	jconf->input.speech_input = SP_RAWFILE;
-	jconf->decodeopt.realtime_flag = FALSE;
-      } else if (strmatch(tmparg,"htkparam")) {
-	jconf->input.speech_input = SP_MFCFILE;
-	jconf->decodeopt.realtime_flag = FALSE;
-      } else if (strmatch(tmparg,"mfcfile")) {
+      } else if (strmatch(tmparg,"htkparam") || strmatch(tmparg,"mfcfile") || strmatch(tmparg,"mfc")) {
+	jconf->input.type = INPUT_VECTOR;
 	jconf->input.speech_input = SP_MFCFILE;
 	jconf->decodeopt.realtime_flag = FALSE;
       } else if (strmatch(tmparg,"stdin")) {
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_STDIN;
 	jconf->decodeopt.realtime_flag = FALSE;
       } else if (strmatch(tmparg,"adinnet")) {
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_ADINNET;
 	jconf->decodeopt.realtime_flag = TRUE;
 #ifdef USE_NETAUDIO
       } else if (strmatch(tmparg,"netaudio")) {
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_NETAUDIO;
 	jconf->decodeopt.realtime_flag = TRUE;
 #endif
 #ifdef USE_MIC
       } else if (strmatch(tmparg,"mic")) {
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_DEFAULT;
 	jconf->decodeopt.realtime_flag = TRUE;
       } else if (strmatch(tmparg,"alsa")) {
 #ifdef HAS_ALSA
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_ALSA;
 	jconf->decodeopt.realtime_flag = TRUE;
@@ -343,6 +349,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 #endif
       } else if (strmatch(tmparg,"oss")) {
 #ifdef HAS_OSS
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_OSS;
 	jconf->decodeopt.realtime_flag = TRUE;
@@ -352,6 +359,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 #endif
       } else if (strmatch(tmparg,"esd")) {
 #ifdef HAS_ESD
+	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_MIC;
 	jconf->input.device = SP_INPUT_ESD;
 	jconf->decodeopt.realtime_flag = TRUE;
@@ -360,12 +368,24 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	return FALSE;
 #endif
 #endif
-      } else if (strmatch(tmparg,"file")) { /* for 1.1 compat */
-	jconf->input.speech_input = SP_RAWFILE;
+#ifdef ENABLE_PLUGIN
+      } else if ((sid = plugin_find_optname("adin_get_optname", tmparg)) != -1) { /* adin plugin */
+	jconf->input.plugin_source = sid;
+	jconf->input.type = INPUT_WAVEFORM;
+	jconf->input.speech_input = SP_MIC;
+	func = (FUNC_INT) plugin_get_func(sid, "adin_get_configuration");
+	if (func == NULL) {
+	  jlog("ERROR: invalid plugin: adin_get_configuration() not exist\n");
+	  jlog("ERROR: skip option \"-input %s\"\n", tmparg);
+	  continue;
+	}
+	jconf->decodeopt.realtime_flag = (*func)(0);
+      } else if ((sid = plugin_find_optname("fvin_get_optname", tmparg)) != -1) { /* vector input plugin */
+	jconf->input.plugin_source = sid;
+	jconf->input.type = INPUT_VECTOR;
+	jconf->input.speech_input = SP_MFCMODULE;
 	jconf->decodeopt.realtime_flag = FALSE;
-      } else if (strmatch(tmparg,"mfc")) { /* for 1.1 compat */
-	jconf->input.speech_input = SP_MFCFILE;
-	jconf->decodeopt.realtime_flag = FALSE;
+#endif
       } else {
 	jlog("ERROR: m_options: unknown speech input source \"%s\"\n", tmparg);
 	return FALSE;
@@ -978,6 +998,11 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	jconf->amnow->gprune_method = GPRUNE_SEL_NONE;
       } else if (strmatch(tmparg,"default")) {
 	jconf->amnow->gprune_method = GPRUNE_SEL_UNDEF;
+#ifdef ENABLE_PLUGIN
+      } else if ((sid = plugin_find_optname("calcmix_get_optname", tmparg)) != -1) { /* mixture calculation plugin */
+	jconf->amnow->gprune_method = GPRUNE_SEL_USER;
+	jconf->amnow->gprune_plugin_source = sid;
+#endif
       } else {
 	jlog("ERROR: m_options: no such pruning method \"%s\"\n", argv[0], tmparg);
 	return FALSE;
@@ -1221,6 +1246,12 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE; 
       jconf->searchnow->sw.fallback_pass1_flag = TRUE;
       continue;
+#ifdef ENABLE_PLUGIN
+    } else if (strmatch(argv[i],"-plugindir")) {
+      GET_TMPARG;
+      plugin_load_dirs(tmparg);
+      continue;
+#endif
     }
     if (argv[i][0] == '-' && strlen(argv[i]) == 2) {
       /* 1-letter options */

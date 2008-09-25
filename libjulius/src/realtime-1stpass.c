@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -175,11 +175,6 @@ init_param(MFCCCalc *mfcc)
   mfcc->param->header.wshift = para->smp_period * para->frameshift;
   mfcc->param->header.sampsize = para->veclen * sizeof(VECT); /* not compressed */
   mfcc->param->veclen = para->veclen;
-  /* フレームごとのパラメータベクトル保存の領域を確保 */
-  /* あとで必要に応じて伸長される */
-  if (param_alloc(mfcc->param, 1, mfcc->param->veclen) == FALSE) {
-    j_internal_error("ERROR: segmented: failed to allocate memory for rest param\n");
-  }
   
   /* 認識処理中/終了後にセットされる変数:
      param->parvec (パラメータベクトル系列)
@@ -189,6 +184,9 @@ init_param(MFCCCalc *mfcc)
      param->parvec (parameter vector sequence)
      param->header.samplenum, param->samplenum (total number of frames)
   */
+  /* MAP-CMN の初期化 */
+  /* Prepare for MAP-CMN */
+  if (mfcc->para->cmn || mfcc->para->cvn) CMN_realtime_prepare(mfcc->cmn.wrk);
 }
 
 /** 
@@ -229,6 +227,10 @@ RealTimeInit(Recog *recog)
 
   jconf = recog->jconf;
   r = &(recog->real);
+
+  /* 最大フレーム長を最大入力時間数から計算 */
+  /* set maximum allowed frame length */
+  r->maxframelen = MAXSPEECHLEN / recog->jconf->input.frameshift;
 
   /* -ssload 指定時, SS用のノイズスペクトルをファイルから読み込む */
   /* if "-ssload", load noise spectrum for spectral subtraction from file */
@@ -280,9 +282,6 @@ RealTimeInit(Recog *recog)
     }
 
   }
-  /* 最大フレーム長を最大入力時間数から計算 */
-  /* set maximum allowed frame length */
-  r->maxframelen = MAXSPEECHLEN / recog->jconf->input.frameshift;
   /* 窓長をセット */
   /* set window length */
   r->windowlen = recog->jconf->input.framesize + 1;
@@ -321,7 +320,6 @@ void
 reset_mfcc(Recog *recog) 
 {
   Value *para;
-  PROCESS_AM *am;
   MFCCCalc *mfcc;
   RealBeam *r;
 
@@ -342,11 +340,6 @@ reset_mfcc(Recog *recog)
     if (para->acc) WMP_deltabuf_prepare(mfcc->ab);
   }
 
-  /* 音響尤度計算用キャッシュを準備 */
-  /* prepare cache area for acoustic computation of HMM states and mixtures */
-  for(am=recog->amlist;am;am=am->next) {
-    outprob_prepare(&(am->hmmwrk), r->maxframelen);
-  }
 }
 
 /** 
@@ -394,26 +387,41 @@ RealTimePipeLinePrepare(Recog *recog)
   for(mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
     /* パラメータ初期化 */
     /* parameter initialization */
-    init_param(mfcc);
+    if (recog->jconf->input.speech_input == SP_MFCMODULE) {
+      if (mfc_module_set_header(mfcc, recog) == FALSE) return FALSE;
+    } else {
+      init_param(mfcc);
+    }
+    /* フレームごとのパラメータベクトル保存の領域を確保 */
+    /* あとで必要に応じて伸長される */
+    if (param_alloc(mfcc->param, 1, mfcc->param->veclen) == FALSE) {
+      j_internal_error("ERROR: segmented: failed to allocate memory for rest param\n");
+    }
     /* フレーム数をリセット */
     /* reset frame count */
     mfcc->f = 0;
-    /* MAP-CMN の初期化 */
-    /* Prepare for MAP-CMN */
-    if (mfcc->para->cmn	|| mfcc->para->cvn) CMN_realtime_prepare(mfcc->cmn.wrk);
   }
   /* 準備した param 構造体のデータのパラメータ型を音響モデルとチェックする */
   /* check type coherence between param and hmminfo here */
-  for(am=recog->amlist;am;am=am->next) {
-    if (!check_param_coherence(am->hmminfo, am->mfcc->param)) {
-      jlog("ERROR: input parameter type does not match AM\n");
-      return FALSE;
+  if (recog->jconf->input.paramtype_check_flag) {
+    for(am=recog->amlist;am;am=am->next) {
+      if (!check_param_coherence(am->hmminfo, am->mfcc->param)) {
+	jlog("ERROR: input parameter type does not match AM\n");
+	return FALSE;
+      }
     }
   }
 
   /* 計算用のワークエリアを準備 */
   /* prepare work area for calculation */
-  reset_mfcc(recog);
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    reset_mfcc(recog);
+  }
+  /* 音響尤度計算用キャッシュを準備 */
+  /* prepare cache area for acoustic computation of HMM states and mixtures */
+  for(am=recog->amlist;am;am=am->next) {
+    outprob_prepare(&(am->hmmwrk), r->maxframelen);
+  }
 
 #ifdef BACKEND_VAD
   if (recog->jconf->decodeopt.segment) {
@@ -564,9 +572,148 @@ RealTimeMFCC(MFCCCalc *mfcc, SP16 *window, int windowlen)
   /* CMN を計算 */
   /* perform CMN */
   if (para->cmn || para->cvn) CMN_realtime(mfcc->cmn.wrk, tmpmfcc);
-  
+
   return TRUE;
 }
+
+static int
+proceed_one_frame(Recog *recog)
+{
+  MFCCCalc *mfcc;
+  RealBeam *r;
+  int maxf;
+  PROCESS_AM *am;
+  int rewind_frame;
+  boolean reprocess;
+  boolean ok_p;
+
+  r = &(recog->real);
+
+  /* call recognition start callback */
+  ok_p = FALSE;
+  maxf = 0;
+  for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+    if (!mfcc->valid) continue;
+    if (maxf < mfcc->f) maxf = mfcc->f;
+    if (mfcc->f == 0) {
+      ok_p = TRUE;
+    }
+  }
+  if (ok_p && maxf == 0) {
+    /* call callback when at least one of MFCC has initial frame */
+    if (recog->jconf->decodeopt.segment) {
+#ifdef BACKEND_VAD
+      /* not exec pass1 begin callback here */
+#else
+      if (!recog->process_segment) {
+	callback_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recog);
+      }
+      callback_exec(CALLBACK_EVENT_SEGMENT_BEGIN, recog);
+      callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
+      recog->triggered = TRUE;
+#endif
+    } else {
+      callback_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recog);
+      callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
+      recog->triggered = TRUE;
+    }
+  }
+  /* 各インスタンスについて mfcc->f の認識処理を1フレーム進める */
+  switch (decode_proceed(recog)) {
+  case -1: /* error */
+    return -1;
+    break;
+  case 0:			/* success */
+    break;
+  case 1:			/* segmented */
+    /* 認識処理のセグメント要求で終わったことをフラグにセット */
+    /* set flag which indicates that the input has ended with segmentation request */
+    r->last_is_segmented = TRUE;
+    /* tell the caller to be segmented by this function */
+    /* 呼び出し元に，ここで入力を切るよう伝える */
+    return 1;
+  }
+#ifdef BACKEND_VAD
+  /* check up trigger in case of VAD segmentation */
+  if (recog->jconf->decodeopt.segment) {
+    if (recog->triggered == FALSE) {
+      if (spsegment_trigger_sync(recog)) {
+	if (!recog->process_segment) {
+	  callback_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recog);
+	}
+	callback_exec(CALLBACK_EVENT_SEGMENT_BEGIN, recog);
+	callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
+	recog->triggered = TRUE;
+      }
+    }
+  }
+#endif
+  
+  if (spsegment_need_restart(recog, &rewind_frame, &reprocess) == TRUE) {
+    /* set total length to the current frame */
+    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+      if (!mfcc->valid) continue;
+      mfcc->param->header.samplenum = mfcc->f + 1;
+      mfcc->param->samplenum = mfcc->f + 1;
+    }
+    /* do rewind for all mfcc here */
+    spsegment_restart_mfccs(recog, rewind_frame, reprocess);
+    /* also tell adin module to rehash the concurrent audio input */
+    recog->adin->rehash = TRUE;
+    /* reset outprob cache for all AM */
+    for(am=recog->amlist;am;am=am->next) {
+      outprob_prepare(&(am->hmmwrk), am->mfcc->param->samplenum);
+    }
+    if (reprocess) {
+      /* process the backstep MFCCs here */
+      while(1) {
+	ok_p = TRUE;
+	for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+	  if (! mfcc->valid) continue;
+	  mfcc->f++;
+	  if (mfcc->f < mfcc->param->samplenum) {
+	    mfcc->valid = TRUE;
+	    ok_p = FALSE;
+	  } else {
+	    mfcc->valid = FALSE;
+	  }
+	}
+	if (ok_p) {
+	  /* すべての MFCC が終わりに達したのでループ終了 */
+	  /* all MFCC has been processed, end of loop  */
+	  for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+	    if (! mfcc->valid) continue;
+	    mfcc->f--;
+	  }
+	  break;
+	}
+	/* 各インスタンスについて mfcc->f の認識処理を1フレーム進める */
+	switch (decode_proceed(recog)) {
+	case -1: /* error */
+	  return -1;
+	  break;
+	case 0:			/* success */
+	  break;
+	case 1:			/* segmented */
+	  /* ignore segmentation while in the backstep segment */
+	  break;
+	}
+	/* call frame-wise callback */
+	callback_exec(CALLBACK_EVENT_PASS1_FRAME, recog);
+      }
+    }
+  }
+  /* call frame-wise callback if at least one of MFCC is valid at this frame */
+  for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+    if (mfcc->valid) {
+      callback_exec(CALLBACK_EVENT_PASS1_FRAME, recog);
+      break;
+    }
+  }
+  
+  return 0;
+}
+
 
 /** 
  * <JA>
@@ -639,17 +786,9 @@ RealTimeMFCC(MFCCCalc *mfcc, SP16 *window, int windowlen)
 int
 RealTimePipeLine(SP16 *Speech, int nowlen, Recog *recog) /* Speech[0...nowlen] = input */
 {
-  int i, now;
+  int i, now, ret;
   MFCCCalc *mfcc;
   RealBeam *r;
-  int maxf;
-  boolean ok_p;
-
-  RecogProcess *p;
-  PROCESS_AM *am;
-  int rewind_frame;
-  boolean reprocess;
-  boolean all_false, all_true;
 
   r = &(recog->real);
 
@@ -700,8 +839,12 @@ RealTimePipeLine(SP16 *Speech, int nowlen, Recog *recog) /* Speech[0...nowlen] =
       /* calculate a parameter vector from current waveform windows
 	 and store to r->tmpmfcc */
       if ((*(recog->calc_vector))(mfcc, r->window, r->windowlen)) {
-	mfcc->valid = TRUE;
+#ifdef ENABLE_PLUGIN
+	/* call post-process plugin if exist */
+	plugin_exec_vector_postprocess(mfcc->tmpmfcc, mfcc->param->veclen, mfcc->f);
+#endif
 	/* MFCC完成，登録 */
+  	mfcc->valid = TRUE;
 	/* now get the MFCC vector of current frame, now store it to param */
 	if (param_alloc(mfcc->param, mfcc->f + 1, mfcc->param->veclen) == FALSE) {
 	  jlog("ERROR: failed to allocate memory for incoming MFCC vectors\n");
@@ -714,148 +857,29 @@ RealTimePipeLine(SP16 *Speech, int nowlen, Recog *recog) /* Speech[0...nowlen] =
       }
     }
 
-    /* call recognition start callback */
-    ok_p = FALSE;
-    maxf = 0;
-    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-      if (!mfcc->valid) continue;
-      if (maxf < mfcc->f) maxf = mfcc->f;
-      if (mfcc->f == 0) {
-	ok_p = TRUE;
-      }
-    }
-    if (ok_p && maxf == 0) {
-      /* call callback when at least one of MFCC has initial frame */
-      if (recog->jconf->decodeopt.segment) {
-#ifdef BACKEND_VAD
-	/* not exec pass1 begin callback here */
-#else
-	if (!recog->process_segment) {
-	  callback_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recog);
-	}
-	callback_exec(CALLBACK_EVENT_SEGMENT_BEGIN, recog);
-	callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
-	recog->triggered = TRUE;
-#endif
-      } else {
-	callback_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recog);
-	callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
-	recog->triggered = TRUE;
-      }
-    }
+    /* 処理を1フレーム進める */
+    /* proceed one frame */
+    ret = proceed_one_frame(recog);
 
-    /* 各インスタンスについて mfcc->f の認識処理を1フレーム進める */
-    switch (decode_proceed(recog)) {
-    case -1: /* error */
-      return -1;
-      break;
-    case 0:			/* success */
-      break;
-    case 1:			/* segmented */
-      /* 認識処理のセグメント要求で終わったことをフラグにセット */
-      /* set flag which indicates that the input has ended with segmentation request */
-      r->last_is_segmented = TRUE;
-      if (recog->jconf->decodeopt.segment) {
-	/* ショートポーズセグメンテーション: バッファに残っているデータを
-	   別に保持して，次回の最初に処理する */
-	/* short pause segmentation: there is some data left in buffer, so
-	   we should keep them for next processing */
-	r->rest_len = nowlen - now;
-	if (r->rest_len > 0) {
-	  /* copy rest samples to rest_Speech */
-	  if (r->rest_Speech == NULL) {
-	    r->rest_alloc_len = r->rest_len;
-	    r->rest_Speech = (SP16 *)mymalloc(sizeof(SP16)*r->rest_alloc_len);
-	  } else if (r->rest_alloc_len < r->rest_len) {
-	    r->rest_alloc_len = r->rest_len;
-	    r->rest_Speech = (SP16 *)myrealloc(r->rest_Speech, sizeof(SP16)*r->rest_alloc_len);
-	  }
-	  memcpy(r->rest_Speech, &(Speech[now]), sizeof(SP16) * r->rest_len);
+    if (ret == 1 && recog->jconf->decodeopt.segment) {
+      /* ショートポーズセグメンテーション: バッファに残っているデータを
+	 別に保持して，次回の最初に処理する */
+      /* short pause segmentation: there is some data left in buffer, so
+	 we should keep them for next processing */
+      r->rest_len = nowlen - now;
+      if (r->rest_len > 0) {
+	/* copy rest samples to rest_Speech */
+	if (r->rest_Speech == NULL) {
+	  r->rest_alloc_len = r->rest_len;
+	  r->rest_Speech = (SP16 *)mymalloc(sizeof(SP16)*r->rest_alloc_len);
+	} else if (r->rest_alloc_len < r->rest_len) {
+	  r->rest_alloc_len = r->rest_len;
+	  r->rest_Speech = (SP16 *)myrealloc(r->rest_Speech, sizeof(SP16)*r->rest_alloc_len);
 	}
-      }
-      /* tell the caller to be segmented by this function */
-      /* 呼び出し元に，ここで入力を切るよう伝える */
-      return 1;
-    }
-
-#ifdef BACKEND_VAD
-    /* check up trigger in case of VAD segmentation */
-    if (recog->jconf->decodeopt.segment) {
-      if (recog->triggered == FALSE) {
-	if (spsegment_trigger_sync(recog)) {
-	  if (!recog->process_segment) {
-	    callback_exec(CALLBACK_EVENT_RECOGNITION_BEGIN, recog);
-	  }
-	  callback_exec(CALLBACK_EVENT_SEGMENT_BEGIN, recog);
-	  callback_exec(CALLBACK_EVENT_PASS1_BEGIN, recog);
-	  recog->triggered = TRUE;
-	}
+	memcpy(r->rest_Speech, &(Speech[now]), sizeof(SP16) * r->rest_len);
       }
     }
-#endif
-
-    if (spsegment_need_restart(recog, &rewind_frame, &reprocess) == TRUE) {
-      /* set total length to the current frame */
-      for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-	if (!mfcc->valid) continue;
-	mfcc->param->header.samplenum = mfcc->f + 1;
-	mfcc->param->samplenum = mfcc->f + 1;
-      }
-      /* do rewind for all mfcc here */
-      spsegment_restart_mfccs(recog, rewind_frame, reprocess);
-      /* also tell adin module to rehash the concurrent audio input */
-      recog->adin->rehash = TRUE;
-      /* reset outprob cache for all AM */
-      for(am=recog->amlist;am;am=am->next) {
-	outprob_prepare(&(am->hmmwrk), am->mfcc->param->samplenum);
-      }
-      if (reprocess) {
-	/* process the backstep MFCCs here */
-	while(1) {
-	  ok_p = TRUE;
-	  for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-	    if (! mfcc->valid) continue;
-	    mfcc->f++;
-	    if (mfcc->f < mfcc->param->samplenum) {
-	      mfcc->valid = TRUE;
-	      ok_p = FALSE;
-	    } else {
-	      mfcc->valid = FALSE;
-	    }
-	  }
-	  if (ok_p) {
-	    /* すべての MFCC が終わりに達したのでループ終了 */
-	    /* all MFCC has been processed, end of loop  */
-	    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-	      if (! mfcc->valid) continue;
-	      mfcc->f--;
-	    }
-	    break;
-	  }
-	  /* 各インスタンスについて mfcc->f の認識処理を1フレーム進める */
-	  switch (decode_proceed(recog)) {
-	  case -1: /* error */
-	    return -1;
-	    break;
-	  case 0:			/* success */
-	    break;
-	  case 1:			/* segmented */
-	    /* ignore segmentation while in the backstep segment */
-	    break;
-	  }
-	  /* call frame-wise callback */
-	  callback_exec(CALLBACK_EVENT_PASS1_FRAME, recog);
-	}
-      }
-    }
-
-    /* call frame-wise callback if at least one of MFCC is valid at this frame */
-    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-      if (mfcc->valid) {
-	callback_exec(CALLBACK_EVENT_PASS1_FRAME, recog);
-	break;
-      }
-    }
+    if (ret != 0) return ret;
 
     /* 1フレーム処理が進んだのでポインタを進める */
     /* proceed frame pointer */
@@ -919,12 +943,20 @@ RealTimeResume(Recog *recog)
 #ifdef SPSEGMENT_NAIST
   RecogProcess *p;
 #endif
+  PROCESS_AM *am;
 
   r = &(recog->real);
 
   /* 計算用のワークエリアを準備 */
   /* prepare work area for calculation */
-  reset_mfcc(recog);
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    reset_mfcc(recog);
+  }
+  /* 音響尤度計算用キャッシュを準備 */
+  /* prepare cache area for acoustic computation of HMM states and mixtures */
+  for(am=recog->amlist;am;am=am->next) {
+    outprob_prepare(&(am->hmmwrk), r->maxframelen);
+  }
 
   /* param にある全パラメータを処理する準備 */
   /* prepare to process all data in param */
@@ -1017,15 +1049,16 @@ RealTimeResume(Recog *recog)
   }
   /* 前回のセグメント時に入力をシフトしていない分をシフトする */
   /* do the last shift here */
-  memmove(r->window, &(r->window[recog->jconf->input.frameshift]), sizeof(SP16) * (r->windowlen - recog->jconf->input.frameshift));
-  r->windownum -= recog->jconf->input.frameshift;
-
-  /* これで再開の準備が整ったので,まずは前回の処理で残っていた音声データから
-     処理する */
-  /* now that the search status has been prepared for the next input, we
-     first process the rest unprocessed samples at the last session */
-  if (r->rest_len > 0) {
-    return(RealTimePipeLine(r->rest_Speech, r->rest_len, recog));
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    memmove(r->window, &(r->window[recog->jconf->input.frameshift]), sizeof(SP16) * (r->windowlen - recog->jconf->input.frameshift));
+    r->windownum -= recog->jconf->input.frameshift;
+    /* これで再開の準備が整ったので,まずは前回の処理で残っていた音声データから
+       処理する */
+    /* now that the search status has been prepared for the next input, we
+       first process the rest unprocessed samples at the last session */
+    if (r->rest_len > 0) {
+      return(RealTimePipeLine(r->rest_Speech, r->rest_len, recog));
+    }
   }
 
   /* 新規の入力に対して認識処理は続く… */
@@ -1101,6 +1134,17 @@ RealTimeParam(Recog *recog)
     /* この区間の param データを第２パスのために返す */
     /* return obtained parameter for 2nd pass */
     return(TRUE);
+  }
+
+  if (recog->jconf->input.type == INPUT_VECTOR) {
+    /* finalize real-time 1st pass */
+    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+      mfcc->param->header.samplenum = mfcc->f;
+      mfcc->param->samplenum = mfcc->f;
+    }
+    /* 最終フレーム処理を行い，認識の結果出力と終了処理を行う */
+    decode_end(recog);
+    return TRUE;
   }
 
   /* MFCC計算の終了処理を行う: 最後の遅延フレーム分を処理 */
@@ -1207,6 +1251,10 @@ RealTimeParam(Recog *recog)
       }
       /* store to mfcc->f */
       memcpy(mfcc->param->parvec[mfcc->f], mfcc->tmpmfcc, sizeof(VECT) * mfcc->param->veclen);
+#ifdef ENABLE_PLUGIN
+      /* call postprocess plugin if any */
+      plugin_exec_vector_postprocess(mfcc->param->parvec[mfcc->f], mfcc->param->veclen, mfcc->f);
+#endif
     }
 
     /* call recognition start callback */
@@ -1308,7 +1356,6 @@ RealTimeParam(Recog *recog)
 void
 RealTimeCMNUpdate(MFCCCalc *mfcc, Recog *recog)
 {
-  float mseclen;
   boolean cmn_update_p;
   Value *para;
   Jconf *jconf;
@@ -1408,4 +1455,108 @@ realbeam_free(Recog *recog)
   }
 }
 
+
+
+/************************************************************************/
+/************************************************************************/
+/************************************************************************/
+/************************************************************************/
+
+/* MFCC realtime input */
+/** 
+ * <EN>
+ * 
+ * </EN>
+ * <JA>
+ * 
+ * </JA>
+ * 
+ * @param recog 
+ * @param ad_check 
+ * 
+ * @return 2 when input termination requested by recognition process,
+ * 1 when segmentation request returned from input module, 0 when end
+ * of input returned from input module, -1 on error, -2 when input
+ * termination requested by ad_check().
+ * 
+ */
+int
+mfcc_go(Recog *recog, int (*ad_check)(Recog *))
+{
+  RealBeam *r;
+  MFCCCalc *mfcc;
+  int new_f;
+  int ret, ret3;
+
+  r = &(recog->real);
+
+  r->last_is_segmented = FALSE;
+  
+  while(1/*in_data_vec*/) {
+
+    ret = mfc_module_read(recog->mfcclist, &new_f);
+
+    if (debug2_flag) {
+      if (recog->mfcclist->f < new_f) {
+	jlog("%d: %d (%d)\n", recog->mfcclist->f, new_f, ret);
+      }
+    }
+ 
+    /* callback poll */
+    if (ad_check != NULL) {
+      if ((ret3 = (*(ad_check))(recog)) < 0) {
+	if ((ret3 == -1 && mfcc->f == 0) || ret3 == -2) {
+	  return(-2);
+	}
+      }
+    }
+
+    while(recog->mfcclist->f < new_f) {
+
+      recog->mfcclist->valid = TRUE;
+
+#ifdef ENABLE_PLUGIN
+      /* call post-process plugin if exist */
+      plugin_exec_vector_postprocess(recog->mfcclist->param->parvec[recog->mfcclist->f], recog->mfcclist->param->veclen, mfcc->f);
+#endif
+
+      /* 処理を1フレーム進める */
+      /* proceed one frame */
+      
+      switch(proceed_one_frame(recog)) {
+      case -1:			/* error */
+	return -1;
+      case 0:			/* normal */
+	break;
+      case 1:			/* segmented by process */
+	return 2;
+      }
+
+      /* 1フレーム処理が進んだのでポインタを進める */
+      /* proceed frame pointer */
+      for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+	if (!mfcc->valid) continue;
+	mfcc->f++;
+      }
+    }
+    
+    /* check if input end */
+    switch(ret) {
+    case -1: 			/* end of input */
+      return 0;
+    case -2:			/* error */
+      return -1;
+    case -3:			/* end of segment request */
+      return 1;
+    }
+  }
+  /* 与えられた音声セグメントに対する認識処理が全て終了
+     呼び出し元に, 入力を続けるよう伝える */
+  /* input segment is fully processed
+     tell the caller to continue input */
+  return(1);
+}
+
 /* end of file */
+
+

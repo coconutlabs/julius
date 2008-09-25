@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:33:01 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -44,6 +44,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 {
   fprintf(stderr, "adinrec --- record one sentence input to a file\n");
   fprintf(stderr, "Usage: adinrec [options..] filename\n");
+  fprintf(stderr, "    [-input mic|alsa|oss|esd|...]  input source       (mic)\n");
   fprintf(stderr, "    [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "    [-48]                 48000Hz recording with down sampling (16kHz only)\n");
   fprintf(stderr, "    [-lv unsignedshort]   silence cut level threshold (%d)\n", jconf->detect.level_thres);
@@ -234,12 +235,16 @@ main(int argc, char *argv[])
     filename = argv[argc-1];
   }
 
+  /* set default as same as "-input mic" */
+  jconf->input.type = INPUT_WAVEFORM;
+  jconf->input.speech_input = SP_MIC;
+  jconf->input.device = SP_INPUT_DEFAULT;
+
   /* read arguments and set parameters */
   if (j_config_load_args(jconf, argc-1, argv) == -1) {
     fprintf(stderr, "Error reading arguments\n");
     return -1;
   }
-  jconf->input.speech_input = SP_MIC;
 
   /* exit if no file name specified */
   if (filename == NULL) {

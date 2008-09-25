@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 14:54:06 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  *
  */
 /*
@@ -38,9 +38,10 @@
  *   - GPRUNE_SEL_SAFE: safe pruning
  *   - GPRUNE_SEL_HEURISTIC: heuristic pruning
  *   - GPRUNE_SEL_BEAM: beam pruning
+ *   - GPRUNE_SEL_USER: user-defined function
  * 
  */
-enum{GPRUNE_SEL_UNDEF, GPRUNE_SEL_NONE, GPRUNE_SEL_SAFE, GPRUNE_SEL_HEURISTIC, GPRUNE_SEL_BEAM};
+enum{GPRUNE_SEL_UNDEF, GPRUNE_SEL_NONE, GPRUNE_SEL_SAFE, GPRUNE_SEL_HEURISTIC, GPRUNE_SEL_BEAM, GPRUNE_SEL_USER};
 
 /**
  * @brief Score beam offset for GPRUNE_SEL_BEAM.

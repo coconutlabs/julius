@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Mar 17 21:08:21 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -57,6 +57,9 @@
 #include <sent/dfa.h>
 
 /* read Julius/Julian includes */
+#ifdef ENABLE_PLUGIN
+#include <julius/plugin.h>
+#endif
 #include <julius/multi-gram.h>
 #include <julius/wchmm.h>
 #include <julius/trellis.h>

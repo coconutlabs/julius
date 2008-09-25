@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -208,6 +208,11 @@ typedef struct __jconf_am__ {
      */
     char *ssload_filename;
   } frontend;
+
+  /**
+   * Plugin source ID when using plugin (gprune_method is GPRUNE_SEL_USER)
+   */
+  int gprune_plugin_source;
 
   /* pointer to next instance */
   struct __jconf_am__ *next;
@@ -763,15 +768,29 @@ typedef struct __Jconf__ {
   struct {
 
     /**
+     * Input source type. (waveform / mfc)
+     * 
+     */
+    int type;
+
+    /**
      * Input source.
      * 
      */
     int speech_input;
+
     /**
      * Input device.
      * 
      */
     int device;
+
+    /**
+     * id of the selected plug-in if using plugin
+     * 
+     */
+    int plugin_source;
+
     /**
      * Sampling frequency
      * 

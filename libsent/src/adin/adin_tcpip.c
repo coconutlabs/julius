@@ -45,7 +45,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 14:55:03 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -61,7 +61,6 @@
 
 static int adinnet_sd = -1;	///< Listen socket for adinserv
 static int adinnet_asd = -1;	///< Accept socket for adinserv
-static boolean last_is_segmented = FALSE; ///< FALSE if last segment was an end of connection
 
 #ifdef FORK_ADINNET
 static pid_t child;		/* child process ID (0 if myself is child) */
@@ -87,8 +86,6 @@ adin_tcpip_standby(int freq, void *port_str)
     return FALSE;
   }
 
-  last_is_segmented = FALSE;
-
   jlog("Stat: adin_tcpip: ready for server\n");
 
   return TRUE;
@@ -102,10 +99,6 @@ adin_tcpip_standby(int freq, void *port_str)
 boolean
 adin_tcpip_begin()
 {
-  if (last_is_segmented) {
-    /* just wait for the next segment to be received */
-    jlog("Stat: adin_tcpip: keep connection for next segment\n");
-  } else {
 #ifdef FORK_ADINNET
     /***********************************/
     /*** server infinite loop here!! ***/
@@ -137,7 +130,7 @@ adin_tcpip_begin()
     }
     jlog("Stat: adin_tcpip: connected\n");
 #endif /* FORK_ADINNET */
-  }
+
   return TRUE;
 }
 
@@ -155,7 +148,6 @@ adin_tcpip_begin()
 boolean
 adin_tcpip_end()
 {
-  if (!last_is_segmented) {
     /* end of connection */
     close_socket(adinnet_asd);
 #ifdef FORK_ADINNET
@@ -166,7 +158,7 @@ adin_tcpip_end()
     /* wait for the next connection */
     jlog("Stat: adin_tcpip: connection end\n");
 #endif
-  } /* else, end of segment: wait for next input in current socket */
+
   return TRUE;
 }
 
@@ -191,12 +183,12 @@ adin_tcpip_read(SP16 *buf, int sampnum)
   fd_set rfds;
   struct timeval tv;
   int status;
-  
+
   /* check if some commands are waiting in queue */
   FD_ZERO(&rfds);
   FD_SET(adinnet_asd, &rfds);
   tv.tv_sec = 0;
-  tv.tv_usec = 1;
+  tv.tv_usec = 10000;		/* 10msec */
   status = select(adinnet_asd+1, &rfds, NULL, NULL, &tv);
   if (status < 0) {		/* error */
     jlog("Error: adin_tcpip: failed to poll socket\n");
@@ -207,15 +199,13 @@ adin_tcpip_read(SP16 *buf, int sampnum)
     ret = rd(adinnet_asd, (char *)buf, &cnt, sampnum * sizeof(SP16));
     if (ret == 0) {
       /* end of segment mark */
-      last_is_segmented = TRUE;
-      return -1;
+      return -3;
     }
     if (ret < 0) {
       /* end of input, mark */
-      last_is_segmented = FALSE;
       return -1;
     }
-  } else {			/* no data */
+  } else {			/* time out, no data */
     cnt = 0;
   }
   cnt /= sizeof(SP16);
@@ -253,11 +243,41 @@ adin_tcpip_send_resume()
 {
   int count;
   char com;
+  int cnt, ret;
+  fd_set rfds;
+  struct timeval tv;
+  int status;
+  static char *tmpbuf = NULL;
+
+  /* check if some commands are waiting in queue */
+  count = 0;
+  do {
+    FD_ZERO(&rfds);
+    FD_SET(adinnet_asd, &rfds);
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    status = select(adinnet_asd+1, &rfds, NULL, NULL, &tv);
+    if (status < 0) {		/* error */
+      jlog("Error: adin_tcpip: failed to poll socket\n");
+      return FALSE;			/* error return */
+    }
+    if (status > 0) {		/* there are some data */
+      if (tmpbuf == NULL) tmpbuf = (char *)mymalloc(MAXSPEECHLEN);
+      ret = rd(adinnet_asd, tmpbuf, &cnt, MAXSPEECHLEN * sizeof(SP16));
+    }
+    if (cnt > 0) count += cnt;
+  } while (status != 0);
+  if (count > 0) {
+    jlog("Stat: %d samples transfered while pause are flushed\n", count);
+  }
+    
   /* send resume command to adinnet client */
   com = '1';
   count = wt(adinnet_asd, &com, 1);
   if (count < 0) jlog("Warning: adin_tcpip: cannot send resume command to client\n");
   jlog("Stat: adin_tcpip: sent resume command to client\n");
+
+  /* flush current buffer */
   return TRUE;
 }
 

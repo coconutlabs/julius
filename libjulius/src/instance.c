@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -51,6 +51,7 @@ j_mfcccalc_new(JCONF_AM *amconf)
   mfcc->rest_param = NULL;
   mfcc->frontend.ssbuf = NULL;
   mfcc->cmn.loaded = FALSE;
+  mfcc->plugin_source = -1;
   if (amconf) {
     mfcc->para = &(amconf->analysis.para);
     mfcc->hmm_loaded = (amconf->analysis.para_hmm.loaded == 1) ? TRUE : FALSE;

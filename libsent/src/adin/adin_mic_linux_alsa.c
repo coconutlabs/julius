@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -74,8 +74,10 @@ static char *pcm_name = "default"; ///< Name of the PCM device, can be overridde
 static int latency = 32;	///< Lantency time in msec.  You can override this value by specifying environment valuable "LATENCY_MSEC".
 static boolean need_swap;	///< Whether samples need byte swap
 
+#if (SND_LIB_MAJOR == 0)
 static struct pollfd *ufds;	///< Poll descriptor
 static int count;		///< Poll descriptor count
+#endif
 
 #define MAXPOLLINTERVAL 300	///< Read timeout in msec.
 
@@ -443,6 +445,9 @@ adin_alsa_begin()
 	jlog("Error: adin_alsa: PCM XRUN recovery failed (%s)\n", snd_strerror(err));
 	return(FALSE);
       }
+      break;
+    default:
+      /* do nothing */
       break;
     }
   }

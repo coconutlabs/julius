@@ -325,7 +325,7 @@ msock_exec_command(char *command, Recog *recog)
 	if (multigram_delete(gid, cur->lm) == FALSE) { /* deletion marking failed */
 	  fprintf(stderr, "Warning: msock(DELGRAM): gram #%d failed to delete, ignored\n", gid);
 	  /* tell module */
-	  module_send(module_sd, "<ERROR MESSAGE=\"Gram #%d not found\"/>\n.\n", gid);
+	  module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"Gram #%d not found\"/>\n.\n", gid);
 	}
       }
       /* need to rebuild the global lexicon */

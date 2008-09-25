@@ -38,7 +38,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 14:35:33 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -122,8 +122,6 @@ extract_cpair(DFA_INFO *dinfo)
 boolean
 cpair_append(DFA_INFO *dst, DFA_INFO *src, int coffset)
 {
-  int i,j;
-
   /* dst info must be already appended */
   /* [coffset..dst->term_num-1] is the new categories */
   if (dst->term_num - coffset != src->term_num) {

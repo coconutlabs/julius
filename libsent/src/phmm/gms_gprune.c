@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:05:08 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -137,7 +137,7 @@ compute_g_max(HMMWork *wrk, HTK_HMM_State *stateinfo, int *last_maxi)
   LOGPROB maxprob = LOG_ZERO;
   int s;
   PROB stream_weight;
-  LOGPROB logprob, logprobsum;
+  LOGPROB logprobsum;
 
   logprobsum = 0.0;
   for(s=0;s<wrk->OP_nstream;s++) {

@@ -58,7 +58,7 @@
  * @author Akinobu Lee
  * @date   Wed Oct 17 12:47:29 2007
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -631,7 +631,6 @@ detect_end_of_segment(RecogProcess *r, int time)
 void
 finalize_segment(Recog *recog)
 {
-  int t;
   int spstart;
   RecogProcess *r;
   MFCCCalc *mfcc;
@@ -837,7 +836,9 @@ spsegment_trigger_sync(Recog *recog)
 boolean
 spsegment_need_restart(Recog *recog, int *rf_ret, boolean *repro_ret)
 {
+#ifdef SPSEGMENT_NAIST
   RecogProcess *p;
+#endif
   boolean ok_p;
   int rewind_frame;
   boolean reprocess;

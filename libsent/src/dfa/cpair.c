@@ -18,7 +18,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 13:54:44 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -286,8 +286,7 @@ init_dfa_cp(DFA_INFO *dfa)
 void
 malloc_dfa_cp(DFA_INFO *dfa, int term_num, int size)
 {
-  int i, j, x;
-  int maxlen;
+  int i;
 
   dfa->cp = (int **)mymalloc(sizeof(int *) * term_num);
   dfa->cplen = (int *)mymalloc(sizeof(int) * term_num);
@@ -421,12 +420,12 @@ dfa_cp_output_rawdata(FILE *fp, DFA_INFO *dfa)
     }
     fprintf(fp, "\n");
   }
-  fprintf(fp, "bgn:", i);
+  fprintf(fp, "bgn:");
   for(j=0;j<dfa->cp_begin_len;j++) {
     fprintf(fp, " %d", dfa->cp_begin[j]);
   }
   fprintf(fp, "\n");
-  fprintf(fp, "end:", i);
+  fprintf(fp, "end:");
   for(j=0;j<dfa->cp_end_len;j++) {
     fprintf(fp, " %d", dfa->cp_end[j]);
   }

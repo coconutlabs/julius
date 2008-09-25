@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -605,9 +605,7 @@ get_back_trellis(Recog *recog)
   MFCCCalc *mfcc;
   int rewind_frame;
   PROCESS_AM *am;
-  RecogProcess *p;
   boolean reprocess;
-  boolean started;
 
   /* initialize mfcc instances */
   for(mfcc=recog->mfcclist;mfcc;mfcc=mfcc->next) {

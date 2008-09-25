@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 14:18:36 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -41,7 +41,7 @@ print_dfa_info(FILE *fp, DFA_INFO *dinfo)
 	 dinfo->state_num, dinfo->arc_num, dinfo->term_num);
   
   dfa_cp_count_size(dinfo, &size, &allocsize);
-  fprintf(fp, "      category-pair matrix: %ld bytes (%d bytes allocated)\n", size, allocsize);
+  fprintf(fp, "      category-pair matrix: %ld bytes (%ld bytes allocated)\n", size, allocsize);
 }
 
 /** 
@@ -53,9 +53,6 @@ print_dfa_info(FILE *fp, DFA_INFO *dinfo)
 void
 print_dfa_cp(FILE *fp, DFA_INFO *dinfo)
 {
-  int i,j;
-  int t;
-
   if (fp == NULL) return;
   fprintf(fp, "---------- terminal(category)-pair matrix ----------\n");
   dfa_cp_output_rawdata(fp, dinfo);

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 23:36:00 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -122,7 +122,7 @@ put_htk_mpdf(FILE *fp, HTK_HMM_PDF *m)
     book = (GCODEBOOK *)m->b;
     fprintf(fp, "  tmix codebook = \"%s\" (size=%d)\n", book->name, book->num);
     for (i=0;i<m->mix_num;i++) {
-      fprintf(fp, "    weight%d = %f\n", exp(m->bweight[i]));
+      fprintf(fp, "    weight%d = %f\n", i, exp(m->bweight[i]));
     }
   } else {
     for (i=0;i<m->mix_num;i++) {
@@ -141,7 +141,7 @@ put_htk_mpdf(FILE *fp, HTK_HMM_PDF *m)
 void
 put_htk_state(FILE *fp, HTK_HMM_State *s)
 {
-  int st, i;
+  int st;
 
   if (fp == NULL) return;
   if (s == NULL) {

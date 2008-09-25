@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -105,7 +105,7 @@ check_section(Jconf *jconf, char *optname, short sec)
 
   if (jconf->optsection == sec) return TRUE;
 
-  if (jconf->optsection == JCONF_OPT_GLOBAL) return TRUE;
+  if (jconf->optsection == JCONF_OPT_DEFAULT) return TRUE;
 
   switch(sec) {
   case JCONF_OPT_GLOBAL:
@@ -118,6 +118,8 @@ check_section(Jconf *jconf, char *optname, short sec)
     jlog("ERROR: \"%s\" is SR (search) option", optname); break;
   }
   switch(jconf->optsection) {
+  case JCONF_OPT_GLOBAL:
+    jlog(", but exists at global section (-GLOBAL)\n"); break;
   case JCONF_OPT_AM:
     jlog(", but exists at AM section (-AM \"%s\")\n", jconf->amnow->name); break;
   case JCONF_OPT_LM:
@@ -289,6 +291,9 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
       jconf->searchnow = sconf;
       jconf->optsection = JCONF_OPT_SR;
+      continue;
+    } else if (strmatch(argv[i],"-GLOBAL")) {
+      jconf->optsection = JCONF_OPT_GLOBAL;
       continue;
     } else if (strmatch(argv[i],"-sectioncheck")) { /* enable section check */
       jconf->optsectioning = TRUE;

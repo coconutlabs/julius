@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -1013,6 +1013,7 @@ typedef struct __Jconf__ {
 } Jconf;
 
 enum {
+  JCONF_OPT_DEFAULT,
   JCONF_OPT_GLOBAL,
   JCONF_OPT_AM,
   JCONF_OPT_LM,

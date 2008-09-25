@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -96,7 +96,7 @@ jconf_set_default_values(Jconf *j)
   j->decodeopt.force_realtime_flag	= FALSE;
   j->decodeopt.segment			= FALSE;
 
-  j->optsection				= JCONF_OPT_GLOBAL;
+  j->optsection				= JCONF_OPT_DEFAULT;
   j->optsectioning			= TRUE;
 }
 

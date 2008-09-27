@@ -111,6 +111,13 @@
 #-realtime			# force real-time processing
 #-norealtime			# force non real-time processing
 
+####
+#### Plug-in
+####
+#### See plugin/00readme.txt for detail
+####
+#-plugindir ./plugin:/usr/local/share/julius/plugins
+
 
 ######################################################################
 #### INSTANCE DEFINITION FOR MULTI DECODING
@@ -164,6 +171,14 @@
 ## analysis parameter for GMM.  Be sure not to confuse with normal AM
 ## configuration.
 # -AM_GMM
+
+## When using instance declarations, global options should be placed
+## at top before any instance declaration, or after this option below.
+## This option is only a switcher and can be used anywhere anytime.
+# -GLOBAL
+
+## This option disables strict section check and back to 4.0
+# -nosectioncheck
 
 ######################################################################
 #### LANGUAGE MODEL (-LM)

@@ -4,7 +4,9 @@
 
                                 Julius
 
+                                                (Rev 4.1   2008/09/xx)
                                                 (Rev 4.0.2 2008/05/27)
+                                                (Rev 4.0   2007/12/19)
                                                 (Rev 3.5.3 2006/12/29)
                                                 (Rev 3.4.2 2004/04/30)
                                                 (Rev 2.0   1999/02/20)
@@ -37,41 +39,25 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.0.2
+What's new in Julius-4.1
 ===========================
 
-Julius rev.4.0.2 is a bug fix release.
-Please see Release.txt for detailed list of fixes.
+From 4.0 to 4.0.2, many bugs are fixed and small improvements were
+done.  New options "-fallback1pass" and "-usepower" were added.  The
+default audio API is changed from "oss" to "alsa" on Linux.
+
+From 4.0.2 to 4.1, multi-stream AM, MSD-HMM, CVN, frequency warping
+for VTLN are all supported.  "jclient-perl", a perl version of module
+mode client, is newly added.
+
+A great forward-steps have been made by implementing a plugin
+capability.  It enables run-time, easy extension of decoder. 
+The directory "plugin" contains several example source codes and
+ready to compile and test them.  The source codes also contain all
+function specification documents.
 
 
-What's new in Julius-4.0
-==========================
-
-The Julius rev.4.0 is a full major version up, a re-innovation of the
-decoder as a flexible speech recognition engine.  The internal
-structures are re-organized and modularized thoroughly, which results
-in the librarization of core engine, enhancement and unification of
-language model, realization of multi-decoding with hot plugging
-feature.  The major features are listed below:
-
- - Engine core becomes separate C library with simple API
- - Can handle various LM, thus Julius and Julian are integrated
- - Multi-decoding with multiple models
- - Support to add and remove models while running the decoder
- - Support N-gram longer than 4 (N now unlimited)
- - User-defined LM function
- - Confusion network output
- - GMM-based and decoder-based VAD
- - New tools added, new functions added
- - Memory efficiency is improved
-
-Julius-4.0 ensures the compatibility with Julius-3.x for its usage and
-Jconf configuration, so that one can easily migrate to Julius-4.
-The decoding performance of Julius-4.0 is still kept as the same as
-the latest release (Julius-3.5.3) for now.
-
-
-Contents of Julius-4.0
+Contents of Julius-4.1
 =========================
 
 	(Documents with suffix "ja" are written in Japanese)
@@ -94,6 +80,8 @@ Contents of Julius-4.0
 	mkgshmm/		Model conversion for Gaussian Mixture Selection
 	mkss/			Estimate noise spectrum from mic input
 	support/		some tools to compile julius/julian from source
+	jclient-perl/		A simple perl version of module mode client
+	plugin/			Several plugin source codes and documentation
 	olddoc/			ChangeLogs before 3.2
 
 
@@ -104,7 +92,8 @@ The up-to-date documentations are available at the Julius Web site:
 
     http://julius.sourceforge.jp/en/
 
-Also it is worth taking a look at the Julius forum at:
+For QA, discussion and development information, please see and join
+the Julius web forum at:
 
     http://julius.sourceforge.jp/forum/
 

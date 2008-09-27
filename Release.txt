@@ -1,3 +1,42 @@
+4.1 (2008.9.xx)
+================
+New plugin extension:
+  - supported types:
+      - A/D-in plugin
+      - feature vector input plugin
+      - audio input monitor / postprocess plugin
+      - feature vector monitor / postprocess plugin
+      - result plugin
+      - can add arbitrary JuliusLib callback via plugin
+  - sample codes is included, with full documentation of function spec.
+  - run on Linux, Windows and other unix variants with dlopen() capability
+
+Newly supported features:
+  - multi-stream feature input
+  - MSD-HMM (compatible with "HTS" toolkit)
+  - CVN 
+  - frequency warping for VTLN (no estimation yet)
+  - "-input alsa", "-input oss" and "-input esd"
+  - perl version of jcontrol client "jclient-perl"
+
+Modified:
+  - Restrict option orders when multiple instances defined (-AM, -LM, -SR):
+      - Option should be just after correspondence instance declaration. 
+        (ex. LM options should be placed after "-LM" and before other 
+        instance declaration.)
+      - Global option should be before any instance declaration, or
+        just after "-GLOBAL" option.
+    This new restriction can be removed by "-nosectioncheck" option.
+
+Fixed bugs:
+  - "-record" fails to record the first silence part!
+  - Not working "-multigramout"
+  - environment variable expansion sometimes fail within jconf file.
+  - limits extended:
+     maximum HMM name length = 256 char, Number of HMM states unlimited.
+  - Module mode error message on grammar command.
+
+
 4.0.2 (2008.5.27)
 ==================
 New features:

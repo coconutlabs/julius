@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -37,11 +37,11 @@ static unsigned char mbit[] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
  * @return the content of tested bit in @a tmp_str, either 0 or 1.
  */
 int
-testbit(char *str, int bitplace)
+testbit(char *str, int slen, int bitplace)
 {
   int maskptr;
   
-  if ((maskptr = bitplace >> 3) > strlen(str)) return 0;
+  if ((maskptr = bitplace >> 3) > slen) return 0;
   return(str[maskptr] & mbit[bitplace & 7]);
 }
 
@@ -74,11 +74,14 @@ where_the_bit_differ(char *str1, char *str2)
 {
   int p = 0;
   int bitloc;
+  int slen1, slen2;
 
   /* step: char, bit */
   while(str1[p] == str2[p]) p++;
   bitloc = p * 8;
-  while(testbit(str1, bitloc) == testbit(str2, bitloc)) bitloc++;
+  slen1 = strlen(str1);
+  slen2 = strlen(str2);
+  while(testbit(str1, slen1, bitloc) == testbit(str2, slen2, bitloc)) bitloc++;
 
   return(bitloc);
 }
@@ -138,7 +141,7 @@ make_ptree(char **words, int *data, int wordsnum, int bitplace)
 
   newnum = 0;
   for (i=0;i<wordsnum;i++) {
-    if (testbit(words[i], bitplace) != 0) {
+    if (testbit(words[i], strlen(words[i]), bitplace) != 0) {
       newnum++;
     }
   }
@@ -149,9 +152,9 @@ make_ptree(char **words, int *data, int wordsnum, int bitplace)
     /* sort word pointers by tested bit */
     j = wordsnum-1;
     for (i=0; i<newnum; i++) {
-      if (testbit(words[i], bitplace) == 0) {
+      if (testbit(words[i], strlen(words[i]), bitplace) == 0) {
 	for (; j>=newnum; j--) {
-	  if (testbit(words[j], bitplace) != 0) {
+	  if (testbit(words[j], strlen(words[j]), bitplace) != 0) {
 	    p = words[i]; words[i] = words[j]; words[j] = p;
 	    tmp = data[i]; data[i] = data[j]; data[j] = tmp;
 	    break;
@@ -267,7 +270,7 @@ ptree_make_root_node(int data)
  * @param parentlink [i/o] the parent node to which this node will be added
  */
 static void
-ptree_add_entry_at(char *str, int bitloc, int data, PATNODE **parentlink)
+ptree_add_entry_at(char *str, int slen, int bitloc, int data, PATNODE **parentlink)
 {
   PATNODE *node;
   node = *parentlink;
@@ -280,7 +283,7 @@ ptree_add_entry_at(char *str, int bitloc, int data, PATNODE **parentlink)
     newbranch = new_node();
     newbranch->value.thres_bit = bitloc;
     *parentlink = newbranch;
-    if (testbit(str, bitloc) ==0) {
+    if (testbit(str, slen, bitloc) ==0) {
       newbranch->left0  = newleaf;
       newbranch->right1 = node;
     } else {
@@ -289,10 +292,10 @@ ptree_add_entry_at(char *str, int bitloc, int data, PATNODE **parentlink)
     }
     return;
   } else {
-    if (testbit(str, node->value.thres_bit) != 0) {
-      ptree_add_entry_at(str, bitloc, data, &(node->right1));
+    if (testbit(str, slen, node->value.thres_bit) != 0) {
+      ptree_add_entry_at(str, slen, bitloc, data, &(node->right1));
     } else {
-      ptree_add_entry_at(str, bitloc, data, &(node->left0));
+      ptree_add_entry_at(str, slen, bitloc, data, &(node->left0));
     }
   }
 }
@@ -315,7 +318,7 @@ ptree_add_entry(char *str, int data, char *matchstr, PATNODE **rootnode)
   if (*rootnode == NULL) {
     *rootnode = ptree_make_root_node(data);
   } else {
-    ptree_add_entry_at(str, bitloc, data, rootnode);
+    ptree_add_entry_at(str, strlen(str), bitloc, data, rootnode);
   }
 
 }

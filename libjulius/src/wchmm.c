@@ -31,7 +31,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 19 23:39:15 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -79,6 +79,7 @@ wchmm_new()
   w->malloc_root = NULL;
 #ifdef PASS1_IWCD
   w->lcdset_category_root = NULL;
+  w->lcdset_mroot = NULL;
 #endif /* PASS1_IWCD */
   w->wrk.out_from_len = 0;
   /* reset user function entry point */

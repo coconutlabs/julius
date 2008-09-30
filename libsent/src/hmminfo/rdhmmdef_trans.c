@@ -17,7 +17,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 03:50:55 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -69,14 +69,14 @@ trans_add(HTK_HMM_INFO *hmm, HTK_HMM_Trans *new)
   if (new->name != NULL) {
     /* add index to search index tree */
     if (hmm->tr_root == NULL) {
-      hmm->tr_root = aptree_make_root_node(new);
+      hmm->tr_root = aptree_make_root_node(new, &(hmm->mroot));
     } else {
       match = aptree_search_data(new->name, hmm->tr_root);
       if (match != NULL && strmatch(match->name,new->name)) {
 	jlog("Error: rdhmmdef_trans: ~t \"%s\" is already defined\n", new->name);
 	rderr(NULL);
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmm->tr_root));
+	aptree_add_entry(new->name, new, match->name, &(hmm->tr_root), &(hmm->mroot));
       }
     }
   }

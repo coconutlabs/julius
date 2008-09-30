@@ -28,7 +28,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 18 21:31:32 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -261,6 +261,7 @@ typedef struct wchmm_info {
   BMALLOC_BASE *malloc_root;	///< Pointer for block memory allocation
 #ifdef PASS1_IWCD
   APATNODE *lcdset_category_root; ///< Index of lexicon-dependent category-aware pseudo phone set when used on Julian
+  BMALLOC_BASE *lcdset_mroot;
 #endif /* PASS1_IWCD */
 
   HMMWork *hmmwrk;		///< Work area for HMM computation in wchmm

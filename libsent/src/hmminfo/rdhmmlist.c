@@ -41,7 +41,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 04:04:23 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -121,14 +121,14 @@ rdhmmlist(FILE *fp, HTK_HMM_INFO *hmminfo)
     hmminfo->lgstart = new;
     /* add index to search index tree */
     if (hmminfo->logical_root == NULL) {
-      hmminfo->logical_root = aptree_make_root_node(new);
+      hmminfo->logical_root = aptree_make_root_node(new, &(hmminfo->lroot));
     } else {
       match = aptree_search_data(new->name, hmminfo->logical_root);
       if (match != NULL && strmatch(match->name, new->name)) {
 	jlog("Error: rdhmmlist: line %d: logical HMM \"%s\" duplicated\n", n, new->name);
 	ok_flag = FALSE;
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root));
+	aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root), &(hmminfo->lroot));
       }
     }
     
@@ -136,5 +136,6 @@ rdhmmlist(FILE *fp, HTK_HMM_INFO *hmminfo)
 
   hmminfo->totallogicalnum = n;
   free(buf);
+
   return(ok_flag);
 }

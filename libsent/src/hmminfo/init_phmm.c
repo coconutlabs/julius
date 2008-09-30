@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 23:05:33 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -39,6 +39,7 @@ hmminfo_new()
 
   new->mroot = NULL;
   new->lroot = NULL;
+  new->cdset_root = NULL;
   new->tmp_mixnum = NULL;
 
   new->opt.stream_info.num = 0;
@@ -96,20 +97,8 @@ boolean
 hmminfo_free(HTK_HMM_INFO *hmm)
 {
   /* cdset does not use bmalloc, so free them separately */
-  free_cdset(&(hmm->cdset_info.cdtree));
+  free_cdset(&(hmm->cdset_info.cdtree), &(hmm->cdset_root));
 
-  /* free lookup indexes */
-  free_aptree(hmm->tr_root);
-  free_aptree(hmm->sw_root);
-  free_aptree(hmm->vr_root);
-  free_aptree(hmm->pdf_root);
-  free_aptree(hmm->dn_root);
-  free_aptree(hmm->st_root);
-  free_aptree(hmm->physical_root);
-  free_aptree(hmm->logical_root);
-  free_aptree(hmm->codebook_root);
-  free_aptree(hmm->basephone.root);
-  
   /* free all memory that has been allocated by bmalloc2() */
   if (hmm->mroot != NULL) mybfree2(&(hmm->mroot));
   if (hmm->lroot != NULL) mybfree2(&(hmm->lroot));
@@ -135,6 +124,7 @@ init_hmminfo(HTK_HMM_INFO *hmminfo, char *hmmfilename, char *namemapfile, Value 
 {
   FILE *fp;
   boolean ok_p;
+  boolean binary;
 
   ok_p = FALSE;
 
@@ -180,15 +170,41 @@ init_hmminfo(HTK_HMM_INFO *hmminfo, char *hmmfilename, char *namemapfile, Value 
       jlog("Error: init_phmm: failed to open %s\n",namemapfile);
       return FALSE;
     }
-    if (rdhmmlist(fp, hmminfo) == FALSE) {
-      jlog("Error: init_phmm: HMMList \"%s\" read error\n",namemapfile);
-      return FALSE;
+    /* detect binary / ascii by the first 4 bytes */
+    {
+      int x;
+      if (myfread(&x, sizeof(int), 1, fp) < 1) {
+	jlog("Error: init_phmm: failed to read %s\n", namemapfile);
+	return FALSE;
+      }
+      if (x == 0) {
+	binary = TRUE;
+      } else {
+	binary = FALSE;
+	myfrewind(fp);
+      }
+    }
+    if (binary) {
+      /* binary format */
+      jlog("Stat: init_phmm: loading binary hmmlist\n");
+      if (load_hmmlist_bin(fp, hmminfo) == FALSE) {
+	jlog("Error: init_phmm: HMMList \"%s\" read error\n",namemapfile);
+	return FALSE;
+      }
+    } else {
+      /* ascii format */
+      jlog("Stat: init_phmm: loading ascii hmmlist\n");
+      if (rdhmmlist(fp, hmminfo) == FALSE) {
+	jlog("Error: init_phmm: HMMList \"%s\" read error\n",namemapfile);
+	return FALSE;
+      }
     }
     if (fclose_readfile(fp) < 0) {
       jlog("Error: init_phmm: failed to close %s\n", namemapfile);
       return FALSE;
     }
     jlog("Stat: init_phmm: logical names: %5d in HMMList\n", hmminfo->totallogicalnum);
+
   } else {
     /* add all names of physical HMMs as logical names */
     hmm_add_physical_to_logical(hmminfo);

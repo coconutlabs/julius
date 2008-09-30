@@ -60,7 +60,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 17:58:54 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -204,7 +204,7 @@ put_all_cdinfo(HTK_HMM_INFO *hmminfo)
  * @return TRUE if newly registered, FALSE if the specified physical %HMM already exists in the pseudo phone.
  */
 boolean
-regist_cdset(APATNODE **root, HTK_HMM_Data *d, char *cdname)
+regist_cdset(APATNODE **root, HTK_HMM_Data *d, char *cdname, BMALLOC_BASE **mroot)
 {
   boolean need_new;
   CD_State_Set *tmp;
@@ -273,9 +273,9 @@ regist_cdset(APATNODE **root, HTK_HMM_Data *d, char *cdname)
     lset->tr = d->tr;
     /* add to search index tree */
     if (*root == NULL) {
-      *root = aptree_make_root_node(lset);
+      *root = aptree_make_root_node(lset, mroot);
     } else {
-      aptree_add_entry(lset->name, lset, lmatch->name, root);
+      aptree_add_entry(lset->name, lset, lmatch->name, root, mroot);
     }
 
     changed = TRUE;
@@ -309,39 +309,6 @@ regist_cdset(APATNODE **root, HTK_HMM_Data *d, char *cdname)
 }
 
 /** 
- * Remove an pseudo phone set entry from index tree
- * 
- * @param hmminfo 
- * @param cdname 
- * 
- * @return 
- */
-boolean
-remove_cdset(HTK_HMM_INFO *hmminfo, char *cdname)
-{
-  CD_Set *lmatch;
-  
-  if (hmminfo->cdset_info.cdtree == NULL) return TRUE;
-
-  lmatch = aptree_search_data(cdname, hmminfo->cdset_info.cdtree);
-  if (lmatch != NULL && strmatch(lmatch->name, cdname)) {
-    jlog("Stat: cdset: [%s] found, removed from cdset\n", lmatch->name);
-    /* found */
-    /*
-    for(j=1;j<lmatch->state_num-1;j++) {
-      free(lmatch->stateset[j].s);
-    }
-    free(lmatch->stateset);
-    */
-    aptree_remove_entry(cdname, &(hmminfo->cdset_info.cdtree));
-  } else {
-    return FALSE;
-  }
-  return TRUE;
-}
-  
-
-/** 
  * Construct the whole pseudo %HMM information, and also add them to the logical Triphone tree.
  * 
  * @param hmminfo [i/o] %HMM definition data.  The generated data will also
@@ -361,19 +328,19 @@ make_cdset(HTK_HMM_INFO *hmminfo)
      for 1st pass (word end) */
   for(lg = hmminfo->lgstart; lg; lg = lg->next) {
     if (lg->is_pseudo) continue;
-    regist_cdset(&(hmminfo->cdset_info.cdtree), lg->body.defined, leftcenter_name(lg->name, buf));
+    regist_cdset(&(hmminfo->cdset_info.cdtree), lg->body.defined, leftcenter_name(lg->name, buf), &(hmminfo->cdset_root));
   }
   /* right-context set: "a+o" for /b-a+o/, /t-a+o/, ...
      for 2nd pass (word beginning) */
   for(lg = hmminfo->lgstart; lg; lg = lg->next) {
     if (lg->is_pseudo) continue;
-    regist_cdset(&(hmminfo->cdset_info.cdtree), lg->body.defined, rightcenter_name(lg->name, buf));
+    regist_cdset(&(hmminfo->cdset_info.cdtree), lg->body.defined, rightcenter_name(lg->name, buf), &(hmminfo->cdset_root));
   }
   /* both-context set: "a" for all triphone with same base phone "a"
      for 1st pass (1 phoneme word, with no previous word hypo.) */
   for(lg = hmminfo->lgstart; lg; lg = lg->next) {
     if (lg->is_pseudo) continue;
-    regist_cdset(&(hmminfo->cdset_info.cdtree), lg->body.defined, center_name(lg->name, buf));
+    regist_cdset(&(hmminfo->cdset_info.cdtree), lg->body.defined, center_name(lg->name, buf), &(hmminfo->cdset_root));
   }
 
   /* now that cdset is completely built */
@@ -409,11 +376,11 @@ callback_free_lcdset_content(void *arg)
  * @param root [i/o] pointer to hold the root index pointer
  */
 void
-free_cdset(APATNODE **root)
+free_cdset(APATNODE **root, BMALLOC_BASE **mroot)
 {
   if (*root != NULL) {
     aptree_traverse_and_do(*root, callback_free_lcdset_content);
-    free_aptree(*root);
+    mybfree2(mroot);
     *root = NULL;
   }
 }

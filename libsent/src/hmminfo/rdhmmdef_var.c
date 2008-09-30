@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 04:01:38 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -67,14 +67,14 @@ var_add(HTK_HMM_INFO *hmm, HTK_HMM_Var *new)
   if (new->name != NULL) {
     /* add index to search index tree */
     if (hmm->vr_root == NULL) {
-      hmm->vr_root = aptree_make_root_node(new);
+      hmm->vr_root = aptree_make_root_node(new, &(hmm->mroot));
     } else {
       match = aptree_search_data(new->name, hmm->vr_root);
       if (match != NULL && strmatch(match->name, new->name)) {
 	jlog("Error: rdhmmdef_var: ~v \"%s\" is already defined\n", new->name);
 	rderr(NULL);
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmm->vr_root));
+	aptree_add_entry(new->name, new, match->name, &(hmm->vr_root), &(hmm->mroot));
       }
     }
   }

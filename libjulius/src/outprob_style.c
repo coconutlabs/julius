@@ -68,7 +68,7 @@
  * @author Akinobu Lee
  * @date   Mon Aug 22 17:14:26 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -232,7 +232,7 @@ lcdset_register_with_category(WCHMM_INFO *wchmm, HMM_Logical *hmm, WORD_ID categ
 	  }
 	}
 	if (! ltmp->is_pseudo) {
-	  if (regist_cdset(&(wchmm->lcdset_category_root), ltmp->body.defined, wchmm->lccbuf2)) {
+	  if (regist_cdset(&(wchmm->lcdset_category_root), ltmp->body.defined, wchmm->lccbuf2, &(wchmm->lcdset_mroot))) {
 	    cnt_p++;
 	  }
 	}
@@ -316,7 +316,7 @@ lcdset_register_with_category_all(WCHMM_INFO *wchmm)
 void
 lcdset_remove_with_category_all(WCHMM_INFO *wchmm)
 {
-  free_cdset(&(wchmm->lcdset_category_root));
+  free_cdset(&(wchmm->lcdset_category_root), &(wchmm->lcdset_mroot));
 }
 
 #endif /* PASS1_IWCD */

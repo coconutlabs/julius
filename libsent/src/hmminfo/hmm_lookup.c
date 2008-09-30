@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 22:34:30 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -143,9 +143,9 @@ hmm_add_physical_to_logical(HTK_HMM_INFO *hmminfo)
     new->next = hmminfo->lgstart;
     hmminfo->lgstart = new;
     if (hmminfo->logical_root == NULL) {
-      hmminfo->logical_root = aptree_make_root_node(new);
+      hmminfo->logical_root = aptree_make_root_node(new, &(hmminfo->lroot));
     } else {
-      aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root));
+      aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root), &(hmminfo->lroot));
     }
   }
 
@@ -192,9 +192,9 @@ hmm_add_pseudo_phones_sub(HTK_HMM_INFO *hmminfo, char *name)
     new->next = hmminfo->lgstart;
     hmminfo->lgstart = new;
     if (hmminfo->logical_root == NULL) {
-      hmminfo->logical_root = aptree_make_root_node(new);
+      hmminfo->logical_root = aptree_make_root_node(new, &(hmminfo->lroot));
     } else {
-      aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root));
+      aptree_add_entry(new->name, new, match->name, &(hmminfo->logical_root), &(hmminfo->lroot));
     }
     hmminfo->totalpseudonum++;
   }

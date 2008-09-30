@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 01:43:43 2005
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -68,14 +68,14 @@ mpdf_add(HTK_HMM_INFO *hmm, HTK_HMM_PDF *new)
   if (new->name != NULL) {
     /* add index to search index tree */
     if (hmm->pdf_root == NULL) {
-      hmm->pdf_root = aptree_make_root_node(new);
+      hmm->pdf_root = aptree_make_root_node(new, &(hmm->mroot));
     } else {
       match = aptree_search_data(new->name, hmm->pdf_root);
       if (match != NULL && strmatch(match->name, new->name)) {
 	jlog("Error: rdhmmdef_dens: ~m \"%s\" is already defined\n", new->name);
 	rderr(NULL);
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmm->pdf_root));
+	aptree_add_entry(new->name, new, match->name, &(hmm->pdf_root), &(hmm->mroot));
       }
     }
   }

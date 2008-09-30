@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -143,11 +143,11 @@ add_to_error(WORD_INFO *winfo, char *name)
   buf = (char *)mymalloc(strlen(name) + 1);
   strcpy(buf, name);
   if (winfo->errph_root == NULL) {
-    winfo->errph_root = aptree_make_root_node(buf);
+    winfo->errph_root = aptree_make_root_node(buf, &(winfo->mroot));
   } else {
     match = aptree_search_data(buf, winfo->errph_root);
     if (match == NULL || !strmatch(match, buf)) {
-      aptree_add_entry(buf, buf, match, &(winfo->errph_root));
+      aptree_add_entry(buf, buf, match, &(winfo->errph_root), &(winfo->mroot));
     }
   }
 }

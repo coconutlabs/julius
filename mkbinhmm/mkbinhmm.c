@@ -7,7 +7,7 @@
 
 /* mkbinhmm --- read in ascii hmmdefs file and write in binary format */
 
-/* $Id: mkbinhmm.c,v 1.3 2008/07/07 05:50:12 sumomo Exp $ */
+/* $Id: mkbinhmm.c,v 1.4 2008/09/30 03:58:18 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
@@ -21,7 +21,7 @@ static void
 usage(char *s)
 {
   printf("mkbinhmm: convert HMM definition file to binary format for Julius\n");
-  printf("usage: %s [-C HTKConfig] hmmdefs binhmm\n", s);
+  printf("usage: %s [-htkconf HTKConfig] hmmdefs binhmm\n", s);
   printf("\nLibrary configuration: ");
   confout_version(stdout);
   confout_am(stdout);

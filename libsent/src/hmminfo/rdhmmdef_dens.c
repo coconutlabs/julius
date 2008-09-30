@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 01:43:43 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -22,7 +22,7 @@
  * All rights reserved
  */
 
-/* $Id: rdhmmdef_dens.c,v 1.2 2007/12/18 08:45:51 sumomo Exp $ */
+/* $Id: rdhmmdef_dens.c,v 1.3 2008/09/30 03:58:18 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
@@ -88,14 +88,14 @@ dens_add(HTK_HMM_INFO *hmm, HTK_HMM_Dens *new)
   if (new->name != NULL) {
     /* add index to search index tree */
     if (hmm->dn_root == NULL) {
-      hmm->dn_root = aptree_make_root_node(new);
+      hmm->dn_root = aptree_make_root_node(new, &(hmm->mroot));
     } else {
       match = aptree_search_data(new->name, hmm->dn_root);
       if (match != NULL && strmatch(match->name, new->name)) {
 	jlog("Error: rdhmmdef_dens: ~m \"%s\" is already defined\n", new->name);
 	rderr(NULL);
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmm->dn_root));
+	aptree_add_entry(new->name, new, match->name, &(hmm->dn_root), &(hmm->mroot));
       }
     }
   }

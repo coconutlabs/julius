@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 01:12:19 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -68,7 +68,7 @@ htk_hmmdata_add(HTK_HMM_INFO *hmm, HTK_HMM_Data *new)
   } else {
     /* add index to search index tree */
     if (hmm->physical_root == NULL) {
-      hmm->physical_root = aptree_make_root_node(new);
+      hmm->physical_root = aptree_make_root_node(new, &(hmm->mroot));
     } else {
       match = aptree_search_data(new->name, hmm->physical_root);
       if (match != NULL && strmatch(match->name, new->name)) {
@@ -76,7 +76,7 @@ htk_hmmdata_add(HTK_HMM_INFO *hmm, HTK_HMM_Data *new)
 	jlog("Error: rdhmmdef_data: HMM \"%s\" is defined more than twice\n", new->name);
 	rderr(NULL);
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmm->physical_root));
+	aptree_add_entry(new->name, new, match->name, &(hmm->physical_root), &(hmm->mroot));
       }
     }
   }

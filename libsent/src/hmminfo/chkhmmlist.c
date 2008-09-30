@@ -26,7 +26,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 19:17:51 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -66,8 +66,8 @@ make_hmm_basephone_list(HTK_HMM_INFO *hmminfo)
     new->endflag = FALSE;
     new->name = (char *)mybmalloc2(strlen(p)+1, &(hmminfo->mroot));
     strcpy(new->name, p);
-    if (root == NULL) root = aptree_make_root_node(new);
-    else aptree_add_entry(new->name, new, match->name, &root);
+    if (root == NULL) root = aptree_make_root_node(new, &(hmminfo->mroot));
+    else aptree_add_entry(new->name, new, match->name, &root, &(hmminfo->mroot));
     n++;
   }
   hmminfo->basephone.num = n;
@@ -223,8 +223,8 @@ add_to_error(char *lostname, HTK_HMM_INFO *hmminfo)
   }
   new = (char *)mybmalloc2(strlen(lostname)+1, &(hmminfo->mroot));
   strcpy(new, lostname);
-  if (error_root == NULL) error_root = aptree_make_root_node(new);
-  else aptree_add_entry(new, new, match, &error_root);
+  if (error_root == NULL) error_root = aptree_make_root_node(new, &(hmminfo->mroot));
+  else aptree_add_entry(new, new, match, &error_root, &(hmminfo->mroot));
 
   error_num++;
 }

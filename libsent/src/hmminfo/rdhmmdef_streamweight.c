@@ -65,14 +65,14 @@ sw_add(HTK_HMM_INFO *hmm, HTK_HMM_StreamWeight *new)
   if (new->name != NULL) {
     /* add index to search index tree */
     if (hmm->sw_root == NULL) {
-      hmm->sw_root = aptree_make_root_node(new);
+      hmm->sw_root = aptree_make_root_node(new, &(hmm->mroot));
     } else {
       match = aptree_search_data(new->name, hmm->sw_root);
       if (match != NULL && strmatch(match->name, new->name)) {
 	jlog("Error: rdhmmdef_streamweight: ~w \"%s\" is already defined\n", new->name);
 	rderr(NULL);
       } else {
-	aptree_add_entry(new->name, new, match->name, &(hmm->sw_root));
+	aptree_add_entry(new->name, new, match->name, &(hmm->sw_root), &(hmm->mroot));
       }
     }
   }

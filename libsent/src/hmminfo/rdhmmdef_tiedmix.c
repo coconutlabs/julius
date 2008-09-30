@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 03:25:11 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -60,14 +60,14 @@ codebook_add(HTK_HMM_INFO *hmm, GCODEBOOK *new)
 {
   GCODEBOOK *match;
   if (hmm->codebook_root == NULL) {
-    hmm->codebook_root = aptree_make_root_node(new);
+    hmm->codebook_root = aptree_make_root_node(new, &(hmm->mroot));
   } else {
     match = aptree_search_data(new->name, hmm->codebook_root);
     if (match != NULL && strmatch(match->name, new->name)) {
       jlog("Error: rdhmmdef_tiedmix: ~s \"%s\" is already defined\n", new->name);
       rderr(NULL);
     } else {
-      aptree_add_entry(new->name, new, match->name, &(hmm->codebook_root));
+      aptree_add_entry(new->name, new, match->name, &(hmm->codebook_root), &(hmm->mroot));
     }
   }
 }

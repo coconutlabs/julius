@@ -16,7 +16,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 19:36:47 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -402,6 +402,7 @@ typedef struct {
 
   BMALLOC_BASE *mroot;		///< Pointer for block memory allocation
   BMALLOC_BASE *lroot;		///< Pointer for block memory allocation for logical HMM
+  BMALLOC_BASE *cdset_root;		///< Pointer for block memory allocation for logical HMM
 
   int *tmp_mixnum;		///< Work area for state reading
 
@@ -464,6 +465,9 @@ void codebook_add(HTK_HMM_INFO *hmm, GCODEBOOK *new);
 void def_regtree_macro(char *name, FILE *fp, HTK_HMM_INFO *hmm);
 /* rdhmmdef_hmmlist.c */
 boolean rdhmmlist(FILE *fp, HTK_HMM_INFO *hmminfo);
+boolean save_hmmlist_bin(FILE *fp, HTK_HMM_INFO *hmminfo);
+boolean load_hmmlist_bin(FILE *fp, HTK_HMM_INFO *hmminfo);
+
 /* put_htkdata_info.c */
 void put_htk_trans(FILE *fp, HTK_HMM_Trans *t);
 void put_htk_var(FILE *fp, HTK_HMM_Var *v);
@@ -502,10 +506,10 @@ char *leftcenter_name(char *hmmname, char *buf);
 char *rightcenter_name(char *hmmname, char *buf);
 
 /* CD_SET related */
-boolean regist_cdset(APATNODE **root, HTK_HMM_Data *d, char *cdname);
+boolean regist_cdset(APATNODE **root, HTK_HMM_Data *d, char *cdname, BMALLOC_BASE **mroot);
 boolean make_cdset(HTK_HMM_INFO *hmminfo);
 void put_all_cdinfo(HTK_HMM_INFO *hmminfo);
-void free_cdset(APATNODE **root);
+void free_cdset(APATNODE **root, BMALLOC_BASE **mroot);
 CD_Set *cdset_lookup(HTK_HMM_INFO *hmminfo, char *cdstr);
 CD_Set *lcdset_lookup_by_hmmname(HTK_HMM_INFO *hmminfo, char *hmmname);
 CD_Set *rcdset_lookup_by_hmmname(HTK_HMM_INFO *hmminfo, char *hmmname);

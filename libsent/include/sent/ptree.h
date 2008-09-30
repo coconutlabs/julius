@@ -17,7 +17,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 17:27:24 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -64,7 +64,7 @@ typedef struct _patnode {
   struct _patnode *right1;	///< Link to right node (bit=1)
 } PATNODE;
 
-int testbit(char *str, int bitplace);
+int testbit(char *str, int slen, int bitplace);
 int testbit_max(char *str, int bitplace, int maxbitplace);
 int where_the_bit_differ(char *str1, char *str2);
 PATNODE *make_ptree(char **words, int *data, int wordsnum, int bitplace);
@@ -75,10 +75,11 @@ void ptree_add_entry(char *str, int data, char *matchstr, PATNODE **rootnode);
 void free_ptree(PATNODE *rootnode);
 
 void *aptree_search_data(char *str, APATNODE *rootnode);
-APATNODE *aptree_make_root_node(void *data);
-void aptree_add_entry(char *str, void *data, char *matchstr, APATNODE **rootnode);
+APATNODE *aptree_make_root_node(void *data, BMALLOC_BASE **mroot);
+void aptree_add_entry(char *str, void *data, char *matchstr, APATNODE **rootnode, BMALLOC_BASE **mroot);
 void aptree_remove_entry(char *str, APATNODE **rootnode);
 void aptree_traverse_and_do(APATNODE *node, void (*callback)(void *));
-void free_aptree(APATNODE *rootnode);
+boolean aptree_write(FILE *fp, APATNODE *root, boolean (*save_data_func)(void *, FILE *fp));
+boolean aptree_read(FILE *fp, APATNODE **root, BMALLOC_BASE **mroot, void *data, boolean (*load_data_func)(void **, void *, FILE *fp));
 
 #endif /* __PATRICIA_TREE_H__ */

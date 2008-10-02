@@ -4,10 +4,10 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl $Id: configure.in,v 1.2 2007/12/18 08:45:48 sumomo Exp $
+dnl $Id: configure.in,v 1.3 2008/10/02 08:57:03 sumomo Exp $
 dnl
 
-AC_INIT(julius.man)
+AC_INIT(main.c)
 AC_CONFIG_HEADER(config.h)
 AC_CONFIG_AUX_DIR(../support)
 

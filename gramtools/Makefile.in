@@ -4,7 +4,7 @@
 
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.2 2007/12/18 08:45:46 sumomo Exp $
+# $Id: Makefile.in,v 1.3 2008/10/02 08:57:02 sumomo Exp $
 #
 SHELL=/bin/sh
 RM=@RM@ -f
@@ -28,14 +28,6 @@ install.bin:
 	for d in $(SUBDIRS); do \
 	  (cd $$d; $(MAKE) install.bin); \
 	done
-
-install.man:
-	for d in $(SUBDIRS); do \
-	  (cd $$d; $(MAKE) install.man); \
-	done
-
-install.man.ja:
-	echo nothing to be installed for gramtools.
 
 clean:
 	for d in $(SUBDIRS); do \

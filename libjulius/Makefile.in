@@ -5,7 +5,7 @@
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.4 2008/09/25 05:00:04 sumomo Exp $
+# $Id: Makefile.in,v 1.5 2008/10/02 08:57:03 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -100,12 +100,6 @@ install.include:
 install.bin: libjulius-config
 	${INSTALL} -d ${bindir}
 	${INSTALL_PROGRAM} libjulius-config ${bindir}
-
-install.man:
-	echo nothing to be installed for libjulius.
-
-install.man.ja:
-	echo nothing to be installed for libjulius.
 
 depend:
 	makedepend -- $(CFLAGS) -- $(OBJSENT)

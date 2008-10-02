@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.6 2008/09/30 03:58:17 sumomo Exp $
+# $Id: Makefile.in,v 1.7 2008/10/02 08:57:03 sumomo Exp $
 #
 
 SHELL=/bin/sh
@@ -154,9 +154,6 @@ install.include:
 install.bin: libsent-config
 	${INSTALL} -d ${bindir}
 	${INSTALL_PROGRAM} libsent-config ${bindir}
-
-install.man.ja:
-	echo nothing to be installed for libsent.
 
 clean:
 	$(RM) *~ src/*/*~ src/*/*.o src/*/*/*.o include/sent/*~ 

@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.4 2008/09/30 03:58:18 sumomo Exp $
+# $Id: Makefile.in,v 1.5 2008/10/02 08:57:04 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -29,21 +29,11 @@ mkbinhmm: mkbinhmm.o $(LIBSENT)/libsent.a
 mkbinhmmlist: mkbinhmmlist.o $(LIBSENT)/libsent.a
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ mkbinhmmlist.o $(LDFLAGS)
 
-install: install.bin install.man
+install: install.bin
 
 install.bin: mkbinhmm mkbinhmmlist
 	${INSTALL} -d @bindir@
 	@INSTALL_PROGRAM@ mkbinhmm mkbinhmmlist @bindir@
-
-install.man:
-	${INSTALL} -d @mandir@/man1
-	@INSTALL_DATA@ mkbinhmm.man @mandir@/man1/mkbinhmm.1
-	@INSTALL_DATA@ mkbinhmmlist.man @mandir@/man1/mkbinhmmlist.1
-
-install.man.ja:
-	${INSTALL} -d @mandir@/man1
-	@INSTALL_DATA@ mkbinhmm.man.ja @mandir@/man1/mkbinhmm.1
-	@INSTALL_DATA@ mkbinhmmlist.man.ja @mandir@/man1/mkbinhmmlist.1
 
 clean:
 	$(RM) mkbinhmm.o mkbinhmmlist.o

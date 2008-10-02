@@ -5,7 +5,7 @@
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.4 2008/09/25 04:49:05 sumomo Exp $
+# $Id: Makefile.in,v 1.5 2008/10/02 08:57:03 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -58,19 +58,11 @@ $(TARGET): $(LIBSENT)/libsent.a $(LIBJULIUS)/libjulius.a $(OBJ)
 
 ############################################################
 
-install: install.bin install.man
+install: install.bin
 
 install.bin: $(TARGET)
 	${INSTALL} -d @bindir@
 	${INSTALL_PROGRAM} $(TARGET) ${bindir}/${INSTALLTARGET}
-
-install.man:
-	${INSTALL} -d @mandir@/man1
-	${INSTALL_DATA} $(TARGET).man ${mandir}/man1/$(TARGET).1
-
-install.man.ja:
-	${INSTALL} -d @mandir@/man1
-	${INSTALL_DATA} $(TARGET).man.ja ${mandir}/man1/$(TARGET).1
 
 depend:
 	makedepend -- $(CFLAGS) -- $(OBJSENT)

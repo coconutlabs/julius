@@ -31,19 +31,11 @@ $(TARGET): $(OBJ)
 
 ############################################################
 
-install: install.bin # install.man install.catman
+install: install.bin
 
 install.bin: $(TARGET)
 	${INSTALL} -d @bindir@
 	@INSTALL_PROGRAM@ $(TARGET) @bindir@
-
-#install.man:
-#	${INSTALL} -d @mandir@/man1
-#	@INSTALL_DATA@ $(TARGET).jman @mandir@/man1/adinrec.1
-
-#install.catman:
-#	${INSTALL} -d @mandir@/cat1
-#	@INSTALL_DATA@ $(TARGET).jman.txt @mandir@/cat1/adinrec.1
 
 ############################################################
 

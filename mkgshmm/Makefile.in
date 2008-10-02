@@ -20,19 +20,11 @@ $(TARGET):
 
 ############################################################
 
-install: install.bin install.man
+install: install.bin
 
 install.bin: $(TARGET)
 	${INSTALL} -d @bindir@
 	@INSTALL_PROGRAM@ $(TARGET) @bindir@
-
-install.man:
-	${INSTALL} -d @mandir@/man1
-	@INSTALL_DATA@ $(TARGET).man @mandir@/man1/$(TARGET).1
-
-install.man.ja:
-	${INSTALL} -d @mandir@/man1
-	@INSTALL_DATA@ $(TARGET).man.ja @mandir@/man1/$(TARGET).1
 
 ############################################################
 

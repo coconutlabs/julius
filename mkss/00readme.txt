@@ -1,58 +1,55 @@
+    mkss
+
 MKSS(1)                                                                MKSS(1)
 
 
 
 NAME
-       mkss - compute average spectrum from mic input for SS
+           mkss
+          - calculate average spectrum for spectral subtraction
 
 SYNOPSIS
-       mkss [options..] filename
+       mkss [options...] {filename}
 
 DESCRIPTION
-       mkss  is  a tool for estimating noise spectrum for spectral subtraction
-       on Julius.  It reads a few seconds of sound data from microphone input,
-       and  saves the average spectrum to a file.  The output file can be used
-       as a noise spectrum data in Julius (option "-ssload").
+       mkss is a tool to estimate noise spectrum for spectral subtraction on
+       Julius. It reads a few seconds of sound data from microphone input,
+       calculate the average spectrum and save it to a file. The output file
+       can be used as a noise spectrum data in Julius (option "-ssload").
 
-       Output format is RAW (no header), 16bit  (signed  short,  big  endian),
-       monoral.  If the file already exist, it will be overridden.
+       The recording will start immediately after startup. Sampling format is
+       16bit, monoral. If outpue file already exist, it will be overridden.
 
 OPTIONS
-       -freq threshold
-              Sampling frequency (Hz, default=16000)
+        -freq  Hz
+          Sampling frequency in Hz (default: 16,000)
 
-       -len msec
-              length to record in milliseconds (default: 3000).
+        -len  msec
+          capture length in milliseconds (default: 3000)
 
-       -fsize samplenum
-              frame size in number of samples (default: 400).
+        -fsize  sample_num
+          frame size in number of samples (default: 400)
 
-       -fshift samplenum
-              frame shift in number of samples (default: 160).
-
-USAGE
-       Start  mkss and stay quiet for 3 seconds.  Then the average noise spec-
-       trum will be recorded to the specified file.  When  you  start  Julius,
-       specify  option  "-ssload  thatfile",  and you can use microphone input
-       with spectral subtraction.
+        -fshift  sample_num
+          frame shift in number of samples (default: 160)
 
 SEE ALSO
-       julius(1)
+        julius ( 1 )
 
 COPYRIGHT
-       Copyright (c) 2002-2006 Kawahara Lab., Kyoto University
-       Copyright (c) 2002-2005 Shikano Lab., Nara  Institute  of  Science  and
-       Technology
-       Copyright  (c) 2005-2006 Julius project team, Nagoya Institute of Tech-
-       nology
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
-AUTHORS
-       LEE Akinobu (Nagoya Institute of Technology, Japan)
-       contact: julius-info at lists.sourceforge.jp
+       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+
+       Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
+       Technology
+
+       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Technology
 
 LICENSE
-       Same as Julius.
+       The same as Julius.
 
 
 
-4.3 Berkeley Distribution            LOCAL                             MKSS(1)
+                                  10/02/2008                           MKSS(1)

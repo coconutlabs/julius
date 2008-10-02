@@ -1,64 +1,66 @@
+    mkbinhmm
+
 MKBINHMM(1)                                                        MKBINHMM(1)
 
 
 
-NAME
-       mkbinhmm - convert HMM definition file to binary format for Julius
+名前
+           mkbinhmm
+          - バイナリ HMM 変換
 
-SYNOPSIS
-       mkbinhmm [-C HTK_Config] hmmdefs_file binhmm_file
+概要
+       mkbinhmm [-htkconf HTKConfigFile] {hmmdefs_file} {binhmm_file}
 
 DESCRIPTION
-       mkbinhmm は，HTK形式のアスキー形式のHMM定義ファイルをJulius用のバイナリ
-       形式へ変換する．これのバイナリ形式のHMM定義ファイルを使用すること に よ
-       り， Juliusの起動を高速化することができる．
+       mkbinhmm は，HTKのアスキー形式のHMM定義ファイルを，Julius用のバイナ リ
+       形式へ変換します．これを使うことで Juliusの起動を高速化することができま
+       す．
+
+       この音響モデルの特徴抽出条件を出力ファイルのヘッダに埋め込むことができ
+       ます．埋め込むには，学習時に特徴量抽出に用いた HTK Config ファイルを
+       "-htkconf" で指定します．ヘッダに抽出条件を埋め込むことで， 認識時に自
+       動的に必要な特徴抽出パラメータがセットされるので，便利です．
+
+       入力として，HTKアスキー形式のほかに，既に変換済みのJulius用バイナリHMM
+       を与えることもできます．-htkconf と併用すれば， 既存のバイナリHMMに特徴
+       量抽出条件パラメータを埋め込むことができます．
 
        mkbinhmm は gzip 圧縮されたHMM定義ファイルをそのまま読み込めます．
 
-       変換時にHMMの学習用パラメータファイルの生成に用いた HTK Config ファイル
-       を "-C" あるいは "-htkconf" で指定することで，その音響特徴量抽出条件 を
-       出力ファイルに埋め込むことができます．Julius は埋め込まれたパラメータを
-       見つけると，その値を読み込んで自動的に音声データからの音響特徴量条件 と
-       し て用います．これによって，モデル学習時に使用した特徴量の設定をJulius
-       で自動的にセットすることができます．
-
-       入力としてバイナリ形式に変換済みのHMMを指定することもできます．こ れ を
-       使って，既存のバイナリHMMに特徴量抽出条件パラメータを埋め込むことができ
-       ます．入力に既にパラメータが埋め込まれてかつ Config ファイルが指定さ れ
-       ている場合は，上書きされて出力されます．
-
 OPTIONS
-       -C ConfigFile
-              学習時に特徴量抽出に使用したHTK Configファイルを指定する．指定さ
-              れた場合，その値が出力ファイルのヘッダに埋め込まれる．
+        -htkconf  HTKConfigFile
+          学習時に特徴量抽出に使用したHTK Configファイルを指定する．指定さ れ
+          た場合，その中の設定値が出力ファイルのヘッダに埋め込まれる． 入力に
+          既にヘッダがある場合上書きされる．
 
-       -htkconf ConfigFile
-              "-C" と同じ．
+       hmmdefs_file
+          変換元の音響モデル定義ファイル (MMF)．HTK ASCII 形式，あるいは
+          Julius バイナリ形式．
 
-USAGE
-       バイナリ形式HMM定義モデルをJuliusで使うには，Julius で音響モデル指定 時
-       に， 元の ASCII形式ファイルの代わりにこのファイルを指定するだけでよい．
-       ascii/binary の形式はJuliusで自動判別される．パラメータが埋め込まれてい
-       る場合は Julius がそれを読み出してセットする．
+       hmmdefs_file
+          Julius用バイナリ形式ファイルの出力先．
+
+EXAMPLES
+       HTK ASCII 形式の HMM 定義をバイナリ形式に変換する：
+       HTKの設定ファイル Config の内容をヘッダに書き込んで出力：
+       古いバイナリ形式ファイルにヘッダ情報だけ追加する：
 
 SEE ALSO
-       julius(1)
-
-BUGS
-       バ グ 報 告・ 問 い 合わせ・コメントなどは julius-info at lists.source-
-       forge.jp までお願いします．
+        julius ( 1 ) ,
+        mkbingram ( 1 )
 
 COPYRIGHT
-       Copyright (c) 2003-2006 京都大学 河原研究室
-       Copyright (c) 2003-2005 奈良先端科学技術大学院大学 鹿野研究室
-       Copyright (c) 2005-2006 名古屋工業大学 Julius開発チーム
+       Copyright (c) 1991-2008 京都大学 河原研究室
 
-AUTHORS
-       李 晃伸 (名古屋工業大学) が実装しました．
+       Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
+
+       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+
+       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-4.3 Berkeley Distribution            LOCAL                         MKBINHMM(1)
+                                  10/02/2008                       MKBINHMM(1)

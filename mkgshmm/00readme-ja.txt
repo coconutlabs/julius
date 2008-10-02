@@ -1,60 +1,51 @@
+    mkgshmm
+
 MKGSHMM(1)                                                          MKGSHMM(1)
 
 
 
-NAME
-       mkgshmm - convert monophone HMM to GS HMM for Julius
+名前
+           mkgshmm
+          - モノフォンHMMを GMS 用に変換する
 
-SYNOPSIS
-       mkgshmm monophone_hmmdefs > outputfile
+概要
+       mkgshmm {monophone_hmmdefs}
+                 >
+                  {outputfile}
 
 DESCRIPTION
        mkgshmm はHTK形式のmonophone HMMを Julius の Gaussian Mixture Selection
        (GMS) 用に変換するperlスクリプトです．
 
-       GMSはJulius-3.2からサポートされている音響尤度計算の高速化手法で す． フ
-       レー ムごとに monophone の状態尤度に基づいてtriphoneやPTMの状態を予備選
-       択することで，音響尤度計算がおよそ30%高速化されます．
+       GMSはJulius-3.2からサポートされている音響尤度計算の高速化手法です． フ
+       レームごとに monophone の状態尤度に基づいてtriphoneやPTMの状態を予 備選
+       択することで，音響尤度計算が高速化されます．
 
+EXAMPLES
+       まずターゲットとするtriphoneやPTMに対して，同じコーパスで学習した
+       monophone モデルを用意します．
 
-EXAMPLE
-       まずターゲットとするtriphoneやPTMに対して，同じコーパスで学習した mono-
-       phone モデルを用意します．
-
-       次にそのmonophoneモデルを mkgshmm を用いて GMS 用に変換します（実際には
-       状態定義をマクロ化しているだけです）．
-
-           % mkgshmm monophone > gshmmfile
-
+       次にそのmonophoneモデルを mkgshmm を用いて GMS 用に変換します．
        これを Julius で "-gshmm" で指定します．
-
-           % julius -C foo.jconf -gshmm gshmmfile
-
-       注意：GMS用モデルはtriphoneやPTMと同一のコーパスから作成する必要があ る
-       点 に注意してください．gshmm がミスマッチだと選択誤りが生じ，性能が劣化
-       します．
+       GMS用モデルはtriphoneやPTMと同一のコーパスから作成する必要がある点に注
+       意してください．gshmm がミスマッチだと選択誤りが生じ，性能が劣化しま
+       す．
 
 SEE ALSO
-       julius(1)
-
-BUGS
-       バグ報告・問い合わせ・コメント な ど は  julius-info  at  lists.source-
-       forge.jp までお願いします．
-
-VERSION
-       This version is provided as part of Julius-3.5.1.
+        julius ( 1 )
 
 COPYRIGHT
-       Copyright (c) 2001-2005 京都大学 河原研究室
-       Copyright (c) 2001-2005 奈良先端科学技術大学院大学 鹿野研究室
-       Copyright (c) 2005      名古屋工業大学 Julius開発チーム
+       Copyright (c) 1991-2008 京都大学 河原研究室
 
-AUTHORS
-       李 晃伸 (名古屋工業大学) が実装しました．
+       Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
+
+       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+
+       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-4.3 Berkeley Distribution            LOCAL                          MKGSHMM(1)
+                                  10/02/2008                        MKGSHMM(1)

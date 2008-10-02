@@ -1,9 +1,10 @@
 #!/bin/sh
 #
-# usage: makeman.sh julius.man
+# Update 00readme.txt and 00readme-ja.txt from man file.
 # 
-# generate julius.man.txt, julius.man.txt.ja
+# usage: makeman.sh generate gramtools/generate
+# 
 #
-nroff -man $1 | sed -e 's/.//g' | nkf -c > $1.txt
-LANG=ja_JP.eucJP nroff -Tnippon -man $1.ja | sed -e 's/.//g' | nkf -s -c > $1.txt.ja
-#man -Tps -l $1 > $1.txt.ps
+nroff -man man/$1.1 | sed -e 's/.//g' | nkf -c > $2/00readme.txt
+LANG=ja_JP.eucJP nroff -Tnippon -man man/ja/$1.1 | sed -e 's/.//g' | nkf -s -c > $2/00readme-ja.txt
+echo $1 "->" $2

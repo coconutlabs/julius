@@ -1,58 +1,56 @@
+    mkss
+
 MKSS(1)                                                                MKSS(1)
 
 
 
-NAME
-       mkss - compute average spectrum from mic input for SS
+名前
+           mkss
+          - スペクトルサブトラクション用のノイズスペクトル計算
 
-SYNOPSIS
-       mkss [options..] filename
+概要
+       mkss [options...] {filename}
 
 DESCRIPTION
-       mkss は指定時間分の音をマイク入力から録音し，その平均スペクトラムをファ
-       イルに出力するツールです．出力されたファイルは Julius でスペクトルサ ブ
-       ト ラクションのためのノイズスペクトルファイル（オプション "-ssload"）と
-       して利用できます．
+       mkss は，スペクトルサブトラクション用のノイズスペクトル計算ツールです．
+       指定時間分の音声のない雑音音声をマイク入力から録音し， その短時間スペク
+       トラムの平均を ファイルに出力します．出力されたファイルは，Julius でス
+       ペクトル サブトラクションのためのノイズスペクトルファイル（オプション
+       "-ssload"）として使用できます．
 
-       音声の切り出しは行わず，起動と同時に録音を始めます．
-
-       サンプリング条件は16bit signed short (big endian), monoral で固定です．
-       データ形式はRAW(ヘッダ無し)，big endian形式です．既に同じ名前のファイル
-       が存在する場合は上書きします．
-
-       なおファイル名に "-" を指定することで標準出力へ出力することもできます．
+       録音は起動と同時に開始します．サンプリング条件は16bit signed short (big
+       endian), monoral で固定です．既に同じ名前のファイルが存在する場合 は上
+       書きします．また，ファイル名に "-" を指定するこ とで標準出力へ出力でき
+       ます．
 
 OPTIONS
-       -freq threshold
-              サンプリング周波数をHzで指定する．(default: 16000)
+        -freq  Hz
+          音声のサンプリング周波数 (Hz) を指定する．(default: 16,000)
 
-       -len msec
-              録音時間長をミリ秒単位で指定する (default: 3000)．
+        -len  msec
+          録音する時間長をミリ秒単位で指定する（default: 3000）
 
-       -fsize samplenum
-              分析のフレームサイズをサンプル数で指定する (default: 400)．
+        -fsize  sample_num
+          窓サイズをサンプル数で指定 (default: 400)．
 
-       -fshift samplenum
-              分析のフレームシフトをサンプル数で指定する (default: 160)．
+        -fshift  sample_num
+          フレームシフト幅をサンプル数で指定 (default: 160)．
 
 SEE ALSO
-       julius(1)
-
-BUGS
-       バ グ 報 告・ 問 い 合わせ・コメントなどは julius-info at lists.source-
-       forge.jp までお願いします．
+        julius ( 1 )
 
 COPYRIGHT
-       Copyright (c) 2002-2006 京都大学 河原研究室
-       Copyright (c) 2002-2005 奈良先端科学技術大学院大学 鹿野研究室
-       Copyright (c) 2005-2006 名古屋工業大学 Julius開発チーム
+       Copyright (c) 1991-2008 京都大学 河原研究室
 
-AUTHORS
-       李 晃伸 (名古屋工業大学) が実装しました．
+       Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
+
+       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+
+       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-4.3 Berkeley Distribution            LOCAL                             MKSS(1)
+                                  10/02/2008                           MKSS(1)

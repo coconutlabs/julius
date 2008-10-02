@@ -1,157 +1,173 @@
+    jcontrol
+
 JCONTROL(1)                                                        JCONTROL(1)
 
 
 
-NAME
-       jcontrol - simple program to control Julius module via API
+名前
+           jcontrol
+          - Juliusモジュールモード用のサンプルクライアント
 
-SYNOPSIS
-       jcontrol hostname [portnum]
+概要
+       jcontrol {hostname} [portnum]
 
 DESCRIPTION
-       jcontrol  は，他のホストで動作中の julius を，APIを介してコントロールす
-       る簡単なコンソールプログラムです． Julius へのコ マ ン ド 送 信， お よ
-       びJuliusからのメッセージ受信を行うことができます．
+       jcontrol は，モジュールモードで動作している julius に接続し，APIを介し
+       てコントロールする簡単なコンソールプログラムです．Julius への一時停止
+       や再開などのコマンドの送信，および Julius からの認識結果や音声イベント
+       の メッセージ受信を行うことができます．
 
-       起動後，jcontrol は，指定ホスト上において「モジュールモード」で動作中の
-       Julius に対し，接続を試みます．接続確立後，jcontrol はユーザーからの コ
-       マンド入力待ち状態となります．
+       起動後，jcontrol は，指定ホスト上において「モジュールモード」で動作中
+       のJulius に対し，接続を試みます．接続確立後，jcontrol はユーザーからの
+       コマンド入力およびメッセージ受信待ち状態となります．
 
-       jcontrol   は ユーザーが入力したコマンドを解釈し，対応するAPIコマンドを
-       Julius へ送信します．また，Julius から認識結果や入力トリガ情報 な ど の
+       jcontrol は ユーザーが入力したコマンドを解釈し，対応するAPIコマンドを
+       Julius へ送信します．また，Julius から認識結果や入力トリガ情報 など の
        メッセージが送信されてきたときは，その内容を標準出力へ書き出します．
 
-       APIの詳細については関連文書をご覧下さい．
+       モジュールモードの仕様については，関連文書をご覧下さい．
 
 OPTIONS
-       hostname
-              接続先のホスト名（Julius がモジュールモードで動作中）
+        hostname
+          接続先のホスト名
 
-       portnum
-              (optional) ポート番号 (default=10500)
+        portnum
+          ポート番号（デフォルト：10500）
 
-COMMANDS (COMMON)
-       起 動 後，jcontrol に対して以下のコマンド文字列を標準入力から入力できま
-       す．
+COMMANDS
+       jcontrol は標準入力から1行ずつコマンド文字列を受け取る． コマンドの一覧
+       は以下の通り．
 
-       pause  認識を中断する．認識途中の場合，そこで入力を中断して第2パスま で
-              認識が終わってから中断する．
+   動作制御
+       pause
+          Juliusの認識動作を中断させ，一時停止状態に移行させる．一時停止状 態
+          にあるJuliusは，たとえ音声入力があっても認識処理を行わない． ある区
+          間の音声認識処理の途中でこのコマンドを受け取った場合， Julius はその
+          認識処理が終了した後，一時停止状態に移行する．
 
        terminate
-              認識を中断する．認識途中の場合，入力を破棄して即時中断する．
 
-       resume 認識を再開．
+          pauseと同じく，Juliusの認識動作を中断させ， 一時停止状態に移行させ
+          る．ある区間の音声認識処理の途中でこのコ マンドを受け取った場合，そ
+          の入力を破棄して即座に一時停止状態に 移行する．
+
+       resume
+          Julius を一時停止状態から通常状態へ移行させ，認識を再開させる．
 
        inputparam arg
-              文 法 切り替え時に音声入力であった場合の入力中音声の扱いを指定．
-              "TERMINATE", "PAUSE", "WAIT"のうちいずれかを指定．
+          文法切り替え時に音声入力であった場合の入力中音声の扱いを指定．
+          "TERMINATE", "PAUSE", "WAIT"のうちいずれかを指定．
 
        version
-              バージョン文字列を返す
+          Julius にバージョン文字列を返させる．
 
-       status システムの状態(active/sleep)を返す．
+       status
+          Julius からシステムの状態 (active / sleep) を報告させる．
 
-GRAMMAR COMMANDS
-       文法・単語認識用のコマンドです：
-
+   文法・単語認識関連
        changegram prefix
-              認識文法を "prefix.dfa" と "prefix.dict" に切り替える．カレン ト
-              プロセス内の文法は全て消去され，指定された文法に置き換わる．
+          認識文法を "prefix.dfa" と "prefix.dict" に切り替える．カレントプロ
+          セス内の文法は全て消去され，指定された文法に置き換わる．
 
        addgram prefix
-              認識文法として "prefix.dfa" と "prefix.dict" を追加する．
+          認識文法として "prefix.dfa" と "prefix.dict" をカレントプロセスに追
+          加する．
 
-       deletegram ID
-              指定されたIDの認識文法を削除する．指定文法はカレントプロセスから
-              削除される．ID は Julian から送られる GRAMINFO 内に記述されて い
-              る．
+       deletegram gramlist
+          カレントプロセスから指定された文法を削除する．文法の指定は，文 法名
+          （追加時の prefix）か，あるいは Julius から送られる GRAMINFO内にある
+          文法 ID で指定する．複数の文法を削除したい場合は，文法名もしくはIDを
+          カ ンマで区切って複数指定する（IDと文法名が混在してもよい）．
 
-       deactivategram ID
-              指定されたIDの認識文法を，一時的にOFFにする．OFFにされた文法は認
-              識処理から一時的に除外される．このOFFにされた文法は Julius 内 に
-              保持され， "activategram" コマンドで再び ON にできる．
+       deactivategram gramlist
+          カレントプロセスの指定された文法を一時的に無効にする．無効にされた
+          文法は，エンジン内に保持されたまま，認識処理からは一時的に除外され
+          る． 無効化された文法は activategram で再び有効化できる．
 
-       activategram ID
-              一時的に OFF になっていた文法を再び ON にする．
+          文法の指定は，文法名（追加時の prefix）か，あるいはJulius から送ら
+          れる GRAMINFO内にある文法 ID で指定する．複 数の文法を指定したい場合
+          は，文法名もしくはIDをカンマで区切って 複数指定する（IDと文法名が混
+          在してもよい）．
+
+       activategram gramlist
+          カレントプロセスで無効化されている文法を有効化する． 文法の指定は，
+          文法名（追加時の prefix）か，あるいはJulius から送ら れる GRAMINFO内
+          にある文法 ID で指定する．複 数の文法を指定したい場合は，文法名もし
+          くはIDをカンマで区切って 複数指定する（IDと文法名が混在してもよ
+          い）．
+
+       addword grammar_name_or_id dictfile
+          dictfile の中身を，カレントプロセスの指定された文法に追加する．
 
        syncgram
-              更新された文法を即時適応する．
+          addgram や deletegram などによる文法の更新を即時に行う． 同期確認用
+          である．
 
-COMMANDS (PROCESS)
+   プロセス関連のコマンド
+       Julius-4 では複数モデルの同時認識が行える．この場合， 認識プロセス
+       ("-SR" で指定された認識処理インスタンス) ごとにモジュールクライアントか
+       ら操作を行うことができる．
+
+       クライアントからはどれか一つのプロセスが「カレントプロセス」として 割り
+       当てられる．文法関連の命令はカレントプロセスに対して行われる．
+
        listprocess
-              現在エンジンにある認識プロセスの一覧を示す．
+          Julius に現在エンジンにある認識プロセスの一覧を送信させる．
 
-       currentprocess name
-              コマンドを実行する対象のカレントプロセスを指定されたものに切替え
-              る．
+       currentprocess procname
+          カレントプロセスを指定された名前のプロセスに切り替える．
 
        shiftprocess
-              コマンドを実行する対象のカレントプロセスを順に切替える．
+          カレントプロセスを循環切り替えする．呼ばれるたびにその次のプロセスに
+          カレントプロセスが切り替わる．
 
        addprocess jconffile
-              エンジンに認識プロセスを追加する．jconffile は１つの LM 設定を含
-              むもので，サーバ側から見える必要が有る．追加された LM および認識
-              プロセスは jconffile の名前がプロセス名となる．
+          エンジンに認識プロセスを新たに追加する．与える jconffile は，通常の
+          ものと違い， ただ一種類の LM 設定を含むものである必要がある．また，
+          実際に送られる のはパス名のみであり，ファイル読み込みはJulius側で行
+          われるため， ファイルパスは Julius から見える場所を指定する必要が有
+          る．
 
-       delprocess name
-              指定された名前の認識プロセスをエンジンから削除する．
+          追加された LM および認識プロセスは，jconffile の名前が プロセス名と
+          なる．
 
-       activateprocess name
-              以前に一時無効化されたプロセスを再度有効化する．
+       delprocess procname
+          指定された名前の認識プロセスをエンジンから削除する．
 
-       deactivateprocess name
-              指定されたプロセスを一時無効化する．
+       deactivateprocess procname
+          指定された名前の認識プロセスを，一時的に無効化する．無効化され たプ
+          ロセスは次回以降の入力に対して認識処理からスキップされる． 無効化さ
+          れたプロセスは activateprocess で 再び有効化できる．
 
-       addword gram_id dictfile
-              dictfile中の単語を，カレントプロセスの gram_id の文法に 追 加 す
-              る．（文法・単語認識のみ）
+       activateprocess procname
+          指定された名前の認識プロセスを有効化する．
 
-EXAMPLE
+EXAMPLES
        Julius からのメッセージは "> " を行の先頭につけてそのまま標準出力に出力
-       されます．出力内容の詳細については，関連文書を参照してください．
+       されます．以下は実行例です．
+       上記のようにして Julius をモジュールモードで起動した後， jcontrol をそ
+       のホスト名を指定して起動します．
+       音声入力を行えば，イベント内容や結果が jcontrol 側に送信されます．
+       jcontrol に対してコマンドを入力する（最後に Enter を押す）と， Julius
+       にコマンドが送信され，Julius が制御されます．
 
-       (1) Julius をモジュールモードでホスト host で起動する．
-           % julius -C xxx.jconf ... -input mic -module
-
-       (2) (他の端末で) jcontrol を起動し，通信を開始する．
-           % jcontrol host
-           connecting to host:10500...done
-           > <GRAMINFO>
-           >  # 0: [active] 99words, 42categories, 135nodes (new)
-           > </GRAMINFO>
-           > <GRAMINFO>
-           >  # 0: [active] 99words, 42categories, 135 nodes
-           >   Grobal:      99words, 42categories, 135nodes
-           > </GRAMINFO>
-           > <INPUT STATUS="LISTEN" TIME="1031583083"/>
-        -> pause
-        -> resume
-           > <INPUT STATUS="LISTEN" TIME="1031583386"/>
-        -> addgram test
-           ....
-
+       詳しいプロトコルについては，関連文書を参照してください．
 
 SEE ALSO
-       julius(1)
-
-BUGS
-       バグ報告・問い合わせ・コメント な ど は  julius-info  at  lists.source-
-       forge.jp までお願いします．
-
-VERSION
-       This version is provided as part of Julius-3.5.1.
+        julius ( 1 )
 
 COPYRIGHT
-       Copyright (c) 2002-2007 京都大学 河原研究室
-       Copyright (c) 2002-2005 奈良先端科学技術大学院大学 鹿野研究室
-       Copyright (c) 2005-2007 名古屋工業大学 Julius開発チーム
+       Copyright (c) 1991-2008 京都大学 河原研究室
 
-AUTHORS
-       李 晃伸 (名古屋工業大学) が実装しました．
+       Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
+
+       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+
+       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-4.3 Berkeley Distribution            LOCAL                         JCONTROL(1)
+                                  10/02/2008                       JCONTROL(1)

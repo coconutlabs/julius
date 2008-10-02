@@ -1,206 +1,214 @@
+    adintool
+
 ADINTOOL(1)                                                        ADINTOOL(1)
 
 
 
 NAME
-       adintool  -  audio  tool  to  record/split/send/receive speech data for
-       Julius
+           adintool
+          - a tool to record / split / send / receive audio streams
 
 SYNOPSIS
-       adintool -in inputdev -out outputdev [options...]
+       adintool {-in inputdev} {-out outputdev} [options...]
 
 DESCRIPTION
        adintool analyzes speech input, finds speech segments skipping silence,
-       and  records the detected segments in various ways.  It performs speech
-       detection based on zerocross number and power (level), and records  the
+       and records the detected segments in various ways. It performs speech
+       detection based on zerocross number and power (level), and records the
        detected parts to files or other output devices sucessively.
 
-       adintool  is  a  highly-functioned  version  of adinrec.  The supported
-       input device are: microphone input, a speech file, standard tty  input,
-       and  network socket (called adin-net server mode).  The speech segments
-       are saved to output devices: speech files,  standard  tty  output,  and
-       network  socket  (called  adin-net  client mode).  For example, you can
-       record the incoming speech segments to files with successively-numbered
-       suffixes, or send them to speech recognition engine julius to recognize
-       them.
 
-       The output is not buffered: the receiver can get speech data with  only
-       a  slight  delay after a speech starts.  The speech detection algorithm
-       is as same as that of adinrec.
+       adintool is a upper version of adinrec with various functions.
+       Supported input device are: microphone input, a speech file, standard
+       tty input, and network socket (called adin-net server mode). Julius
+       plugin can be also used. Detected speech segments will be saved to
+       output devices: speech files, standard tty output, and network socket
+       (called adin-net client mode). For example, you can split the incoming
+       speech to segments and send them to Julius to be recognized.
 
-       Output format is WAV, 16bit  (signed  short),  monoral.   If  the  file
+       Output format is WAV, 16bit (signed short), monoral. If the file
        already exist, it will be overridden.
 
-INPUT
-       The input device should be specified by one of the following options:
-
-       -in mic
-              Microphone input (default)
-
-       -in file
-              Speech  data  file.   Supported format is RAW (16bit big endian)
-              and WAV (no compression) etc (depending on the compilation  time
-              setting).
-              The  input  file  name should be given later: prompt will appear
-              after startup.
-
-       -in adinnet
-              Make adintool "adinnet  server",  waiting  for  connection  from
-              adinnet  client  and receiving speech data from there via tcp/ip
-              socket.
-              Default port number is 5530, which  can  be  altered  by  option
-              "-port".
-
-       -in netaudio
-              If supported, get input data from NetAudio/Datlink server.  Host
-              and unit name should be given with "-NA host:unit" option.
-
-       -in stdin
-              Read speech data from standard tty input.  Only RAW and WAV for-
-              mat is supported.
-
-OUTPUT
-       Specify  one  of  these  below  to  select  an  output device which the
-       detected speech segments are going to written to.
-
-       -out file
-              Output to files.  The base filename should be  given  by  option
-              like  "-filename  foobar".   Actually, the detected segments are
-              recorded in separate files such as "foobar.0000",  "foobar.0001"
-              and  so on.  The four-digit ID begin with 0.  This initial value
-              can be set explicitly by option "-startid".  The  output  format
-              is WAV, 16bit signed.  This can be changed by "-raw" option.
-
-       -out adinnet
-              Make  adintool "adinnet client", making connection to an adinnet
-              server on a host, and send speech data to the server.  The host-
-              name  should be specified by option "-server".  The default port
-              number is 5530, which can be altered  by  option  "-port".   The
-              available adinnet server so far is adintool and Julius.
-
-       -out stdout
-              Output to standard tty output in RAW, 16bit signed (big endian).
-
 OPTIONS
-       -server host[,host...]
-              Server(s) to connect with "-out adinnet".  With multiple server,
-              port number for each host should be specified by comma-separated
-              list. (default: 5530)
+       All Julius options can be set. Only audio input related options are
+       treated and others are silently skipped. Below is a list of options.
 
-       -port num[,host...]
-              Port number to connect with "-out adinnet".   Should  be  corre-
-              spond with "-server"
+   adintool specific options
+        -freq  Hz
+          Set sampling rate in Hz. (default: 16,000)
 
-       -nosegment
-              Re-direct  whole  input  speech  data  to output device, without
-              speech detection and segmentation.  With this option, the output
-              filename does not have its four-digit ID appended.
+        -in  inputdev
+          Audio input device. "mic" to capture via microphone input, "file"
+          for audio file input, and "stdin" to read raw data from
+          standard-input. For file input, file name prompt will appear after
+          startup. Use "adinnet" to make adintool as "adinnet server",
+          receiving data from client via network socket. Default port number
+          is 5530, which can be altered by option "-inport".
 
-       -oneshot
-              Record only the first speech segment.
+          Alternatively, input device can be set by "-input" option, in which
+          case you can use plugin input.
 
-       -freq threshold
-              Sampling frequency (Hz, default=16000)
+        -out  outputdev
+          Audio output device store the data. Specify "file" to save to file,
+          in which the output filename should be given by "-filename". Use
+          "stdout" to standard out. "adinnet" will make adintool to be an
+          adinnet client, sending speech data to a server via tcp/ip socket.
+          When using "adinnet" output, the server name to send data should be
+          specified by "-server". The default port number is 5530, which can
+          be changed by "-port" option.
 
-       -48    Record in 48kHz, and down sampling to 16kHz.
+        -inport  num
+          When adintool becomes adinnet server to receive data (-in adinnet),
+          set the port number to listen. (default: 5530)
 
-       -lv threslevel
-              Level threshold (0-32767, default=2000)
+        -server  [host] [,host...]
+          When output to adinnet server (-out adinnet), set the hostname. You
+          can send to multiple hosts by specifying their hostnames as
+          comma-delimited list like "host1,host2,host3".
 
-       -zc zerocrossnum
-              Zero cross number threshold in a second (default=60)
+        -port  [num] [,num...]
+          When adintool send a data to adinnet server (-out adinnet), set the
+          port number to connect. (default: 5530) For multiple servers,
+          specify port numbers for all servers like "5530,5530,5531".
 
-       -headmargin msec
-              Header  margin  of  each  speech  segment  (unit:  milliseconds)
-              (default: 400)
+        -filename  file
+          When output to file (-out file), set the output filename. The actual
+          file name will be as "file.0000.wav" , "file.0001.wav" and so on,
+          where the four digit number increases as speech segment detected.
+          The initial number will be set to 0 by default, which can be changed
+          by "-startid" option. When using "-oneshot" option to save only the
+          first segment, the input will be saved as "file".
 
-       -tailmargin msec
-              Tail  margin  of  each  speech  segment   (unit:   milliseconds)
-              (default: 400)
+        -startid  number
+          At file output, set the initial file number. (default: 0)
 
-       -nostrip
-              Disable skipping of invalid zero samples (default: enabled)
+        -oneshot
+          Exit after the end of first speech segment.
 
-       -zmean Enable zero mean subtraction to remove DC offset.
+        -nosegment
+          Do not perform speech detection for input, just treat all the input
+          as a single valid segment.
 
-       -raw   Output  in  RAW  (no  header) 16bit, big engian format (default:
-              WAV)
+        -raw
+          Output as RAW file (no header).
 
-       -autopause
-              Automatically pause at each input end.
+        -autopause
+          When output to adinnet server, adintool enter pause state at every
+          end of speech segment. It will restart when the destination adinnet
+          server sends it a resume signal.
 
-       -loosesync
-              When connecting to multiple servers, avoid  strict  synchroniza-
-              tion for server-side pause and resume command.
+        -loosesync
+          When output to multiple adinnet server, not to do strict
+          synchronization for restart. By default, when adintool has entered
+          pause state, it will not restart until resume commands are received
+          from all servers. This option will allow restart at least one
+          restart command has arrived.
 
-       -rewind msec
-              By default, adintool will ignore speech input while being paused
-              by server-side command.  This may  be  a  problem  if  an  input
-              begins  while  paused and then adintool resumes before the input
-              ends.  This option will send the last msec inputs before  resum-
-              ing.
+        -rewind  msec
+          When input is a live microphone device, and there has been some
+          continuing input at the moment adintool resumes, it start recording
+          backtracking by the specified milliseconds.
 
-EXAMPLE
-       Record   microphone   input   only  for  the  speech-detected  part  in
-       "data.0000.wav", "data.0001.wav", ...:
+   Concerning Julius options
+        -input  {mic|rawfile|adinnet|stdin|netaudio|esd|alsa|oss}
+          Choose speech input source. Specify 'file' or 'rawfile' for waveform
+          file. On file input, users will be prompted to enter the file name
+          from stdin.
 
-           % adintool -in mic -out file -filename data
+          'mic' is to get audio input from a default live microphone device,
+          and 'adinnet' means receiving waveform data via tcpip network from
+          an adinnet client. 'netaudio' is from DatLink/NetAudio input, and
+          'stdin' means data input from standard input.
 
-       Split a large speech  data  "foobar.raw"  to  "foobar.1500.wav",  "foo-
-       bar.1501.wav", etc:
+          At Linux, you can choose API at run time by specifying alsa, oss and
+          esd.
 
-           % adintool -in file -out file -filename foobar
-             -startid 1500
-             (enter the input filename after startup)
-             enter filename->foobar.raw
-             ....
+        -lv  thres
+          Level threshold for speech input detection. Values should be in
+          range from 0 to 32767. (default: 2000)
 
-       Send whole speech file to other host via tcp/ip socket:
+        -zc  thres
+          Zero crossing threshold per second. Only input that goes over the
+          level threshold (-lv) will be counted. (default: 60)
 
-         [sender]
-           % adintool -in adinnet -out file -nosegment
-         [receiver]
-           % adintool -in file -out adinnet -server hostname
-             -nosegment
+        -headmargin  msec
+          Silence margin at the start of speech segment in milliseconds.
+          (default: 300)
 
-       Send microphone input to Julius running on other host:
+        -tailmargin  msec
+          Silence margin at the end of speech segment in milliseconds.
+          (default: 400)
 
-       (1) Transmit whole input, and let Julius execute
-           speech detection and recognition:
+        -zmean
+          This option enables DC offset removal.
 
-         [Julius]
-           % julius -C xxx.jconf ... -input adinnet
-         [adintool]
-           % adintool -in mic -out adinnet -server hostname
-             -nosegment
+        -smpFreq  Hz
+          Set sampling rate in Hz. (default: 16,000)
 
-       (2) Detect speech segment at input client side
-           (adintool), and transmit only the detected parts
-           to Julius, and recognize them:
+        -48
+          Record input with 48kHz sampling, and down-sample it to 16kHz
+          on-the-fly. This option is valid for 16kHz model only. The
+          down-sampling routine was ported from sptk. (Rev. 4.0)
 
-         [Julius]
-           % julius -C xxx.jconf ... -input adinnet
-         [adintool]
-           % adintool -in mic -out adinnet -server hostname
+        -NA  devicename
+          Host name for DatLink server input (-input netaudio).
 
+        -adport  port_number
+          With -input adinnet, specify adinnet port number to listen.
+          (default: 5530)
+
+        -nostrip
+          Julius by default removes successive zero samples in input speech
+          data. This option stop it.
+
+        -C  jconffile
+          Load a jconf file at here. The content of the jconffile will be
+          expanded at this point.
+
+        -plugindir  dirlist
+          Specify which directories to load plugin. If several direcotries
+          exist, specify them by colon-separated list.
+
+ENVIRONMENT VARIABLES
+        ALSADEV
+          (using mic input with alsa device) specify a capture device name. If
+          not specified, "default" will be used.
+
+        AUDIODEV
+          (using mic input with oss device) specify a capture device path. If
+          not specified, "/dev/dsp" will be used.
+
+        LATENCY_MSEC
+          Try to set input latency of microphone input in milliseconds.
+          Smaller value will shorten latency but sometimes make process
+          unstable. Default value will depend on the running OS.
+
+EXAMPLES
+       Record microphone input to files: "data.0000.wav", "data.0001.wav" and
+       so on:
+       Split a long speech file "foobar.raw" into "foobar.1500.wav",
+       "foobar.1501.wav" ...:
+       Copy an entire audio file via network socket.
+       Detect speech segment, send to Julius via network and recognize it:
 
 SEE ALSO
-       julius(1), adinrec(1)
+        julius ( 1 ) ,
+        adinrec ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
-       Copyright  (c)  2001-2007  Shikano  Lab., Nara Institute of Science and
-       Technology
-       Copyright (c) 2005-2007 Julius project team, Nagoya Institute of  Tech-
-       nology
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
-AUTHORS
-       LEE Akinobu (Nagoya Institute of Technology, Japan)
-       contact: julius-info at lists.sourceforge.jp
+       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+
+       Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
+       Technology
+
+       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Technology
 
 LICENSE
-       Same as Julius.
+       The same as Julius.
 
 
 
-4.3 Berkeley Distribution            LOCAL                         ADINTOOL(1)
+                                  10/02/2008                       ADINTOOL(1)

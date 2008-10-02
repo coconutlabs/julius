@@ -1,90 +1,86 @@
+    mkbingram
+
 MKBINGRAM(1)                                                      MKBINGRAM(1)
 
 
 
-NAME
-       mkbingram - make binary N-gram from arpa N-gram file
+名前
+           mkbingram
+          - バイナリ N-gram 変換
 
-SYNOPSIS
-       mkbingram -nlr forward_ngram.arpa -nrl backward_ngram.arpa bingram
+概要
+       mkbingram [-nlr forward_ngram.arpa] [-nrl backward_ngram.arpa]
+                 [-d old_bingram_file] {output_bingram_file}
 
 DESCRIPTION
-       mkbingram は，ARPA形式の前向き/後向き N-gram をバイナリ形式のファイルに
-       結合・変換するツールです．これを使用することで，Juliusの起動を大幅に 高
-       速化することができます．
+       mkbingram は，ARPA形式の N-gram 定義ファイルをJulius用のバイナリN-gram
+       ファイルに変換するツールです．あらかじめ変換しておくことで，Juliusの起
+       動を大幅に高速化できます．
 
-       Rev.4.0   からは4-gram以上のN-gramも扱えるようになりました．上限値は 10
-       です．
+       Julius-4より，N-gram は前向き，後ろ向き，あるいは両方を指定できるよう
+       になりました．mkbingram でも，どちらか一方だけでバイナリN-gramを作成す
+       るこ とができます．また，両方を指定した場合は，それら2つのN-gramは一つ
+       のバ イナリN-gramに結合されます．
 
-       前向きN-gramが "-nlr" で指定され，後向きN-gramが指定さ れ な い 場 合，
-       mkbingram は 前向きN-gramだけからバイナリN-gramを生成します．このバイナ
-       リN-gramを使うとき，Julius はその中の 2-gram を使って第1パスを行い，第2
-       パ スではその前向き確率から後向きの確率を，ベイズ則に従って算出しながら
-       認識を行います．
+       前向きN-gramのみが指定されたとき，mkbingram は 前向きN-gramだけからバ
+       イナリN-gramを生成します．このバイナリN-gramを使うとき，Julius はその
+       中の 2-gram を使って第1パスを行い，第2 パ スではその前向き確率から後向
+       きの確率を，ベイズ則に従って算出しながら認識を行います．
 
-       後向きN-gramが "-nrl" で指定され，前向きN-gramが指定さ れ な い 場 合，
-       mkbingramは後ろ向きN-gramだけからバイナリN-gramを生成します．このバイナ
-       リN-gramを使うとき，Julius はその中の後向き 2-gram からベイズ則に従って
-       算出しながら第1パスの認識を行い，第2パスでは後向き N-gramを使った認識を
-       行います．
+       後向きN-gramのみが指定されたとき，mkbingramは後ろ向きN-gramだけからバ
+       イナリN-gramを生成します．このバイナリN-gramを使うとき，Julius はその
+       中の後向き 2-gram からベイズ則に従って算出しながら第1パスの認識を行い，
+       第2パスでは後向き N-gramを使った認識を行います．
 
-       両方が指定されたときは，前向きN-gram中の2-gramと後向きN-gramが統合さ れ
-       たバイナリN-gramが生成されます．Juliusではその前向き2-gramで第1パスを行
-       い，後向きN-gramで第2パスを行います．なお両 N-gram は同一のコーパスから
-       同 一の条件（カットオフ値，バックオフ計算方法等）で学習されてあり，同一
-       の語彙を持っている必要があります．
+       両方が指定されたときは，前向きN-gram中の2-gramと後向きN-gramが統合され
+       たバイナリN-gramが生成されます．Juliusではその前向き2-gramで第1パスを
+       行い，後向きN-gramで第2パスを行います．なお両 N-gram は同一のコーパス
+       から同 一の条件（カットオフ値，バックオフ計算方法等）で学習されてあり，
+       同一の語彙を持っている必要があります．
 
-       mkbingram は gzip 圧縮された ARPA ファイルをそのまま読み込めます．
+       なお，mkbingram は gzip 圧縮された ARPA ファイルもそのまま読み込めま
+       す．
 
-       4.0以降のJuliusに付属のmkbingramを使って変換したバイナリN-gramファイ ル
-       は， 3.xでは読み込めませんのでご注意ください．
+       バージョン 3.x 以前で作成したバイナリN-gramは，そのまま 4.0 でも読めま
+       す．mkbingram に -d で与えることで，古いバイナリ形式 を新しいバイナリ形
+       式に変換することもできます．なお，4.0 以降の mkbingram で作成したバイナ
+       リN-gramファイルは3.x 以前のバージョンでは 使えませんのでご注意くださ
+       い．
 
 OPTIONS
-       -nlr forward_ngram.arpa
-              ARPA標準形式の前向き単語 N-gram ファイル．
+        -nlr  forward_ngram.arpa
+          前向き（left-to-right）のARPA形式 N-gram ファイルを読み込む
 
-       -nrl backward_ngram.arpa
-              ARPA標準形式の逆向き単語 N-gram ファイル．
+        -nrl  backward_ngram.arpa
+          後ろ向き（right-to-left）のARPA形式 N-gram ファイルを読み込む
 
-       -d バイナリN-gram
-              入力とするバイナリN-gramファイル（古いバイナリN-gramの再変換用）
+        -d  old_bingram_file
+          バイナリN-gramを読み込む（古いバイナリ形式の変換用）
 
-       bingram
-              出力ファイル（Julius用バイナリ形式）
+       output_bingram_file
+          出力先のバイナリN-gramファイル名
 
-EXAMPLE
-       ARPA形式のN-gramをバイナリ形式に変換する：
-
-           % mkbingram -nlr ARPA_2gram -nrl ARPA_rev_3gram outfile
-
-       古いバイナリN-gramファイルを3.5以降の形式に変換する：
-
-           % mkbingram -d old_bingram new_bingram
-
-
-USAGE
-       Julius で言語モデル指定時に，元の ARPA 形式ファイルを  "-nlr  2gramfile
-       -nrl  rev3gramfile" とする代わりに mkbingram で変換したバイナリ形式ファ
-       イルを "-d bingramfile" と指定します．
+EXAMPLES
+       ARPA形式の N-gram をバイナリ形式に変換する（前向き+後ろ向き）：
+       ARPA形式の前向き 4-gram をバイナリ形式に変換する（前向きのみ）：
+       古いバイナリN-gramファイルを現在の形式に変換する：
 
 SEE ALSO
-       julius(1)
-
-BUGS
-       バグ報告・問い合わせ・コメント な ど は  julius-info  at  lists.source-
-       forge.jp までお願いします．
+        julius ( 1 ) ,
+        mkbinhmm ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2007 京都大学 河原研究室
-       Copyright (c) 2000-2005 奈良先端科学技術大学院大学 鹿野研究室
-       Copyright (c) 2005-2007 名古屋工業大学 Julius開発チーム
+       Copyright (c) 1991-2008 京都大学 河原研究室
 
-AUTHORS
-       李 晃伸 (名古屋工業大学) が実装しました．
+       Copyright (c) 1997-2000 情報処理振興事業協会(IPA)
+
+       Copyright (c) 2000-2008 奈良先端科学技術大学院大学 鹿野研究室
+
+       Copyright (c) 2005-2008 名古屋工業大学 Julius開発チーム
 
 LICENSE
        Julius の使用許諾に準じます．
 
 
 
-4.3 Berkeley Distribution            LOCAL                        MKBINGRAM(1)
+                                  10/02/2008                      MKBINGRAM(1)

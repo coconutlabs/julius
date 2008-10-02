@@ -1,89 +1,94 @@
+    mkbingram
+
 MKBINGRAM(1)                                                      MKBINGRAM(1)
 
 
 
 NAME
-       mkbingram - make binary N-gram from arpa N-gram file
+           mkbingram
+          - make binary N-gram from ARPA N-gram file
 
 SYNOPSIS
-       mkbingram -nlr forward_ngram.arpa -nrl backward_ngram.arpa bingram
+       mkbingram [-nlr forward_ngram.arpa] [-nrl backward_ngram.arpa]
+                 [-d old_bingram_file] {output_bingram_file}
 
 DESCRIPTION
-       mkbingram  makes a binary N-gram file for Julius from forward (left-to-
-       right) word N-gram and/or backward (right-to-left) word N-gram  LMs  in
-       ARPA  standard  format.   Using the binary file, the initial startup of
-       Julius becomes much faster.
+       mkbingram is a tool to convert N-gram definition file(s) in ARPA
+       standard format to a compact Julius binary format. It will speed up the
+       initial loading time of N-gram much faster. It can read gzipped file
+       directly.
 
-       From rev. 4.0, longer N-gram (N < 10) is supported.
+       From rev.4.0, Julius can deal with forward N-gram, backward N-gram and
+       their combinations. So, mkbingram now generates binary N-gram file from
+       one of them, or combining them two to produce one binary N-gram.
 
-       When only a forward N-gram is specified by "-nlr" and  no  backward  N-
-       gram  is  specified,  mkbingram generates binary N-gram for recognition
-       with only the forward N-gram.  The 1st pass will use the  2-gram  entry
-       in  the  given N-gram, and The 2nd pass will use the given N-gram, with
-       converting forward probabilities to  backward  probabilities  by  Bayes
+       When only a forward N-gram is specified, mkbingram generates binary
+       N-gram from only the forward N-gram. When using this binary N-gram at
+       Julius, it performs the 1st pass with the 2-gram probabilities in the
+       N-gram, and run the 2nd pass with the given N-gram fully, with
+       converting forward probabilities to backward probabilities by Bayes
        rule.
 
-       When  only  a  backward N-gram is specified by "-nrl" and no forward N-
-       gram is specified, mkbingram generates binary  N-gram  for  recognition
-       with  only  the  backward  N-gram.   The  1st pass will use the forward
-       2-gram probability computed from the backward 2-gram using Bayes  rule.
-       The 2nd pass fully use the given backward N-gram.
+       When only a backward N-gram is specified, mkbingram generates an binary
+       N-gram file that contains only the backward N-gram. The 1st pass will
+       use forward 2-gram probabilities that can be computed from the backward
+       2-gram using Bayes rule, and the 2nd pass use the given backward N-gram
+       fully.
 
-       When  both  forward  and backward N-grams are specified, forward 2-gram
-       part and backward N-gram are  gathered  together  into  single  bingram
-       file,  to  use  the forward 2-gram for the 1st pass and backward N-gram
-       for the 2nd pass.  Note that both N-gram should be trained in the  same
-       corpus with same parameters (i.e. cut-off thresholds), with same vocab-
-       ulary.
+       When both forward and backward N-grams are specified, the 2-gram part
+       in the forward N-gram and all backward N-gram will be combined into
+       single bingram file. The forward 2-gram will be applied for the 1st
+       pass and backward N-gram for the 2nd pass. Note that both N-gram should
+       be trained in the same corpus with same parameters (i.e. cut-off
+       thresholds), with same vocabulary.
 
-       mkbingram can read gzipped ARPA file.
+       The old binary N-gram produced by mkbingram of version 3.x and earlier
+       can be used in Julius-4, but you can convert the old version to the new
+       version by specifying it as input of current mkbingram by option "-d".
 
-       Please note that binary N-gram file converted by mkbingram  of  version
-       4.0 and later cannot be read by Julius 3.x.
+       Please note that binary N-gram file converted by mkbingram of version
+       4.0 and later cannot be read by older Julius 3.x.
 
 OPTIONS
-       -nlr forward_ngram.arpa
-              Forward  (left-to-right)  word N-gram file in ARPA standard for-
-              mat.
+        -nlr  forward_ngram.arpa
+          Read in a forward (left-to-right) word N-gram file in ARPA standard
+          format.
 
-       -nrl backward_ngram.arpa
-              Backward (right-to-left) word N-gram file in ARPA standard  for-
-              mat.
+        -nrl  backward_ngram.arpa
+          Read in a backward (right-to-left) word N-gram file in ARPA standard
+          format.
 
-       -d old_bingram
-              Read  in  an  old  binary N-gram file (for conversion to the new
-              format).
+        -d  old_bingram_file
+          Read in a binary N-gram file.
 
-       bingram
-              output binary N-gram file.
+       output_bingram_file
+          binary N-gram file name to output.
 
-EXAMPLE
-       Convert ARPA files to binary format:
-
-           % mkbingram -nlr ARPA_2gram -nrl ARPA_rev_3gram outfile
-
-       Convert old binary N-gram file to new format:
-
-           % mkbingram -d old_bingram new_bingram
-
+EXAMPLES
+       Convert a set of forward and backward N-gram in ARPA format into Julius
+       binary form:
+       Convert a single forward 4-gram in ARPA format into a binary file:
+       Convert old binary N-gram file to current format:
 
 SEE ALSO
-       julius(1)
+        julius ( 1 ) ,
+        mkbinhmm ( 1 ) ,
+        mkbinhmmlist ( 1 )
 
 COPYRIGHT
-       Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
-       Copyright (c) 2000-2005 Shikano Lab., Nara  Institute  of  Science  and
-       Technology
-       Copyright  (c) 2005-2007 Julius project team, Nagoya Institute of Tech-
-       nology
+       Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
 
-AUTHORS
-       LEE Akinobu (Nagoya Institute of Technology, Japan)
-       contact: julius-info at lists.sourceforge.jp
+       Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+
+       Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and
+       Technology
+
+       Copyright (c) 2005-2008 Julius project team, Nagoya Institute of
+       Technology
 
 LICENSE
-       Same as Julius.
+       The same as Julius.
 
 
 
-4.3 Berkeley Distribution            LOCAL                        MKBINGRAM(1)
+                                  10/02/2008                      MKBINGRAM(1)

@@ -36,6 +36,10 @@ Fixed bugs:
      maximum HMM name length = 256 char, Number of HMM states unlimited.
   - Module mode error message on grammar command.
 
+Documents:
+  - Alpha version of "Juliusbook" (contains only manuals at this time)
+  - Unix manuals are moved to "man" directory.
+
 
 4.0.2 (2008.5.27)
 ==================

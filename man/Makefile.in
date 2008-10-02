@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved 
 #
-# $Id: Makefile.in,v 1.1 2008/10/02 08:57:03 sumomo Exp $
+# $Id: Makefile.in,v 1.2 2008/10/02 15:01:59 sumomo Exp $
 #
 SHELL=/bin/sh
 RM=@RM@ -f
@@ -12,6 +12,11 @@ exec_prefix=@exec_prefix@
 INSTALL=@INSTALL@
 
 ############################################################
+
+all:
+	@echo Nothing to build
+
+install: install.man install.man.ja
 
 install.man:
 	${INSTALL} -d @mandir@/man1
@@ -30,7 +35,7 @@ install.man.ja:
 ############################################################
 
 clean:
-	echo nothing to do
+	@echo Nothing to do
 
 distclean:
 	$(RM) Makefile

@@ -12,7 +12,7 @@
 #
 # ripped from gtk's gtk-config.in
 #
-# $Id: libjulius-config.in,v 1.4 2008/10/02 15:01:59 sumomo Exp $
+# $Id: libjulius-config-dist.in,v 1.1 2008/10/02 15:01:59 sumomo Exp $
 #
 
 #
@@ -40,10 +40,10 @@ while test $# -gt 0; do
 
     case $1 in
 	--cflags)
-	    echo @CPPFLAGS@
+	    echo -I@includedir@ @CPPFLAGS@
 	    ;;
 	--libs)
-	    echo -ljulius @LDFLAGS@ @LIBS@
+	    echo -L@libdir@ -ljulius @LDFLAGS@ @LIBS@
 	    ;;
 	--version)
 	    echo "${version}"

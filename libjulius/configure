@@ -592,7 +592,7 @@ ac_configure=$ac_aux_dir/configure # This should be Cygnus configure.
 
 
 JULIUS_PRODUCTNAME=JuliusLib
-JULIUS_VERSION=4.0.2
+JULIUS_VERSION=4.1
 
 
 # Check whether --enable-pthread or --disable-pthread was given.
@@ -1926,7 +1926,7 @@ done
 ac_given_srcdir=$srcdir
 ac_given_INSTALL="$INSTALL"
 
-trap 'rm -fr `echo "Makefile libjulius-config src/version.c doxygen.conf.ver include/julius/config.h" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
+trap 'rm -fr `echo "Makefile libjulius-config libjulius-config-dist src/version.c doxygen.conf.ver include/julius/config.h" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
 EOF
 cat >> $CONFIG_STATUS <<EOF
 
@@ -2015,7 +2015,7 @@ EOF
 
 cat >> $CONFIG_STATUS <<EOF
 
-CONFIG_FILES=\${CONFIG_FILES-"Makefile libjulius-config src/version.c doxygen.conf.ver"}
+CONFIG_FILES=\${CONFIG_FILES-"Makefile libjulius-config libjulius-config-dist src/version.c doxygen.conf.ver"}
 EOF
 cat >> $CONFIG_STATUS <<\EOF
 for ac_file in .. $CONFIG_FILES; do if test "x$ac_file" != x..; then
@@ -2187,7 +2187,7 @@ cat >> $CONFIG_STATUS <<EOF
 
 EOF
 cat >> $CONFIG_STATUS <<\EOF
-chmod +x libjulius-config
+chmod +x libjulius-config libjulius-config-dist
 
 
 exit 0

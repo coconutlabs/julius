@@ -12,7 +12,7 @@
 #
 # ripped from gtk's gtk-config.in
 #
-# $Id: libsent-config.in,v 1.5 2008/10/02 15:01:59 sumomo Exp $
+# $Id: libsent-config-dist.in,v 1.1 2008/10/02 15:01:59 sumomo Exp $
 #
 
 #
@@ -62,10 +62,10 @@ while test $# -gt 0; do
 
     case $1 in
 	--cflags)
-	    echo $sound_inc
+	    echo -I@includedir@ $sound_inc
 	    ;;
 	--libs)
-	    echo -lsent $sound_libs @LIBS@ -lm
+	    echo -L@libdir@ -lsent $sound_libs @LIBS@ -lm
 	    ;;
 	--version)
 	    echo "${version}"

@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.7 2008/10/02 08:57:03 sumomo Exp $
+# $Id: Makefile.in,v 1.8 2008/10/02 15:01:59 sumomo Exp $
 #
 
 SHELL=/bin/sh
@@ -151,9 +151,9 @@ install.include:
 	${INSTALL} -d ${includedir}/sent
 	${INSTALL_DATA} include/sent/*.h ${includedir}/sent
 
-install.bin: libsent-config
+install.bin: libsent-config-dist
 	${INSTALL} -d ${bindir}
-	${INSTALL_PROGRAM} libsent-config ${bindir}
+	${INSTALL_PROGRAM} libsent-config-dist ${bindir}/libsent-config
 
 clean:
 	$(RM) *~ src/*/*~ src/*/*.o src/*/*/*.o include/sent/*~ 
@@ -162,7 +162,7 @@ clean:
 distclean:
 	$(RM) *~ src/*/*~ src/*/*.o src/*/*/*.o include/sent/*~
 	$(RM) config.log config.cache
-	$(RM) libsent-config
+	$(RM) libsent-config libsent-config-dist
 	$(RM) config.status include/sent/config.h
 	$(RM) $(TARGET)
 	$(RM) Makefile

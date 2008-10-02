@@ -4,7 +4,16 @@ LIBJULIUS=../libjulius
 CC=gcc
 CFLAGS=-g -O2 
 
-CPPFLAGS=-I. -I$(LIBJULIUS)/include -I$(LIBSENT)/include  `$(LIBSENT)/libsent-config --cflags` `$(LIBJULIUS)/libjulius-config --cflags`
+####
+#### When using system-installed libraries
+####
+# CPPFLAGS=`libjulius-config --cflags` `libsent-config --cflags`
+# LDFLAGS=`libjulius-config --libs` `libsent-config --libs`
+
+####
+#### When using within-package libraries
+####
+CPPFLAGS=-I$(LIBJULIUS)/include -I$(LIBSENT)/include  `$(LIBSENT)/libsent-config --cflags` `$(LIBJULIUS)/libjulius-config --cflags`
 LDFLAGS= -L$(LIBJULIUS) `$(LIBJULIUS)/libjulius-config --libs` -L$(LIBSENT) `$(LIBSENT)/libsent-config --libs`
 
 ############################################################

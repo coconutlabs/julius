@@ -11,7 +11,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 00:30:38 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -63,7 +63,7 @@ strip_zero(SP16 a[], int len)
 	  }
         } else {
           /* deleted (leave uncopied) */
-	  jlog("Warning: strip: sample %d-%d is invalid, stripped\n", bgn, src-1);
+	  jlog("Warning: strip: sample %d-%d has zero value, stripped\n", bgn, src-1);
         }
       }
       a[dst++] = a[src];

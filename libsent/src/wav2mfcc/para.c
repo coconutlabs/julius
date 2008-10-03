@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -207,6 +207,8 @@ htk_config_file_parse(char *HTKconffile, Value *para)
     return FALSE;
   }
 
+  srate = 0.0;
+
   while (getl_fp(buf, 512, fp) != NULL) {
     p = buf;
     if (*p == 35) { /* skip comment line */
@@ -228,7 +230,6 @@ htk_config_file_parse(char *HTKconffile, Value *para)
 
     /* process arguments */
     skipped = FALSE;
-    srate = 0.0;
     if (strmatch(d, "SOURCERATE")) { /* -smpPeriod */
       srate = atof(a);
     } else if (strmatch(d, "TARGETRATE")) { /* -fshift */

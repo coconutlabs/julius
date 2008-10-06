@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.7 2008/03/20 09:08:04 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.8 2008/10/06 18:08:54 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -284,8 +284,8 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
       return FALSE;
     }
     w[0] = ngram_lookup_word(ndata, s);
-    if (w[1] == WORD_INVALID) {
-      jlog("Error: ngram_read_arpa: 2-gram #%d: \"%s\": \"%s\" not exist in 1-gram\n", n2+1, pbuf, s);
+    if (w[0] == WORD_INVALID) {
+      jlog("Error: ngram_read_arpa: 2-gram #%d: \"%s\": \"%s\" not exist in 1-gram\n", bi_count, pbuf, s);
       ok_p = FALSE;
       continue;
     }
@@ -294,8 +294,8 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
       return FALSE;
     }
     w[1] = ngram_lookup_word(ndata, s);
-    if (w[0] == WORD_INVALID) {
-      jlog("Error: ngram_read_arpa: 2-gram #%d: \"%s\": \"%s\" not exist in 1-gram\n", n2+1, pbuf, s);
+    if (w[1] == WORD_INVALID) {
+      jlog("Error: ngram_read_arpa: 2-gram #%d: \"%s\": \"%s\" not exist in 1-gram\n", bi_count, pbuf, s);
       ok_p = FALSE;
       continue;
     }

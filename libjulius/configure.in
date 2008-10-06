@@ -4,7 +4,7 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl $Id: configure.in,v 1.6 2008/10/02 15:01:59 sumomo Exp $
+dnl $Id: configure.in,v 1.7 2008/10/06 18:10:04 sumomo Exp $
 dnl
 
 AC_INIT(src/search_bestfirst_main.c)
@@ -341,6 +341,7 @@ AC_TYPE_SIGNAL
 dnl AC_CHECK_FUNCS(strdup strstr)
 dnl AC_CHECK_FUNC(gethostbyname,,AC_CHECK_LIB(nsl,gethostbyname))
 dnl AC_CHECK_FUNC(connect,,AC_CHECK_LIB(socket, connect))
+AC_CHECK_FUNC(dlopen,,AC_CHECK_LIB(dl, dlopen))
 
 dnl check for POSIX thread support
 if test "$want_pthread" = yes; then

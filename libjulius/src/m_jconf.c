@@ -37,7 +37,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:16:18 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -127,6 +127,7 @@ fgets_jconf(char *buf, int size, FILE *fp)
       }
 #endif
     }
+    prev_c = c;
   }
   buf[pos] = '\0';
 
@@ -411,7 +412,7 @@ config_file_parse(char *conffile, Jconf *jconf)
       dst_from = dst;
       
       while (*p != '\0' && (!ISTOKEN(*p))) {
-	if (0 &&/* '\' is removed by fgets_jconf */ *p == '\\') {     /* escape by '\' */
+	if (*p == '\\') {     /* escape by '\' */
 	  if (*(++p) == '\0') break;
 	  *(dst++) = *(p++);
 	} else {

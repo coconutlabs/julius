@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -659,10 +659,14 @@ send_gram_info(RecogProcess *r)
 
   module_send(module_sd, "<GRAMINFO>\n");
   for(m=r->lm->grammars;m;m=m->next) {
-    module_send(module_sd, "  #%2d: [%-11s] %4d words, %3d categories, %4d nodes",
+    module_send(module_sd, "  #%2d: [%-11s] %4d words",
 		m->id,
 		m->active ? "active" : "inactive",
-		m->winfo->num, m->dfa->term_num, m->dfa->state_num);
+		m->winfo->num);
+    if (m->dfa) {
+      module_send(module_sd, ", %3d categories, %4d nodes",
+		  m->dfa->term_num, m->dfa->state_num);
+    }
     if (m->newbie) module_send(module_sd, " (new)");
     if (m->hook != MULTIGRAM_DEFAULT) {
       module_send(module_sd, " (next: %s)", hookstr[m->hook]);

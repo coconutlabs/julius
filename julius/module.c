@@ -88,20 +88,22 @@ myfgets(char *buf, int maxlen, FILE *fp)
  * </EN>
  */
 static boolean
-read_grammar(FILE *fp, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo)
+read_grammar(FILE *fp, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo, boolean lmvar)
 {
-  DFA_INFO *dfa;
+  DFA_INFO *dfa = NULL;
   WORD_INFO *winfo;
 
   /* load grammar: dfa and dict in turn */
-  dfa = dfa_info_new();
-  if (!rddfa_fp(fp, dfa)) {
-    return FALSE;
+  if (lmvar != LM_DFA_WORD) {
+    dfa = dfa_info_new();
+    if (!rddfa_fp(fp, dfa)) {
+      return FALSE;
+    }
   }
   winfo = word_info_new();
   /* ignore MONOTREE */
   if (!voca_load_htkdict_fp(fp, winfo, hmminfo, FALSE)) {
-    dfa_info_free(dfa);
+    if (dfa) dfa_info_free(dfa);
     return FALSE;
   }
   *ret_dfa = dfa;
@@ -246,7 +248,7 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
+    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo, cur->lmvar) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
       if (cur->lmtype == LM_DFA) {
@@ -280,7 +282,7 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo) == FALSE) {
+    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo, cur->lmvar) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
       if (cur->lmtype == LM_DFA) {

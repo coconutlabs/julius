@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -281,6 +281,16 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	if ((lmconf = j_get_lmconf_by_id(jconf, atoi(tmparg))) == NULL) return FALSE;
       } else {			/* name string */
 	if ((lmconf = j_get_lmconf_by_name(jconf, tmparg)) == NULL) return FALSE;
+      }
+
+      /* check to avoid assigning an LM for multiple SR */
+      for(sconf=jconf->search_root;sconf;sconf=sconf->next) {
+	if (sconf->lmconf == lmconf) {
+	  jlog("ERROR: you are going to share LM \"%s\" among multiple SRs\n");
+	  jlog("ERROR: current Julius cannot share LM among SRs\n");
+	  jlog("ERROR: you should define LM for each SR\n");
+	  return FALSE;
+	}
       }
 
       /* if not first time, create new module instance and switch to it */

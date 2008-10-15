@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.8 2008/10/06 18:08:54 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.9 2008/10/15 16:06:33 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -138,10 +138,10 @@ set_unigram(FILE *fp, NGRAM_INFO *ndata)
     }
     name = strcpy((char *)mymalloc(strlen(p)+1), p);
     if ((p = strtok(NULL, DELM)) == NULL) {
-      jlog("Error: ngram_read_arpa: LR 1-gram: failed to parse, corrupted or invalid data?\n");
-      return FALSE;
+      bo_wt = 0.0;
+    } else {
+      bo_wt = (LOGPROB)atof(p);
     }
-    bo_wt = (LOGPROB)atof(p);
 
     /* register word entry name */
     ndata->wname[nid] = name;
@@ -217,10 +217,10 @@ add_unigram(FILE *fp, NGRAM_INFO *ndata)
     }
     name = strcpy((char *)mymalloc(strlen(p)+1), p);
     if ((p = strtok(NULL, DELM)) == NULL) {
-      jlog("Error: ngram_read_arpa: RL 1-gram: failed to parse, corrupted or invalid data?\n");
-      return FALSE;
+      bo_wt = 0.0;
+    } else {
+      bo_wt = (LOGPROB)atof(p);
     }
-    bo_wt = (LOGPROB)atof(p);
   
     /* add bo_wt_rl to existing 1-gram entry */
     nid = ngram_lookup_word(ndata, name);
@@ -473,8 +473,11 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
       bowt = (LOGPROB) atof(s);
       if (t->bo_wt == NULL) {
 	t->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
+	for(i=0;i<nnid;i++) t->bo_wt[nnid] = 0.0;
       }
       t->bo_wt[nnid] = bowt;
+    } else {
+      if (t->bo_wt != NULL) t->bo_wt[nnid] = 0.0;
     }
 
     /* store the entry info */

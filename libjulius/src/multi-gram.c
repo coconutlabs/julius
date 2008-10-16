@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -688,9 +688,9 @@ multigram_update(PROCESS_LM *lm)
       }
       if (m->newbie) m->newbie = FALSE;
       if (lm->lmvar == LM_DFA_WORD) {
-	/* just append dictionaty (category ID is bogus here) */
+	/* just append dictionaty */
 	m->word_begin = lm->winfo->num;
-	if (voca_append(lm->winfo, m->winfo, 0, m->word_begin) == FALSE) {
+	if (voca_append(lm->winfo, m->winfo, m->id, m->word_begin) == FALSE) {
 	  jlog("ERROR: multi-gram: failed to add dictionary #%d to recognition network\n", m->id);
 	  /* mark as delete */
 	  m->hook |= MULTIGRAM_DELETE;
@@ -722,9 +722,9 @@ multigram_update(PROCESS_LM *lm)
 	}
 	if (m->newbie) m->newbie = FALSE;
 	if (lm->lmvar == LM_DFA_WORD) {
-	  /* just append dictionaty (category ID is bogus here) */
+	  /* just append dictionaty */
 	  m->word_begin = lm->winfo->num;
-	  if (voca_append(lm->winfo, m->winfo, 0, m->word_begin) == FALSE) {
+	  if (voca_append(lm->winfo, m->winfo, m->id, m->word_begin) == FALSE) {
 	    jlog("ERROR: multi-gram: failed to add dictionary #%d to recognition network\n", m->id);
 	    /* mark as delete */
 	    m->hook |= MULTIGRAM_DELETE;
@@ -762,7 +762,6 @@ multigram_update(PROCESS_LM *lm)
 #ifdef MDEBUG
     jlog("STAT: grammar update completed\n");
 #endif
-  }
 
   if (lm->global_modified || active_changed) {
     return (TRUE);
@@ -1143,7 +1142,7 @@ multigram_add_words_to_grammar(PROCESS_LM *lm, MULTIGRAM *m, WORD_INFO *winfo)
   offset = m->winfo->num;
   printf("adding %d words to grammar #%d (%d words)\n", winfo->num, m->id, m->winfo->num);
   /* append to the grammar */
-  if (voca_append(m->winfo, winfo, 0, offset) == FALSE) {
+  if (voca_append(m->winfo, winfo, m->id, offset) == FALSE) {
     jlog("ERROR: multi-gram: failed to add words to dict in grammar #%d \"%s\"\n", m->id, m->name);
     return FALSE;
   }

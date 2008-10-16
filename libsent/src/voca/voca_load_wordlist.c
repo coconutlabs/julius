@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Sun Jul 22 13:29:32 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -127,7 +127,7 @@ voca_load_word_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *he
   return TRUE;
 }
 /** 
- * Top function to read word list via file pointer
+ * Top function to read word list via text
  * 
  * @param fp [in] file pointer
  * @param winfo [out] pointer to word dictionary to store the read data.
@@ -145,6 +145,33 @@ voca_load_wordlist(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *head
 
   voca_load_start(winfo, hmminfo, FALSE);
   while (getl(buf, sizeof(buf), fp) != NULL) {
+    if (voca_load_word_line(buf, winfo, hmminfo, headphone, tailphone, contextphone) == FALSE) break;
+  }
+  ret = voca_load_end(winfo);
+
+  return(ret);
+}
+
+
+/** 
+ * Top function to read word list via file pointer
+ * 
+ * @param fp [in] file pointer
+ * @param winfo [out] pointer to word dictionary to store the read data.
+ * @param hmminfo [in] HTK %HMM definition data.  if NULL, phonemes are ignored.
+ * @param headphone [in] word head silence model name
+ * @param tailphone [in] word tail silence model name
+ * @param contextphone [in] silence context name to be used at head and tail
+ * 
+ * @return TRUE on success, FALSE on any error word.
+ */
+boolean
+voca_load_wordlist_fp(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone)
+{
+  boolean ret;
+
+  voca_load_start(winfo, hmminfo, FALSE);
+  while (getl_fp(buf, sizeof(buf), fp) != NULL) {
     if (voca_load_word_line(buf, winfo, hmminfo, headphone, tailphone, contextphone) == FALSE) break;
   }
   ret = voca_load_end(winfo);
@@ -421,6 +448,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
     winfo->wseq[vnum] = (HMM_Logical **)mybmalloc2(sizeof(HMM_Logical *) * len, &(winfo->mroot));
     memcpy(winfo->wseq[vnum], tmpwseq, sizeof(HMM_Logical *) * len);
     winfo->wlen[vnum] = len;
+    winfo->wton[vnum] = 0;
   }
 
   vnum++;

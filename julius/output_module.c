@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -657,6 +657,10 @@ send_gram_info(RecogProcess *r)
 {
   MULTIGRAM *m;
 
+  if (r->lmtype == LM_PROB) {
+    module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
+    return;
+  }
   module_send(module_sd, "<GRAMINFO>\n");
   for(m=r->lm->grammars;m;m=m->next) {
     module_send(module_sd, "  #%2d: [%-11s] %4d words",

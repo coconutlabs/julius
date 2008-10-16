@@ -31,7 +31,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 19 23:39:15 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -1652,7 +1652,7 @@ build_wchmm(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
     /* 最も長く音素を共有出来る単語を探す */
     maxsharelen=0;
     for (j=0;j<i;j++) {
-      if (wchmm->category_tree && wchmm->lmvar == LM_DFA_GRAMMAR) {
+      if (wchmm->category_tree  && wchmm->lmtype == LM_DFA) {
 	if (wchmm->winfo->wton[i] != wchmm->winfo->wton[j]) continue;
       }
       sharelen = wchmm_check_match(wchmm->winfo, i, j);
@@ -1811,7 +1811,7 @@ build_wchmm2(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
   windex = (WORD_ID *)mymalloc(sizeof(WORD_ID) * wchmm->winfo->num);
   for(i=0;i<wchmm->winfo->num;i++) windex[i] = i;
 
-  if (wchmm->category_tree && wchmm->lmvar == LM_DFA_GRAMMAR) {
+  if (wchmm->category_tree && wchmm->lmtype == LM_DFA) {
 
     /* sort by category -> sort by word ID in each category */
     wchmm_sort_idx_by_category(wchmm->winfo, windex, wchmm->winfo->num);
@@ -1903,7 +1903,7 @@ build_wchmm2(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
       ret = wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp);
     } else {
       /* the previous word (last_i) is always the most matched one */
-      if (wchmm->category_tree && wchmm->lmvar == LM_DFA_GRAMMAR) {
+      if (wchmm->category_tree && wchmm->lmtype == LM_DFA) {
 	if (wchmm->winfo->wton[i] != wchmm->winfo->wton[last_i]) {
 	  ret = wchmm_add_word(wchmm, i, 0, 0, lmconf->enable_iwsp);
 	} else {

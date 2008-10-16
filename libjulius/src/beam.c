@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -1713,24 +1713,31 @@ init_nodescore(HTK_Param *param, RecogProcess *r)
   }
 
   if (r->lmtype == LM_DFA && r->lmvar == LM_DFA_WORD) {
-    /* all words can appear at start */
-    for (i=0;i<wchmm->winfo->num;i++) {
-      if (wchmm->hmminfo->multipath) {
-	node = wchmm->wordbegin[i];
-      } else {
-	node = wchmm->offset[i][0];
+    /* アクティブな文法に属する単語のみ許す */
+    /* only words in active grammars are allowed to be an initial words */
+    MULTIGRAM *m;
+
+    for(m = r->lm->grammars; m; m = m->next) {
+      if (m->active) {
+	for(i = m->word_begin; i < m->word_begin + m->winfo->num; i++) {
+	  if (wchmm->hmminfo->multipath) {
+	    node = wchmm->wordbegin[i];
+	  } else {
+	    node = wchmm->offset[i][0];
+	  }
+	  if (node_exist_token(d, d->tn, node, d->bos.wid) != TOKENID_UNDEFINED) continue;
+	  newid = create_token(d);
+	  new = &(d->tlist[d->tn][newid]);
+	  new->last_tre = &(d->bos);
+	  new->last_lscore = 0.0;
+	  if (wchmm->hmminfo->multipath) {
+	    new->score = 0.0;
+	  } else {
+	    new->score = outprob_style(wchmm, node, d->bos.wid, 0, param);
+	  }
+	  node_assign_token(d, node, newid);
+	}
       }
-      if (node_exist_token(d, d->tn, node, d->bos.wid) != TOKENID_UNDEFINED) continue;
-      newid = create_token(d);
-      new = &(d->tlist[d->tn][newid]);
-      new->last_tre = &(d->bos);
-      new->last_lscore = 0.0;
-      if (wchmm->hmminfo->multipath) {
-	new->score = 0.0;
-      } else {
-	new->score = outprob_style(wchmm, node, d->bos.wid, 0, param);
-      }
-      node_assign_token(d, node, newid);
     }
   }
 

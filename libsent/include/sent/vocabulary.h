@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:38:13 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -103,6 +103,7 @@ boolean voca_load_htkdict_line(char *buf, WORD_ID *vnum, int linenum, WORD_INFO 
 
 boolean voca_load_word_line(char *buf, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailpohone, char *contextphone);
 boolean voca_load_wordlist(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone);
+boolean voca_load_wordlist_fp(FILE *fp, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, char *headphone, char *tailphone, char *contextphone);
 boolean voca_load_wordlist_line(char *buf, WORD_ID *vnum, int linenum, WORD_INFO *winfo, HTK_HMM_INFO *hmminfo, boolean do_conv, boolean *ok_flag, char *headphone, char *tailphone, char *contextphone);
 boolean voca_mono2tri(WORD_INFO *winfo, HTK_HMM_INFO *hmminfo);
 WORD_ID voca_lookup_wid(char *, WORD_INFO *);

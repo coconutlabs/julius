@@ -88,23 +88,30 @@ myfgets(char *buf, int maxlen, FILE *fp)
  * </EN>
  */
 static boolean
-read_grammar(FILE *fp, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo, boolean lmvar)
+read_grammar(FILE *fp, DFA_INFO **ret_dfa, WORD_INFO **ret_winfo, HTK_HMM_INFO *hmminfo, RecogProcess *r)
 {
   DFA_INFO *dfa = NULL;
   WORD_INFO *winfo;
+  JCONF_LM *lmconf;
 
   /* load grammar: dfa and dict in turn */
-  if (lmvar != LM_DFA_WORD) {
+  if (r->lmvar != LM_DFA_WORD) {
     dfa = dfa_info_new();
     if (!rddfa_fp(fp, dfa)) {
       return FALSE;
     }
   }
   winfo = word_info_new();
-  /* ignore MONOTREE */
-  if (!voca_load_htkdict_fp(fp, winfo, hmminfo, FALSE)) {
-    if (dfa) dfa_info_free(dfa);
-    return FALSE;
+  if (r->lmvar == LM_DFA_WORD) {
+    lmconf = r->lm->config;
+    if (!voca_load_wordlist_fp(fp, winfo, hmminfo, lmconf->wordrecog_head_silence_model_name, lmconf->wordrecog_tail_silence_model_name, (lmconf->wordrecog_silence_context_name[0] == '\0') ? NULL : lmconf->wordrecog_silence_context_name)) {
+      return FALSE;
+    }
+  } else {
+    if (!voca_load_htkdict_fp(fp, winfo, hmminfo, FALSE)) {
+      dfa_info_free(dfa);
+      return FALSE;
+    }
   }
   *ret_dfa = dfa;
   *ret_winfo = winfo;
@@ -248,7 +255,7 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo, cur->lmvar) == FALSE) {
+    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo, cur) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
       if (cur->lmtype == LM_DFA) {
@@ -282,7 +289,7 @@ msock_exec_command(char *command, Recog *recog)
       p = NULL;
     }
     /* read a new grammar via socket */
-    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo, cur->lmvar) == FALSE) {
+    if (read_grammar(module_fp, &new_dfa, &new_winfo, cur->am->hmminfo, cur) == FALSE) {
       module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"WRONG DATA\"/>\n.\n");
     } else {
       if (cur->lmtype == LM_DFA) {

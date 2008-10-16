@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -645,6 +645,9 @@ voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset)
   int i;
 
   n = woffset;
+  while (n >= dstinfo->maxnum) {
+    if (winfo_expand(dstinfo) == FALSE) return FALSE;
+  }
   for(w=0;w<srcinfo->num;w++) {
     /* copy data */
     dstinfo->wlen[n] = srcinfo->wlen[w];
@@ -662,12 +665,10 @@ voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset)
     if (n >= dstinfo->maxnum) {
       if (winfo_expand(dstinfo) == FALSE) return FALSE;
     }
+
   }
   dstinfo->num = n;
 
-  /* compute maxwn */
-  voca_set_stats(dstinfo);
-
-  return TRUE;
+  return(voca_load_end(dstinfo));
 }
 

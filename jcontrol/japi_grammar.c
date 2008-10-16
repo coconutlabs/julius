@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Mar 24 07:13:41 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -45,13 +45,25 @@ static char buf[MAXLINELEN];	///< Local work area for string operation
 static int
 check_grammar_path(char *prefix)
 {
-  snprintf(buf, MAXLINELEN, "%s.dfa", prefix);
-  if (access(buf, R_OK) < 0) {
-    perror("japi_change_grammar"); return -1;
-  }
-  snprintf(buf, MAXLINELEN, "%s.dict", prefix);
-  if (access(buf, R_OK) < 0) {
-    perror("japi_change_grammar"); return -1;
+  int i;
+
+  i = strlen(prefix) - 1;
+  while(prefix[i] != '.' && i >= 0) i--;
+  if (i < 0 && strcmp(&(prefix[i]), ".dict") != 0) {
+    snprintf(buf, MAXLINELEN, "%s.dfa", prefix);
+    if (access(buf, R_OK) < 0) {
+      fprintf(stderr, "Error: \"%s.dfa\" not exist\n", prefix);
+      return -1;
+    }
+    snprintf(buf, MAXLINELEN, "%s.dict", prefix);
+    if (access(buf, R_OK) < 0) {
+      fprintf(stderr, "Error: \"%s.dict\" not exist\n", prefix);
+      return -1;
+    }
+  } else {
+    if (access(prefix, R_OK) < 0) {
+      fprintf(stderr, "Error: \"%s\" not exist\n", prefix);
+    }
   }
   return 0;
 }
@@ -78,17 +90,24 @@ static int
 send_grammar(int sd, char *prefix)
 {
   FILE *fp;
-  
-  snprintf(buf, MAXLINELEN, "%s.dfa", prefix);
-  if ((fp = fopen(buf, "r")) == NULL) {
-    perror("japi_change_grammar"); return -1;
+  int i;
+
+  i = strlen(prefix) - 1;
+  while(prefix[i] != '.' && i >= 0) i--;
+  if (i < 0 && strcmp(&(prefix[i]), ".dict") != 0) {
+    snprintf(buf, MAXLINELEN, "%s.dfa", prefix);
+    if ((fp = fopen(buf, "r")) == NULL) {
+      perror("japi_change_grammar"); return -1;
+    }
+    while(fgets(buf, MAXLINELEN, fp) != NULL) {
+      do_send(sd, buf);
+    }
+    do_send(sd, "DFAEND\n");
+    fclose(fp);
+    snprintf(buf, MAXLINELEN, "%s.dict", prefix);
+  } else {
+    snprintf(buf, MAXLINELEN, "%s", prefix);
   }
-  while(fgets(buf, MAXLINELEN, fp) != NULL) {
-    do_send(sd, buf);
-  }
-  do_send(sd, "DFAEND\n");
-  fclose(fp);
-  snprintf(buf, MAXLINELEN, "%s.dict", prefix);
   if ((fp = fopen(buf, "r")) == NULL) {
     perror("japi_change_grammar"); return -1;
   }
@@ -280,6 +299,12 @@ void
 japi_sync_grammar(int sd)
 {
   do_send(sd, "SYNCGRAM\n");
+}
+
+void
+japi_get_graminfo(int sd)
+{
+  do_send(sd, "GRAMINFO\n");
 }
 
 void

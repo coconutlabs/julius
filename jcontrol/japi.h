@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Mar 24 07:12:32 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -92,6 +92,7 @@ void japi_resume_recog(int);
 void japi_set_input_handler_on_change(int, char *);
 
 /* japi_grammar.c */
+void japi_get_graminfo(int sd);
 void japi_change_grammar(int sd, char *prefixpath);
 void japi_add_grammar(int sd, char *prefixpath);
 void japi_delete_grammar(int sd, char *idlist);

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Mar 24 11:49:27 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -60,6 +60,8 @@ do_command(int sd)
       japi_get_version(sd);
     } else if (strmatch(com, "status")) {
       japi_get_status(sd);
+    } else if (strmatch(com, "graminfo")) {
+      japi_get_graminfo(sd);
     } else if (strmatch(com, "pause")) {
       japi_pause_recog(sd);
     } else if (strmatch(com, "terminate")) {

@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -762,6 +762,7 @@ multigram_update(PROCESS_LM *lm)
 #ifdef MDEBUG
     jlog("STAT: grammar update completed\n");
 #endif
+  }
 
   if (lm->global_modified || active_changed) {
     return (TRUE);

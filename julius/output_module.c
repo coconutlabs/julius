@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -28,10 +28,6 @@
 
 extern int module_sd;
 extern boolean separate_score_flag;
-
-
-/// Grammar status to be processed in the next reload timing.
-static char *hookstr[] = {"", "delete", "activate", "deactivate"};
 
 /**********************************************************************/
 /* process online/offline status  */
@@ -656,6 +652,7 @@ void
 send_gram_info(RecogProcess *r)
 {
   MULTIGRAM *m;
+  char buf[1024];
 
   if (r->lmtype == LM_PROB) {
     module_send(module_sd, "<GRAMMAR STATUS=\"ERROR\" REASON=\"NOT A GRAMMAR-BASED LM\"/>\n.\n");
@@ -663,19 +660,34 @@ send_gram_info(RecogProcess *r)
   }
   module_send(module_sd, "<GRAMINFO>\n");
   for(m=r->lm->grammars;m;m=m->next) {
-    module_send(module_sd, "  #%2d: [%-11s] %4d words",
+    buf[0] = '\0';
+    if (m->dfa) {
+      snprintf(buf, 1024, ", %3d categories, %4d nodes",
+	       m->dfa->term_num, m->dfa->state_num);
+    }
+    if (m->newbie) strcat(buf, " (new)");
+    if (m->hook != 0) {
+      strcat(buf, " (next:");
+      if (m->hook & MULTIGRAM_DELETE) {
+	strcat(buf, " delete");
+      }
+      if (m->hook & MULTIGRAM_ACTIVATE) {
+	strcat(buf, " activate");
+      }
+      if (m->hook & MULTIGRAM_DEACTIVATE) {
+	strcat(buf, " deactivate");
+      }
+      if (m->hook & MULTIGRAM_MODIFIED) {
+	strcat(buf, " modified");
+      }
+      strcat(buf, ")");
+    }
+    module_send(module_sd, "  #%2d: [%-11s] %4d words%s \"%s\"\n",
 		m->id,
 		m->active ? "active" : "inactive",
-		m->winfo->num);
-    if (m->dfa) {
-      module_send(module_sd, ", %3d categories, %4d nodes",
-		  m->dfa->term_num, m->dfa->state_num);
-    }
-    if (m->newbie) module_send(module_sd, " (new)");
-    if (m->hook != MULTIGRAM_DEFAULT) {
-      module_send(module_sd, " (next: %s)", hookstr[m->hook]);
-    }
-    module_send(module_sd, " \"%s\"\n", m->name);
+		m->winfo->num,
+		buf,
+		m->name);
   }
   if (r->lm->dfa != NULL) {
     module_send(module_sd, "  Global:            %4d words, %3d categories, %4d nodes\n", r->lm->winfo->num, r->lm->dfa->term_num, r->lm->dfa->state_num);

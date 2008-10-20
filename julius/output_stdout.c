@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 17:18:46 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -25,9 +25,6 @@
 #include "app.h"
 
 extern boolean separate_score_flag;
-
-/// Grammar status to be processed in the next reload timing.
-static char *hookstr[] = {"", "delete", "activate", "deactivate"};
 
 static boolean have_progout = FALSE;
 
@@ -1182,6 +1179,7 @@ print_all_gram(Recog *recog)
   MULTIGRAM *m;
   RecogProcess *r;
   boolean multi;
+  char buf[1024];
 
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
@@ -1189,18 +1187,40 @@ print_all_gram(Recog *recog)
   for(r=recog->process_list;r;r=r->next) {
     if (! r->live) continue;
     if (multi) printf("[#%d %s]\n", r->config->id, r->config->name);
-
+    if (r->lmtype == LM_PROB) {
+      printf("NOT A GRAMMAR-BASED LM\n");
+      continue;
+    }
     printf("[grammars]\n");
     for(m=r->lm->grammars;m;m=m->next) {
-      printf("  #%2d: [%-11s] %4d words, %3d categories, %4d nodes",
-	     m->id,
-	     m->active ? "active" : "inactive",
-	     m->winfo->num, m->dfa->term_num, m->dfa->state_num);
-      if (m->newbie) printf(" (new)");
-      if (m->hook != MULTIGRAM_DEFAULT) {
-	printf(" (next: %s)", hookstr[m->hook]);
+      buf[0] = '\0';
+      if (m->dfa) {
+	snprintf(buf, 1024, ", %3d categories, %4d nodes",
+		 m->dfa->term_num, m->dfa->state_num);
       }
-      myprintf(" \"%s\"\n", m->name);
+      if (m->newbie) strcat(buf, " (new)");
+      if (m->hook != 0) {
+	strcat(buf, " (next:");
+	if (m->hook & MULTIGRAM_DELETE) {
+	  strcat(buf, " delete");
+	}
+	if (m->hook & MULTIGRAM_ACTIVATE) {
+	  strcat(buf, " activate");
+	}
+	if (m->hook & MULTIGRAM_DEACTIVATE) {
+	  strcat(buf, " deactivate");
+	}
+	if (m->hook & MULTIGRAM_MODIFIED) {
+	  strcat(buf, " modified");
+	}
+	strcat(buf, ")");
+      }
+      myprintf("  #%2d: [%-11s] %4d words%s \"%s\"\n",
+	       m->id,
+	       m->active ? "active" : "inactive",
+	       m->winfo->num,
+	       buf,
+	       m->name);
     }
     if (r->lm->dfa != NULL) {
       printf("  Global:            %4d words, %3d categories, %4d nodes\n", r->lm->winfo->num, r->lm->dfa->term_num, r->lm->dfa->state_num);

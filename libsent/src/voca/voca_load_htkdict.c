@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -669,6 +669,9 @@ voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset)
   }
   dstinfo->num = n;
 
-  return(voca_load_end(dstinfo));
+  /* compute maxwn */
+  voca_set_stats(dstinfo);
+
+  return TRUE;
 }
 

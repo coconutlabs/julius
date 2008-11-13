@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 13:31:20 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -86,7 +86,7 @@ static boolean has_pre;		///< TRUE if pre_data is available
 static unsigned int sfreq;	///< Sampling frequency in Hz, specified by adin_standby()
 
 static char speechfilename[MAXPATHLEN];	///< Buffer to hold input file name
-
+static char *stdin_buf = NULL;
 
 /* read .wav data with endian conversion */
 /* (all .wav datas are in little endian) */
@@ -106,7 +106,7 @@ static boolean
 myread(void *buf, size_t unitbyte, int unitnum, FILE *fp)
 {
   int tmp;
-  if ((tmp = myfread(buf, unitbyte, unitnum, fp)) < unitnum) {
+  if ((tmp = fread(buf, unitbyte, unitnum, fp)) < unitnum) {
     return(FALSE);
   }
 #ifdef WORDS_BIGENDIAN
@@ -246,7 +246,7 @@ adin_file_open(char *filename)	/* NULL for standard input */
   char dummy[4];
 
   if (filename != NULL) {
-    if ((fp = fopen_readfile(filename)) == NULL) {
+    if ((fp = fopen(filename, "r")) == NULL) {
       jlog("Error: adin_file: failed to open %s\n",filename);
       return(FALSE);
     }
@@ -257,12 +257,16 @@ adin_file_open(char *filename)	/* NULL for standard input */
       jlog("Error: adin_file: _setmode() failed\n");
     }
 #endif
+    if (stdin_buf == NULL) {
+      stdin_buf = (char *)mymalloc(BUFSIZ);
+      setvbuf(stdin, stdin_buf, _IOFBF, BUFSIZ);
+    }
   }
     
   /* check first 4 byte to detect Microsoft WAVE format */
-  if (myfread(dummy, 1, 4, fp) < 4) {
+  if (fread(dummy, 1, 4, fp) < 4) {
     jlog("Error: adin_file: size less than 4 bytes?\n",filename);
-    fclose_readfile(fp);
+    fclose(fp);
     return(FALSE);
   }
   if (dummy[0] == 'R' &&
@@ -274,7 +278,7 @@ adin_file_open(char *filename)	/* NULL for standard input */
     has_pre = FALSE;
     if (setup_wav(fp) == FALSE) {
       jlog("Error: adin_file: error in parsing wav header at %s\n",filename);
-      fclose_readfile(fp);
+      fclose(fp);
       return(FALSE);
     }
   } else {
@@ -300,7 +304,7 @@ adin_file_close()
   FILE *fp;
 
   fp = gfp;
-  if (fclose_readfile(fp) != 0) {
+  if (fclose(fp) != 0) {
     jlog("Error: adin_file: failed to close file\n");
     return FALSE;
   }
@@ -398,7 +402,15 @@ adin_file_read(SP16 *buf, int sampnum)
   fp = gfp;
   
   if (wav_p) {
-    cnt = myfread(buf, sizeof(SP16), sampnum, fp);
+    cnt = fread(buf, sizeof(SP16), sampnum, fp);
+    if (cnt == 0) {
+      if (feof(fp)) return -1; /* EOF */
+      if (ferror(fp)) {
+	jlog("Error: adin_file: an error occured while reading file\n");
+	adin_file_close();
+	return -2; /* error */
+      }
+    }
     if (nowlen + cnt > maxlen) {
       cnt = maxlen - nowlen;
     }
@@ -407,19 +419,27 @@ adin_file_read(SP16 *buf, int sampnum)
     if (has_pre) {
       buf[0] = pre_data[0]; buf[1] = pre_data[1];
       has_pre = FALSE;
-      cnt = myfread(&(buf[2]), sizeof(SP16), sampnum - 2, fp);
-      if (cnt > 0) cnt += 2;
+      cnt = fread(&(buf[2]), sizeof(SP16), sampnum - 2, fp);
+      if (cnt == 0) {
+	if (feof(fp)) return -1; /* EOF */
+	if (ferror(fp)) {
+	  jlog("Error: adin_file: an error occured file reading file\n");
+	  adin_file_close();
+	  return -2; /* error */
+	}
+      }
+      cnt += 2;
     } else {
-      cnt = myfread(buf, sizeof(SP16), sampnum, fp);
+      cnt = fread(buf, sizeof(SP16), sampnum, fp);
+      if (cnt == 0) {
+	if (feof(fp)) return -1; /* EOF */
+	if (ferror(fp)) {
+	  jlog("Error: adin_file: an error occured file reading file\n");
+	  adin_file_close();
+	  return -2; /* error */
+	}
+      }
     }
-  }
-  if (cnt == 0) {		/* error or EOF */
-    if (myfeof(fp) == 1) {		/* EOF */
-      return -1;
-    }
-    jlog("Error: adin_file: an error occured file reading file\n");
-    adin_file_close();
-    return -2;		/* error */
   }
   /* all .wav data are in little endian */
   /* assume .raw data are in big endian */
@@ -469,6 +489,7 @@ boolean
 adin_stdin_begin()
 {
   if (feof(stdin)) {		/* already reached the end of input stream */
+    jlog("Error: adin_stdin: stdin reached EOF\n");
     return FALSE;		/* terminate search here */
   } else {
     /* open input stream */
@@ -476,7 +497,7 @@ adin_stdin_begin()
       jlog("Error: adin_stdin: failed to read speech data from stdin\n");
       return FALSE;
     }
-    jlog("Stat: adin_stding: reading wavedata from stdin...\n");
+    jlog("Stat: adin_stdin: reading wavedata from stdin...\n");
   }
   return TRUE;
 }
@@ -496,23 +517,38 @@ adin_stdin_read(SP16 *buf, int sampnum)
 
   if (wav_p) {
     cnt = myfread(buf, sizeof(SP16), sampnum, stdin);
+    if (cnt == 0) {
+      if (feof(stdin)) return -1; /* EOF */
+      if (ferror(stdin)) {
+	jlog("Error: adin_stdin: an error occured while reading stdin\n");
+	return -2; /* error */
+      }
+    }
   } else {
     if (has_pre) {
       buf[0] = pre_data[0]; buf[1] = pre_data[1];
       has_pre = FALSE;
       cnt = fread(&(buf[2]), sizeof(SP16), sampnum - 2, stdin);
-      if (cnt > 0) cnt += 2;
+      if (cnt == 0) {
+	if (feof(stdin)) return -1; /* EOF */
+	if (ferror(stdin)) {
+	  jlog("Error: adin_stdin: an error occured while reading stdin\n");
+	  return -2; /* error */
+	}
+      }
+      cnt += 2;
     } else {
       cnt = fread(buf, sizeof(SP16), sampnum, stdin);
+      if (cnt == 0) {
+	if (feof(stdin)) return -1; /* EOF */
+	if (ferror(stdin)) {
+	  jlog("Error: adin_stdin: an error occured while reading stdin\n");
+	  return -2; /* error */
+	}
+      }
     }
   }
-  if (cnt == 0) {     
-    if (ferror(stdin)) {		/* error */
-      jlog("Error: adin_file: an error occured file reading file\n");
-      return -2;		/* error */
-    }
-    return -1;			/* EOF */
-  }
+
   /* all .wav data are in little endian */
   /* assume .raw data are in big endian */
 #ifdef WORDS_BIGENDIAN

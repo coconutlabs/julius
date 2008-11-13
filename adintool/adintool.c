@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -81,6 +81,7 @@ static boolean stop_at_next = FALSE; ///< TRUE if need to stop at next input by 
 static boolean pause_each = FALSE; ///< If set to TRUE, adintool will pause automatically at each input end and wait for resume command
 static boolean loose_sync = FALSE; ///< If set to TRUE, adintool will do loose synchronization for resume among servers
 static int rewind_msec = 0;
+static int trigger_sample;
 
 /** 
  * <JA>ヘルプを表示して終了する</JA>
@@ -157,6 +158,7 @@ opt_in(Jconf *jconf, char *arg[], int argnum)
     break;
   case 'f':
     jconf->input.speech_input = SP_RAWFILE;
+    jconf->detect.silence_cut = 1;
     break;
   case 's':
     jconf->input.speech_input = SP_STDIN;
@@ -283,7 +285,7 @@ opt_freq(Jconf *jconf, char *arg[], int argnum)
 static boolean
 opt_nosegment(Jconf *jconf, char *arg[], int argnum)
 {
-  jconf->detect.silence_cut = FALSE;
+  jconf->detect.silence_cut = 0;
   return TRUE;
 }
 static boolean
@@ -923,7 +925,11 @@ close_files()
 	return FALSE;
       }
     }
-    printf("%s: %d samples (%.2f sec.)\n", outpath, speechlen, (float)speechlen / (float)sfreq);
+    printf("%s: %d samples (%.2f sec.) [%6d (%5.2fs) - %6d (%5.2fs)]\n", 
+	   outpath, speechlen, 
+	   (float)speechlen / (float)sfreq,
+	   trigger_sample, (float)trigger_sample / (float)sfreq, 
+	   trigger_sample + speechlen, (float)(trigger_sample + speechlen) / (float)sfreq);
     
     writing_file = FALSE;
   }
@@ -944,6 +950,11 @@ interrupt_record(int signum)
   exit(1);
 }
 
+static void
+record_trigger_time(Recog *recog, void *data)
+{
+  trigger_sample = recog->adin->last_trigger_sample;
+}
 
 /** 
  * <JA>
@@ -1118,6 +1129,11 @@ main(int argc, char *argv[])
 #endif
   }
 
+  /*********************/
+  /* add some callback */
+  /*********************/
+  callback_add(recog, CALLBACK_EVENT_SPEECH_START, record_trigger_time, NULL);
+
 
   /**************************************/
   /* display input/output configuration */
@@ -1159,7 +1175,7 @@ main(int argc, char *argv[])
 	fprintf(stderr, "failed to begin input stream\n");
       }
       /* exit recording */
-      break;
+      goto record_end;
     }
 
     /*********************************/
@@ -1224,7 +1240,10 @@ main(int argc, char *argv[])
 	    adin_send_end_of_segment();
 	  }
 	  /* output info */
-	  printf("sent: %d samples (%.2f sec.)\n", speechlen, (float)speechlen / (float)sfreq);
+	  printf("sent: %d samples (%.2f sec.) [%6d (%5.2fs) - %6d (%5.2fs)]\n", 
+		 speechlen, (float)speechlen / (float)sfreq,
+		 trigger_sample, (float)trigger_sample / (float)sfreq, 
+		 trigger_sample + speechlen, (float)(trigger_sample + speechlen) / (float)sfreq);
 	}
       }
 
@@ -1272,6 +1291,8 @@ main(int argc, char *argv[])
     adin_end(recog->adin);
 
   } /* to the next input stream (i.e. next input file in SP_RAWFILE) */
+
+ record_end:
 
   if (speech_output == SPOUT_FILE) {
     if (continuous_segment) {

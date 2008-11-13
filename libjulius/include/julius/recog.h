@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -420,6 +420,9 @@ typedef struct __adin__ {
   boolean rehash; ///< TRUE is want rehash at rewinding on decoder-based VAD
 
   boolean input_side_segment;   ///< TRUE if segmentation requested by ad_read
+
+  unsigned int total_captured_len;
+  unsigned int last_trigger_sample;
 
 } ADIn;
 

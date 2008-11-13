@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -193,6 +193,8 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   adin->need_init = TRUE;
 
   adin->rehash = FALSE;
+
+  adin->total_captured_len = 0;
 
   return TRUE;
 
@@ -417,6 +419,8 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	plugin_exec_adin_captured(&(a->buffer[a->bp]), cnt);
 #endif
 	callback_exec_adin(CALLBACK_ADIN_CAPTURED, recog, &(a->buffer[a->bp]), cnt);
+	/* record total number of captured samples */
+	a->total_captured_len += cnt;
       }
 
       /*************************************************/
@@ -532,7 +536,7 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
     /*********************************************************/
     i = 0;
     while (i + wstep <= imax) {
-      
+
       if (a->adin_cut_on) {
 
 	/********************/
@@ -552,12 +556,13 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	    /*****************************************************/
 	    /* process off, trigger on: detect speech triggering */
 	    /*****************************************************/
-	    
 	    a->is_valid_data = TRUE;   /* start processing */
 	    a->nc = 0;
 #ifdef THREAD_DEBUG
 	    jlog("DEBUG: detect on\n");
 #endif
+	    /* record time */
+	    a->last_trigger_sample = a->total_captured_len - a->current_len + i + wstep - a->zc.valid_len;
 	    callback_exec(CALLBACK_EVENT_SPEECH_START, recog);
 
 	    /****************************************/

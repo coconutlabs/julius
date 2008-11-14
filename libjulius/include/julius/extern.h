@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -243,6 +243,7 @@ int multigram_activate(int gid, PROCESS_LM *lm);
 int multigram_deactivate(int gid, PROCESS_LM *lm);
 boolean multigram_load_all_gramlist(PROCESS_LM *lm);
 int multigram_get_gram_from_category(int category, PROCESS_LM *lm);
+int multigram_get_gram_from_wid(WORD_ID wid, PROCESS_LM *lm);
 int multigram_get_all_num(PROCESS_LM *lm);
 void multigram_free_all(MULTIGRAM *root);
 

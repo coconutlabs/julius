@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -964,6 +964,44 @@ multigram_get_gram_from_category(int category, PROCESS_LM *lm)
     tb = m->cate_begin;
     te = tb + m->dfa->term_num;
     if (tb <= category && category < te) { /* found */
+      return(m->id);
+    }
+  }
+  return(-1);
+}
+
+/** 
+ * <JA>
+ * 単語IDから属する文法を得る. 
+ * 
+ * @param wid 単語ID
+ * @param lm [i/o] 言語処理インスタンス
+ * 
+ * @return 単語の属する文法のIDを返す. 
+ * </JA>
+ * <EN>
+ * Get which grammar the given word belongs to.
+ * 
+ * @param wid word ID
+ * @param lm [i/o] LM processing instance
+ * 
+ * @return the id of the belonging grammar.
+ * </EN>
+ * @callgraph
+ * @callergraph
+ * @ingroup grammar
+ */
+int
+multigram_get_gram_from_wid(WORD_ID wid, PROCESS_LM *lm)
+{
+  MULTIGRAM *m;
+  int wb, we;
+
+  for(m = lm->grammars; m; m = m->next) {
+    if (m->newbie) continue;
+    wb = m->word_begin;
+    we = wb + m->winfo->num;
+    if (wb <= wid && wid < we) { /* found */
       return(m->id);
     }
   }

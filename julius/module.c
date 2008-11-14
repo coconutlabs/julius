@@ -324,6 +324,7 @@ msock_exec_command(char *command, Recog *recog)
 	q = p;
 	while(*q != '\0' && *q != '\r' && *q != '\n') {
 	  if (*q < '0' || *q > '9') break;
+	  q++;
 	}
 	if (*q == '\0' || *q == '\r' || *q == '\n') { /* numeric */
 	  gid = atoi(p);
@@ -358,6 +359,7 @@ msock_exec_command(char *command, Recog *recog)
 	q = p;
 	while(*q != '\0' && *q != '\r' && *q != '\n') {
 	  if (*q < '0' || *q > '9') break;
+	  q++;
 	}
 	if (*q == '\0' || *q == '\r' || *q == '\n') { /* numeric */
 	  gid = atoi(p);
@@ -394,6 +396,7 @@ msock_exec_command(char *command, Recog *recog)
 	q = p;
 	while(*q != '\0' && *q != '\r' && *q != '\n') {
 	  if (*q < '0' || *q > '9') break;
+	  q++;
 	}
 	if (*q == '\0' || *q == '\r' || *q == '\n') { /* numeric */
 	  gid = atoi(p);

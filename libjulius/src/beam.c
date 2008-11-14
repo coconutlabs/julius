@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -657,7 +657,11 @@ find_1pass_result_word(int framelen, RecogProcess *r)
       s->score = tmp->backscore;
       s->score_lm = 0.0;
       s->score_am = tmp->backscore;
-      s->gram_id = 0;
+      if (multigram_get_all_num(r->lm) > 0) {
+	s->gram_id = multigram_get_gram_from_wid(s->word[0], r->lm);
+      } else {
+	s->gram_id = 0;
+      }
       s->align.filled = FALSE;
     }
     /* free work area for sort */
@@ -677,7 +681,11 @@ find_1pass_result_word(int framelen, RecogProcess *r)
     s->score = best->backscore;
     s->score_lm = 0.0;
     s->score_am = best->backscore;
-    s->gram_id = 0;
+    if (multigram_get_all_num(r->lm) > 0) {
+      s->gram_id = multigram_get_gram_from_wid(s->word[0], r->lm);
+    } else {
+      s->gram_id = 0;
+    }
     s->align.filled = FALSE;
   }
 

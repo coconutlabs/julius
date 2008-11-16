@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -99,6 +99,7 @@ boolean dfa_look_around(NEXTWORD *nword, NODE *hypo, RecogProcess *r);
 
 /* search_bestfirst_main.c */
 void segment_set_last_nword(NODE *hypo, RecogProcess *r);
+void pass2_finalize_on_no_result(RecogProcess *r, boolean use_1pass_as_final);
 void wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num);
 
 /* search_bestfirst_v?.c */
@@ -152,6 +153,7 @@ void state_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, Reco
 void word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
 void phoneme_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
 void state_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void do_alignment_all(RecogProcess *r, HTK_Param *param);
 
 /* m_usage.c */
 void opt_terminate();

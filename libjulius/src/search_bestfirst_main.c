@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -1099,18 +1099,95 @@ result_reorder_and_output(NODE **r_start, NODE **r_bottom, int *r_stacknum, int 
     /* if in sp segmentation mode, */
     /* set the last context-aware word for next recognition */
     if (r->lmtype == LM_PROB && r->config->successive.enabled && num == 1) segment_set_last_nword(now, r);
-    /* do forced alignment if needed */
-    if (r->config->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(r->result.sent[r->result.sentnum-1]), r);
-    if (r->config->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(r->result.sent[r->result.sentnum-1]), r);
-    if (r->config->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(r->result.sent[r->result.sentnum-1]), r);
 
     free_node(now);
   }
-  r->result.status = J_RESULT_STATUS_SUCCESS;
   /* free the rest */
   if (now != NULL) free_node(now);
   free_all_nodes(*r_start);
 }  
+
+/** 
+ * <EN>
+ * @brief  Post-process of 2nd pass when no result is obtained.
+ *
+ * This is a post-process for the 2nd pass which should be called when
+ * the 2nd pass has no result.  This will occur when the 2nd pass was
+ * executed but failed with no sentence candidate, or skipped by
+ * an option.
+ *
+ * When the 2nd argument is set to TRUE, the result of the 1st pass
+ * will be copied as final result of 2nd pass and the recognition
+ * status flag is set to SUCCESS.  If FALSE, recognition status will
+ * be set to FAILED.  On sp-segment decoding, the initial hypothesis
+ * marker for the next input segment will be set up from the 1st pass
+ * result also.
+ * 
+ * @param r [in] recognition process instance
+ * @param use_1pass_as_final [in] when TRUE the 1st pass result will be used as final recognition result of 2nd pass.
+ * 
+ * </EN>
+ * <JA>
+ * @brief  第2パスの解が得られない場合の終了処理
+ *
+ * 第2パスが失敗した場合や第2パスが実行されない設定の場合の
+ * 認識終了処理を行う．use_1pass_as_final が TRUE のとき，
+ * 第1パスの結果を第2パスの結果としてコピーして格納し，認識成功とする．
+ * FALSE時は認識失敗とする．
+ * また，sp-segment 時は，次の認識区間用の初期仮説設定も第1パスの
+ * 結果から行う．
+ * 
+ * @param r [in] 認識処理インスタンス
+ * @param use_1pass_as_final [in] TRUE 時第1パスの結果を第2パス結果に格納する
+ * 
+ * </JA>
+ */
+void
+pass2_finalize_on_no_result(RecogProcess *r, boolean use_1pass_as_final)
+{
+  NODE *now;
+  int i, j;
+
+  /* 探索失敗 */
+  /* search failed */
+
+  /* make temporal hypothesis data from the result of previous 1st pass */
+  now = newnode(r);
+  for (i=0;i<r->pass1_wnum;i++) {
+    now->seq[i] = r->pass1_wseq[r->pass1_wnum-1-i];
+  }
+  now->seqnum = r->pass1_wnum;
+  now->score = r->pass1_score;
+#ifdef CONFIDENCE_MEASURE
+  /* fill in null values */
+#ifdef CM_MULTIPLE_ALPHA
+  for(j=0;j<jconf->annotate.cm_alpha_num;j++) {
+    for(i=0;i<now->seqnum;i++) now->cmscore[i][j] = 0.0;
+  }
+#else
+  for(i=0;i<now->seqnum;i++) now->cmscore[i] = 0.0;
+#endif
+#endif /* CONFIDENCE_MEASURE */
+  
+  if (r->lmtype == LM_PROB && r->config->successive.enabled) {
+    /* if in sp segment mode, */
+    /* find segment restart words from 1st pass result */
+    segment_set_last_nword(now, r);
+  }
+    
+  if (use_1pass_as_final) {
+    /* 第1パスの結果をそのまま出力する */
+    /* output the result of the previous 1st pass as a final result. */
+    store_result_pass2(now, r);
+    r->result.status = J_RESULT_STATUS_SUCCESS;
+  } else {
+    /* store output as failure */
+    r->result.status = J_RESULT_STATUS_FAIL;
+    //callback_exec(CALLBACK_RESULT, r);
+  }
+  
+  free_node(now);
+}
 
 
 /**********************************************************************/
@@ -2052,58 +2129,16 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
 
   /* output */
   if (dwrk->finishnum == 0) {		/* if search failed */
-    /* 探索失敗 */
-    /* search failed */
-    /* make temporal hypothesis data from the result of previous 1st pass */
-    now = newnode(r);
-    for (i=0;i<r->pass1_wnum;i++) {
-      now->seq[i] = r->pass1_wseq[r->pass1_wnum-1-i];
-    }
-    now->seqnum = r->pass1_wnum;
-    now->score = r->pass1_score;
-#ifdef CONFIDENCE_MEASURE
-    /* fill in null values */
-#ifdef CM_MULTIPLE_ALPHA
-    for(j=0;j<jconf->annotate.cm_alpha_num;j++) {
-      for(i=0;i<now->seqnum;i++) now->cmscore[i][j] = 0.0;
-    }
-#else
-    for(i=0;i<now->seqnum;i++) now->cmscore[i] = 0.0;
-#endif
-#endif /* CONFIDENCE_MEASURE */
-    
-    if (r->lmtype == LM_PROB && r->config->successive.enabled) {
-      /* if in sp segment mode, */
-      /* find segment restart words from 1st pass result */
-      segment_set_last_nword(now, r);
-    }
-    
-    if (r->config->sw.fallback_pass1_flag) {
-      /* 第1パスの結果をそのまま出力する */
-      /* output the result of the previous 1st pass as a final result. */
-      if (verbose_flag) {
+
+    /* finalize result when no hypothesis was obtained */
+    if (verbose_flag) {
+      if (r->config->sw.fallback_pass1_flag) {
 	jlog("%02d %s: got no candidates, output 1st pass result as a final result\n", r->config->id, r->config->name);
-      }
-      /* do forced alignment if needed */
-      if (jconf->annotate.align_result_word_flag) word_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
-      if (jconf->annotate.align_result_phoneme_flag) phoneme_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
-      if (jconf->annotate.align_result_state_flag) state_rev_align(now->seq, now->seqnum, param, &(r->result.pass1), r);
-
-      /* store output as final result */
-      store_result_pass2(now, r);
-
-    } else {
-      /* store output as failure */
-
-      if (verbose_flag) {
+      } else {
 	jlog("WARNING: %02d %s: got no candidates, search failed\n", r->config->id, r->config->name);
       }
-
-      r->result.status = J_RESULT_STATUS_FAIL;
-      //callback_exec(CALLBACK_RESULT, r);
     }
-
-    free_node(now);
+    pass2_finalize_on_no_result(r, r->config->sw.fallback_pass1_flag);
 
   } else {			/* if at least 1 candidate found */
 
@@ -2116,6 +2151,8 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
 	 and output them here  */
       if (debug2_flag) jlog("DEBUG: done\n");
       result_reorder_and_output(&r_start, &r_bottom, &r_stacknum, jconf->output.output_hypo_maxnum, r, param);
+
+      r->result.status = J_RESULT_STATUS_SUCCESS;
       //callback_exec(CALLBACK_RESULT, r);
       //callback_exec(CALLBACK_EVENT_PASS2_END, r);
   }

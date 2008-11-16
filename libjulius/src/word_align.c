@@ -33,7 +33,7 @@
  * @author Akinobu Lee
  * @date   Sat Sep 24 16:09:46 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -528,5 +528,39 @@ state_rev_align(WORD_ID *revwords, short num, HTK_Param *param, Sentence *s, Rec
   do_align(words, num, param, PER_STATE, s, r);
   free(words);
 }
+
+/** 
+ * <JA>
+ * 認識結果に対して必要なアラインメントを全て実行する．
+ * 
+ * @param r [i/o] 認識処理インスタンス
+ * @param param [in] 入力特徴ベクトル列
+ * </JA>
+ * <EN>
+ * Do required forced alignment for the recognition results
+ * 
+ * @param r [i/o] recognition process instance
+ * @param param [in] input parameter vectors
+ * </EN>
+ * @callgraph
+ * @callergraph
+ */
+void
+do_alignment_all(RecogProcess *r, HTK_Param *param)
+{
+  int n;
+  Sentence *s;
+
+  for(n = 0; n < r->result.sentnum; n++) {
+    s = &(r->result.sent[n]);
+      /* do forced alignment if needed */
+    if (r->config->annotate.align_result_word_flag) 
+      word_align(s->word, s->word_num, param, s, r);
+    if (r->config->annotate.align_result_phoneme_flag)
+      phoneme_align(s->word, s->word_num, param, s, r);
+    if (r->config->annotate.align_result_state_flag)
+      state_align(s->word, s->word_num, param, s, r);
+  }
+} 
 
 /* end of file */

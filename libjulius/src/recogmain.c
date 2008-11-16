@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 
@@ -576,6 +576,7 @@ j_recognize_stream_core(Recog *recog)
   boolean ok_p;
   boolean process_segment_last;
   boolean on_the_fly;
+  boolean pass2_p;
 
   jconf = recog->jconf;
 
@@ -1050,9 +1051,38 @@ j_recognize_stream_core(Recog *recog)
       }
     }
 
+    /* for instances with "-1pass", copy 1st pass result as final */
+    /* execute stack-decoding search */
+    /* they will be skipepd in the next pass */
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      /* skip if 1st pass was failed */
+      if (r->result.status < 0) continue;
+      if (r->config->compute_only_1pass) {
+	if (verbose_flag) {
+	  jlog("%02d %s: \"-1pass\" specified, output 1st pass result as a final result\n", r->config->id, r->config->name);
+	}
+	/* prepare result storage */
+	result_sentence_malloc(r, 1);
+	/* finalize result when no hypothesis was obtained */
+	pass2_finalize_on_no_result(r, TRUE);
+      }
+    }
+
     /***********************************************/
     /* 2nd-pass --- forward search with heuristics */
     /***********************************************/
+    pass2_p = FALSE;
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      /* if [-1pass] is specified, skip 2nd pass */
+      if (r->config->compute_only_1pass) continue;
+      /* if search already failed on 1st pass, skip 2nd pass */
+      if (r->result.status < 0) continue;
+      pass2_p = TRUE;
+    }
+    if (pass2_p) callback_exec(CALLBACK_EVENT_PASS2_BEGIN, recog);
+
 #if !defined(PASS2_STRICT_IWCD) || defined(FIX_35_PASS2_STRICT_SCORE)    
     /* adjust trellis score not to contain outprob of the last frames */
     for(r=recog->process_list;r;r=r->next) {
@@ -1073,11 +1103,9 @@ j_recognize_stream_core(Recog *recog)
 #endif
     
     /* execute stack-decoding search */
-    callback_exec(CALLBACK_EVENT_PASS2_BEGIN, recog);
-
     for(r=recog->process_list;r;r=r->next) {
       if (!r->live) continue;
-      /* if [-1pass] is specified, skip 2nd pass */
+      /* if [-1pass] is specified, just copy from 1st pass result */
       if (r->config->compute_only_1pass) continue;
       /* if search already failed on 1st pass, skip 2nd pass */
       if (r->result.status < 0) continue;
@@ -1113,6 +1141,15 @@ j_recognize_stream_core(Recog *recog)
       }
     }
 
+    /* do forced alignment if needed */
+    for(r=recog->process_list;r;r=r->next) {
+      if (!r->live) continue;
+      /* if search failed on 2nd pass, skip this */
+      if (r->result.status < 0) continue;
+      /* do needed alignment */
+      do_alignment_all(r, r->am->mfcc->param);
+    }
+
     /* output result */
     callback_exec(CALLBACK_RESULT, recog);
 #ifdef ENABLE_PLUGIN
@@ -1123,6 +1160,8 @@ j_recognize_stream_core(Recog *recog)
     ok_p = FALSE;
     for(r=recog->process_list;r;r=r->next) {
       if (!r->live) continue;
+      if (r->config->compute_only_1pass) continue;
+      if (r->result.status < 0) continue;
       if (r->config->graph.lattice) ok_p = TRUE;
     }
     if (ok_p) callback_exec(CALLBACK_RESULT_GRAPH, recog);
@@ -1131,6 +1170,8 @@ j_recognize_stream_core(Recog *recog)
     ok_p = FALSE;
     for(r=recog->process_list;r;r=r->next) {
       if (!r->live) continue;
+      if (r->config->compute_only_1pass) continue;
+      if (r->result.status < 0) continue;
       if (r->config->graph.confnet) ok_p = TRUE;
     }
     if (ok_p) callback_exec(CALLBACK_RESULT_CONFNET, recog);
@@ -1142,7 +1183,7 @@ j_recognize_stream_core(Recog *recog)
     }
     
     /* output end of 2nd pass */
-    callback_exec(CALLBACK_EVENT_PASS2_END, recog);
+    if (pass2_p) callback_exec(CALLBACK_EVENT_PASS2_END, recog);
 
 #ifdef DEBUG_VTLN_ALPHA_TEST
     if (r->am->mfcc->para->vtln_alpha == 1.0) {

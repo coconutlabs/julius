@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 
@@ -1058,6 +1058,8 @@ j_recognize_stream_core(Recog *recog)
       if (!r->live) continue;
       /* skip if 1st pass was failed */
       if (r->result.status < 0) continue;
+      /* already stored on word recognition, so skip this */
+      if (r->lmvar == LM_DFA_WORD) continue;
       if (r->config->compute_only_1pass) {
 	if (verbose_flag) {
 	  jlog("%02d %s: \"-1pass\" specified, output 1st pass result as a final result\n", r->config->id, r->config->name);

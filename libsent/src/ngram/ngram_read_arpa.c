@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.9 2008/10/15 16:06:33 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.10 2008/12/12 17:23:29 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -473,7 +473,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
       bowt = (LOGPROB) atof(s);
       if (t->bo_wt == NULL) {
 	t->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
-	for(i=0;i<nnid;i++) t->bo_wt[nnid] = 0.0;
+	for(i=0;i<nnid;i++) t->bo_wt[i] = 0.0;
       }
       t->bo_wt[nnid] = bowt;
     } else {

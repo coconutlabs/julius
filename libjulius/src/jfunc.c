@@ -19,7 +19,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 15:04:28 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -1484,8 +1484,10 @@ vtln_alpha(Recog *recog, RecogProcess *r)
   LOGPROB max_score;
   PROCESS_AM *am;
   MFCCCalc *mfcc;
+  SentenceAlign *align;
 
   s = &(r->result.sent[0]);
+  align = result_align_new();
 
   max_score = LOG_ZERO;
 
@@ -1507,10 +1509,10 @@ vtln_alpha(Recog *recog, RecogProcess *r)
       return;
     }
     outprob_prepare(&(r->am->hmmwrk), mfcc->param->samplenum);
-    word_align(s->word, s->word_num, mfcc->param, s, r);
-    printf("%f: %f\n", alpha, s->align.allscore);
-    if (max_score < s->align.allscore) {
-      max_score = s->align.allscore;
+    word_align(s->word, s->word_num, mfcc->param, align, r);
+    printf("%f: %f\n", alpha, align->allscore);
+    if (max_score < align->allscore) {
+      max_score = align->allscore;
       max_alpha = alpha;
     }
   }
@@ -1522,6 +1524,8 @@ vtln_alpha(Recog *recog, RecogProcess *r)
   }
 
   printf("------------ end VTLN -------------\n");
+
+  result_align_free(align);
 
 }
 #endif

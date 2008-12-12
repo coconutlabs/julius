@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -583,6 +583,7 @@ find_1pass_result_word(int framelen, RecogProcess *r)
   LOGPROB maxscore;
   int i;
   TRELLIS_ATOM **idx;
+  int num;
 
   if (r->lmvar != LM_DFA_WORD) return;
 
@@ -629,13 +630,14 @@ find_1pass_result_word(int framelen, RecogProcess *r)
     /* more than one candidate is requested */
 
     /* get actual number of candidates to output */
-    r->result.sentnum = r->config->output.output_hypo_maxnum;
-    if (r->result.sentnum > bt->num[last_time]) {
-      r->result.sentnum = bt->num[last_time];
+    num = r->config->output.output_hypo_maxnum;
+    if (num > bt->num[last_time]) {
+      num = bt->num[last_time];
     }
 
     /* prepare result storage */
-    r->result.sent = (Sentence *)mymalloc(sizeof(Sentence)* r->result.sentnum);
+    result_sentence_malloc(r, num);
+    r->result.sentnum = num;
 
     /* sort by score */
     idx = (TRELLIS_ATOM **)mymalloc(sizeof(TRELLIS_ATOM *)*bt->num[last_time]);
@@ -662,7 +664,6 @@ find_1pass_result_word(int framelen, RecogProcess *r)
       } else {
 	s->gram_id = 0;
       }
-      s->align.filled = FALSE;
     }
     /* free work area for sort */
     free(idx);
@@ -670,7 +671,7 @@ find_1pass_result_word(int framelen, RecogProcess *r)
   } else {			/* only max is needed */
 
     /* prepare result storage */
-    r->result.sent = (Sentence *)mymalloc(sizeof(Sentence));
+    result_sentence_malloc(r, 1);
     r->result.sentnum = 1;
     s = &(r->result.sent[0]);
     s->word_num = 1;
@@ -686,11 +687,11 @@ find_1pass_result_word(int framelen, RecogProcess *r)
     } else {
       s->gram_id = 0;
     }
-    s->align.filled = FALSE;
   }
 
   /* copy as 1st pass result */
   memcpy(&(r->result.pass1), &(r->result.sent[0]), sizeof(Sentence));
+  r->result.pass1.align = NULL;
 
   //callback_exec(CALLBACK_RESULT, r);
   //free(r->result.sent);

@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -294,6 +294,24 @@ typedef struct __gmm_calc__{
 } GMMCalc;
 
 /**
+ * Alignment result, valid when forced alignment was done
+ * 
+ */
+typedef struct __sentence_align__ {
+  int num;                    ///< Number of units
+  short unittype;             ///< Unit type (one of PER_*)
+  WORD_ID *w;                 ///< word sequence by id (PER_WORD)
+  HMM_Logical **ph;     ///< Phone sequence (PER_PHONEME, PER_STATE)
+  short *loc; ///< sequence of state location in a phone (PER_STATE)
+  boolean *is_iwsp;           ///< TRUE if PER_STATE and this is the inter-word pause state at multipath mode
+  int *begin_frame;           ///< List of beginning frame
+  int *end_frame;             ///< List of ending frame
+  LOGPROB *avgscore;          ///< Score averaged by frames
+  LOGPROB allscore;           ///< Re-computed acoustic score
+  struct __sentence_align__ *next; ///< data chain pointer
+} SentenceAlign;
+
+/**
  * Output result structure
  * 
  */
@@ -305,27 +323,7 @@ typedef struct __sentence__ {
   LOGPROB score_lm;             ///< Language model likelihood (scaled) for N-gram
   LOGPROB score_am;             ///< Acoustic model likelihood for N-gram
   int gram_id;                  ///< The grammar ID this sentence belongs to for DFA
-
-  /**
-   * Alignment result, valid when forced alignment was done
-   * 
-   */
-  struct {
-    boolean filled;             ///< True if has data
-    int num;                    ///< Number of units
-    short unittype;             ///< Unit type (one of PER_*)
-
-    WORD_ID *w;                 ///< word sequence by id (PER_WORD)
-    HMM_Logical **ph;     ///< Phone sequence (PER_PHONEME, PER_STATE)
-    short *loc; ///< sequence of state location in a phone (PER_STATE)
-    boolean *is_iwsp;           ///< TRUE if PER_STATE and this is the inter-word pause state at multipath mode
-
-    int *begin_frame;           ///< List of beginning frame
-    int *end_frame;             ///< List of ending frame
-    LOGPROB *avgscore;          ///< Score averaged by frames
-   
-    LOGPROB allscore;           ///< Re-computed acoustic score
-  } align;
+  SentenceAlign *align;
 
 } Sentence;
 

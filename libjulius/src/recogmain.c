@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 
@@ -192,6 +192,67 @@ print_mem()
 
 /** 
  * <EN>
+ * allocate storage of recognition alignment results.
+ *
+ * @return the new pointer
+ * </EN>
+ * <JA>
+ * アラインメント結果の格納場所を確保
+ *
+ * @return 確保された領域へのポインタ
+ * </JA>
+ *
+ * @callgraph
+ * @callergraph
+ * 
+ */
+SentenceAlign *
+result_align_new()
+{
+  SentenceAlign *new;
+  new = (SentenceAlign *)mymalloc(sizeof(SentenceAlign));
+  new->w = NULL;
+  new->ph = NULL;
+  new->loc = NULL;
+  new->begin_frame = NULL;
+  new->end_frame = NULL;
+  new->avgscore = NULL;
+  new->is_iwsp = NULL;
+  new->next = NULL;
+  return new;
+}
+
+/** 
+ * <EN>
+ * free storage of recognition alignment results.
+ *
+ * @param a [i/o] alignment data to be released
+ * </EN>
+ * <JA>
+ * アラインメント結果の格納場所を確保
+ *
+ * @param a [i/o] 解放されるアラインメントデータ
+ * </JA>
+ *
+ * @callgraph
+ * @callergraph
+ * 
+ */
+void
+result_align_free(SentenceAlign *a)
+{
+  if (a->w) free(a->w);
+  if (a->ph) free(a->ph);
+  if (a->loc) free(a->loc);
+  if (a->begin_frame) free(a->begin_frame);
+  if (a->end_frame) free(a->end_frame);
+  if (a->avgscore) free(a->avgscore);
+  if (a->is_iwsp) free(a->is_iwsp);
+  free(a);
+}
+
+/** 
+ * <EN>
  * Allocate storage of recognition results.
  * </EN>
  * <JA>
@@ -210,16 +271,7 @@ result_sentence_malloc(RecogProcess *r, int num)
 {
   int i;
   r->result.sent = (Sentence *)mymalloc(sizeof(Sentence) * num);
-  for(i=0;i<num;i++) {
-    r->result.sent[i].align.filled = FALSE;
-    r->result.sent[i].align.w = NULL;
-    r->result.sent[i].align.ph = NULL;
-    r->result.sent[i].align.loc = NULL;
-    r->result.sent[i].align.begin_frame = NULL;
-    r->result.sent[i].align.end_frame = NULL;
-    r->result.sent[i].align.avgscore = NULL;
-    r->result.sent[i].align.is_iwsp = NULL;
-  }
+  for(i=0;i<num;i++) r->result.sent[i].align = NULL;
   r->result.sentnum = 0;
 }
 
@@ -240,15 +292,15 @@ void
 result_sentence_free(RecogProcess *r)
 {  
   int i;
+  SentenceAlign *a, *atmp;
   if (r->result.sent) {
     for(i=0;i<r->result.sentnum;i++) {
-      if (r->result.sent[i].align.w) free(r->result.sent[i].align.w);
-      if (r->result.sent[i].align.ph) free(r->result.sent[i].align.ph);
-      if (r->result.sent[i].align.loc) free(r->result.sent[i].align.loc);
-      if (r->result.sent[i].align.begin_frame) free(r->result.sent[i].align.begin_frame);
-      if (r->result.sent[i].align.end_frame) free(r->result.sent[i].align.end_frame);
-      if (r->result.sent[i].align.avgscore) free(r->result.sent[i].align.avgscore);
-      if (r->result.sent[i].align.is_iwsp) free(r->result.sent[i].align.is_iwsp);
+      a = r->result.sent[i].align;
+      while(a) {
+	atmp = a->next;
+	result_align_free(a);
+	a = atmp;
+      }
     }
     free(r->result.sent);
     r->result.sent = NULL;

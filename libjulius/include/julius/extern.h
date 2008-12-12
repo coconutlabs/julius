@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -147,12 +147,12 @@ void realbeam_free(Recog *recog);
 int mfcc_go(Recog *recog, int (*ad_check)(Recog *));
 
 /* word_align.c */
-void word_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
-void phoneme_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
-void state_align(WORD_ID *words, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
-void word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
-void phoneme_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
-void state_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, Sentence *s, RecogProcess *r);
+void word_align(WORD_ID *words, short wnum, HTK_Param *param, SentenceAlign *align, RecogProcess *r);
+void phoneme_align(WORD_ID *words, short wnum, HTK_Param *param, SentenceAlign *align, RecogProcess *r);
+void state_align(WORD_ID *words, short wnum, HTK_Param *param, SentenceAlign *align, RecogProcess *r);
+void word_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, SentenceAlign *align, RecogProcess *r);
+void phoneme_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, SentenceAlign *align, RecogProcess *r);
+void state_rev_align(WORD_ID *revwords, short wnum, HTK_Param *param, SentenceAlign *align, RecogProcess *r);
 void do_alignment_all(RecogProcess *r, HTK_Param *param);
 
 /* m_usage.c */
@@ -290,6 +290,8 @@ boolean callback_delete(Recog *recog, int id);
 
 /* recogmain.c */
 int adin_cut_callback_store_buffer(SP16 *now, int len, Recog *recog);
+SentenceAlign *result_align_new();
+void result_align_free(SentenceAlign *a);
 void result_sentence_malloc(RecogProcess *r, int num);
 void result_sentence_free(RecogProcess *r);
 void clear_result(RecogProcess *r);

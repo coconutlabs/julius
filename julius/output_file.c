@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Dec 12 11:07:46 2007
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -77,6 +77,8 @@ outfile_sentence(Recog *recog, void *dummy)
   int i, j;
   boolean multi;
   static char phbuf[MAX_HMMNAME_LEN];
+  SentenceAlign *align;
+  HMM_Logical *p;
 
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
@@ -157,21 +159,26 @@ outfile_sentence(Recog *recog, void *dummy)
 	}
       }
       /* output alignment result if exist */
-      if (s->align.filled) {
-	HMM_Logical *p;
-	int i;
-	
+      for (align = s->align; align; align = align->next) {
 	fprintf(fp, "=== begin forced alignment ===\n");
+	switch(align->unittype) {
+	case PER_WORD:
+	  fprintf(fp, "-- word alignment --\n"); break;
+	case PER_PHONEME:
+	  fprintf(fp, "-- phoneme alignment --\n"); break;
+	case PER_STATE:
+	  fprintf(fp, "-- state alignment --\n"); break;
+	}
 	fprintf(fp, " id: from  to    n_score    unit\n");
 	fprintf(fp, " ----------------------------------------\n");
-	for(i=0;i<s->align.num;i++) {
-	  fprintf(fp, "[%4d %4d]  %f  ", s->align.begin_frame[i], s->align.end_frame[i], s->align.avgscore[i]);
-	  switch(s->align.unittype) {
+	for(i=0;i<align->num;i++) {
+	  fprintf(fp, "[%4d %4d]  %f  ", align->begin_frame[i], align->end_frame[i], align->avgscore[i]);
+	  switch(align->unittype) {
 	  case PER_WORD:
-	    fprintf(fp, "%s\t[%s]\n", winfo->wname[s->align.w[i]], winfo->woutput[s->align.w[i]]);
+	    fprintf(fp, "%s\t[%s]\n", winfo->wname[align->w[i]], winfo->woutput[align->w[i]]);
 	    break;
 	  case PER_PHONEME:
-	    p = s->align.ph[i];
+	    p = align->ph[i];
 	    if (p->is_pseudo) {
 	      fprintf(fp, "{%s}\n", p->name);
 	    } else if (strmatch(p->name, p->body.defined->name)) {
@@ -181,7 +188,7 @@ outfile_sentence(Recog *recog, void *dummy)
 	    }
 	    break;
 	  case PER_STATE:
-	    p = s->align.ph[i];
+	    p = align->ph[i];
 	    if (p->is_pseudo) {
 	      fprintf(fp, "{%s}", p->name);
 	    } else if (strmatch(p->name, p->body.defined->name)) {
@@ -190,19 +197,19 @@ outfile_sentence(Recog *recog, void *dummy)
 	      fprintf(fp, "%s[%s]", p->name, p->body.defined->name);
 	    }
 	    if (r->am->hmminfo->multipath) {
-	      if (s->align.is_iwsp[i]) {
-		fprintf(fp, " #%d (sp)\n", s->align.loc[i]);
+	      if (align->is_iwsp[i]) {
+		fprintf(fp, " #%d (sp)\n", align->loc[i]);
 	      } else {
-		fprintf(fp, " #%d\n", s->align.loc[i]);
+		fprintf(fp, " #%d\n", align->loc[i]);
 	      }
 	    } else {
-	      fprintf(fp, " #%d\n", s->align.loc[i]);
+	      fprintf(fp, " #%d\n", align->loc[i]);
 	    }
 	    break;
 	  }
 	}
-	
-	fprintf(fp, "re-computed AM score: %f\n", s->align.allscore);
+
+	fprintf(fp, "re-computed AM score: %f\n", align->allscore);
 	
 	fprintf(fp, "=== end forced alignment ===\n");
       }

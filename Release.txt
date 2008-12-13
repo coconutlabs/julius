@@ -1,3 +1,36 @@
+4.1.1 (2008.12.13)
+===================
+Bug fixes:
+
+[N-gram]
+  - sometimes could not read an ARPA N-gram file trained by SRILM.
+[A/D-in]
+  - "-input stdin" does not work.
+  - "SOURCERATE" at "-htkconf" is ignored.
+[Forced alignments]
+  - now can be used in isolated word recognition and with "-1pass".
+  - "-palign", "-walign" and "-salign" can not be run together at a time.
+[Module mode]
+  - freezes when a grammar is specified by its ID number.
+  - wrong grammar ID in recognition result (GRAM=.. always 0)
+  - "SYNCGRAM" will cause crash at isolated word recognition.
+  - unable to receive/activate/dactivate on isolated word recognition.
+[Others]
+  - fails to compile on several OS (needs "-ldl").
+  - does not handle backslash escaping correctly in Jconf file.
+  - does not output the 1st pass result as a final result with "-1pass".
+[Tools]
+  Jcontrol
+  - does not support "graminfo" command.
+  - can not send a dictionary to Julius running isolated word recognition.
+  mkdfa
+  - segfault on mkfa
+  - fails to read a grammar file on DOS format.
+  adintool
+  - wrong behavior when splitting a long audio file.
+  - now output time of each segment.
+
+
 4.1 (2008.10.3)
 ================
 New plugin extension:

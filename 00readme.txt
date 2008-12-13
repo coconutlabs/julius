@@ -4,6 +4,7 @@
 
                                 Julius
 
+                                                (Rev 4.1.1 2008/12/13)
                                                 (Rev 4.1   2008/10/03)
                                                 (Rev 4.0.2 2008/05/27)
                                                 (Rev 4.0   2007/12/19)
@@ -44,33 +45,16 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.1
-==========================
+What's new in Julius-4.1.1
+===========================
 
-From 4.0 to 4.0.2, many bugs are fixed and small improvements were
-done.  New options "-fallback1pass" and "-usepower" were added.  The
-default audio API is changed from "oss" to "alsa" on Linux.
-
-From 4.0.2 to 4.1, multi-stream AM, MSD-HMM, CVN, frequency warping
-for VTLN are all supported.  "jclient-perl", a perl version of module
-mode client, is newly added.
-
-Plug-in support is newly implemented on rev. 4.1.  Using dynamic
-object linking, Julius now can load extensions at run time, and extend
-its ability easily without modifying the original engine source code.
-The directory "plugin" contains several example source codes and ready
-to compile and test them.  The source codes also contain all function
-specification documents.
-
-From this release, you can get the total documentation of Julius
-called "Juliusbook".  It is written in Docbook XML, and PDF version
-and HTML version is available.  At this time English version has only
-the option descriptions and online manuals.  Full version that
-explains all aspects and specification of Julius (models, input,
-decoding, etc...) will be released within a short term.
+Revision 4.1.1 is a bug fix release.  Many bugs are fixed relating
+N-gram handling (tested on SRILM), module mode and more.  All users
+that uses older versions of Julius-4 are strongly recommended to use
+this version.
 
 
-Contents of Julius-4.1
+Contents of Julius-4.1.1
 ========================
 
 	(Documents with suffix "ja" are written in Japanese)
@@ -80,9 +64,10 @@ Contents of Julius-4.1
 	Release.txt		Release note / ChangeLog
 	configure		configure script
 	configure.in		
-	Sample.jconf		Sample configuration file for Julius-3.5.3
-	julius/			Julius/Julian 3.5.3 sources
-	libsent/		Julius/Julian 3.5.3 library sources
+	Sample.jconf		Sample configuration file
+	julius/			Julius sources
+	libjulius/		JuliusLib core engine library sources
+	libsent/		JuliusLib low-level library sources
 	adinrec/		Record one sentence utterance to a file
 	adintool/		Record/split/send/receive speech data
 	generate-ngram/		Tool to generate random sentences from N-gram
@@ -96,7 +81,6 @@ Contents of Julius-4.1
 	jclient-perl/		A simple perl version of module mode client
 	plugin/			Several plugin source codes and documentation
 	man/			Unix online manuals
-	olddoc/			ChangeLogs before 3.2
 
 
 Documentation

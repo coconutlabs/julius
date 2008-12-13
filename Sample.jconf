@@ -1,6 +1,6 @@
 #
 # Sample Jconf configuration file
-# for Julius library rev.4.0.2
+# for Julius library rev.4.1.1
 #
 # 1) Options can also be specified in command line option.
 #    The values are default values in Julius.
@@ -51,6 +51,9 @@
 #-input stdin			# waveform from standard input
 #-input adinnet			# waveform via network client
 #-input netaudio		# DatLink server
+#-input oss			# OSS API input (if available)
+#-input alsa			# ALSA API input (if available)
+#-input esd			# ESounD daemon input (if available)
 
 #-filelist filename		# input file list
 #-notypecheck			# does not check parameter type of input
@@ -177,7 +180,7 @@
 ## This option is only a switcher and can be used anywhere anytime.
 # -GLOBAL
 
-## This option disables strict section check and back to 4.0
+## This option disables the strict section checkings and back to 4.0
 # -nosectioncheck
 
 ######################################################################

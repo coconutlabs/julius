@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -501,7 +501,11 @@ adin_alsa_read(SP16 *buf, int sampnum)
   }
 
 #else
+
   int ret;
+  snd_pcm_status_t *status;
+  int res;
+  struct timeval now, diff, tstamp;
 
   ret = snd_pcm_wait(handle, MAXPOLLINTERVAL);
   switch (ret) {
@@ -512,7 +516,36 @@ adin_alsa_read(SP16 *buf, int sampnum)
   case 1:			/* has data */
     cnt = snd_pcm_readi(handle, buf, sampnum); /* read available (non-block) */
     break;
-  default:			/* poll error */
+  case -EPIPE:			/* pipe error */
+    /* try to recover the broken pipe */
+    snd_pcm_status_alloca(&status);
+    if ((res = snd_pcm_status(handle, status))<0) {
+      jlog("Error: adin_alsa: broken pipe: status error (%s)\n", snd_strerror(res));
+      return -2;
+    }
+    if (snd_pcm_status_get_state(status) == SND_PCM_STATE_XRUN) {
+      gettimeofday(&now, 0);
+      snd_pcm_status_get_trigger_tstamp(status, &tstamp);
+      timersub(&now, &tstamp, &diff);
+      jlog("Warning: adin_alsa: overrun!!! (at least %.3f ms long)\n",
+	   diff.tv_sec * 1000 + diff.tv_usec / 1000.0);
+      if ((res = snd_pcm_prepare(handle))<0) {
+	jlog("Error: adin_alsa: overrun: prepare error (%s)", snd_strerror(res));
+	return -2;
+      }
+      break;         /* ok, data should be accepted again */
+    } else if (snd_pcm_status_get_state(status) == SND_PCM_STATE_DRAINING) {
+      jlog("Warning: adin_alsa: draining: capture stream format change? attempting recover...\n");
+      if ((res = snd_pcm_prepare(handle))<0) {
+	jlog("Error: adin_alsa: draining: prepare error (%s)", snd_strerror(res));
+	return -2;
+      }
+      break;
+    }
+    jlog("Error: adin_alsa: error in snd_pcm_wait() (%s)\n", snd_pcm_state_name(snd_pcm_status_get_state(status)));
+    return -2;
+
+  default:			/* other poll error */
     jlog("Error: adin_alsa: error in snd_pcm_wait() (%s)\n", snd_strerror(ret));
     return(-2);			/* error */
   }

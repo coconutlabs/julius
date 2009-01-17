@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -211,7 +211,7 @@ opt_server(Jconf *jconf, char *arg[], int argnum)
 	fprintf(stderr, "Error: too many servers (> %d): %s\n", MAXCONNECTION, arg[0]);
 	return FALSE;
       }
-      adinnet_serv[adinnet_servnum] = (char *)malloc(strlen(q + 1));
+      adinnet_serv[adinnet_servnum] = (char *)malloc(strlen(q) + 1);
       strcpy(adinnet_serv[adinnet_servnum], q);
       adinnet_servnum++;
     }

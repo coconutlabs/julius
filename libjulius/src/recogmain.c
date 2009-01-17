@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 
@@ -483,7 +483,7 @@ callback_check_in_adin(Recog *recog)
  * @param recog [i/o] engine instance
  * @param file_or_dev_name [in] file or device name of the device
  * 
- * @return 0 on success, -1 on error, -2 on decice initializatino error.
+ * @return 0 on success, -1 on error, -2 on device initialization error.
  * 
  * @callgraph
  * @callergraph
@@ -530,8 +530,63 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
       callback_exec(CALLBACK_STATUS_PARAM, recog);
       break;
     default:
-      jlog("ERROR: none of SP_MFC_*??\n");
+      jlog("ERROR: j_open_stream: none of SP_MFC_*??\n");
+      return -1;
+    }
+  }
+      
+  return 0;
+
+}
+
+/** 
+ * <EN>
+ * Close input stream.  The main recognition loop will be stopped after
+ * stream has been closed.
+ * </EN>
+ * <JA>
+ * 音声入力ストリームを閉じる．認識のメインループは閉じられた後終了する．
+ * </JA>
+ * 
+ * @param recog [i/o] engine instance
+ * 
+ * @return 0 on success, -1 on general error, -2 on device error.
+ * 
+ * @callgraph
+ * @callergraph
+ * @ingroup engine
+ */
+int
+j_close_stream(Recog *recog)
+{
+  Jconf *jconf;
+
+  jconf = recog->jconf;
+
+  if (jconf->input.type == INPUT_WAVEFORM) {
+#ifdef HAVE_PTHREAD
+    /* close A/D-in thread here */
+    if (recog->adin->enable_thread && ! recog->adin->input_side_segment) {
+      if (adin_thread_cancel(recog) == FALSE) {
+	return -2;
+      }
+    }
+#endif
+    /* end A/D input */
+    if (adin_end(recog->adin) == FALSE) {
       return -2;
+    }
+  } else {
+    switch(jconf->input.speech_input) {
+    case SP_MFCMODULE:
+      if (mfc_module_end(recog->mfcclist) == FALSE) return -2;
+      break;
+    case SP_MFCFILE:
+      /* nothing to do */
+      break;
+    default:
+      jlog("ERROR: j_close_stream: none of SP_MFC_*??\n");
+      return -1;
     }
   }
       

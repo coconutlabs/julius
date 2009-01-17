@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Nov  6 22:41:00 2007
  * 
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -30,6 +30,7 @@
 
 /* recogmain.c */
 int j_open_stream(Recog *recog, char *file_or_dev_name);
+int j_close_stream(Recog *recog);
 int j_recognize_stream(Recog *recog);
 
 /* jfunc.c */

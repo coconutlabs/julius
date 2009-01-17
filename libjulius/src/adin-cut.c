@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -975,7 +975,6 @@ adin_thread_input_main(void *dummy)
 boolean
 adin_thread_create(Recog *recog)
 {
-  pthread_t adin_thread;	///< Thread information
   ADIn *a;
 
   a = recog->adin;
@@ -992,15 +991,50 @@ adin_thread_create(Recog *recog)
     jlog("ERROR: adin_thread_create: failed to initialize mutex\n");
     return FALSE;
   }
-  if (pthread_create(&adin_thread, NULL, (void *)adin_thread_input_main, recog) != 0) {
+  if (pthread_create(&(recog->adin->adin_thread), NULL, (void *)adin_thread_input_main, recog) != 0) {
     jlog("ERROR: adin_thread_create: failed to create AD-in thread\n");
     return FALSE;
   }
-  if (pthread_detach(adin_thread) != 0) { /* not join, run forever */
+  if (pthread_detach(recog->adin->adin_thread) != 0) { /* not join, run forever */
     jlog("ERROR: adin_thread_create: failed to detach AD-in thread\n");
     return FALSE;
   }
   jlog("STAT: AD-in thread created\n");
+  return TRUE;
+}
+
+/**
+ * <EN>
+ * Delete A/D-in thread
+ * </EN>
+ * <JA>
+ * A/D-in スレッドを終了する
+ * </JA>
+ * @param recog [in] engine instance
+ *
+ * @callergraph
+ * @callgraph
+ */
+boolean
+adin_thread_cancel(Recog *recog)
+{
+  ADIn *a;
+  int ret;
+
+  if (recog->adin->adinthread_ended) return TRUE;
+
+  ret = pthread_cancel(recog->adin->adin_thread);
+  if (ret == 0) {
+    jlog("STAT: AD-in thread deleted\n");
+  } else {
+    if (ret == ESRCH) {
+      jlog("STAT: adin_thread_cancel: no A/D-in thread\n");
+    } else {
+      jlog("Error: adin_thread_cancel: failed to cancel A/D-in thread\n");
+      return FALSE;
+    }
+  }
+  recog->adin->adinthread_ended = TRUE;
   return TRUE;
 }
 

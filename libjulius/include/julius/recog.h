@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -370,6 +370,7 @@ typedef struct __adin__ {
 
 #ifdef HAVE_PTHREAD
   /* Variables related to POSIX threading */
+  pthread_t adin_thread;	///< Thread information
   pthread_mutex_t mutex;        ///< Lock primitive
   SP16 *speech;         ///< Unprocessed samples recorded by A/D-in thread
   int speechlen;                ///< Current length of @a speech

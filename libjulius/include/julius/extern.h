@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -41,6 +41,7 @@ TRELLIS_ATOM *bt_binsearch_atom(BACKTRELLIS *bt, int time, WORD_ID wkey);
 void make_iwcache_index(WCHMM_INFO *wchmm);
 void adjust_sc_index(WCHMM_INFO *wchmm);
 void make_successor_list(WCHMM_INFO *wchmm);
+void make_successor_list_unigram_factoring(WCHMM_INFO *wchmm);
 void max_successor_cache_init(WCHMM_INFO *wchmm);
 void max_successor_cache_free(WCHMM_INFO *wchmm);
 LOGPROB max_successor_prob(WCHMM_INFO *wchmm, WORD_ID lastword, int node);
@@ -267,6 +268,7 @@ boolean multigram_add_prefix_filelist(char *listfile, JCONF_LM *j, int lmvar);
 /* adin-cut.c */
 boolean adin_setup_param(ADIn *adin, Jconf *jconf);
 boolean adin_thread_create(Recog *recog);
+boolean adin_thread_cancel(Recog *recog);
 int adin_go(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog);
 boolean adin_standby(ADIn *a, int freq, void *arg);
 boolean adin_begin(ADIn *a);

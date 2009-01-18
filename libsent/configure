@@ -2280,10 +2280,28 @@ fi
 esac
 
 # set appropritate parameters for the determined API
+SOUNDLIB=""
+ADINOBJ=""
+# if esd exist, include it
+if test "$has_esd" = yes; then
+    SOUNDLIB="$SOUNDLIB -lesd"
+    ADINOBJ="$ADINOBJ src/adin/adin_esd.o"
+fi
+# if alsa exist, include it
+if test "$has_alsa" = yes; then
+    SOUNDLIB="$SOUNDLIB -lasound"
+    ADINOBJ="$ADINOBJ src/adin/adin_mic_linux_alsa.o"
+fi
+# if oss exist, include it
+if test "$has_oss" = yes; then
+    ADINOBJ="$ADINOBJ src/adin/adin_mic_linux_oss.o"
+fi
+
+# altype-specific setup
 case $altype in
     sp)
       aldesc="spAudio"
-      ADINOBJ=src/adin/adin_mic_sp.o
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_sp.o"
       cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
@@ -2295,7 +2313,7 @@ EOF
       case "$host_os" in
         linux*)
           echo $ac_n "checking for spInitAudio in -lspa.linux""... $ac_c" 1>&6
-echo "configure:2299: checking for spInitAudio in -lspa.linux" >&5
+echo "configure:2317: checking for spInitAudio in -lspa.linux" >&5
 ac_lib_var=`echo spa.linux'_'spInitAudio | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -2303,7 +2321,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lspa.linux -lspb.linux -lm $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 2307 "configure"
+#line 2325 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -2314,7 +2332,7 @@ int main() {
 spInitAudio()
 ; return 0; }
 EOF
-if { (eval echo configure:2318: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:2336: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -2329,11 +2347,11 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-  SOUNDLIB="-lspa.linux -lspb.linux"
+  SOUNDLIB="$SOUNDLIB -lspa.linux -lspb.linux"
 else
   echo "$ac_t""no" 1>&6
 echo $ac_n "checking for spInitAudio in -lspa.linux-glibc""... $ac_c" 1>&6
-echo "configure:2337: checking for spInitAudio in -lspa.linux-glibc" >&5
+echo "configure:2355: checking for spInitAudio in -lspa.linux-glibc" >&5
 ac_lib_var=`echo spa.linux-glibc'_'spInitAudio | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -2341,7 +2359,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lspa.linux-glibc -lspb.linux-glibc -lm $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 2345 "configure"
+#line 2363 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -2352,7 +2370,7 @@ int main() {
 spInitAudio()
 ; return 0; }
 EOF
-if { (eval echo configure:2356: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:2374: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -2367,7 +2385,7 @@ LIBS="$ac_save_LIBS"
 fi
 if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
   echo "$ac_t""yes" 1>&6
-  SOUNDLIB="-lspa.linux-glibc -lspb.linux-glibc"
+  SOUNDLIB="$SOUNDLIB -lspa.linux-glibc -lspb.linux-glibc"
 else
   echo "$ac_t""no" 1>&6
 { echo "configure: error: spAudio library not found!" 1>&2; exit 1; }
@@ -2377,25 +2395,25 @@ fi
 
           ;;
         solaris2*)
-          SOUNDLIB="-L/usr/local/lib -lspa.sun -lspb.sun"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.sun -lspb.sun"
           ;;
         sunos4*)
-          SOUNDLIB="-L/usr/local/lib -lspa.sun -lspb.sun -laudio"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.sun -lspb.sun -laudio"
           ;;
         irix6*)
-          SOUNDLIB="-L/usr/local/lib -lspa.sgi -lspb.sgi -laudio"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.sgi -lspb.sgi -laudio"
           ;;
         cygwin*)
-          SOUNDLIB="-L/usr/local/lib -lspa.win -lspb.win -lwinmm -liconv"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.win -lspb.win -lwinmm -liconv"
           ;;
         darwin*)
-          SOUNDLIB="-arch ppc -framework CoreAudio -framework Carbon -L/usr/local/lib -lspa.mac -lspb.mac"
+          SOUNDLIB="$SOUNDLIB -arch ppc -framework CoreAudio -framework Carbon -L/usr/local/lib -lspa.mac -lspb.mac"
           ;;
       esac
       ;;
     pa-*)
       aldesc="PortAudio library"
-      ADINOBJ="src/adin/pa/pa_lib.o src/adin/pa/pa_convert.o src/adin/pa/pa_trace.o src/adin/pa/pablio.o src/adin/pa/ringbuffer.o"
+      ADINOBJ="$ADINOBJ src/adin/pa/pa_lib.o src/adin/pa/pa_convert.o src/adin/pa/pa_trace.o src/adin/pa/pablio.o src/adin/pa/ringbuffer.o"
       cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
@@ -2404,22 +2422,22 @@ EOF
         pa-winmm)
 	  aldesc="$aldesc (WinMM)"
           ADINOBJ="$ADINOBJ src/adin/pa/pa_win_wmme.o"
-          SOUNDLIB="-lwinmm"
+          SOUNDLIB="$SOUNDLIB -lwinmm"
           ;;
         pa-dsound)
 	  aldesc="$aldesc (DirectSound)"
           ADINOBJ="$ADINOBJ src/adin/pa/dsound_wrapper.o src/adin/pa/pa_dsound.o"
-          SOUNDLIB="-lwinmm -ldsound"
+          SOUNDLIB="$SOUNDLIB -lwinmm -ldsound"
           ;;
         pa-oss)
 	  aldesc="$aldesc (Unix/OSS)"
           ADINOBJ="$ADINOBJ src/adin/pa/pa_unix.o src/adin/pa/pa_unix_oss.o"
-          SOUNDLIB="-lpthread"
+          SOUNDLIB="$SOUNDLIB -lpthread"
           ;;
         pa-solaris)
 	  aldesc="$aldesc (Solaris)"
           ADINOBJ="$ADINOBJ src/adin/pa/pa_unix.o src/adin/pa/pa_unix_solaris.o"
-          SOUNDLIB="-lpthread"
+          SOUNDLIB="$SOUNDLIB -lpthread"
           ;;
       esac
       ADINOBJ="$ADINOBJ src/adin/adin_portaudio.o"
@@ -2433,14 +2451,7 @@ EOF
 #define USE_MIC 1
 EOF
 
-      SOUNDLIB=""
-      if test "$has_alsa" = yes; then
-        SOUNDLIB="$SOUNDLIB -lasound"
-      fi
-      if test "$has_esd" = yes; then
-        SOUNDLIB="$SOUNDLIB -lesd"
-      fi
-      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_linux.o"
       ;;
     alsa)
       if test "$has_alsa" = no; then
@@ -2451,14 +2462,7 @@ EOF
 #define USE_MIC 1
 EOF
 
-      SOUNDLIB=""
-      if test "$has_alsa" = yes; then
-        SOUNDLIB="$SOUNDLIB -lasound"
-      fi
-      if test "$has_esd" = yes; then
-        SOUNDLIB="$SOUNDLIB -lesd"
-      fi
-      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_linux.o"
       ;;
     esd)
       if test "$has_esd" = no; then
@@ -2469,14 +2473,7 @@ EOF
 #define USE_MIC 1
 EOF
 
-      SOUNDLIB=""
-      if test "$has_alsa" = yes; then
-        SOUNDLIB="$SOUNDLIB -lasound"
-      fi
-      if test "$has_esd" = yes; then
-        SOUNDLIB="$SOUNDLIB -lesd"
-      fi
-      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_linux.o"
       ;;
 
     freebsd)
@@ -2484,48 +2481,47 @@ EOF
 	  { echo "configure: error: neither sys/soundcard.h nor machine/soundcard.h exist" 1>&2; exit 1; }
 	fi
 	aldesc="FreeBSD snd driver"
-	ADINOBJ=src/adin/adin_mic_freebsd.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_freebsd.o"
 	cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
 
-	SOUNDLIB=""
 	;;
     coreaudio)
 	aldesc="MacOSX CoreAudio"
-	ADINOBJ=src/adin/adin_mic_darwin_coreaudio.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_darwin_coreaudio.o"
 	cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
 
-	SOUNDLIB="-Wl,-framework -Wl,CoreServices -Wl,-framework -Wl,CoreAudio -Wl,-framework -Wl,AudioUnit -Wl,-framework -Wl,AudioToolbox"
+	SOUNDLIB="$SOUNDLIB -Wl,-framework -Wl,CoreServices -Wl,-framework -Wl,CoreAudio -Wl,-framework -Wl,AudioUnit -Wl,-framework -Wl,AudioToolbox"
 	;;
     sol2)
 	aldesc="Solaris2.x audio interface"
-	ADINOBJ=src/adin/adin_mic_sol2.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_sol2.o"
 	cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
 
-	SOUNDLIB=""
 	;;
     sun4)
 	aldesc="SunOS4.x audio interface"
-	ADINOBJ=src/adin/adin_mic_sun4.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_sun4.o"
 	cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
 
-	SOUNDLIB="-laudio"
+	SOUNDLIB="$SOUNDLIB -laudio"
 	;;
     irix)
 	aldesc="IRIX6.x audio interface"
-	ADINOBJ=src/adin/adin_mic_o2.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_o2.o"
 	cat >> confdefs.h <<\EOF
 #define USE_MIC 1
 EOF
 
-	SOUNDLIB="-laudio" ;;
+	SOUNDLIB="$SOUNDLIB -laudio"
+	 ;;
 #    osf1)
 #	aldesc="Digital/Unix 4.0"
 #	ADINOBJ=src/adin/adin_mic_osf1.o
@@ -2540,21 +2536,21 @@ esac
 
 if test "$with_netaudio_dir" = auto ; then
 	echo $ac_n "checking for DatLink/NetAudio support""... $ac_c" 1>&6
-echo "configure:2544: checking for DatLink/NetAudio support" >&5
+echo "configure:2540: checking for DatLink/NetAudio support" >&5
 else
 	echo $ac_n "checking for DatLink/NetAudio support on ${with_netaudio_dir}""... $ac_c" 1>&6
-echo "configure:2547: checking for DatLink/NetAudio support on ${with_netaudio_dir}" >&5
+echo "configure:2543: checking for DatLink/NetAudio support on ${with_netaudio_dir}" >&5
 fi
 TMPCPPFLAGS="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS -I${with_netaudio_dir}/include"
 use_netaudio=no
 cat > conftest.$ac_ext <<EOF
-#line 2553 "configure"
+#line 2549 "configure"
 #include "confdefs.h"
 #include <netaudio.h>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:2558: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:2554: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -2579,7 +2575,7 @@ EXTRAOBJ="$EXTRAOBJ $ADINOBJ"
 have_zlib=no;
 if test "$use_zlib" = yes; then
   echo $ac_n "checking for deflate in -lz""... $ac_c" 1>&6
-echo "configure:2583: checking for deflate in -lz" >&5
+echo "configure:2579: checking for deflate in -lz" >&5
 ac_lib_var=`echo z'_'deflate | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -2587,7 +2583,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lz  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 2591 "configure"
+#line 2587 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -2598,7 +2594,7 @@ int main() {
 deflate()
 ; return 0; }
 EOF
-if { (eval echo configure:2602: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:2598: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -2617,17 +2613,17 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:2621: checking for $ac_hdr" >&5
+echo "configure:2617: checking for $ac_hdr" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 2626 "configure"
+#line 2622 "configure"
 #include "confdefs.h"
 #include <$ac_hdr>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:2631: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:2627: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -2672,7 +2668,7 @@ if test "$use_zlib" = no; then
   # Extract the first word of "gzip", so it can be a program name with args.
 set dummy gzip; ac_word=$2
 echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-echo "configure:2676: checking for $ac_word" >&5
+echo "configure:2672: checking for $ac_word" >&5
 if eval "test \"`echo '$''{'ac_cv_prog_GZIP'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
@@ -2719,7 +2715,7 @@ fi
 if test "$with_sndfile" = yes; then
  have_libsndfile=no
  echo $ac_n "checking for sf_open in -lsndfile""... $ac_c" 1>&6
-echo "configure:2723: checking for sf_open in -lsndfile" >&5
+echo "configure:2719: checking for sf_open in -lsndfile" >&5
 ac_lib_var=`echo sndfile'_'sf_open | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -2727,7 +2723,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lsndfile  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 2731 "configure"
+#line 2727 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -2738,7 +2734,7 @@ int main() {
 sf_open()
 ; return 0; }
 EOF
-if { (eval echo configure:2742: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:2738: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -2757,17 +2753,17 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:2761: checking for $ac_hdr" >&5
+echo "configure:2757: checking for $ac_hdr" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 2766 "configure"
+#line 2762 "configure"
 #include "confdefs.h"
 #include <$ac_hdr>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:2771: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:2767: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -2809,7 +2805,7 @@ fi
 
  if test "$have_libsndfile" = no; then
   echo $ac_n "checking for sf_open_read in -lsndfile""... $ac_c" 1>&6
-echo "configure:2813: checking for sf_open_read in -lsndfile" >&5
+echo "configure:2809: checking for sf_open_read in -lsndfile" >&5
 ac_lib_var=`echo sndfile'_'sf_open_read | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -2817,7 +2813,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lsndfile  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 2821 "configure"
+#line 2817 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -2828,7 +2824,7 @@ int main() {
 sf_open_read()
 ; return 0; }
 EOF
-if { (eval echo configure:2832: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:2828: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -2847,17 +2843,17 @@ if eval "test \"`echo '$ac_cv_lib_'$ac_lib_var`\" = yes"; then
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:2851: checking for $ac_hdr" >&5
+echo "configure:2847: checking for $ac_hdr" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 2856 "configure"
+#line 2852 "configure"
 #include "confdefs.h"
 #include <$ac_hdr>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:2861: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:2857: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*

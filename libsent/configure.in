@@ -3,7 +3,7 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl  $Id: configure.in,v 1.12 2008/12/13 10:10:58 sumomo Exp $
+dnl  $Id: configure.in,v 1.13 2009/01/18 10:50:46 sumomo Exp $
 dnl
 
 dnl Process this file with autoconf to produce a configure script.
@@ -247,63 +247,81 @@ case $altype in
 esac
 
 # set appropritate parameters for the determined API
+SOUNDLIB=""
+ADINOBJ=""
+# if esd exist, include it
+if test "$has_esd" = yes; then
+    SOUNDLIB="$SOUNDLIB -lesd"
+    ADINOBJ="$ADINOBJ src/adin/adin_esd.o"
+fi
+# if alsa exist, include it
+if test "$has_alsa" = yes; then
+    SOUNDLIB="$SOUNDLIB -lasound"
+    ADINOBJ="$ADINOBJ src/adin/adin_mic_linux_alsa.o"
+fi
+# if oss exist, include it
+if test "$has_oss" = yes; then
+    ADINOBJ="$ADINOBJ src/adin/adin_mic_linux_oss.o"
+fi
+
+# altype-specific setup
 case $altype in
     sp)
       aldesc="spAudio"
-      ADINOBJ=src/adin/adin_mic_sp.o
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_sp.o"
       AC_DEFINE(USE_MIC)
       AC_DEFINE(USE_SPLIB)
       case "$host_os" in
         linux*)
           AC_CHECK_LIB(spa.linux, spInitAudio,
-              SOUNDLIB="-lspa.linux -lspb.linux",
+              SOUNDLIB="$SOUNDLIB -lspa.linux -lspb.linux",
             AC_CHECK_LIB(spa.linux-glibc, spInitAudio,
-                SOUNDLIB="-lspa.linux-glibc -lspb.linux-glibc",
+                SOUNDLIB="$SOUNDLIB -lspa.linux-glibc -lspb.linux-glibc",
               AC_MSG_ERROR([spAudio library not found!]),
               [-lspb.linux-glibc -lm]),
             [-lspb.linux -lm])
           ;;
         solaris2*)
-          SOUNDLIB="-L/usr/local/lib -lspa.sun -lspb.sun"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.sun -lspb.sun"
           ;;
         sunos4*)
-          SOUNDLIB="-L/usr/local/lib -lspa.sun -lspb.sun -laudio"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.sun -lspb.sun -laudio"
           ;;
         irix6*)
-          SOUNDLIB="-L/usr/local/lib -lspa.sgi -lspb.sgi -laudio"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.sgi -lspb.sgi -laudio"
           ;;
         cygwin*)
-          SOUNDLIB="-L/usr/local/lib -lspa.win -lspb.win -lwinmm -liconv"
+          SOUNDLIB="$SOUNDLIB -L/usr/local/lib -lspa.win -lspb.win -lwinmm -liconv"
           ;;
         darwin*)
-          SOUNDLIB="-arch ppc -framework CoreAudio -framework Carbon -L/usr/local/lib -lspa.mac -lspb.mac"
+          SOUNDLIB="$SOUNDLIB -arch ppc -framework CoreAudio -framework Carbon -L/usr/local/lib -lspa.mac -lspb.mac"
           ;;
       esac
       ;;
     pa-*)
       aldesc="PortAudio library"
-      ADINOBJ="src/adin/pa/pa_lib.o src/adin/pa/pa_convert.o src/adin/pa/pa_trace.o src/adin/pa/pablio.o src/adin/pa/ringbuffer.o"
+      ADINOBJ="$ADINOBJ src/adin/pa/pa_lib.o src/adin/pa/pa_convert.o src/adin/pa/pa_trace.o src/adin/pa/pablio.o src/adin/pa/ringbuffer.o"
       AC_DEFINE(USE_MIC)
       case "$altype" in
         pa-winmm)
 	  aldesc="$aldesc (WinMM)"
           ADINOBJ="$ADINOBJ src/adin/pa/pa_win_wmme.o"
-          SOUNDLIB="-lwinmm"
+          SOUNDLIB="$SOUNDLIB -lwinmm"
           ;;
         pa-dsound)
 	  aldesc="$aldesc (DirectSound)"
           ADINOBJ="$ADINOBJ src/adin/pa/dsound_wrapper.o src/adin/pa/pa_dsound.o"
-          SOUNDLIB="-lwinmm -ldsound"
+          SOUNDLIB="$SOUNDLIB -lwinmm -ldsound"
           ;;
         pa-oss)
 	  aldesc="$aldesc (Unix/OSS)"
           ADINOBJ="$ADINOBJ src/adin/pa/pa_unix.o src/adin/pa/pa_unix_oss.o"
-          SOUNDLIB="-lpthread"
+          SOUNDLIB="$SOUNDLIB -lpthread"
           ;;
         pa-solaris)
 	  aldesc="$aldesc (Solaris)"
           ADINOBJ="$ADINOBJ src/adin/pa/pa_unix.o src/adin/pa/pa_unix_solaris.o"
-          SOUNDLIB="-lpthread"
+          SOUNDLIB="$SOUNDLIB -lpthread"
           ;;
       esac
       ADINOBJ="$ADINOBJ src/adin/adin_portaudio.o"
@@ -314,14 +332,7 @@ case $altype in
       fi
       aldesc="Open Sound System compatible"
       AC_DEFINE(USE_MIC)
-      SOUNDLIB=""
-      if test "$has_alsa" = yes; then
-        SOUNDLIB="$SOUNDLIB -lasound"
-      fi
-      if test "$has_esd" = yes; then
-        SOUNDLIB="$SOUNDLIB -lesd"
-      fi
-      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_linux.o"
       ;;
     alsa)
       if test "$has_alsa" = no; then
@@ -329,14 +340,7 @@ case $altype in
       fi
       aldesc="Advanced Linux Sound Architecture"
       AC_DEFINE(USE_MIC)
-      SOUNDLIB=""
-      if test "$has_alsa" = yes; then
-        SOUNDLIB="$SOUNDLIB -lasound"
-      fi
-      if test "$has_esd" = yes; then
-        SOUNDLIB="$SOUNDLIB -lesd"
-      fi
-      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_linux.o"
       ;;
     esd)
       if test "$has_esd" = no; then
@@ -344,14 +348,7 @@ case $altype in
       fi
       aldesc="EsoundD - The Enlightened Sound Daemon"
       AC_DEFINE(USE_MIC)
-      SOUNDLIB=""
-      if test "$has_alsa" = yes; then
-        SOUNDLIB="$SOUNDLIB -lasound"
-      fi
-      if test "$has_esd" = yes; then
-        SOUNDLIB="$SOUNDLIB -lesd"
-      fi
-      ADINOBJ="src/adin/adin_mic_linux.o src/adin/adin_mic_linux_alsa.o src/adin/adin_mic_linux_oss.o src/adin/adin_esd.o"
+      ADINOBJ="$ADINOBJ src/adin/adin_mic_linux.o"
       ;;
 
     freebsd)
@@ -359,33 +356,32 @@ case $altype in
 	  AC_MSG_ERROR([neither sys/soundcard.h nor machine/soundcard.h exist])
 	fi
 	aldesc="FreeBSD snd driver"
-	ADINOBJ=src/adin/adin_mic_freebsd.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_freebsd.o"
 	AC_DEFINE(USE_MIC)
-	SOUNDLIB=""
 	;;
     coreaudio)
 	aldesc="MacOSX CoreAudio"
-	ADINOBJ=src/adin/adin_mic_darwin_coreaudio.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_darwin_coreaudio.o"
 	AC_DEFINE(USE_MIC)
-	SOUNDLIB="-Wl,-framework -Wl,CoreServices -Wl,-framework -Wl,CoreAudio -Wl,-framework -Wl,AudioUnit -Wl,-framework -Wl,AudioToolbox"
+	SOUNDLIB="$SOUNDLIB -Wl,-framework -Wl,CoreServices -Wl,-framework -Wl,CoreAudio -Wl,-framework -Wl,AudioUnit -Wl,-framework -Wl,AudioToolbox"
 	;;
     sol2)
 	aldesc="Solaris2.x audio interface"
-	ADINOBJ=src/adin/adin_mic_sol2.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_sol2.o"
 	AC_DEFINE(USE_MIC)
-	SOUNDLIB=""
 	;;
     sun4)
 	aldesc="SunOS4.x audio interface"
-	ADINOBJ=src/adin/adin_mic_sun4.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_sun4.o"
 	AC_DEFINE(USE_MIC)
-	SOUNDLIB="-laudio"
+	SOUNDLIB="$SOUNDLIB -laudio"
 	;;
     irix)
 	aldesc="IRIX6.x audio interface"
-	ADINOBJ=src/adin/adin_mic_o2.o
+	ADINOBJ="$ADINOBJ src/adin/adin_mic_o2.o"
 	AC_DEFINE(USE_MIC)
-	SOUNDLIB="-laudio" ;;
+	SOUNDLIB="$SOUNDLIB -laudio"
+	 ;;
 #    osf1)
 #	aldesc="Digital/Unix 4.0"
 #	ADINOBJ=src/adin/adin_mic_osf1.o

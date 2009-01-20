@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.10 2008/12/12 17:23:29 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.11 2009/01/20 15:40:44 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -55,7 +55,7 @@ get_total_info(FILE *fp, NNID num[])
   char *p;
   int n;
   int maxn;
-  long entry_num;
+  unsigned int entry_num;
 
   maxn = 0;
 
@@ -70,7 +70,8 @@ get_total_info(FILE *fp, NNID num[])
 	return -1;
       }
       p = strtok(NULL, "=");
-      entry_num = atol(p);
+      //entry_num = atol(p);
+      sscanf(p, "%lu", &entry_num);
       /* check maximum number */
       if (entry_num > NNID_MAX) {
 	jlog("Error: too big %d-gram (exceeds %d bit)\n", n, sizeof(NNID) * 8);
@@ -262,7 +263,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
 {
   WORD_ID w[2], wtmp;
   LOGPROB prob;
-  long bi_count = 0;
+  unsigned int bi_count = 0;
   NNID n2;
   boolean ok_p = TRUE;
   char *s;
@@ -272,7 +273,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
     strcpy(pbuf, buf);
     if ( ++bi_count % 100000 == 0) {
-      jlog("Stat: ngram_read_arpa: 2-gram read %d (%d%%)\n", bi_count, bi_count * 100 / ndata->d[1].totalnum);
+      jlog("Stat: ngram_read_arpa: 2-gram read %lu (%d%%)\n", bi_count, bi_count * 100 / ndata->d[1].totalnum);
     }
     if ((s = strtok(buf, DELM)) == NULL) {
       jlog("Error: ngram_read_arpa: 2-gram: failed to parse, corrupted or invalid data?\n");
@@ -285,7 +286,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
     }
     w[0] = ngram_lookup_word(ndata, s);
     if (w[0] == WORD_INVALID) {
-      jlog("Error: ngram_read_arpa: 2-gram #%d: \"%s\": \"%s\" not exist in 1-gram\n", bi_count, pbuf, s);
+      jlog("Error: ngram_read_arpa: 2-gram #%lu: \"%s\": \"%s\" not exist in 1-gram\n", bi_count, pbuf, s);
       ok_p = FALSE;
       continue;
     }
@@ -295,7 +296,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
     }
     w[1] = ngram_lookup_word(ndata, s);
     if (w[1] == WORD_INVALID) {
-      jlog("Error: ngram_read_arpa: 2-gram #%d: \"%s\": \"%s\" not exist in 1-gram\n", bi_count, pbuf, s);
+      jlog("Error: ngram_read_arpa: 2-gram #%lu: \"%s\": \"%s\" not exist in 1-gram\n", bi_count, pbuf, s);
       ok_p = FALSE;
       continue;
     }
@@ -314,7 +315,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
   }
 
   if (ok_p == TRUE) {
-    jlog("Stat: ngram_read_arpa: 2-gram read %d end\n", bi_count);
+    jlog("Stat: ngram_read_arpa: 2-gram read %lu end\n", bi_count);
   }
 
   return ok_p;

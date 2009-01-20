@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:18:55 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -33,10 +33,10 @@
  * @return the size in bytes
  * 
  */
-static long
+static unsigned int
 get_ngram_tuple_bytes(NGRAM_TUPLE_INFO *t)
 {
-  long size, unit;
+  unsigned int size, unit;
 
   size = 0;
   if (t->num != NULL) {		/* other than 1-gram */
@@ -96,7 +96,7 @@ print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
   }
   fprintf(fp, "\t    wordset size = %d\n", ndata->max_word_num);
   for(i=0;i<ndata->n;i++) {
-    fprintf(fp, "\t  %d-gram entries = %10ld  (%5.1f MB)", i+1, ndata->d[i].totalnum, get_ngram_tuple_bytes(&(ndata->d[i])) / 1048576.0);
+    fprintf(fp, "\t  %d-gram entries = %10lu  (%5.1f MB)", i+1, ndata->d[i].totalnum, get_ngram_tuple_bytes(&(ndata->d[i])) / 1048576.0);
     if (ndata->d[i].bo_wt != NULL && ndata->d[i].totalnum != ndata->d[i].context_num) {
       fprintf(fp, " (%d%% are valid contexts)", ndata->d[i].context_num * 100 / ndata->d[i].totalnum);
     }
@@ -104,7 +104,7 @@ print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
   }
 
   if (ndata->bo_wt_1) {
-    fprintf(fp, "\tLR 2-gram entries= %10ld  (%5.1f MB)\n", ndata->d[1].totalnum,
+    fprintf(fp, "\tLR 2-gram entries= %10lu  (%5.1f MB)\n", ndata->d[1].totalnum,
 	    (sizeof(LOGPROB) * ndata->d[1].totalnum + sizeof(LOGPROB) * ndata->d[0].context_num) / 1048576.0);
   }
   fprintf(fp, "\t           pass1 = ");

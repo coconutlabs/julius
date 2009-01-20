@@ -40,7 +40,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:23:16 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -57,13 +57,13 @@ static boolean need_swap; ///< TRUE if need byte swap
 
 #define wrt(A,B,C,D) if (wrtfunc(A,B,C,D) == FALSE) return FALSE
 
-static long count;
+static unsigned int count;
 void
 reset_wrt_counter()
 {
   count = 0;
 }
-long
+static unsigned int
 get_wrt_counter()
 {
   return count;
@@ -135,7 +135,8 @@ boolean
 ngram_write_bin(FILE *fp, NGRAM_INFO *ndata, char *headerstr)
 {
   int i,n;
-  long len;
+  unsigned int len;
+  int wlen;
   NGRAM_TUPLE_INFO *t;
 
   reset_wrt_counter();
@@ -160,11 +161,11 @@ ngram_write_bin(FILE *fp, NGRAM_INFO *ndata, char *headerstr)
   /* unk_*, isopen, max_word_num are set after read, so need not save */
 
   /* write wname */
-  len = 0;
+  wlen = 0;
   for(i=0;i<ndata->max_word_num;i++) {
-    len += strlen(ndata->wname[i]) + 1;
+    wlen += strlen(ndata->wname[i]) + 1;
   }
-  wrt(fp, &len, sizeof(int), 1);
+  wrt(fp, &wlen, sizeof(int), 1);
   for(i=0;i<ndata->max_word_num;i++) {
     wrt(fp, ndata->wname[i], 1, strlen(ndata->wname[i]) + 1); /* include \0 */
   }
@@ -227,6 +228,6 @@ ngram_write_bin(FILE *fp, NGRAM_INFO *ndata, char *headerstr)
   }
 
   len = get_wrt_counter();
-  jlog("Stat: ngram_write_bin: wrote %d bytes (%.1f MB)\n", len, len / 1048576.0);
+  jlog("Stat: ngram_write_bin: wrote %lu bytes (%.1f MB)\n", len, len / 1048576.0);
   return TRUE;
 }

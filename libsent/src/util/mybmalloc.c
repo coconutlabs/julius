@@ -25,7 +25,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:14:59 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -40,7 +40,7 @@
 #include <sent/stddefs.h>
 
 static boolean mybmalloc_initialized = FALSE; ///< TRUE if mybmalloc has already initialized
-static long pagesize;		///< Page size for memoly allocation
+static unsigned int pagesize;		///< Page size for memoly allocation
 static unsigned int blocksize;  ///< Block size in bytes
 static int align;		///< Allocation alignment size in bytes
 static unsigned int align_mask; ///< Bit mask to compute the actual aligned memory size
@@ -52,7 +52,7 @@ static unsigned int align_mask; ///< Bit mask to compute the actual aligned memo
 static void
 mybmalloc_set_param()
 {
-  long blockpagenum;
+  unsigned int blockpagenum;
 
   /* block size should be rounded up by page size */
   pagesize = getpagesize();

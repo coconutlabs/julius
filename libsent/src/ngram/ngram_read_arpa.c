@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.11 2009/01/20 15:40:44 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.12 2009/01/21 15:39:41 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -55,7 +55,7 @@ get_total_info(FILE *fp, NNID num[])
   char *p;
   int n;
   int maxn;
-  unsigned int entry_num;
+  unsigned long entry_num;
 
   maxn = 0;
 
@@ -263,7 +263,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
 {
   WORD_ID w[2], wtmp;
   LOGPROB prob;
-  unsigned int bi_count = 0;
+  NNID bi_count = 0;
   NNID n2;
   boolean ok_p = TRUE;
   char *s;

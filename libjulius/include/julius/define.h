@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 15:17:26 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -275,6 +275,13 @@
 #undef DEBUG_VTLN_ALPHA_TEST
 #define VTLN_RANGE 0.2
 #define VTLN_STEP  0.02
+
+/**
+ * Use fast successor composition at 1-gram factoring.
+ * 
+ */
+#define FAST_FACTOR1_SUCCESSOR_LIST
+
 
 #endif /* __J_DEFINE_H__ */
 

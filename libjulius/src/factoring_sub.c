@@ -152,7 +152,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:20:26 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -346,8 +346,12 @@ compaction_successor(WCHMM_INFO *wchmm)
 static void
 shrink_successor(WCHMM_INFO *wchmm)
 {
-  wchmm->sclist = (S_CELL **)myrealloc(wchmm->sclist, sizeof(S_CELL *) * wchmm->scnum);
-  wchmm->sclist2node = (int *)myrealloc(wchmm->sclist2node, sizeof(int) * wchmm->scnum);
+  if (wchmm->sclist) {
+    wchmm->sclist = (S_CELL **)myrealloc(wchmm->sclist, sizeof(S_CELL *) * wchmm->scnum);
+  }
+  if (wchmm->sclist2node) {
+    wchmm->sclist2node = (int *)myrealloc(wchmm->sclist2node, sizeof(int) * wchmm->scnum);
+  }
 }
 
 /** 
@@ -378,9 +382,10 @@ make_successor_list(WCHMM_INFO *wchmm)
   jlog("STAT: make successor lists for factoring\n");
 
   /* 1. initialize */
-  /* initialize node->sclist index */
+  /* initialize node->sclist index on wchmm tree */
   for (node=0;node<wchmm->n;node++) wchmm->state[node].scid = 0;
-  /* parse tree to get the possible maximum number of successor list */
+
+  /* parse the tree to get the maximum size of successor list */
   s = 1;
   for (w=0;w<wchmm->winfo->num;w++) {
     for (i=0;i<wchmm->winfo->wlen[w];i++) {
@@ -398,10 +403,12 @@ make_successor_list(WCHMM_INFO *wchmm)
   if (debug2_flag) {
     jlog("DEBUG: initial successor list size = %d\n", wchmm->scnum);
   }
-  /* allocate successor list */
+
+  /* allocate successor list for the maximum size */
   wchmm->sclist = (S_CELL **)mymalloc(sizeof(S_CELL *) * wchmm->scnum);
   for (i=1;i<wchmm->scnum;i++) wchmm->sclist[i] = NULL;
   wchmm->sclist2node = (int *)mymalloc(sizeof(int) * wchmm->scnum);
+
   /* allocate misc. work area */
   freemark = (boolean *)mymalloc(sizeof(boolean) * wchmm->scnum);
   for (i=1;i<wchmm->scnum;i++) freemark[i] = FALSE;
@@ -457,6 +464,154 @@ make_successor_list(WCHMM_INFO *wchmm)
 
   jlog("STAT: done\n");
 }
+
+#ifdef UNIGRAM_FACTORING
+
+/** 
+ * <JA>
+ * 木構造化辞書上の全ノードに successor list を構築するメイン関数(unigram factoring 用
+ * 
+ * @param wchmm [i/o] 木構造化辞書
+ * </JA>
+ * <EN>
+ * Main function to build whole successor list to lexicon tree for unigram factoring
+ * 
+ * @param wchmm [i/o] tree lexicon
+ * </EN>
+ *
+ * @callgraph
+ * @callergraph
+ * 
+ */
+void
+make_successor_list_unigram_factoring(WCHMM_INFO *wchmm)
+{
+
+#ifndef FAST_FACTOR1_SUCCESSOR_LIST
+
+  /* old way */
+  make_successor_list(wchmm);
+  calc_all_unigram_factoring_values(wchmm);
+
+#else  /* ~FAST_FACTOR1_SUCCESSOR_LIST */
+
+  /* new way */
+
+  int node, node2;
+  WORD_ID w, w2;
+  int i, j, n, f;
+  int s;
+  LOGPROB tmpprob;
+
+  jlog("STAT: make successor lists for unigram factoring\n");
+
+  /* 1. initialize */
+  /* initialize node->sclist index on wchmm tree */
+  for (node=0;node<wchmm->n;node++) wchmm->state[node].scid = 0;
+
+  /* in unigram factoring, number of successor = vocabulary size */
+  wchmm->scnum = wchmm->winfo->num + 1;
+  if (debug2_flag) {
+    jlog("DEBUG: successor list size = %d\n", wchmm->scnum);
+  }
+
+  /* allocate successor list */
+  wchmm->sclist = (S_CELL **)mymalloc(sizeof(S_CELL *) * wchmm->scnum);
+  for (i=1;i<wchmm->scnum;i++) wchmm->sclist[i] = NULL;
+  /* sclist2node is not used */
+
+  /* 2. make successor list, and count needed fscore num */
+  f = 1;
+  s = 1;
+  for (w=0;w<wchmm->winfo->num;w++) {
+    for (i=0;i<wchmm->winfo->wlen[w] + 1;i++) {
+      if (i < wchmm->winfo->wlen[w]) {
+	node = wchmm->offset[w][i];
+      } else {
+	node = wchmm->wordend[w];
+      }
+      if (wchmm->state[node].scid == 0) { /* not assigned */
+	/* new node found, assign new and exit here */
+	wchmm->state[node].scid = s++;
+	if (s > wchmm->scnum) {
+	  jlog("InternalError: make_successor_list_unigram_factoring: scid num exceeded?\n");
+	  return;
+	}
+	add_successor(wchmm, node, w);
+	break;
+      } else if (wchmm->state[node].scid > 0) {
+	/* that node has sclist */
+	/* move it to the current first isolated node in that word */
+	w2 = wchmm->sclist[wchmm->state[node].scid]->word;
+	for(j=i+1;j<wchmm->winfo->wlen[w2] + 1;j++) {
+	  if (j < wchmm->winfo->wlen[w2]) {
+	    node2 = wchmm->offset[w2][j];
+	  } else {
+	    node2 = wchmm->wordend[w2];
+	  }
+	  if (wchmm->state[node2].scid == 0) { /* not assigned */
+	    /* move sclist to there */
+	    wchmm->state[node2].scid = wchmm->state[node].scid;
+	    break;
+	  }
+	}
+	if (j >= wchmm->winfo->wlen[w2] + 1) {
+	  /* not found? */
+	  jlog("InternalError: make_successor_list_unigram_factoring: no isolated word for %d\n", w2);
+	  return;
+	}
+	/* make current node as fscore node */
+	n = f++;
+	wchmm->state[node].scid = -n;
+	/* not compute unigram factoring value yet */
+      }
+
+    }
+  }
+
+  /* 2. allocate fscore buffer */
+  wchmm->fsnum = f;
+  wchmm->fscore = (LOGPROB *)mymalloc(sizeof(LOGPROB) * wchmm->fsnum);
+  for(n=0;n<wchmm->fsnum;n++) wchmm->fscore[n] = LOG_ZERO;
+
+  /* 3. parse again to assign fscore values */
+  for (w=0;w<wchmm->winfo->num;w++) {
+    for (i=0;i<wchmm->winfo->wlen[w] + 1;i++) {
+      if (i < wchmm->winfo->wlen[w]) {
+	node = wchmm->offset[w][i];
+      } else {
+	node = wchmm->wordend[w];
+      }
+      if (wchmm->state[node].scid < 0) {
+	/* update max */
+	if (wchmm->ngram) {
+	  tmpprob = uni_prob(wchmm->ngram, wchmm->winfo->wton[w])
+#ifdef CLASS_NGRAM
+	    + wchmm->winfo->cprob[w]
+#endif
+	    ;
+	} else {
+	  tmpprob = LOG_ZERO;
+	}
+	if (wchmm->lmvar == LM_NGRAM_USER) {
+	  tmpprob = (*(wchmm->uni_prob_user))(wchmm->winfo, w, tmpprob);
+	}
+	n = - wchmm->state[node].scid;
+	if (wchmm->fscore[n] < tmpprob) {
+	  wchmm->fscore[n] = tmpprob;
+	}
+      }
+
+    }
+  }
+
+#endif  /* ~FAST_FACTOR1_SUCCESSOR_LIST */
+
+  jlog("STAT: done\n");
+}
+
+#endif /* UNIGRAM_FACTORING */
+
 
 /** 
  * <JA>

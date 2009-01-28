@@ -31,7 +31,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 19 23:39:15 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -1699,15 +1699,17 @@ build_wchmm(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
 
   /* factoring用に各状態に後続単語のリストを付加する */
   if (!wchmm->category_tree) {
-    make_successor_list(wchmm);
 
 #ifdef UNIGRAM_FACTORING
     if (wchmm->lmtype == LM_PROB) {
-      /* 前もってfactoring値を計算 */
-      /* 末端以外のscは必要ないのでフリーする */
-      calc_all_unigram_factoring_values(wchmm);
+      /* 同時に前もってfactoring値を計算 */
+      make_successor_list_unigram_factoring(wchmm);
       jlog("STAT:  1-gram factoring values has been pre-computed\n");
+    } else {
+      make_successor_list(wchmm);
     }
+#else 
+    make_successor_list(wchmm);
 #endif /* UNIGRAM_FACTORING */
     
     if (wchmm->hmminfo->multipath) {
@@ -1721,6 +1723,12 @@ build_wchmm(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
       make_iwcache_index(wchmm);
     }
 #endif /* UNIGRAM_FACTORING */
+
+    /* sclist2node is no longer used */
+    if (wchmm->sclist2node != NULL) {
+      free(wchmm->sclist2node);
+      wchmm->sclist2node = NULL;
+    }
 
   }
 
@@ -1945,14 +1953,17 @@ build_wchmm2(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
 
   /* make successor list for all branch nodes for N-gram factoring */
   if (!wchmm->category_tree) {
-    make_successor_list(wchmm);
 
 #ifdef UNIGRAM_FACTORING
     if (wchmm->lmtype == LM_PROB) {
       /* for 1-gram factoring, we can compute the values before search */
-      calc_all_unigram_factoring_values(wchmm);
-      jlog("STAT:  1-gram factoring values has been pre-computed\n");
+       make_successor_list_unigram_factoring(wchmm);
+       jlog("STAT:  1-gram factoring values has been pre-computed\n");
+    } else {
+      make_successor_list(wchmm);
     }
+#else
+    make_successor_list(wchmm);
 #endif /* UNIGRAM_FACTORING */
     if (wchmm->hmminfo->multipath) {
       /* Copy the factoring data according to the skip transitions and startword nodes */
@@ -1964,6 +1975,12 @@ build_wchmm2(WCHMM_INFO *wchmm, JCONF_LM *lmconf)
       make_iwcache_index(wchmm);
     }
 #endif /* UNIGRAM_FACTORING */
+
+    /* sclist2node is no longer used */
+    if (wchmm->sclist2node != NULL) {
+      free(wchmm->sclist2node);
+      wchmm->sclist2node = NULL;
+    }
 
   }
 

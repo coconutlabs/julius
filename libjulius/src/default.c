@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -56,7 +56,7 @@
 void
 jconf_set_default_values(Jconf *j)
 {
-  j->input.type				= INPUT_WAVEFORM;
+  j->input.type				= INPUT_VECTOR;
   j->input.speech_input			= SP_MFCFILE;
   j->input.device			= SP_INPUT_DEFAULT;
   j->input.plugin_source		= -1;

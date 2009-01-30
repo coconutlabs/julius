@@ -141,8 +141,8 @@ main(int argc, char *argv[])
     int i, j, ntmp;
     WORD_ID *wlist;
     int len;
-    LOGPROB rnd;
-    LOGPROB fsum;
+    double rnd;
+    double fsum;
     char *p;
 
     windex = (WORD_ID *)mymalloc(sizeof(WORD_ID) * ngram->max_word_num);
@@ -193,6 +193,11 @@ main(int argc, char *argv[])
 
 	/* sort the index by the ngram prob */
 	qsort(windex, ngram->max_word_num, sizeof(WORD_ID), (int (*)(const void *, const void *))s1);
+	if (debug) {
+	  for(i=0;i<5;i++) {
+	    printf(" #%d: %f %s\n", i, findex[windex[i]], ngram->wname[windex[i]]);
+	  }
+	}
 	/* get random number [0..1] */
 	rnd = random() / (float) RAND_MAX;
 	if (debug) printf("random prob: %f\n", rnd);

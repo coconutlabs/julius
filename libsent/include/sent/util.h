@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:30:40 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -79,9 +79,10 @@ char *mybstrdup2(char *, BMALLOC_BASE **list);
 void mybfree2(BMALLOC_BASE **list);
 
 /* mymalloc.c */
-void *mymalloc(int);
-void *myrealloc(void *, int);
-void *mycalloc(int, int);
+void *mymalloc(size_t size);
+void *mymalloc_big(size_t elsize, size_t nelem);
+void *myrealloc(void *, size_t);
+void *mycalloc(size_t, size_t);
 
 /* endian.c */
 void swap_sample_bytes(SP16 *buf, int len);

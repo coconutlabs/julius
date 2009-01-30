@@ -48,7 +48,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:12:08 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -296,17 +296,17 @@ ngram_read_bin_v5(FILE *fp, NGRAM_INFO *ndata)
 
     if (n > 0) {
       if (t->is24bit) {
-	t->bgn_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * t->bgnlistlen);
+	t->bgn_upper = (NNID_UPPER *)mymalloc_big(sizeof(NNID_UPPER), t->bgnlistlen);
 	rdn(fp, t->bgn_upper, sizeof(NNID_UPPER), t->bgnlistlen);
-	t->bgn_lower = (NNID_LOWER *)mymalloc(sizeof(NNID_LOWER) * t->bgnlistlen);
+	t->bgn_lower = (NNID_LOWER *)mymalloc_big(sizeof(NNID_LOWER), t->bgnlistlen);
 	rdn(fp, t->bgn_lower, sizeof(NNID_LOWER), t->bgnlistlen);
       } else {
-	t->bgn = (NNID *)mymalloc(sizeof(NNID) * t->bgnlistlen);
+	t->bgn = (NNID *)mymalloc_big(sizeof(NNID), t->bgnlistlen);
 	rdn(fp, t->bgn, sizeof(NNID), t->bgnlistlen);
       }
-      t->num = (WORD_ID *)mymalloc(sizeof(WORD_ID) * t->bgnlistlen);
+      t->num = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), t->bgnlistlen);
       rdn(fp, t->num, sizeof(WORD_ID), t->bgnlistlen);
-      t->nnid2wid = (WORD_ID *)mymalloc(sizeof(WORD_ID) * t->totalnum);
+      t->nnid2wid = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), t->totalnum);
       rdn(fp, t->nnid2wid, sizeof(WORD_ID), t->totalnum);
     } else {
       t->bgn_upper = NULL;
@@ -317,20 +317,20 @@ ngram_read_bin_v5(FILE *fp, NGRAM_INFO *ndata)
       t->nnid2wid = NULL;
     }
 
-    t->prob = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
+    t->prob = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->totalnum);
     rdn(fp, t->prob, sizeof(LOGPROB), t->totalnum);
 
     rdn(fp, &i, sizeof(int), 1);
     if (i == 1) {
-      t->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->context_num);
+      t->bo_wt = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->context_num);
       rdn(fp, t->bo_wt, sizeof(LOGPROB), t->context_num);
     } else {
       t->bo_wt = NULL;
     }
     rdn(fp, &i, sizeof(int), 1);
     if (i == 1) {
-      t->nnid2ctid_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * t->totalnum);
-      t->nnid2ctid_lower = (NNID_LOWER *)mymalloc(sizeof(NNID_LOWER) * t->totalnum);
+      t->nnid2ctid_upper = (NNID_UPPER *)mymalloc_big(sizeof(NNID_UPPER), t->totalnum);
+      t->nnid2ctid_lower = (NNID_LOWER *)mymalloc_big(sizeof(NNID_LOWER), t->totalnum);
       rdn(fp, t->nnid2ctid_upper, sizeof(NNID_UPPER), t->totalnum);
       rdn(fp, t->nnid2ctid_lower, sizeof(NNID_LOWER), t->totalnum);
     } else {
@@ -340,14 +340,14 @@ ngram_read_bin_v5(FILE *fp, NGRAM_INFO *ndata)
   }
   rdn(fp, &i, sizeof(int), 1);
   if (i == 1) {
-    ndata->bo_wt_1 = (LOGPROB *)mymalloc(sizeof(LOGPROB) * ndata->d[0].context_num);
+    ndata->bo_wt_1 = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), ndata->d[0].context_num);
     rdn(fp, ndata->bo_wt_1, sizeof(LOGPROB), ndata->d[0].context_num);
   } else {
     ndata->bo_wt_1 = NULL;
   }
   rdn(fp, &i, sizeof(int), 1);
   if (i == 1) {
-    ndata->p_2 = (LOGPROB *)mymalloc(sizeof(LOGPROB) * ndata->d[1].totalnum);
+    ndata->p_2 = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), ndata->d[1].totalnum);
     rdn(fp, ndata->p_2, sizeof(LOGPROB), ndata->d[1].totalnum);
   } else {
     ndata->p_2 = NULL;
@@ -436,12 +436,12 @@ ngram_read_bin_compat(FILE *fp, NGRAM_INFO *ndata, int *retry_ret)
   t->nnid2ctid_lower = NULL;
 
   t->context_num = t->totalnum;
-  t->prob = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
-  ndata->bo_wt_1 = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->context_num);
-  t->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->context_num);
+  t->prob = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->totalnum);
+  ndata->bo_wt_1 = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->context_num);
+  t->bo_wt = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->context_num);
   tt->bgnlistlen = t->context_num;
-  tt->bgn = (NNID *)mymalloc(sizeof(NNID) * tt->bgnlistlen);
-  tt->num = (WORD_ID *)mymalloc(sizeof(WORD_ID) * tt->bgnlistlen);
+  tt->bgn = (NNID *)mymalloc_big(sizeof(NNID), tt->bgnlistlen);
+  tt->num = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), tt->bgnlistlen);
 
   /* read 1-gram */
   jlog("stat: ngram_read_bin_compat: reading 1-gram\n");
@@ -490,33 +490,33 @@ ngram_read_bin_compat(FILE *fp, NGRAM_INFO *ndata, int *retry_ret)
 #endif
 
   /* malloc the rest */
-  tt->nnid2wid = (WORD_ID *)mymalloc(sizeof(WORD_ID) * tt->totalnum);
-  tt->prob = (LOGPROB *)mymalloc(sizeof(LOGPROB) * tt->totalnum);
-  ndata->p_2 = (LOGPROB *)mymalloc(sizeof(LOGPROB) * tt->totalnum);
+  tt->nnid2wid = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), tt->totalnum);
+  tt->prob = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), tt->totalnum);
+  ndata->p_2 = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), tt->totalnum);
   if (file_version == 4) {	/* context compaction and 24bit */
-    tt->nnid2ctid_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * tt->totalnum);
-    tt->nnid2ctid_lower = (NNID_LOWER *)mymalloc(sizeof(NNID_LOWER) * tt->totalnum);
-    tt->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * tt->context_num);
+    tt->nnid2ctid_upper = (NNID_UPPER *)mymalloc_big(sizeof(NNID_UPPER), tt->totalnum);
+    tt->nnid2ctid_lower = (NNID_LOWER *)mymalloc_big(sizeof(NNID_LOWER), tt->totalnum);
+    tt->bo_wt = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), tt->context_num);
     ttt->bgnlistlen = tt->context_num;
-    ttt->bgn_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * ttt->bgnlistlen);
-    ttt->bgn_lower = (NNID_LOWER *)mymalloc(sizeof(NNID_LOWER) * ttt->bgnlistlen);
-    ttt->num = (WORD_ID *)mymalloc(sizeof(WORD_ID) * ttt->bgnlistlen);
+    ttt->bgn_upper = (NNID_UPPER *)mymalloc_big(sizeof(NNID_UPPER), ttt->bgnlistlen);
+    ttt->bgn_lower = (NNID_LOWER *)mymalloc_big(sizeof(NNID_LOWER), ttt->bgnlistlen);
+    ttt->num = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), ttt->bgnlistlen);
   } else {
     tt->context_num = tt->totalnum;
-    tt->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * tt->context_num);
+    tt->bo_wt = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), tt->context_num);
     ttt->bgnlistlen = tt->context_num;
-    ttt->num = (WORD_ID *)mymalloc(sizeof(WORD_ID) * ttt->bgnlistlen);
+    ttt->num = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), ttt->bgnlistlen);
     if (ttt->is24bit) {
-      ttt->bgn_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * ttt->bgnlistlen);
-      ttt->bgn_lower = (NNID_LOWER *)mymalloc(sizeof(NNID_LOWER) * ttt->bgnlistlen);
-      n3_bgn = (NNID *)mymalloc(sizeof(NNID) * ttt->bgnlistlen);
+      ttt->bgn_upper = (NNID_UPPER *)mymalloc_big(sizeof(NNID_UPPER), ttt->bgnlistlen);
+      ttt->bgn_lower = (NNID_LOWER *)mymalloc_big(sizeof(NNID_LOWER), ttt->bgnlistlen);
+      n3_bgn = (NNID *)mymalloc_big(sizeof(NNID), ttt->bgnlistlen);
     } else {
-      ttt->bgn = (NNID *)mymalloc(sizeof(NNID) * ttt->bgnlistlen);
+      ttt->bgn = (NNID *)mymalloc_big(sizeof(NNID), ttt->bgnlistlen);
     }
   }
       
-  ttt->nnid2wid = (WORD_ID *)mymalloc(sizeof(WORD_ID) * ttt->totalnum);
-  ttt->prob = (LOGPROB *)mymalloc(sizeof(LOGPROB) * ttt->totalnum);
+  ttt->nnid2wid = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), ttt->totalnum);
+  ttt->prob = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), ttt->totalnum);
   ttt->bo_wt = NULL;
   
   /* read 2-gram*/

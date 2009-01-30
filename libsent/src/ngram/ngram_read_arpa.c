@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.12 2009/01/21 15:39:41 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.13 2009/01/30 15:04:18 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -119,8 +119,8 @@ set_unigram(FILE *fp, NGRAM_INFO *ndata)
   t->num = NULL;
   t->bgnlistlen = 0;
   t->nnid2wid = NULL;
-  t->prob = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
-  t->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
+  t->prob = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->totalnum);
+  t->bo_wt = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->totalnum);
   t->context_num = t->totalnum;
   t->nnid2ctid_upper = NULL;
   t->nnid2ctid_lower = NULL;
@@ -203,7 +203,7 @@ add_unigram(FILE *fp, NGRAM_INFO *ndata)
   boolean ok_p = TRUE;
   boolean mismatched = FALSE;
 
-  ndata->bo_wt_1 = (LOGPROB *)mymalloc(sizeof(LOGPROB) * ndata->max_word_num);
+  ndata->bo_wt_1 = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), ndata->max_word_num);
 
   read_word_num = 0;
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
@@ -268,7 +268,7 @@ add_bigram(FILE *fp, NGRAM_INFO *ndata)
   boolean ok_p = TRUE;
   char *s;
 
-  ndata->p_2 = (LOGPROB *)mymalloc(sizeof(LOGPROB)*ndata->d[1].totalnum);
+  ndata->p_2 = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), ndata->d[1].totalnum);
 
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
     strcpy(pbuf, buf);
@@ -353,26 +353,26 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
   /* initialize pointer storage to access from (N-1)-gram */
   t->bgnlistlen = tprev->context_num;
   if (t->is24bit) {
-    t->bgn_upper = (NNID_UPPER *)mymalloc(sizeof(NNID_UPPER) * t->bgnlistlen);
-    t->bgn_lower = (NNID_LOWER *)mymalloc(sizeof(NNID_LOWER) * t->bgnlistlen);
+    t->bgn_upper = (NNID_UPPER *)mymalloc_big(sizeof(NNID_UPPER), t->bgnlistlen);
+    t->bgn_lower = (NNID_LOWER *)mymalloc_big(sizeof(NNID_LOWER), t->bgnlistlen);
     for(i = 0; i < t->bgnlistlen; i++) {    
       t->bgn_upper[i] = NNID_INVALID_UPPER;
       t->bgn_lower[i] = 0;
     }
   } else {
-    t->bgn = (NNID *)mymalloc(sizeof(NNID) * t->bgnlistlen);
+    t->bgn = (NNID *)mymalloc_big(sizeof(NNID), t->bgnlistlen);
     for(i = 0;i < t->bgnlistlen; i++) {
       t->bgn[i] = NNID_INVALID;
     }
   }
-  t->num = (WORD_ID *)mymalloc(sizeof(WORD_ID) * t->bgnlistlen);
+  t->num = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), t->bgnlistlen);
   for(i = 0; i < t->bgnlistlen; i++) {
     t->num[i] = 0;
   }
 
   /* allocate data area */
-  t->nnid2wid = (WORD_ID *)mymalloc(sizeof(WORD_ID) * t->totalnum);
-  t->prob = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
+  t->nnid2wid = (WORD_ID *)mymalloc_big(sizeof(WORD_ID), t->totalnum);
+  t->prob = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->totalnum);
   t->bo_wt = NULL;
   t->nnid2ctid_upper = NULL;
   t->nnid2ctid_lower = NULL;
@@ -473,7 +473,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
     if ((s = strtok(NULL, DELM)) != NULL) {
       bowt = (LOGPROB) atof(s);
       if (t->bo_wt == NULL) {
-	t->bo_wt = (LOGPROB *)mymalloc(sizeof(LOGPROB) * t->totalnum);
+	t->bo_wt = (LOGPROB *)mymalloc_big(sizeof(LOGPROB), t->totalnum);
 	for(i=0;i<nnid;i++) t->bo_wt[i] = 0.0;
       }
       t->bo_wt[nnid] = bowt;

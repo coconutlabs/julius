@@ -17,7 +17,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:27:03 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -38,11 +38,38 @@
  * @return pointer to the the newly allocated area.
  */
 void *
-mymalloc(int size)
+mymalloc(size_t size)
 {
   void *p;
   if ( (p = malloc(size)) == NULL) {
-    jlog("Error: mymalloc: failed to allocate %d bytes\n",size);
+    jlog("Error: mymalloc: failed to allocate %zu bytes\n", size);
+    exit(1);
+  }
+  return p;
+}
+
+/** 
+ * Allocate a memory for huge block, check for limit
+ * 
+ * @param size [in] required size in bytes.
+ * 
+ * @return pointer to the the newly allocated area.
+ */
+void *
+mymalloc_big(size_t elsize, size_t nelem)
+{
+  void *p;
+  double limit;
+
+  if (sizeof(size_t) == 4) {	/* 32bit environment */
+    limit = (double)4294967296 / elsize; /* 2^32 */
+    if (nelem >= limit) {
+      jlog("Error: mymalloc_big: %zu bytes x %zu unit exceeds 4GB limit\n", elsize, nelem);
+      exit(1);
+    }
+  }
+  if ( (p = malloc(nelem * elsize)) == NULL) {
+    jlog("Error: mymalloc: failed to allocate %zu bytes\n", nelem * elsize);
     exit(1);
   }
   return p;
@@ -57,11 +84,11 @@ mymalloc(int size)
  * @return pointer to the the newly allocated area with existing data.
  */
 void *
-myrealloc(void *ptr, int size)
+myrealloc(void *ptr, size_t size)
 {
   void *p;
   if ( (p = realloc(ptr,size)) == NULL) {
-    jlog("Error: mymalloc: failed to reallocate %d bytes\n",size);
+    jlog("Error: mymalloc: failed to reallocate %zu bytes\n", size);
     exit(1);
   }
   return p;
@@ -76,11 +103,11 @@ myrealloc(void *ptr, int size)
  * @return pointer to the newly allocated area.
  */
 void *
-mycalloc(int nelem, int elsize)
+mycalloc(size_t nelem, size_t elsize)
 {
   void *p;
   if ( (p = calloc(nelem,elsize)) == NULL) {
-    jlog("Error: mymalloc: failed to clear-allocate %d bytes\n", nelem*elsize);
+    jlog("Error: mymalloc: failed to clear-allocate %zu bytes\n", nelem*elsize);
     exit(1);
   }
   return p;

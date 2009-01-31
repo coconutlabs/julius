@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:40:53 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -170,3 +170,35 @@ set_unknown_id(NGRAM_INFO *ndata)
   ndata->unk_id = 0;		/* unknown (OOV) words are always mapped to
 				   the number 0 (by CMU-TK)*/
 }
+
+/** 
+ * @brief  Fix unigram probability of BOS / EOS word.
+ *
+ * This function checks the probabilities of BOS / EOS word, and
+ * if it is set to "-99", give the same as another one.
+ * This is the case when the LM is trained by SRILM, which assigns
+ * unigram probability of "-99" to the beginning-of-sentence word,
+ * and causes search on reverse direction to fail.
+ * 
+ * @param ndata [i/o] N-gram data
+ * @param winfo [i/o] Vocabulary information
+ * 
+ */
+void
+fix_uniprob_srilm(NGRAM_INFO *ndata, WORD_INFO *winfo)
+{
+  WORD_ID wb, we;
+
+  wb = winfo->wton[winfo->head_silwid];
+  we = winfo->wton[winfo->tail_silwid];
+  if (ndata->d[0].prob[wb] == -99.0) {
+    jlog("Warning: BOS word \"%s\" has unigram prob of \"-99\"\n", ndata->wname[wb]);
+    jlog("Warning: assigining value of EOS word \"%s\": %f\n", ndata->wname[we], ndata->d[0].prob[we]);
+    ndata->d[0].prob[wb] = ndata->d[0].prob[we];
+  } else if (ndata->d[0].prob[we] == -99.0) {
+    jlog("Warning: EOS word \"%s\" has unigram prob of \"-99\"\n", ndata->wname[we]);
+    jlog("Warning: assigining value of BOS word \"%s\": %f\n", ndata->wname[wb], ndata->d[0].prob[wb]);
+    ndata->d[0].prob[we] = ndata->d[0].prob[wb];
+  }
+}
+  

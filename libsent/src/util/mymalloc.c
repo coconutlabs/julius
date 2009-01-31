@@ -17,7 +17,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 16:27:03 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -62,7 +62,7 @@ mymalloc_big(size_t elsize, size_t nelem)
   double limit;
 
   if (sizeof(size_t) == 4) {	/* 32bit environment */
-    limit = (double)4294967296 / elsize; /* 2^32 */
+    limit = (double)4294967296.0 / elsize; /* 2^32 */
     if (nelem >= limit) {
       jlog("Error: mymalloc_big: %zu bytes x %zu unit exceeds 4GB limit\n", elsize, nelem);
       exit(1);

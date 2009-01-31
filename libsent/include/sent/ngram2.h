@@ -97,7 +97,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 15:04:02 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -236,5 +236,6 @@ void print_ngram_info(FILE *fp, NGRAM_INFO *ndata);
 
 #include <sent/vocabulary.h>
 void make_voca_ref(NGRAM_INFO *ndata, WORD_INFO *winfo);
+void fix_uniprob_srilm(NGRAM_INFO *ndata, WORD_INFO *winfo);
 
 #endif /* __SENT_NGRAM2_H__ */

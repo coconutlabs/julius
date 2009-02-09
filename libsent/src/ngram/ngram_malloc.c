@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:48:56 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -38,6 +38,7 @@ ngram_info_new()
   new = (NGRAM_INFO *)mymalloc(sizeof(NGRAM_INFO));
   new->bo_wt_1 = NULL;
   new->p_2 = NULL;
+  new->bos_eos_swap = FALSE;
 
   return(new);
 }

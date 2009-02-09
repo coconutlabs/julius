@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:40:53 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -123,52 +123,62 @@ init_ngram_arpa_additional(NGRAM_INFO *ndata, char *bigram_file)
  * @param ndata [i/o] word/class N-gram, the unknown word information will be set.
  * @param winfo [i/o] word dictionary, the word-to-ngram-entry mapping will be done here.
  */
-void
+boolean
 make_voca_ref(NGRAM_INFO *ndata, WORD_INFO *winfo)
 {
   int i;
+  boolean ok_flag = TRUE;
+  int count = 0;
 
   jlog("Stat: init_ngram: mapping dictonary words to n-gram entries\n");
   ndata->unk_num = 0;
   for (i = 0; i < winfo->num; i++) {
     winfo->wton[i] = make_ngram_ref(ndata, winfo->wname[i]);
+    if (winfo->wton[i] == WORD_INVALID) {
+      ok_flag = FALSE;
+      count++;
+      continue;
+    }
     if (winfo->wton[i] == ndata->unk_id) {
       (ndata->unk_num)++;
     }
   }
+  if (ok_flag == FALSE) {
+    jlog("Error: --- Failed to map %d words in dictionary to N-gram\n", count);
+    jlog("Error: --- Please fix the dict, or use open vocabulary N-gram that has either \"%s\" or \"%s\"\n", UNK_WORD_DEFAULT, UNK_WORD_DEFAULT2);
+    return FALSE;
+  }
+      
   if (ndata->unk_num == 0) {
     ndata->unk_num_log = 0.0;	/* for safe */
   } else {
     ndata->unk_num_log = (float)log10(ndata->unk_num);
   }
   jlog("Stat: init_ngram: finished word-to-ngram mapping\n");
+  return TRUE;
 }
 
 /** 
  * @brief  Set unknown word ID to the N-gram data.
  *
- * In CMU-Cam SLM toolkit, OOV words are always mapped to UNK, which
- * always appear at the very beginning of N-gram entry, so we fix the
- * unknown word ID at "0".
+ * Unknown word string should be UNK_WORD_DEFAULT or UNK_WORD_DEFAULT2,
+ * whose default is "<unk>" and "<UNK>".  If any of these is not found
+ * in vocabulary, treat the LM as closed vocabulary.
  * 
  * @param ndata [out] N-gram data to set unknown word ID.
  */
 void
 set_unknown_id(NGRAM_INFO *ndata)
 {
-#if 0
-  ndata->unk_id = ngram_lookup_word(ndata, unkword);
-  if (ndata->unk_id == WORD_INVALID) {
-    jlog("word %s not found, so assume this is a closed vocabulary model\n",
-	    unkword);
-    ndata->isopen = FALSE;
-  } else {
-    ndata->isopen = TRUE;
-  }
-#endif
   ndata->isopen = TRUE;
-  ndata->unk_id = 0;		/* unknown (OOV) words are always mapped to
-				   the number 0 (by CMU-TK)*/
+  ndata->unk_id = ngram_lookup_word(ndata, UNK_WORD_DEFAULT);
+  if (ndata->unk_id == WORD_INVALID) {
+    ndata->unk_id = ngram_lookup_word(ndata, UNK_WORD_DEFAULT2);
+  }
+  if (ndata->unk_id == WORD_INVALID) {
+    jlog("Stat: \"%s\" or \"%s\" not found, assuming close vocabulary LM\n", UNK_WORD_DEFAULT, UNK_WORD_DEFAULT2);
+    ndata->isopen = FALSE;
+  }
 }
 
 /** 

@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:38:13 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -45,11 +45,6 @@
 
 #include <sent/stddefs.h>
 #include <sent/htk_hmm.h>
-
-/// Default word string of beginning-of-sentence word
-#define BEGIN_WORD_DEFAULT "<s>"
-/// Default word string of end-of-sentence word
-#define END_WORD_DEFAULT "</s>"
 
 /// Memory allocation step in number of words when loading a word dictionary
 #define	MAXWSTEP 4000

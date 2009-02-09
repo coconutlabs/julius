@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:42:38 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -88,8 +88,13 @@ make_ngram_ref(NGRAM_INFO *ndata, char *wstr)
 
   nw = ngram_lookup_word(ndata, wstr);
   if (nw == WORD_INVALID) {	/* not found */
-    jlog("Warning: ngram_lookup: word %s not exist in N-gram vocabulary, treat as <UNK>\n", wstr);
-    return(ndata->unk_id);
+    if (ndata->isopen) {
+      jlog("Warning: ngram_lookup: \"%s\" not exist in N-gram, treat as unknown\n", wstr);
+      return(ndata->unk_id);
+    } else {
+      jlog("Error: ngram_lookup: \"%s\" not exist in N-gram\n", wstr);
+      return WORD_INVALID;
+    }
   } else {
     return(nw);
   }

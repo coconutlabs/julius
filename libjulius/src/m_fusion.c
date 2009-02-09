@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -409,7 +409,10 @@ initialize_ngram(JCONF_LM *lmconf, WORD_INFO *winfo)
   }
 
   /* map dict item to N-gram entry */
-  make_voca_ref(ngram, winfo);
+  if (make_voca_ref(ngram, winfo) == FALSE) {
+    ngram_info_free(ngram);
+    return NULL;
+  }
 
   /* post-fix EOS / BOS uni prob for SRILM */
   fix_uniprob_srilm(ngram, winfo);

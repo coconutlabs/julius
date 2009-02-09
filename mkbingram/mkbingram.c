@@ -18,7 +18,7 @@
  * @author Akinobu LEE
  * @date   Thu Mar 24 12:22:27 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
 
 /* mkbingram --- make binary n-gram for JULIUS from ARPA standard format */
 
-/* $Id: mkbingram.c,v 1.2 2007/12/18 08:45:54 sumomo Exp $ */
+/* $Id: mkbingram.c,v 1.3 2009/02/09 17:27:48 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/ngram2.h>
@@ -47,7 +47,8 @@ usage(char *s)
   printf("\n    options:\n");
   printf("    -nlr file       forward  N-gram in ARPA format\n");
   printf("    -nrl file       backward N-gram in ARPA format\n");
-  printf("    -d file         Julius binary N-gram\n");
+  printf("    -d bingramfile  Julius binary N-gram file input\n");
+  printf("    -swap           swap \"%s\" and \"%s\"\n", BEGIN_WORD_DEFAULT, END_WORD_DEFAULT);
   printf("\n      When both \"-nlr\" and \"-nrl\" are specified, \n");
   printf("      Julius will use the BACKWARD N-gram as main LM\n");
   printf("      and use the forward 2-gram only at the 1st pass\n");
@@ -65,6 +66,7 @@ main(int argc, char *argv[])
   time_t now;
   char *binfile, *lrfile, *rlfile, *outfile;
   int i;
+  boolean force_swap = FALSE;
 
   binfile = lrfile = rlfile = outfile = NULL;
   if (argc <= 1) {
@@ -104,6 +106,8 @@ main(int argc, char *argv[])
 	  usage(argv[0]);
 	  return -1;
 	}
+      } else if (argv[i][1] == 's') {
+	force_swap = TRUE;
       }
     } else {
       if (outfile == NULL) {
@@ -166,6 +170,9 @@ main(int argc, char *argv[])
     if (init_ngram_bin(ngram, binfile) == FALSE) return -1;
   } else {
     /* read in ARPA n-gram */
+    if (force_swap) {
+      ngram->bos_eos_swap = TRUE;
+    }
     if (rlfile) {
       if (init_ngram_arpa(ngram, rlfile, DIR_RL) == FALSE) return -1;
       if (lrfile) {

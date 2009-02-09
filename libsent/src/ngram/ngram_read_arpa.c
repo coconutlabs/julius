@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.13 2009/01/30 15:04:18 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.14 2009/02/09 17:27:46 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -129,12 +129,12 @@ set_unigram(FILE *fp, NGRAM_INFO *ndata)
   
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
     if ((p = strtok(buf, DELM)) == NULL) {
-      jlog("Error: ngram_read_arpa: LR 1-gram: failed to parse, corrupted or invalid data?\n");
+      jlog("Error: ngram_read_arpa: 1-gram: failed to parse, corrupted or invalid data?\n");
       return FALSE;
     }
     prob = (LOGPROB)atof(p);
     if ((p = strtok(NULL, DELM)) == NULL) {
-      jlog("Error: ngram_read_arpa: LR 1-gram: failed to parse, corrupted or invalid data?\n");
+      jlog("Error: ngram_read_arpa: 1-gram: failed to parse, corrupted or invalid data?\n");
       return FALSE;
     }
     name = strcpy((char *)mymalloc(strlen(p)+1), p);
@@ -222,7 +222,7 @@ add_unigram(FILE *fp, NGRAM_INFO *ndata)
     } else {
       bo_wt = (LOGPROB)atof(p);
     }
-  
+
     /* add bo_wt_rl to existing 1-gram entry */
     nid = ngram_lookup_word(ndata, name);
     if (nid == WORD_INVALID) {
@@ -251,9 +251,8 @@ add_unigram(FILE *fp, NGRAM_INFO *ndata)
 }
 
 /** 
- * Read reverse 2-gram data from RL 3-gram file, and set RL 2-gram
- * probabilities and back-off values for RL 3-gram to the corresponding
- * LR 2-gram data.
+ * Read forward 2-gram data and set the LR 2-gram probabilities to the
+ * already loaded RL N-gram.
  * 
  * @param fp [in] file pointer
  * @param ndata [i/o] N-gram to set the read data.
@@ -381,7 +380,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
   cid = cid_last = NNID_INVALID;
   for(i=0;i<n;i++) w_last[i] = WORD_INVALID;
 
-  /* read in 2-gram */
+  /* read in N-gram */
   for (;;) {
     if (getl(buf, sizeof(buf), fp) == NULL || buf[0] == '\\') break;
     strcpy(pbuf, buf);
@@ -389,7 +388,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
       jlog("Stat: ngram_read_arpa: %d-gram read %d (%d%%)\n", n, nnid, nnid * 100 / t->totalnum);
     }
 
-    /* 2-gram probability */
+    /* N-gram probability */
     if ((s = strtok(buf, DELM)) == NULL) {
       jlog("Error: ngram_read_arpa: %d-gram: failed to parse, corrupted or invalid data?\n", n);
       return FALSE;
@@ -656,7 +655,43 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
     
     /* set unknown (=OOV) word id */
     set_unknown_id(ndata);
-    
+
+    /* swap <s> and </s> for backward SRILM N-gram */
+    if (ndata->dir == DIR_RL) {
+      WORD_ID bos, eos;
+      char *p;
+      bos = ngram_lookup_word(ndata, BEGIN_WORD_DEFAULT);
+      eos = ngram_lookup_word(ndata, END_WORD_DEFAULT);
+      if (!ndata->bos_eos_swap) {
+	/* check */
+	if (bos != WORD_INVALID && eos != WORD_INVALID && ndata->d[0].prob[bos] == -99) {
+	  jlog("Stat: \"P(%s) = -99\" in reverse N-gram, may be trained by SRILM\n", BEGIN_WORD_DEFAULT);
+	  jlog("Stat: going to swap \"%s\" and \"%s\"\n", BEGIN_WORD_DEFAULT, END_WORD_DEFAULT);
+	  ndata->bos_eos_swap = TRUE;
+	}
+      }
+      if (ndata->bos_eos_swap) {
+	if (bos == WORD_INVALID) {
+	  jlog("Error: ngram_read_arpa: try to swap bos/eos but \"%s\" not found in N-gram\n", BEGIN_WORD_DEFAULT);
+	}
+	if (eos == WORD_INVALID) {
+	  jlog("Error: ngram_read_arpa: try to swap bos/eos but \"%s\" not found in N-gram\n", END_WORD_DEFAULT);
+	}
+	if (bos == WORD_INVALID || eos == WORD_INVALID) {
+	  return FALSE;
+	}
+	/* do swap */
+	jlog("Stat: ngram_read_arpa: swap \"%s\" and \"%s\" at backward N-gram\n", BEGIN_WORD_DEFAULT, END_WORD_DEFAULT);
+	/* swap name buffer */
+	p = ndata->wname[bos];
+	ndata->wname[bos] = ndata->wname[eos];
+	ndata->wname[eos] = p;
+	/* replace index */
+	ptree_replace_data(BEGIN_WORD_DEFAULT, eos, ndata->root);
+	ptree_replace_data(END_WORD_DEFAULT, bos, ndata->root);
+      }
+    }
+
   }
     
 #ifdef CLASS_NGRAM

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -238,6 +238,51 @@ ptree_search_data(char *str, PATNODE *node)
     return -1;
   }
   return(ptree_search_data_r(node, str, strlen(str) * 8 + 8));
+}
+
+/** 
+ * Recursive function to replace the data in the tree
+ * 
+ * @param node [in] current node.
+ * @param str [in] key string
+ * @param val [in] new value
+ * @param maxbitplace [in] maximum number of bitplace
+ * 
+ * @return the found integer value.
+ */
+static int
+ptree_replace_data_r(PATNODE *node, char *str, int val, int maxbitplace)
+{
+  if (node->left0 == NULL && node->right1 == NULL) {
+    node->value.data = val;
+    return(node->value.data);
+  } else {
+    if (testbit_max(str, node->value.thres_bit, maxbitplace) != 0) {
+      return(ptree_replace_data_r(node->right1, str, val, maxbitplace));
+    } else {
+      return(ptree_replace_data_r(node->left0, str, val, maxbitplace));
+    }
+  }
+}
+
+/** 
+ * Search for the data whose key string matches the given string, and
+ * replace its value.
+ * 
+ * @param str [in] search key string
+ * @param val [in] value
+ * @param node [in] root node of index tree
+ * 
+ * @return the exactly found integer value, or the nearest one.
+ */
+int
+ptree_replace_data(char *str, int val, PATNODE *node)
+{
+  if (node == NULL) {
+    //("Error: ptree_search_data: no node, search for \"%s\" failed\n", str);
+    return -1;
+  }
+  return(ptree_replace_data_r(node, str, val, strlen(str) * 8 + 8));
 }
 
 

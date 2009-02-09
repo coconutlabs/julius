@@ -97,7 +97,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 15:04:02 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -123,6 +123,14 @@ typedef unsigned char NNID_UPPER; ///< N-gram entry ID (24bit: upper bit)
 typedef unsigned short NNID_LOWER; ///< N-gram entry ID (24bit: lower bit)
 #define NNID_INVALID_UPPER 255	///< Value to indicate no id at NNID_UPPER (24bit)
 #define NNID_MAX_24 16711679        ///< Allowed maximum number of id (255*65536-1) (24bit)
+
+/// Default word string of beginning-of-sentence word
+#define BEGIN_WORD_DEFAULT "<s>"
+/// Default word string of end-of-sentence word
+#define END_WORD_DEFAULT "</s>"
+/// Default word string of unknown word for open vocabulary
+#define UNK_WORD_DEFAULT "<unk>"
+#define UNK_WORD_DEFAULT2 "<UNK>"
 
 /**
  * N-gram entries for a m-gram (1 <= m <= N)
@@ -161,6 +169,7 @@ typedef struct __ngram_info__ {
   int dir;			///< direction (either DIR_LR or DIR_RL)
   boolean from_bin;		///< TRUE if source was bingram, otherwise ARPA
   boolean bigram_index_reversed;		///< TRUE if read from old (<=3.5.3) bingram, in which case the 2-gram tuple index is reversed (DIR_LR) against the RL 3-gram.
+  boolean bos_eos_swap;		///< TRUE if swap BOS and SOS on backward N-gram
   WORD_ID max_word_num;		///< N-gram vocabulary size
   char **wname;			///< List of word strings.
   PATNODE *root;		///< Root of index tree to search n-gram word ID from its name
@@ -235,7 +244,7 @@ void set_unknown_id(NGRAM_INFO *ndata);
 void print_ngram_info(FILE *fp, NGRAM_INFO *ndata);
 
 #include <sent/vocabulary.h>
-void make_voca_ref(NGRAM_INFO *ndata, WORD_INFO *winfo);
+boolean make_voca_ref(NGRAM_INFO *ndata, WORD_INFO *winfo);
 void fix_uniprob_srilm(NGRAM_INFO *ndata, WORD_INFO *winfo);
 
 #endif /* __SENT_NGRAM2_H__ */

@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.14 2009/02/09 17:27:46 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.15 2009/02/10 08:15:48 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -555,7 +555,7 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
     /* check if the numbers are the same with already read n-gram */
     for(i=0;i<2;i++) {
       if (ndata->d[i].totalnum != num[i]) {
-	jlog("Warning: ngram_read_arpa: %d-gram total num differ between forward N-gram and backward N-gram, may cause some error\n", n+1);
+	jlog("Warning: ngram_read_arpa: %d-gram total num differ between forward N-gram and backward N-gram, may cause some error\n", i+1);
       }
     }
     /* read additional 1-gram data */
@@ -653,9 +653,6 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
       }
     }
     
-    /* set unknown (=OOV) word id */
-    set_unknown_id(ndata);
-
     /* swap <s> and </s> for backward SRILM N-gram */
     if (ndata->dir == DIR_RL) {
       WORD_ID bos, eos;

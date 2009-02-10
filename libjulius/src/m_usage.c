@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -259,6 +259,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    -v dictfile         dictionary file name\n");
   fprintf(fp, "    [-silhead wordname] (n-gram) beginning-of-sentence word   (%s)\n", BEGIN_WORD_DEFAULT);
   fprintf(fp, "    [-siltail wordname] (n-gram) end-of-sentence word         (%s)\n", END_WORD_DEFAULT);
+  fprintf(fp, "    [-mapunk wordname]  (n-gram) map unknown words to this    (%s)\n", UNK_WORD_DEFAULT);
   fprintf(fp, "    [-forcedict]        ignore error entry and keep running\n");
   fprintf(fp, "    [-iwspword]         (n-gram) add short-pause word for inter-word CD sp\n");
   fprintf(fp, "    [-iwspentry entry]  (n-gram) word entry for \"-iwspword\" (%s)\n", IWSPENTRY_DEFAULT);

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:40:53 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -145,7 +145,7 @@ make_voca_ref(NGRAM_INFO *ndata, WORD_INFO *winfo)
   }
   if (ok_flag == FALSE) {
     jlog("Error: --- Failed to map %d words in dictionary to N-gram\n", count);
-    jlog("Error: --- Please fix the dict, or use open vocabulary N-gram that has either \"%s\" or \"%s\"\n", UNK_WORD_DEFAULT, UNK_WORD_DEFAULT2);
+    jlog("Error: --- Specify the word to which those words are mapped with \"-mapunk\" (default: \"<unk>\" or \"<UNK>\"\n");
     return FALSE;
   }
       
@@ -161,23 +161,31 @@ make_voca_ref(NGRAM_INFO *ndata, WORD_INFO *winfo)
 /** 
  * @brief  Set unknown word ID to the N-gram data.
  *
- * Unknown word string should be UNK_WORD_DEFAULT or UNK_WORD_DEFAULT2,
- * whose default is "<unk>" and "<UNK>".  If any of these is not found
- * in vocabulary, treat the LM as closed vocabulary.
  * 
  * @param ndata [out] N-gram data to set unknown word ID.
+ * @param str [in] word name string of unknown word
  */
 void
-set_unknown_id(NGRAM_INFO *ndata)
+set_unknown_id(NGRAM_INFO *ndata, char *str)
 {
-  ndata->isopen = TRUE;
-  ndata->unk_id = ngram_lookup_word(ndata, UNK_WORD_DEFAULT);
+  ndata->unk_id = ngram_lookup_word(ndata, str);
   if (ndata->unk_id == WORD_INVALID) {
-    ndata->unk_id = ngram_lookup_word(ndata, UNK_WORD_DEFAULT2);
+    if (strmatch(str, UNK_WORD_DEFAULT)) {
+      /* if default "<unk>" is not found, also try "<UNK>" */
+      ndata->unk_id = ngram_lookup_word(ndata, UNK_WORD_DEFAULT2);
+      if (ndata->unk_id == WORD_INVALID) {
+	jlog("Stat: init_ngram: either \"%s\" and \"%s\" not found, assuming close vocabulary LM\n", UNK_WORD_DEFAULT, UNK_WORD_DEFAULT2);
+	ndata->isopen = FALSE;
+	return;
+      }
+    }
   }
   if (ndata->unk_id == WORD_INVALID) {
-    jlog("Stat: \"%s\" or \"%s\" not found, assuming close vocabulary LM\n", UNK_WORD_DEFAULT, UNK_WORD_DEFAULT2);
+    jlog("Stat: init_ngram: \"%s\" not found, assuming close vocabulary LM\n", str);
     ndata->isopen = FALSE;
+  } else {
+    jlog("Stat: init_ngram: unknown words will be mapped to \"%s\"\n", str);
+    ndata->isopen = TRUE;
   }
 }
 

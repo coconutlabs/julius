@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -192,7 +192,8 @@ jconf_set_default_values_lm(JCONF_LM *j)
 #endif
   strcpy(j->wordrecog_head_silence_model_name, "silB");
   strcpy(j->wordrecog_tail_silence_model_name, "silE");
-  j->wordrecog_silence_context_name[0]	= '\0';
+  j->wordrecog_silence_context_name[0] = '\0';
+  strcpy(j->unknown_name, UNK_WORD_DEFAULT); // or UNK_WORD_DEFAULT2
 }
 
 /** 

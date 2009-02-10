@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -407,6 +407,9 @@ initialize_ngram(JCONF_LM *lmconf, WORD_INFO *winfo)
     ngram_info_free(ngram);
     return NULL;
   }
+
+  /* set unknown (=OOV) word id */
+  set_unknown_id(ngram, lmconf->unknown_name);
 
   /* map dict item to N-gram entry */
   if (make_voca_ref(ngram, winfo) == FALSE) {

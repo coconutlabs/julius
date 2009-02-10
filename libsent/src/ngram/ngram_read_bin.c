@@ -48,7 +48,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:12:08 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -641,9 +641,6 @@ ngram_read_bin(FILE *fp, NGRAM_INFO *ndata)
   jlog("Stat: ngram_read_bin: making entry name index\n");
   ngram_make_lookup_tree(ndata);
 
-  /* set unknown id */
-  set_unknown_id(ndata);
-  
   bi_prob_func_set(ndata);
 
   return TRUE;

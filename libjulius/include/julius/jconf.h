@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -333,6 +333,11 @@ typedef struct __jconf_lm__ {
    * For isolated word recognition mode: name of silence as phone context
    */
   char wordrecog_silence_context_name[MAX_HMMNAME_LEN];
+
+  /**
+   * Name string of Unknown word for N-gram
+   */
+  char unknown_name[UNK_WORD_MAXLEN];
 
   /**
    * Pointer to next instance

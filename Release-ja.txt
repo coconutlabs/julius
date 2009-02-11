@@ -1,3 +1,27 @@
+4.1.2 (2009.02.12)
+===================
+
+[N-gram]
+ - サイズ上限を 2GB から 4GB に拡張
+ - "-mapunk" で unknown word を指定可能に．デフォルトは "<unk>" "<UNK>"
+ - チェックの厳密化：辞書に未知語がある場合，N-gram に "<unk>" が無いとエラー
+[SRILM対応]
+ - backward ARPA 読み込み時に <s> </s> を自動入れ替え
+ - mkbingram で backward ARPA 読み込み時に "-swap" で明示的に入れ替え
+ - <s>の 1-gramが必ず -99 になるのを自動修正
+[機能改善]
+ - successor list 構築アルゴリズムを高速化．
+ - yomi2voca.pl 更新
+ - ALSA audio buffer overrun 対策
+ - generate-ngram の -debug 指定時の挙動を変更
+[JuliusLib]
+ - j_close_stream() 追加
+[バグ修正]
+ - adintool 複数サーバ指定できないバグ修正
+ - cygwin でのコンパイルエラー修正 (libesd)
+ - "-input" 無指定時に落ちるバグを修正
+
+
 4.1.1 (2008.12.13)
 ===================
 バグ修正：

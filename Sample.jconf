@@ -200,6 +200,7 @@
 ## param.
 #-silhead "<s>"			# beginning-of-sentence (silence) word
 #-siltail "</s>"		# end-of-sentence (silence) word
+#-mapunk "<unk>"		# word to which unknown words should be mapped
 #-iwspword			# add a pause word to the dictionary
 #-iwspentry "<UNK> [sp] sp sp"	# word that will be added by "-iwspword"
 #-sepnum 150			# num of high freq words to linearize 

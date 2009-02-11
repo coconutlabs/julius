@@ -4,6 +4,7 @@
 
                                 Julius
 
+                                                (Rev 4.1.2 2009/02/12)
                                                 (Rev 4.1.1 2008/12/13)
                                                 (Rev 4.1   2008/10/03)
                                                 (Rev 4.0.2 2008/05/27)
@@ -13,10 +14,10 @@
                                                 (Rev 2.0   1999/02/20)
                                                 (Rev 1.0   1998/02/20)
 
- Copyright (c) 1991-2008 Kawahara Lab., Kyoto University
+ Copyright (c) 1991-2009 Kawahara Lab., Kyoto University
  Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- Copyright (c) 2005-2008 Julius project team, Nagoya Institute of Technology
+ Copyright (c) 2005-2009 Julius project team, Nagoya Institute of Technology
  All rights reserved
 ======================================================================
 
@@ -45,16 +46,18 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.1.1
+What's new in Julius-4.1.2
 ===========================
 
-Revision 4.1.1 is a bug fix release.  Many bugs are fixed relating
-N-gram handling (tested on SRILM), module mode and more.  All users
-that uses older versions of Julius-4 are strongly recommended to use
-this version.
+Revision 4.1.2 includes many fixes for N-gram.
+It now allows over 2GB N-gram, improved support for SRILM, and
+correct handling of unknown words.  Some bugs and improvements
+that has been reported on the Forum has been also fixed.
+
+see "Release.txt" for more details of changes.
 
 
-Contents of Julius-4.1.1
+Contents of Julius-4.1.2
 ========================
 
 	(Documents with suffix "ja" are written in Japanese)

@@ -1,3 +1,30 @@
+4.1.2 (2009.02.12)
+===================
+
+[SRILM support]
+ - Added swapping "<s>" and "</s>" when reading BACKWARD ARPA file
+   trained by SRILM.  It will be automatically detected.  If detection
+   fails, you can specify an option "-swap" in mkbingram to do that.
+ - Internally modify the unigram probability of "<s>" or "</s>", since
+   they may be set to "-99" in SRILM model.  The same value as
+   opposite will be assigned.
+[N-gram]
+ - Size limit extended from 2GB to 4GB for big N-gram.
+ - "<unk>" and "<UNK>" can be changed by "-mapunk".
+ - More strict check for unknown words: Julius now terminates with
+   error when dictionary has OOV words and N-gram is not open (no unk word).
+[Improvements]
+ - Faster successor list building algorithm
+ - Update yomi2voca.pl to cover more minor Japanese pronunciation.
+ - Workaround for audio buffer overrun in ALSA
+[JuliusLib]
+ - Added API function "j_close_stream()" to exit main recognition loop.
+[Bug Fixes]
+ - Fixed segfault on adintool when specifying multiple servers.
+ - Fixed compilation error on cygwin (libesd)
+ - Fixed segfault when not specifying "-input" option.
+
+
 4.1.1 (2008.12.13)
 ===================
 Bug fixes:

@@ -3,11 +3,11 @@
   
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets v1.71.0 <http://docbook.sf.net/>
-.\"      Date: 10/02/2008
+.\"      Date: 02/11/2009
 .\"    Manual: 
 .\"    Source: 
 .\"
-.TH "JULIUS" "1" "10/02/2008" "" ""
+.TH "JULIUS" "1" "02/11/2009" "" ""
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
@@ -537,6 +537,11 @@ Word dictionary file.
 \fB \-silhead \fR \fIword_string\fR \fB \-siltail \fR \fIword_string\fR
 .RS 3n
 Silence word defined in the dictionary, for silences at the beginning of sentence and end of sentence. (default: "<s>", "</s>")
+.RE
+.PP
+\fB \-mapunk \fR \fIword_string\fR
+.RS 3n
+Specify unknown word. Default is "<unk>" or "<UNK>". This will be used to assign word probability on unknown words, i.e. words in dictionary that are not in N\-gram vocabulary.
 .RE
 .PP
 \fB \-iwspword \fR

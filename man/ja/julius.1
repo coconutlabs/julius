@@ -3,11 +3,11 @@
   
 .\"    Author: 
 .\" Generator: DocBook XSL Stylesheets v1.71.0 <http://docbook.sf.net/>
-.\"      Date: 10/02/2008
+.\"      Date: 02/11/2009
 .\"    Manual: 
 .\"    Source: 
 .\"
-.TH "JULIUS" "1" "10/02/2008" "" ""
+.TH "JULIUS" "1" "02/11/2009" "" ""
 .\" disable hyphenation
 .nh
 .\" disable justification (adjust text to left margin only)
@@ -427,6 +427,11 @@ N\-gram，または文法用の単語辞書ファイルを指定する．
 \fB \-silhead \fR \fIword_string\fR \fB \-siltail \fR \fIword_string\fR
 .RS 3n
 音声入力両端の無音区間に相当する「無音単語」エントリを指定する． 単語の読み（N\-gramエントリ名），あるいは"#"+単語番号（辞書ファ イルの行番号\-1）で指定する．デフォルトはそれぞれ "<s>", "</s>" である．
+.RE
+.PP
+\fB \-mapunk \fR \fIword_string\fR
+.RS 3n
+unknown に対応する単語名を指定する．デフォルトは， "<unk>" あるいは "<UNK>" である．この単語は， 認識辞書において N\-gram にない単語を指定した場合にマッピングされ る単語である．
 .RE
 .PP
 \fB \-iwspword \fR

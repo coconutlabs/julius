@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Tue Dec 11 14:40:04 2007
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 
@@ -363,6 +363,10 @@ main(int argc, char *argv[])
     /* End */
     /*******/
   }
+
+  /* calling j_close_stream(recog) at any time will terminate
+     recognition and exit j_recognize_stream() */
+  j_close_stream(recog);
 
   j_recog_free(recog);
 

@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 13:31:20 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -246,7 +246,7 @@ adin_file_open(char *filename)	/* NULL for standard input */
   char dummy[4];
 
   if (filename != NULL) {
-    if ((fp = fopen(filename, "r")) == NULL) {
+    if ((fp = fopen(filename, "rb")) == NULL) {
       jlog("Error: adin_file: failed to open %s\n",filename);
       return(FALSE);
     }

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 02 21:12:52 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -145,7 +145,7 @@ main_recognition_stream_loop(Recog *recog)
 	return;
       }
       if (outfile_enabled) {
-	outfile_set_fname(j_get_current_filename());
+	outfile_set_fname(j_get_current_filename(recog));
       }
       /* start recognizing the stream */
       ret = j_recognize_stream(recog);

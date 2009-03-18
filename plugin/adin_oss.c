@@ -47,12 +47,13 @@
  *   - adin_terminate()
  *   - adin_pause()
  *   - adin_resume()
+ *   - adin_input_name()
  * 
  * 
  * @author Akinobu Lee
  * @date   Thu Aug  7 14:28:37 2008
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 
@@ -801,5 +802,28 @@ adin_resume()
   printf("resume request\n");
   return TRUE;
 }
+
+/**
+ * <EN>
+ * @brief  A function to return current device name for information (optional)
+ *
+ * This function is totally optional.
+ * 
+ * @return pointer to the device name string
+ * </EN>
+ * <JA>
+ * @brief  入力ファイル・デバイス名を返す関数（任意）
+ *
+ * @return 入力ファイルあるいはデバイス名の文字列へのポインタ
+ * </JA>
+ * 
+ */
+char *
+adin_input_name()
+{
+  printf("input name function was called\n");
+  return("default");
+}
+
 
 /* end of file */

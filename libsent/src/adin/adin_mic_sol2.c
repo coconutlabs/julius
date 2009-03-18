@@ -38,7 +38,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:06:46 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -61,9 +61,12 @@
 #include <sys/audioio.h>
 static int afd;			///< Audio file descriptor
 static struct audio_info ainfo;	///< Audio format information
+static char *defaultdev = DEFAULT_DEVICE;
+static char devname[MAXPATHLEN];
 
 /// Default device name, can be overridden by AUDIODEV environment variable
 #define DEFAULT_DEVICE "/dev/audio"
+
 
 /** 
  * Device initialization: check device capability and open for recording.
@@ -76,14 +79,13 @@ static struct audio_info ainfo;	///< Audio format information
 boolean
 adin_mic_standby(int sfreq, void *arg)
 {
-  char *defaultdev = DEFAULT_DEVICE;
-  char *devname;
-
+  char *p;
   /* get device name if specified in $AUDIODEV */
-  if ((devname = getenv("AUDIODEV")) == NULL) {
-    devname = defaultdev;
+  if ((p = getenv("AUDIODEV")) == NULL) {
+    strncpy(devname, defaultdev, MAXPATHLEN);
     jlog("Stat: adin_sol2: device name = %s\n", devname);
   } else {
+    strncpy(devname, p, MAXPATHLEN);
     jlog("Stat: adin_sol2: device name obtained from AUDIODEV: %s\n", devname);
   }
 
@@ -207,3 +209,18 @@ adin_mic_read(SP16 *buf, int sampnum)
   }
   return(cnt);
 }
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_mic_input_name()
+{
+  return(devname);
+}
+
+/* end of file */

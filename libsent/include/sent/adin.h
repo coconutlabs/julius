@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.4 $ 
+ * $Revision: 1.5 $ 
  */
 /*
  * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
@@ -149,26 +149,31 @@ boolean adin_mic_standby(int freq, void *arg);
 boolean adin_mic_begin();
 boolean adin_mic_end();
 int adin_mic_read(SP16 *buf, int sampnum);
+char *adin_mic_input_name();
 /* adin/adin_mic_linux_alsa.c */
 boolean adin_alsa_standby(int freq, void *arg);
 boolean adin_alsa_begin();
 boolean adin_alsa_end();
 int adin_alsa_read(SP16 *buf, int sampnum);
+char *adin_alsa_input_name();
 /* adin/adin_mic_linux_oss.c */
 boolean adin_oss_standby(int freq, void *arg);
 boolean adin_oss_begin();
 boolean adin_oss_end();
 int adin_oss_read(SP16 *buf, int sampnum);
+char *adin_oss_input_name();
 /* adin/adin_esd.c */
 boolean adin_esd_standby(int freq, void *arg);
 boolean adin_esd_begin();
 boolean adin_esd_end();
 int adin_esd_read(SP16 *buf, int sampnum);
+char *adin_esd_input_name();
 /* adin/adin_netaudio.c  and adin/adin_na.c */
 boolean adin_netaudio_standby(int freq, void *arg);
 boolean adin_netaudio_begin();
 boolean adin_netaudio_end();
 int adin_netaudio_read(SP16 *buf, int sampnum);
+char *adin_netaudio_input_name();
 int NA_standby(int, char *);
 void NA_start();
 void NA_stop();
@@ -183,6 +188,7 @@ boolean adin_stdin_standby(int freq, void *arg);
 boolean adin_stdin_begin();
 int adin_stdin_read(SP16 *buf, int sampnum);
 char *adin_file_get_current_filename();
+char *adin_stdin_input_name();
 
 /* adin/adin_sndfile.c */
 #ifdef HAVE_LIBSNDFILE
@@ -201,6 +207,7 @@ int adin_tcpip_read(SP16 *buf, int sampnum);
 boolean adin_tcpip_send_pause();
 boolean adin_tcpip_send_terminate();
 boolean adin_tcpip_send_resume();
+char *adin_tcpip_input_name();
 
 /* adin/zc-e.c */
 void init_count_zc_e(ZEROCROSS *zc, int length);

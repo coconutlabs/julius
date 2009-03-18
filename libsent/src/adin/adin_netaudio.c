@@ -26,7 +26,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:50:55 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -46,6 +46,8 @@
 #include <sent/stddefs.h>
 #include <sent/adin.h>
 
+static char server_devname[MAXPATHLEN];  ///< Device name
+
 /** 
  * Connection initialization: check connectivity and open for recording.
  * 
@@ -57,8 +59,7 @@
 boolean
 adin_netaudio_standby(int sfreq, void *arg)
 {
-  char *server_devname;
-  server_devname = arg;
+  strncpy(server_devname, arg, MAXPATHLEN);
   if (NA_standby(sfreq, server_devname) == 0) return(FALSE); /* error */
   return(TRUE);
 }
@@ -109,4 +110,17 @@ adin_netaudio_read(SP16 *buf, int sampnum)
     return(-2);			/* return negative on error */
   }
   return(cnt);
+}
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_netaudio_input_name()
+{
+  return(server_devname);
 }

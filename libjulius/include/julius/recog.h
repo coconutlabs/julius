@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -347,6 +347,8 @@ typedef struct __adin__ {
   boolean (*ad_terminate)();
   /// Pointer to function to read samples
   int (*ad_read)(SP16 *, int);
+  /// Pointer to function to return current input source name (filename, devname, etc.)
+  char * (*ad_input_name)();
 
   /* configuration parameters */
   int thres;            ///< Input Level threshold (0-32767)
@@ -422,6 +424,8 @@ typedef struct __adin__ {
 
   unsigned int total_captured_len;
   unsigned int last_trigger_sample;
+
+  char current_input_name[MAXPATHLEN];
 
 } ADIn;
 
@@ -685,6 +689,8 @@ typedef struct __mfcc_calc__ {
     boolean (*fv_pause)();
     /// Pointer to function to terminate current recording immediately
     boolean (*fv_terminate)();
+    /// Pointer to function to return current input name
+    char * (*fv_input_name)();
   } func;
 
 #ifdef POWER_REJECT

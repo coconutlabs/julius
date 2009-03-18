@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Nov  6 22:41:00 2007
  * 
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -52,7 +52,7 @@ int j_config_load_file(Jconf *jconf, char *filename);
 Jconf *j_config_load_args_new(int argc, char *argv[]);
 Jconf *j_config_load_file_new(char *filename);
 boolean j_adin_init(Recog *recog);
-char *j_get_current_filename();
+char *j_get_current_filename(Recog *recog);
 void j_recog_info(Recog *recog);
 Recog *j_create_instance_from_jconf(Jconf *jconf);
 

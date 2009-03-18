@@ -19,7 +19,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 15:04:28 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -561,28 +561,45 @@ j_adin_init(Recog *recog)
 
 /** 
  * <EN>
- * Return current input speech file name.
- * Invalid when MFCC input.
+ * Return current input speech file name.  return NULL if the current
+ * input device does not support this function.
  * </EN>
  * <JA>
- * 現在の入力ファイル名を返す.
- * MFCC入力時は使えない. 
+ * 現在の入力ファイル名を返す.現在の入力デバイスがこの機能をサポート
+ * していない場合は NULL を返す．
  * </JA>
  * 
- * @return the file name.
+ * @param recog [in] engine instance
+ * 
+ * @return the file name, or NULL when this function is not available on
+ * the current input device.
  * 
  * @callgraph
  * @callergraph
  * @ingroup engine
  */
 char *
-j_get_current_filename()
+j_get_current_filename(Recog *recog)
 {
-#ifdef HAVE_LIBSNDFILE
-  return(adin_sndfile_get_current_filename());
-#else
-  return(adin_file_get_current_filename());
-#endif
+  char *p;
+  p = NULL;
+  if (recog->jconf->input.type == INPUT_WAVEFORM) {
+    /* adin function input */
+    if (recog->adin->ad_input_name != NULL) {
+      p = recog->adin->ad_input_name();
+    }
+  } else {
+    switch(recog->jconf->input.speech_input) {
+    case SP_MFCMODULE:
+      p = mfc_module_input_name(recog->mfcclist);
+      break;
+    case SP_MFCFILE:
+      /* already assigned */
+      p = recog->adin->current_input_name;
+      break;
+    }
+  }
+  return p;
 }
 
 

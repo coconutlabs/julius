@@ -45,7 +45,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 14:55:03 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -299,3 +299,15 @@ adin_tcpip_send_terminate()
    return TRUE;
 }
 
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_tcpip_input_name()
+{
+  return("network socket");
+}

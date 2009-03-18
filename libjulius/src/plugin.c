@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug  2 09:46:09 2008
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -492,6 +492,7 @@ mfc_module_init(MFCCCalc *mfcc, Recog *recog)
   mfcc->func.fv_resume   = (boolean (*)()) plugin_get_func(mfcc->plugin_source, "fvin_resume");
   mfcc->func.fv_pause    = (boolean (*)()) plugin_get_func(mfcc->plugin_source, "fvin_pause");
   mfcc->func.fv_terminate= (boolean (*)()) plugin_get_func(mfcc->plugin_source, "fvin_terminate");
+  mfcc->func.fv_input_name= (char * (*)()) plugin_get_func(mfcc->plugin_source, "fvin_input_name");
 
   if (mfcc->func.fv_read == NULL) {
     jlog("ERROR: FEATURE_INPUT plugin: fvin_read() not found!\n");
@@ -601,6 +602,15 @@ mfc_module_read(MFCCCalc *mfcc, int *new_t)
 
   return 0;
 }  
+
+char *
+mfc_module_input_name(MFCCCalc *mfcc)
+{
+  int ret;
+
+  if (mfcc->func.fv_input_name) return(mfcc->func.fv_input_name());
+  return NULL;
+}
 
 #endif /* ENABLE_PLUGIN */
 

@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:16:43 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /* adin_mic_sp.c --- adin microphone library for spAudio
@@ -135,4 +135,17 @@ adin_mic_read(SP16 *buf, int sampnum)
   nread = spReadAudio(audio, (short *)buf, nread);
   
   return nread;
+}
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_mic_input_name()
+{
+  return("SP default device");
 }

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -47,6 +47,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_pause 	   = NULL;
     a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_sndfile_read;
+    a->ad_input_name	   = adin_sndfile_get_current_filename;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
 #else  /* ~HAVE_LIBSNDFILE */
@@ -58,6 +59,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_pause 	   = NULL;
     a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_file_read;
+    a->ad_input_name	   = adin_file_get_current_filename;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
 #endif
@@ -76,6 +78,7 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_begin 	     = adin_mic_begin;
       a->ad_end 	     = adin_mic_end;
       a->ad_read 	     = adin_mic_read;
+      a->ad_input_name	     = adin_mic_input_name;
       break;
 #ifdef HAS_ALSA
     case SP_INPUT_ALSA:
@@ -83,6 +86,7 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_begin 	     = adin_alsa_begin;
       a->ad_end 	     = adin_alsa_end;
       a->ad_read 	     = adin_alsa_read;
+      a->ad_input_name	     = adin_alsa_input_name;
       break;
 #endif
 #ifdef HAS_OSS
@@ -91,6 +95,7 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_begin 	     = adin_oss_begin;
       a->ad_end 	     = adin_oss_end;
       a->ad_read 	     = adin_oss_read;
+      a->ad_input_name	     = adin_oss_input_name;
       break;
 #endif
 #ifdef HAS_ESD
@@ -99,6 +104,7 @@ adin_select(ADIn *a, int source, int dev)
       a->ad_begin 	     = adin_esd_begin;
       a->ad_end 	     = adin_esd_end;
       a->ad_read 	     = adin_esd_read;
+      a->ad_input_name	     = adin_esd_input_name;
       break;
 #endif
     default:
@@ -116,6 +122,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_pause 	   = NULL;
     a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_netaudio_read;
+    a->ad_input_name	   = adin_netaudio_input_name;
     a->silence_cut_default = TRUE;
     a->enable_thread 	   = TRUE;
     break;
@@ -129,6 +136,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_pause		   = adin_tcpip_send_pause;
     a->ad_terminate	   = adin_tcpip_send_terminate;
     a->ad_read 		   = adin_tcpip_read;
+    a->ad_input_name	   = adin_tcpip_input_name;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
     break;
@@ -141,6 +149,7 @@ adin_select(ADIn *a, int source, int dev)
     a->ad_pause 	   = NULL;
     a->ad_terminate 	   = NULL;
     a->ad_read 		   = adin_stdin_read;
+    a->ad_input_name	   = adin_stdin_input_name;
     a->silence_cut_default = FALSE;
     a->enable_thread 	   = FALSE;
     break;
@@ -260,6 +269,7 @@ adin_initialize(Recog *recog)
     adin->ad_pause 	   = (boolean (*)()) plugin_get_func(sid, "adin_pause");
     adin->ad_terminate 	   = (boolean (*)()) plugin_get_func(sid, "adin_terminate");
     adin->ad_read 	   = (int (*)(SP16 *, int)) plugin_get_func(sid, "adin_read");
+    adin->ad_input_name	   = (char (*)()) plugin_get_func(sid, "adin_input_name");
     if (adin->ad_read == NULL) {
       jlog("ERROR: m_adin: selected plugin has no function adin_read()\n");
       return FALSE;

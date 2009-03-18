@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -129,5 +129,22 @@ adin_esd_read(SP16 *buf, int sampnum)
   }
   cnt /= sizeof(SP16);
   return(cnt);
+#endif
+}
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_esd_input_name()
+{
+#ifndef HAS_ESD
+  return NULL;
+#else
+  return(name_buf);
 #endif
 }

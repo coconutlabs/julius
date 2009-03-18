@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -70,7 +70,7 @@
 #endif
 
 static snd_pcm_t *handle;	///< Audio handler
-static char *pcm_name = "default"; ///< Name of the PCM device, can be overridden by env ALSADEV
+static char pcm_name[MAXPATHLEN]; ///< Name of the PCM device
 static int latency = 32;	///< Lantency time in msec.  You can override this value by specifying environment valuable "LATENCY_MSEC".
 static boolean need_swap;	///< Whether samples need byte swap
 
@@ -178,8 +178,10 @@ adin_alsa_standby(int sfreq, void *dummy)
 
   /* check $ALSADEV for device name */
   if ((p = getenv("ALSADEV")) != NULL) {
-    pcm_name = p;
+    strncpy(pcm_name, p, MAXPATHLEN);
     jlog("Stat: adin_alsa: device name from ALSADEV: \"%s\"\n", pcm_name);
+  } else {
+    strcpy(pcm_name, "default");
   }
 
   /* open device in non-block mode) */
@@ -560,6 +562,23 @@ adin_alsa_read(SP16 *buf, int sampnum)
 
   return(cnt);
 #endif /* HAS_ALSA */
+}
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_alsa_input_name()
+{
+#ifndef HAS_ALSA
+  return NULL;
+#else
+  return(pcm_name);
+#endif
 }
 
 /* end of file */

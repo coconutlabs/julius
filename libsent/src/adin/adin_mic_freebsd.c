@@ -39,7 +39,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -78,6 +78,9 @@ struct pollfd fds[1];		///< Workarea for polling device
 #define FREQALLOWRANGE 200	///< Acceptable width of sampling frequency
 #define POLLINTERVAL 200	///< Polling interval in miliseconds
 
+static char *defaultdev = DEFAULT_DEVICE; ///< Default device name
+static char devname[MAXPATHLEN];		///< Current device name
+
 /** 
  * Device initialization: check device capability and open for recording.
  * 
@@ -92,17 +95,18 @@ adin_mic_standby(int sfreq, void *arg)
   int fmt, fmt_can, fmt1, fmt2, rfmt; /* sampling format */
   int samplerate;		/* actual sampling rate */
   int stereo;		/* mono */
-  char *defaultdev = DEFAULT_DEVICE; /* default device */
-  char *devname;
+  char *p;
 
   /* set device name */
-  if ((devname = getenv("AUDIODEV")) == NULL) {
-    devname = defaultdev;
+  if ((p = getenv("AUDIODEV")) == NULL) {
+    strncpy(devname, defaultdev, MAXPATHLEN);
     jlog("Stat: adin_freebsd: device name = %s\n", devname);
   } else {
-    jlog("Stat: adin_freebsd: device name obtained from AUDIODEV: %s\n", devname);
+    jlog("Stat: adin_freebsd: device name obtained from AUDIODEV: %s\n", p);
+  } else {
+    strncpy(devname, p, MAXPATHLEN);
   }
-  
+
   /* open device */
   if ((audio_fd = open(devname, O_RDONLY)) == -1) {
     jlog("Error: adin_freebsd: failed to open %s\n", devname);
@@ -255,4 +259,17 @@ adin_mic_read(SP16 *buf, int sampnum)
   cnt /= sizeof(short);
   if (need_swap) swap_sample_bytes(buf, cnt);
   return(cnt);
+}
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_mic_input_name()
+{
+  return(devname);
 }

@@ -51,7 +51,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -102,6 +102,8 @@ static int audio_fd;		///< Audio descriptor
 static boolean need_swap;	///< Whether samples need byte swap
 static int frag_size;		///< Actual data fragment size
 static boolean stereo_rec;	///< TRUE if stereo recording (use left only)
+static char *defaultdev = DEFAULT_DEVICE; ///< Default device name
+static char devname[MAXPATHLEN];		///< Current device name
 
 /** 
  * Device initialization: check device capability and open for recording.
@@ -120,17 +122,16 @@ adin_oss_standby(int sfreq, void *dummy)
 #else
   int fmt, fmt_can, fmt1, fmt2, rfmt; /* sampling format */
   int samplerate;	/* 16kHz */
-  char *defaultdev = DEFAULT_DEVICE; /* default device */
-  char *devname;
   int frag;
   int frag_msec;
-  char *env;
+  char *env, *p;
 
   /* set device name */
-  if ((devname = getenv("AUDIODEV")) == NULL) {
-    devname = defaultdev;
+  if ((p = getenv("AUDIODEV")) == NULL) {
+    strncpy(devname, defaultdev, MAXPATHLEN);
     jlog("Stat: adin_oss: device name = %s\n", devname);
   } else {
+    strncpy(devname, p, MAXPATHLEN);
     jlog("Stat: adin_oss: device name obtained from AUDIODEV: %s\n", devname);
   }
 
@@ -452,3 +453,19 @@ adin_oss_read(SP16 *buf, int sampnum)
 #endif /* HAS_OSS */
 }
 
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_oss_input_name()
+{
+#ifndef HAS_OSS
+  return NULL;
+#else
+  return(devname);
+#endif
+}

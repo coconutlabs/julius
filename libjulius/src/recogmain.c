@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 
@@ -493,6 +493,7 @@ int
 j_open_stream(Recog *recog, char *file_or_dev_name)
 {
   Jconf *jconf;
+  char *p;
 
   jconf = recog->jconf;
 
@@ -509,11 +510,13 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
       }
     }
 #endif
+    /* when using adin func, input name should be obtained when called */
   } else {
     switch(jconf->input.speech_input) {
     case SP_MFCMODULE:
       param_init_content(recog->mfcclist->param);
       if (mfc_module_begin(recog->mfcclist) == FALSE) return -2;
+      /* when using mfc module func, input name should be obtained when called */
       break;
     case SP_MFCFILE:
       /* read parameter file */
@@ -528,10 +531,22 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
       }
       /* output frame length */
       callback_exec(CALLBACK_STATUS_PARAM, recog);
+      /* store the input filename here */
+      strncpy(recog->adin->current_input_name, file_or_dev_name, MAXPATHLEN);
       break;
     default:
       jlog("ERROR: j_open_stream: none of SP_MFC_*??\n");
       return -1;
+    }
+  }
+
+  if (jconf->input.speech_input != SP_MFCFILE) {
+    /* store current input name using input source specific function */
+    p = j_get_current_filename(recog);
+    if (p) {
+      strncpy(recog->adin->current_input_name, p, MAXPATHLEN);
+    } else {
+      recog->adin->current_input_name[0] = '\0';
     }
   }
       

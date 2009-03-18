@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Mon Aug 11 17:05:17 2008
  * 
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 
@@ -40,6 +40,7 @@
  *   - fvin_terminate()
  *   - fvin_pause()
  *   - fvin_resume()
+ *   - fvin_input_name()
  * 
  */
 
@@ -549,4 +550,25 @@ fvin_resume()
   return TRUE;
 }
 
+/**
+ * <EN>
+ * @brief  A function to return current device name for information (optional)
+ *
+ * This function is totally optional.
+ * 
+ * @return pointer to the device name string
+ * </EN>
+ * <JA>
+ * @brief  入力ファイル・デバイス名を返す関数（任意）
+ *
+ * @return 入力ファイルあるいはデバイス名の文字列へのポインタ
+ * </JA>
+ * 
+ */
+char *
+fvin_input_name()
+{
+  printf("input name function was called\n");
+  return("default");
+}
 /* end of file */

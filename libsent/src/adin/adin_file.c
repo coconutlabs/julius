@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 13:31:20 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -570,4 +570,16 @@ char *
 adin_file_get_current_filename()
 {
   return(speechfilename);
+}
+/** 
+ * 
+ * A tiny function to get current input raw speech file name.
+ * 
+ * @return string of current input speech file.
+ * 
+ */
+char *
+adin_stdin_input_name()
+{
+  return("stdin");
 }

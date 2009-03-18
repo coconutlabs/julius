@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.2 2007/12/18 08:45:50 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.3 2009/03/18 07:05:30 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -87,6 +87,8 @@ static UInt32 OutputSamplesPerPacket = 0;
 static AudioBufferList* BufList;
 static AudioBufferList BufListBackup;
 static AudioBufferList* BufListConverted;
+
+static char deviceName[DEVICE_NAME_LEN];
 
 #ifndef boolean
 typedef unsigned char boolean;
@@ -285,7 +287,6 @@ InputProc(void* inRefCon,
 boolean adin_mic_standby(int sfreq, void* dummy) {
   OSStatus status;
   UInt32 propertySize;
-  char deviceName[DEVICE_NAME_LEN];
   struct AudioStreamBasicDescription inDesc;
   int err;
 
@@ -655,4 +656,17 @@ void adin_mic_pause() {
     CoreAudioRecordStarted = FALSE;
   }
   return;
+}
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_mic_input_name()
+{
+  return(deviceName);
 }

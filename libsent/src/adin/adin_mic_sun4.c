@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 18:56:13 2005
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -67,6 +67,8 @@ static int volume = J_DEF_VOLUME;
 static int afd;			///< Audio file descriptor
 static struct pollfd pfd;	///< File descriptor for polling
 static audio_info_t ainfo;	///< Audio info
+static char *defaultdev = DEFAULT_DEVICE;
+static char devname[MAXPATHLEN];
 
 /** 
  * Device initialization: check device capability and open for recording.
@@ -79,16 +81,16 @@ static audio_info_t ainfo;	///< Audio info
 boolean
 adin_mic_standby(int sfreq, void *dummy)
 {
-  char *defaultdev = DEFAULT_DEVICE;
-  char *devname;
   Audio_hdr Dev_hdr, old_hdr;
   double vol;
+  char *p;
 
   /* get device name if specified in $AUDIODEV */
-  if ((devname = getenv("AUDIODEV")) == NULL) {
-    devname = defaultdev;
+  if ((p = getenv("AUDIODEV")) == NULL) {
+    strncpy(devname, defaultdev, MAXPATHLEN);
     jlog("Stat: adin_sun4: device name = %s\n", devname);
   } else {
+    strncpy(devname, p, MAXPATHLEN);
     jlog("Stat: adin_sun4: device name obtained from AUDIODEV: %s\n", devname);
   }
 
@@ -220,3 +222,18 @@ adin_mic_read(SP16 *buf, int sampnum)
   }
   return(bytes / sizeof(SP16)); /* success */
 }
+
+/** 
+ * 
+ * Function to return current input source device name
+ * 
+ * @return string of current input device name.
+ * 
+ */
+char *
+adin_mic_input_name()
+{
+  return(devname);
+}
+
+/* end of file */

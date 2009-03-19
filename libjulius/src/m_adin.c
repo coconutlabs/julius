@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -269,7 +269,7 @@ adin_initialize(Recog *recog)
     adin->ad_pause 	   = (boolean (*)()) plugin_get_func(sid, "adin_pause");
     adin->ad_terminate 	   = (boolean (*)()) plugin_get_func(sid, "adin_terminate");
     adin->ad_read 	   = (int (*)(SP16 *, int)) plugin_get_func(sid, "adin_read");
-    adin->ad_input_name	   = (char (*)()) plugin_get_func(sid, "adin_input_name");
+    adin->ad_input_name	   = (char * (*)()) plugin_get_func(sid, "adin_input_name");
     if (adin->ad_read == NULL) {
       jlog("ERROR: m_adin: selected plugin has no function adin_read()\n");
       return FALSE;

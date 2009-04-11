@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Tue Dec 11 14:40:04 2007
  * 
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -93,6 +93,8 @@ output_result(Recog *recog, void *dummy)
   int n;
   Sentence *s;
   RecogProcess *r;
+  HMM_Logical *p;
+  SentenceAlign *align;
 
   /* all recognition results are stored at each recognition process
      instance */
@@ -170,21 +172,26 @@ output_result(Recog *recog, void *dummy)
       }
       
       /* output alignment result if exist */
-      if (s->align.filled) {
-	HMM_Logical *p;
-	int i;
-	
+      for (align = s->align; align; align = align->next) {
 	printf("=== begin forced alignment ===\n");
+	switch(align->unittype) {
+	case PER_WORD:
+	  printf("-- word alignment --\n"); break;
+	case PER_PHONEME:
+	  printf("-- phoneme alignment --\n"); break;
+	case PER_STATE:
+	  printf("-- state alignment --\n"); break;
+	}
 	printf(" id: from  to    n_score    unit\n");
 	printf(" ----------------------------------------\n");
-	for(i=0;i<s->align.num;i++) {
-	  printf("[%4d %4d]  %f  ", s->align.begin_frame[i], s->align.end_frame[i], s->align.avgscore[i]);
-	  switch(s->align.unittype) {
+	for(i=0;i<align->num;i++) {
+	  printf("[%4d %4d]  %f  ", align->begin_frame[i], align->end_frame[i], align->avgscore[i]);
+	  switch(align->unittype) {
 	  case PER_WORD:
-	    printf("%s\t[%s]\n", winfo->wname[s->align.w[i]], winfo->woutput[s->align.w[i]]);
+	    printf("%s\t[%s]\n", winfo->wname[align->w[i]], winfo->woutput[align->w[i]]);
 	    break;
 	  case PER_PHONEME:
-	    p = s->align.ph[i];
+	    p = align->ph[i];
 	    if (p->is_pseudo) {
 	      printf("{%s}\n", p->name);
 	    } else if (strmatch(p->name, p->body.defined->name)) {
@@ -194,7 +201,7 @@ output_result(Recog *recog, void *dummy)
 	    }
 	    break;
 	  case PER_STATE:
-	    p = s->align.ph[i];
+	    p = align->ph[i];
 	    if (p->is_pseudo) {
 	      printf("{%s}", p->name);
 	    } else if (strmatch(p->name, p->body.defined->name)) {
@@ -203,20 +210,20 @@ output_result(Recog *recog, void *dummy)
 	      printf("%s[%s]", p->name, p->body.defined->name);
 	    }
 	    if (r->am->hmminfo->multipath) {
-	      if (s->align.is_iwsp[i]) {
-		printf(" #%d (sp)\n", s->align.loc[i]);
+	      if (align->is_iwsp[i]) {
+		printf(" #%d (sp)\n", align->loc[i]);
 	      } else {
-		printf(" #%d\n", s->align.loc[i]);
+		printf(" #%d\n", align->loc[i]);
 	      }
 	    } else {
-	      printf(" #%d\n", s->align.loc[i]);
+	      printf(" #%d\n", align->loc[i]);
 	    }
 	    break;
 	  }
 	}
 	
-	printf("re-computed AM score: %f\n", s->align.allscore);
-	
+	printf("re-computed AM score: %f\n", align->allscore);
+
 	printf("=== end forced alignment ===\n");
       }
     }

@@ -8,7 +8,7 @@
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.2 2007/12/18 08:45:55 sumomo Exp $
+ * $Id: mkss.c,v 1.3 2009/05/15 03:22:53 sumomo Exp $
  *
  */
 
@@ -204,7 +204,11 @@ main(int argc, char *argv[])
   if (stout) {
     fd = 1;
   } else {
-    if ((fd = creat(filename, 0644)) == -1) {
+    if ((fd = open(filename, O_CREAT | O_RDWR
+#ifdef O_BINARY
+		   | O_BINARY
+#endif
+		   , 0644)) == -1) {
       perror("mkss");
       return(1);
     }

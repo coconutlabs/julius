@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 18:12:30 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -582,7 +582,11 @@ CMN_save_to_file(CMNWork *c, char *filename)
 
   jlog("Stat: wav2mfcc-pipe: writing current cepstral data to file \"%s\"\n", filename);
 
-  if ((fd = creat(filename, 0644)) == -1) {
+  if ((fd = open(filename, O_CREAT | O_RDWR
+#ifdef O_BINARY
+		 | O_BINARY
+#endif
+		 , 0644)) == -1) {
     jlog("Error: wav2mfcc-pipe: failed to open \"%s\" to write current cepstral data\n", filename);
     return(FALSE);
   }

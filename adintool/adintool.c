@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -552,7 +552,11 @@ adin_callback_file(SP16 *now, int len, Recog *recog)
       }
     }
     if (use_raw) {
-      if ((fd = creat(outpath, 0644)) == -1) {
+      if ((fd = open(outpath, O_CREAT | O_RDWR
+#ifdef O_BINARY
+		     | O_BINARY
+#endif
+		     , 0644)) == -1) {
 	perror("adintool");
 	return -1;
       }

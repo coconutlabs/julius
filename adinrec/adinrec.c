@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:33:01 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -115,7 +115,11 @@ adin_callback_file(SP16 *now, int len, Recog *recog)
       if (stout) {
 	fd = 1;
       } else {
-	if ((fd = creat(filename, 0644)) == -1) {
+	if ((fd = open(filename, O_CREAT | O_RDWR
+#ifdef O_BINARY
+		       | O_BINARY
+#endif
+		       , 0644)) == -1) {
 	  perror("adinrec");
 	  return -1;
 	}
@@ -247,7 +251,7 @@ main(int argc, char *argv[])
   }
 
   /* exit if no file name specified */
-  if (filename == NULL) {
+  if (filename == NULL && stout == FALSE) {
     opt_help(jconf, NULL, 0);
     return -1;
   }

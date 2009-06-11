@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -1256,7 +1256,7 @@ node_exist_token(FSBeam *d, int tt, int node, WORD_ID wid)
     }
 #ifdef WPAIR_KEEP_NLIMIT
     if (lowest_token == TOKENID_UNDEFINED ||
-	d->tlist[tt][lowest_token].score < d->tlist[tt][tmp].score)
+	d->tlist[tt][lowest_token].score > d->tlist[tt][tmp].score)
       lowest_token = tmp;
     if (++i >= d->wpair_keep_nlimit) break;
 #endif
@@ -2252,6 +2252,7 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
     if (sword == wchmm->winfo->tail_silwid) return;
 
 #ifdef UNIGRAM_FACTORING
+#ifndef WPAIR
     /* あとで共有単語先頭ノードに対して単語間遷移をまとめて計算するため，*/
     /* このループ内では最大尤度を持つ単語終端ノードを記録しておく */
     /* here we will record the best wordend node of maximum likelihood
@@ -2265,6 +2266,7 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
       d->wordend_best_tre = tre;
       d->wordend_best_last_cword = tk->last_cword;
     }
+#endif
 #endif
     
     /* N-gramにおいては常に全単語の接続を考慮する必要があるため，
@@ -2302,6 +2304,23 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
       /* N-gram確率を計算 */
       /* compute N-gram probability */
 #ifdef UNIGRAM_FACTORING
+      /* wchmm,start2isolate[0..stid-1] ... ノードを共有しない単語は
+	 その通しID, 共有する(キャッシュの必要のない)単語は -1 */
+      /* wchmm->start2isolate[0..stid-1] ... isolate ID for
+	 beginning-of-word state.  value: -1 for states that has
+	 1-gram factoring value (share nodes with some other words),
+	 and ID for unshared words
+      */
+      isoid = wchmm->start2isolate[stid];
+#ifdef WPAIR
+      /* Efficient cross-word LM handling should be disabled for
+	 word-pair approximation */
+      if (isoid == -1) {
+	tmpprob = wchmm->fscore[- wchmm->state[next_node].scid];
+      } else {
+	tmpprob = iwparray[isoid];
+      }
+#else  /* ~WPAIR */
       /* 1-gram factoring における単語間言語確率キャッシュの効率化:
 	 1-gram factoring は単語履歴に依存しないので，
 	 ここで参照する factoring 値の多くは
@@ -2316,21 +2335,14 @@ beam_inter_word(WCHMM_INFO *wchmm, FSBeam *d, TOKEN2 **tk_ret, TRELLIS_ATOM *tre
 	 So only the unshared beginning-of-word states are computed and
 	 cached here in iwparray[].
       */
-      /* wchmm,start2isolate[0..stid-1] ... ノードを共有しない単語は
-	 その通しID, 共有する(キャッシュの必要のない)単語は -1 */
-      /* wchmm->start2isolate[0..stid-1] ... isolate ID for
-	 beginning-of-word state.  value: -1 for states that has
-	 1-gram factoring value (share nodes with some other words),
-	 and ID for unshared words
-      */
-      isoid = wchmm->start2isolate[stid];
       /* 計算が必要でない単語先頭ノードはパスをまとめて後に計算するので
 	 ここではスキップ */
       /* the shared nodes will be computed afterward, so just skip them
 	 here */
       if (isoid == -1) continue;
       tmpprob = iwparray[isoid];
-#else
+#endif /* ~WPAIR */
+#else  /* ~UNIGRAM_FACTORING */
       tmpprob = iwparray[stid];
 #endif
     }
@@ -2621,6 +2633,7 @@ get_back_trellis_proceed(int t, HTK_Param *param, RecogProcess *r, boolean final
   tn = d->tn;
 
 #ifdef UNIGRAM_FACTORING
+#ifndef WPAIR
   /* 1-gram factoring では単語先頭での言語確率が一定で直前単語に依存しない
      ため，単語間 Viterbi において選ばれる直前単語は,次単語によらず共通である. 
      よって単語終端からfactoring値のある単語先頭への遷移は１つにまとめられる. 
@@ -2641,6 +2654,7 @@ get_back_trellis_proceed(int t, HTK_Param *param, RecogProcess *r, boolean final
   if (lmtype == LM_PROB) {
     d->wordend_best_score = LOG_ZERO;
   }
+#endif
 #endif
 
 #ifdef DEBUG
@@ -2797,6 +2811,7 @@ get_back_trellis_proceed(int t, HTK_Param *param, RecogProcess *r, boolean final
   }
 
 #ifdef UNIGRAM_FACTORING
+#ifndef WPAIR
 
   if (lmtype == LM_PROB) {
 
@@ -2809,6 +2824,7 @@ get_back_trellis_proceed(int t, HTK_Param *param, RecogProcess *r, boolean final
       beam_inter_word_factoring(wchmm, d);
     }
   }
+#endif
 #endif /* UNIGRAM_FACTORING */
 
   /***************************************/

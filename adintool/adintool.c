@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -204,7 +204,7 @@ opt_server(Jconf *jconf, char *arg[], int argnum)
 {
   char *p, *q;
   if (speech_output == SPOUT_ADINNET) {
-    p = (char *)malloc(strlen(arg[0] + 1));
+    p = (char *)malloc(strlen(arg[0]) + 1);
     strcpy(p, arg[0]);
     for (q = strtok(p, ","); q; q = strtok(NULL, ",")) {
       if (adinnet_servnum >= MAXCONNECTION) {
@@ -249,7 +249,7 @@ opt_port(Jconf *jconf, char *arg[], int argnum)
 {
   char *p, *q;
 
-  p = (char *)malloc(strlen(arg[0] + 1));
+  p = (char *)malloc(strlen(arg[0]) + 1);
   strcpy(p, arg[0]);
   for (q = strtok(p, ","); q; q = strtok(NULL, ",")) {
     if (adinnet_portnum >= MAXCONNECTION) {

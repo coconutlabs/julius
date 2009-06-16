@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -1505,7 +1505,7 @@ mfcc_go(Recog *recog, int (*ad_check)(Recog *))
     /* callback poll */
     if (ad_check != NULL) {
       if ((ret3 = (*(ad_check))(recog)) < 0) {
-	if ((ret3 == -1 && mfcc->f == 0) || ret3 == -2) {
+	if ((ret3 == -1 && recog->mfcclist->f == 0) || ret3 == -2) {
 	  return(-2);
 	}
       }
@@ -1517,7 +1517,7 @@ mfcc_go(Recog *recog, int (*ad_check)(Recog *))
 
 #ifdef ENABLE_PLUGIN
       /* call post-process plugin if exist */
-      plugin_exec_vector_postprocess(recog->mfcclist->param->parvec[recog->mfcclist->f], recog->mfcclist->param->veclen, mfcc->f);
+      plugin_exec_vector_postprocess(recog->mfcclist->param->parvec[recog->mfcclist->f], recog->mfcclist->param->veclen, recog->mfcclist->f);
 #endif
 
       /* 処理を1フレーム進める */

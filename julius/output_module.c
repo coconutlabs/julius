@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -388,6 +388,7 @@ result_pass2(Recog *recog, void *dummy)
   Sentence *s;
   RecogProcess *r;
   boolean multi;
+  SentenceAlign *align;
 
   if (recog->process_list->next != NULL) multi = TRUE;
   else multi = FALSE;
@@ -465,6 +466,19 @@ result_pass2(Recog *recog, void *dummy)
 	}
 #endif
 #endif /* CONFIDENCE_MEASURE */
+	/* output alignment result if exist */
+	for (align = s->align; align; align = align->next) {
+	  switch(align->unittype) {
+	  case PER_WORD:	/* word alignment */
+	    module_send(module_sd, " BEGINFRAME=\"%d\" ENDFRAME=\"%d\"", align->begin_frame[i], align->end_frame[i]);
+	    break;
+	  case PER_PHONEME:
+	  case PER_STATE:
+	    fprintf(stderr, "Error: \"-palign\" and \"-salign\" does not supported for module output\n");
+	    break;
+	  }
+	}
+	
 	module_send(module_sd, "/>\n");
       }
       module_send(module_sd, "  </SHYPO>\n");

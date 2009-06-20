@@ -1154,15 +1154,38 @@ EOF
 
 else
   echo "$ac_t""no" 1>&6
+echo $ac_n "checking for connect in -lws2_32""... $ac_c" 1>&6
+echo "configure:1159: checking for connect in -lws2_32" >&5
+xxxxLIBS=$LIBS
+LIBS="$LIBS -lws2_32"
+cat > conftest.$ac_ext <<EOF
+#line 1163 "configure"
+#include "confdefs.h"
+#include <winsock2.h>
+int sd;
+struct sockaddr_in s;
+
+int main() {
+connect(sd, (struct sockaddr *)&s, sizeof(s));
+; return 0; }
+EOF
+if { (eval echo configure:1173: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  echo "$ac_t""yes" 1>&6
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  LIBS=$xxxxLIBS
+echo "$ac_t""no" 1>&6
+
 fi
+rm -f conftest*
 
 fi
 
-case "$host_os" in
-mingw*)
-	EXTRALIB="$EXTRALIB -lws2_32"
-	;;
-esac
+fi
+
 
 trap '' 1 2 15
 cat > confcache <<\EOF

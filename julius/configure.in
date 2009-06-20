@@ -4,7 +4,7 @@ dnl Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technolo
 dnl Copyright (c) 2005-2007 Julius project team, Nagoya Institute of Technology
 dnl All rights reserved
 dnl
-dnl $Id: configure.in,v 1.3 2008/10/02 08:57:03 sumomo Exp $
+dnl $Id: configure.in,v 1.4 2009/06/20 14:06:54 sumomo Exp $
 dnl
 
 AC_INIT(main.c)
@@ -92,68 +92,80 @@ dnl check for charset conversion library
 if test "$use_charconv" = no; then
     CCOBJ=""
 else
-    AC_MSG_CHECKING([for charset conversion])
+    dnl determine which one to use
     CCOBJ="charconv.o"
-    case "$host_os" in
-    mingw*)
-	dnl libjcode (EUC|JIS->SJIS) + Win32 API (SJIS->UTF8)
-	AC_DEFINE(USE_WIN32_MULTIBYTE)
-        CCOBJ="${CCOBJ} charconv_win32.o"
-	CCOBJ="${CCOBJ} charconv_libjcode.o libjcode/libjcode.o libjcode/detect.o"
-	ccdesc="Win32 API + libjcode"
-	AC_DEFINE(CHARACTER_CONVERSION)
-	AC_MSG_RESULT([win32])
-	;;
-*)
-	case "$use_charconv" in
+    case "$use_charconv" in
 	auto)
-            dnl iconv -> libjcode
-            AM_ICONV
-            if test "$am_cv_func_iconv" = yes; then
-	       CCOBJ="${CCOBJ} charconv_iconv.o"
-               ccdesc="iconv library"
-	       AC_MSG_RESULT([iconv])
-            else
-               AC_DEFINE(USE_LIBJCODE)
-	       CCOBJ="${CCOBJ} charconv_libjcode.o libjcode/libjcode.o libjcode/detect.o"
-               ccdesc="built-in libjcode (Japanese codes only)"
-	       AC_MSG_RESULT([libjcode])
-            fi
-            AC_DEFINE(CHARACTER_CONVERSION)
-            ;;
-        iconv)
-            dnl force iconv
-            AM_ICONV
-            if test "$am_cv_func_iconv" = yes; then
-	       CCOBJ="${CCOBJ} charconv_iconv.o"
-               EXTRALIB="$EXTRALIB $LIBICONV"
-               AC_DEFINE(CHARACTER_CONVERSION)
-               ccdesc="iconv libraru"
-	       AC_MSG_RESULT([iconv])
-            else
-	       CCOBJ=""
-               ccdesc="no"
+	    dnl check w32 function
+	    AC_CHECK_HEADER(winnls.h,use_winnls=yes,use_winnls=no)
+	    if test "$use_winnls" = yes; then
+	       use_cfunc=win32
+	    else
+	       dnl check iconv
+	       AM_ICONV
+	       if test "$am_cv_func_iconv" = yes; then
+	          use_cfunc=iconv
+	       else
+	          use_cfunc=libjcode
+	       fi
+	    fi
+	    ;;
+	win)
+	    dnl check w32 function
+	    AC_CHECK_HEADER(winnls.h,use_winnls=yes,use_winnls=no)
+	    if test "$use_winnls" = yes; then
+	       use_cfunc=win32
+	    else
+	       use_cfunc=no
+               AC_MSG_ERROR([Win32 function not found!])
+	    fi
+	    ;;
+	iconv)
+	    dnl check iconv
+	    AM_ICONV
+	    if test "$am_cv_func_iconv" = yes; then
+	       use_cfunc=iconv
+	    else
+	       use_cfunc=no
                AC_MSG_ERROR([iconv function not found!])
-	       AC_MSG_RESULT([no])
-            fi
-            ;;
-        libjcode)
-            dnl force libjcode
+	    fi
+	    ;;
+	no)
+	    use_cfunc=no
+	    ;;
+	*)
+            dnl error
+            AC_MSG_ERROR([wrong argument for --enable-charconv])
+	    ;;
+    esac
+    AC_MSG_CHECKING([for charset conversion])
+    case "$use_cfunc" in
+	win32)
+	    AC_DEFINE(CHARACTER_CONVERSION)
+	    AC_DEFINE(USE_WIN32_MULTIBYTE)
+	    CCOBJ="${CCOBJ} charconv_win32.o"
+	    CCOBJ="${CCOBJ} charconv_libjcode.o libjcode/libjcode.o libjcode/detect.o"
+	    ccdesc="Win32 API + libjcode"
+	    AC_MSG_RESULT([win32])
+	    ;;
+	iconv)
+            AC_DEFINE(CHARACTER_CONVERSION)
+	    CCOBJ="${CCOBJ} charconv_iconv.o"
+            ccdesc="iconv library"
+	    AC_MSG_RESULT([iconv])
+	    ;;
+	libjcode)
+            AC_DEFINE(CHARACTER_CONVERSION)
             AC_DEFINE(USE_LIBJCODE)
 	    CCOBJ="${CCOBJ} charconv_libjcode.o libjcode/libjcode.o libjcode/detect.o"
             ccdesc="built-in libjcode (Japanese codes only)"
-            AC_DEFINE(CHARACTER_CONVERSION)
 	    AC_MSG_RESULT([libjcode])
-            ;;
-        no)
-            dnl disable
+	    ;;
+	no)
+	    CCOBJ=""
             ccdesc="no"
 	    AC_MSG_RESULT([no])
             ;;
-        *)
-            dnl error
-            AC_MSG_ERROR([wrong argument for charconv!])
-        esac
     esac
 fi
 

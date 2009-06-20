@@ -5,7 +5,7 @@
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.5 2008/10/02 08:57:03 sumomo Exp $
+# $Id: Makefile.in,v 1.6 2009/06/20 14:06:54 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -18,7 +18,7 @@ LIBJULIUS=../libjulius
 CC=@CC@
 CFLAGS=@CFLAGS@
 CPPFLAGS=-I. -I$(LIBJULIUS)/include -I$(LIBSENT)/include @CPPFLAGS@ `$(LIBSENT)/libsent-config --cflags` `$(LIBJULIUS)/libjulius-config --cflags`
-LDFLAGS=@LDFLAGS@ -L$(LIBJULIUS) `$(LIBJULIUS)/libjulius-config --libs` -L$(LIBSENT) `$(LIBSENT)/libsent-config --libs`
+LDFLAGS=@LDFLAGS@ -L$(LIBJULIUS) `$(LIBJULIUS)/libjulius-config --libs` -L$(LIBSENT) `$(LIBSENT)/libsent-config --libs` @LIBICONV@
 GTK_CFLAGS=@GTK_CFLAGS@
 GTK_LIBS=@GTK_LIBS@
 RM=@RM@ -f

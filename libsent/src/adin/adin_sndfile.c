@@ -61,7 +61,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:13:27 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -220,18 +220,85 @@ adin_sndfile_standby(int freq, void *arg)
 }
 
 /** 
+ * @brief  Open a file and check the format
+ *
+ * @param filename [in] file name to open
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+static boolean
+adin_sndfile_open(char *filename)
+{
+#ifndef HAVE_LIBSNDFILE_VER1
+  sinfo.samplerate = sfreq;
+  sinfo.pcmbitwidth = 16;
+  sinfo.channels = 1;
+#endif
+  sinfo.format = 0x0;
+  if ((sp = 
+#ifdef HAVE_LIBSNDFILE_VER1
+       sf_open(filename, SFM_READ, &sinfo)
+#else
+       sf_open_read(filename, &sinfo)
+#endif
+       ) == NULL) {
+    /* retry assuming raw format */
+    sinfo.samplerate = sfreq;
+    sinfo.channels = 1;
+#ifdef HAVE_LIBSNDFILE_VER1
+    sinfo.format = SF_FORMAT_RAW | SF_FORMAT_PCM_16 | SF_ENDIAN_BIG;
+#else
+    sinfo.pcmbitwidth = 16;
+    sinfo.format = SF_FORMAT_RAW | SF_FORMAT_PCM_BE;
+#endif
+    if ((sp =
+#ifdef HAVE_LIBSNDFILE_VER1
+	 sf_open(filename, SFM_READ, &sinfo)
+#else
+	 sf_open_read(filename, &sinfo)
+#endif
+	 ) == NULL) {
+      sf_perror(sp);
+      jlog("Error: adin_sndfile: failed to open speech data: \"%s\"\n",filename);
+    }
+  }
+  if (sp == NULL) {		/* open failure */
+    return FALSE;
+  }
+  /* check its format */
+  if (! check_format(&sinfo)) {
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/** 
  * @brief  Begin reading audio data from a file.
  *
  * If listfile was specified in adin_sndfile_standby(), the next filename
  * will be read from the listfile.  Otherwise, the
  * filename will be obtained from stdin.  Then the file will be opened here.
+ *
+ * @param filename [in] file name to open or NULL for prompt
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_sndfile_begin()
+adin_sndfile_begin(char *filename)
 {
   boolean readp;
+
+  if (filename != NULL) {
+    if (adin_sndfile_open(filename) == FALSE) {
+      jlog("Error: adin_sndfile: invalid format: \"%s\"\n", filename);
+      print_format(&sinfo);
+      return FALSE;
+    }
+    jlog("Stat: adin_sndfile: input speechfile: %s\n", filename);
+    print_format(&sinfo);
+    strcpy(speechfilename, filename);
+    return TRUE;
+  }
 
   /* ready to read next input */
   readp = FALSE;
@@ -250,49 +317,13 @@ adin_sndfile_begin()
 	return (FALSE);	/* end of input */
       }
     }
-    /* open input file */
-#ifndef HAVE_LIBSNDFILE_VER1
-    sinfo.samplerate = sfreq;
-    sinfo.pcmbitwidth = 16;
-    sinfo.channels = 1;
-#endif
-    sinfo.format = 0x0;
-    if ((sp = 
-#ifdef HAVE_LIBSNDFILE_VER1
-	 sf_open(speechfilename, SFM_READ, &sinfo)
-#else
-	 sf_open_read(speechfilename, &sinfo)
-#endif
-	 ) == NULL) {
-      /* retry assuming raw format */
-      sinfo.samplerate = sfreq;
-      sinfo.channels = 1;
-#ifdef HAVE_LIBSNDFILE_VER1
-      sinfo.format = SF_FORMAT_RAW | SF_FORMAT_PCM_16 | SF_ENDIAN_BIG;
-#else
-      sinfo.pcmbitwidth = 16;
-      sinfo.format = SF_FORMAT_RAW | SF_FORMAT_PCM_BE;
-#endif
-      if ((sp =
-#ifdef HAVE_LIBSNDFILE_VER1
-	   sf_open(speechfilename, SFM_READ, &sinfo)
-#else
-	   sf_open_read(speechfilename, &sinfo)
-#endif
-	   ) == NULL) {
-	sf_perror(sp);
-	jlog("Error: adin_sndfile: failed to open speech data: \"%s\"\n",speechfilename);
-      }
-    }
-    if (sp != NULL) {		/* open success */
-      if (! check_format(&sinfo)) {
-	jlog("Error: adin_sndfile: invalid format: \"%s\"\n",speechfilename);
-	print_format(&sinfo);
-      } else {
-	jlog("Stat: adin_sndfile: input speechfile: %s\n",speechfilename);
-	print_format(&sinfo);
-	readp = TRUE;
-      }
+    if (adin_sndfile_open(speechfilename) == FALSE) {
+      jlog("Error: adin_sndfile: invalid format: \"%s\"\n",speechfilename);
+      print_format(&sinfo);
+    } else {
+      jlog("Stat: adin_sndfile: input speechfile: %s\n",speechfilename);
+      print_format(&sinfo);
+      readp = TRUE;
     }
   }
   return TRUE;

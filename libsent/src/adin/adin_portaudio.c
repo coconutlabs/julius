@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -218,10 +218,12 @@ adin_mic_standby(int sfreq, void *dummy)
 /** 
  * Start recording.
  * 
+ * @param pathname [in] path name to open or NULL for default
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_mic_begin(char *pathname)
 {
   PaError err;
 

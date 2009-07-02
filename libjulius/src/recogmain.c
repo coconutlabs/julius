@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 
@@ -499,7 +499,7 @@ j_open_stream(Recog *recog, char *file_or_dev_name)
 
   if (jconf->input.type == INPUT_WAVEFORM) {
     /* begin A/D input */
-    if (adin_begin(recog->adin) == FALSE) {
+    if (adin_begin(recog->adin, file_or_dev_name) == FALSE) {
       return -2;
     }
     /* create A/D-in thread here */

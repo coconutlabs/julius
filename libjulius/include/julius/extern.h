@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -271,7 +271,7 @@ boolean adin_thread_create(Recog *recog);
 boolean adin_thread_cancel(Recog *recog);
 int adin_go(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Recog *recog);
 boolean adin_standby(ADIn *a, int freq, void *arg);
-boolean adin_begin(ADIn *a);
+boolean adin_begin(ADIn *a, char *file_or_dev_name);
 boolean adin_end(ADIn *a);
 void adin_free_param(Recog *recog);
 

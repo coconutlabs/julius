@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -336,7 +336,7 @@ typedef struct __adin__ {
   /// Pointer to function for device initialization (call once on startup)
   boolean (*ad_standby)(int, void *);
   /// Pointer to function to open audio stream for capturing
-  boolean (*ad_begin)();
+  boolean (*ad_begin)(char *);
   /// Pointer to function to close audio stream capturing
   boolean (*ad_end)();
   /// Pointer to function to begin / restart recording

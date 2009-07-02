@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 18:42:22 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -114,13 +114,20 @@ adin_mic_standby(int sfreq, void *dummy)
 /** 
  * Start recording.
  * 
+ * @param pathname [in] path name to open or NULL for default
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_mic_begin(char *pathname)
 {
   /* open audio port */
-  aport = ALopenport("mic","r",ac);
+  if (pathname != NULL) {
+    jlog("Stat: adin_o2: opening audio device \"%s\"\n", pathname);
+    aport = ALopenport(pathname,"r",ac);
+  } else {
+    aport = ALopenport("mic","r",ac);
+  }
   if (aport == (ALport)(0)) {
     jlog("Error: adin_o2: cannot open microphone audio port for reading\n");
     return(FALSE);

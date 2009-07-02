@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:16:43 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /* adin_mic_sp.c --- adin microphone library for spAudio
@@ -70,11 +70,13 @@ adin_mic_standby(int sfreq, void *dummy)
 
 /** 
  * Start recording.
+ *
+ * @param pathname [in] path name to open or NULL for default
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_mic_begin(char *pathname)
 {
   if (audio == NULL) {
     audio = spInitAudio();

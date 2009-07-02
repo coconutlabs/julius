@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -76,11 +76,14 @@ adin_esd_standby(int sfreq, void *dummy)
  
 /** 
  * Start recording.
+ * @a pathname is dummy.
+ *
+ * @param pathname [in] path name to open or NULL for default
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_esd_begin()
+adin_esd_begin(char *pathname)
 {
   return(TRUE);
 }

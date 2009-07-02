@@ -53,7 +53,7 @@
  * @author Akinobu Lee
  * @date   Thu Aug  7 14:28:37 2008
  * 
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 
@@ -421,6 +421,8 @@ adin_standby(int sfreq, void *dummy)
  * If this function returns FALSE, Julius will exit recognition loop.
  * 
  * JuliusLib: this will be called at j_open_stream().
+ *
+ * @param pathname [in] file / device name to open or NULL for default
  * 
  * @return TRUE on success, FALSE on failure.
  * </EN>
@@ -434,11 +436,13 @@ adin_standby(int sfreq, void *dummy)
  * 
  * JuliusLib: この関数は j_open_stream() 内で呼ばれる．
  * 
+ * @param pathname [in] 開くファイルあるいはデバイス名，NULL ならデフォルト
+ * 
  * @return 成功時 TRUE，失敗時 FALSE を返す．
  * </JA>
  */
 boolean
-adin_open()
+adin_open(char *pathname)
 {
   /* do open the device */
   int fmt;
@@ -447,8 +451,8 @@ adin_open()
   int s;
   char buf[2];
 
-  if ((audio_fd = open("/dev/dsp", O_RDONLY)) == -1) {
-    printf("Error: cannot open /dev/dsp\n");
+  if ((audio_fd = open(pathname ? pathname : "/dev/dsp", O_RDONLY)) == -1) {
+    printf("Error: cannot open %s\n", pathname ? pathname : "/dev/dsp");
     return FALSE;
   }
   fmt = AFMT_S16_LE;               /* 16bit signed (little endian) */

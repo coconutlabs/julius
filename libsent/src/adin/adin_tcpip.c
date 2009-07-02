@@ -45,7 +45,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 14:55:03 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -94,10 +94,12 @@ adin_tcpip_standby(int freq, void *port_str)
 /** 
  * Wait for connection from adinnet client and begin audio input stream.
  *
+ * @param pathname [in] path name to open or NULL for default
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_tcpip_begin()
+adin_tcpip_begin(char *pathname)
 {
 #ifdef FORK_ADINNET
     /***********************************/

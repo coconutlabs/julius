@@ -51,7 +51,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -98,6 +98,7 @@
  */
 #define MIN_FRAGMENT_SIZE 256
 
+static int srate;		///< Required sampling rate
 static int audio_fd;		///< Audio descriptor
 static boolean need_swap;	///< Whether samples need byte swap
 static int frag_size;		///< Actual data fragment size
@@ -120,24 +121,30 @@ adin_oss_standby(int sfreq, void *dummy)
   jlog("Error: OSS not compiled in\n");
   return FALSE;
 #else
+  /* store required sampling rate for checking after opening device */
+  srate = sfreq;
+  return TRUE;
+}
+
+/** 
+ * Open the specified device and check capability of the opening device.
+ * 
+ * @param devstr [in] device string to open
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+static boolean
+adin_oss_open(char *devstr)
+{
   int fmt, fmt_can, fmt1, fmt2, rfmt; /* sampling format */
   int samplerate;	/* 16kHz */
   int frag;
   int frag_msec;
   char *env, *p;
 
-  /* set device name */
-  if ((p = getenv("AUDIODEV")) == NULL) {
-    strncpy(devname, defaultdev, MAXPATHLEN);
-    jlog("Stat: adin_oss: device name = %s\n", devname);
-  } else {
-    strncpy(devname, p, MAXPATHLEN);
-    jlog("Stat: adin_oss: device name obtained from AUDIODEV: %s\n", devname);
-  }
-
   /* open device */
-  if ((audio_fd = open(devname, O_RDONLY|O_NONBLOCK)) == -1) {
-    jlog("Error: adin_oss: failed to open %s\n", devname);
+  if ((audio_fd = open(devstr, O_RDONLY|O_NONBLOCK)) == -1) {
+    jlog("Error: adin_oss: failed to open %s\n", devstr);
     return(FALSE);
   }
 
@@ -177,8 +184,8 @@ adin_oss_standby(int sfreq, void *dummy)
 
   /* re-open for recording */
   /* open device */
-  if ((audio_fd = open(devname, O_RDONLY)) == -1) {
-    jlog("Error: adin_oss: failed to open %s", devname);
+  if ((audio_fd = open(devstr, O_RDONLY)) == -1) {
+    jlog("Error: adin_oss: failed to open %s", devstr);
     return(FALSE);
   }
 
@@ -200,7 +207,7 @@ adin_oss_standby(int sfreq, void *dummy)
     /* get fragment size from MAX_FRAGMENT_MSEC and MIN_FRAGMENT_SIZE */
     f = 0;
     f2 = 1;
-    while (f2 * 1000 / (sfreq * sizeof(SP16)) <= frag_msec
+    while (f2 * 1000 / (srate * sizeof(SP16)) <= frag_msec
 	   || f2 < MIN_FRAGMENT_SIZE) {
       f++;
       f2 *= 2;
@@ -210,7 +217,7 @@ adin_oss_standby(int sfreq, void *dummy)
     /* set to device */
     arg = 0x7fff0000 | frag;
     if (ioctl(audio_fd, SNDCTL_DSP_SETFRAGMENT, &arg)) {
-      jlog("Stat: adin_oss: set fragment size to 2^%d=%d bytes (%d msec)\n", frag, 2 << (frag-1), (2 << (frag-1)) * 1000 / (sfreq * sizeof(SP16)));
+      jlog("Stat: adin_oss: set fragment size to 2^%d=%d bytes (%d msec)\n", frag, 2 << (frag-1), (2 << (frag-1)) * 1000 / (srate * sizeof(SP16)));
     }
   }
   
@@ -309,17 +316,17 @@ adin_oss_standby(int sfreq, void *dummy)
     }
   }
 
-  samplerate = sfreq;
+  samplerate = srate;
   if (ioctl(audio_fd, SNDCTL_DSP_SPEED, &samplerate) == -1) {
-    jlog("Erorr: adin_oss: failed to set sample rate to %dHz\n", sfreq);
+    jlog("Erorr: adin_oss: failed to set sample rate to %dHz\n", srate);
     return(FALSE);
   }
-  if (samplerate < sfreq - FREQALLOWRANGE || samplerate > sfreq + FREQALLOWRANGE) {
-    jlog("Error: adin_oss: failed to set sampling rate to near %dHz. (%d)\n", sfreq, samplerate);
+  if (samplerate < srate - FREQALLOWRANGE || samplerate > srate + FREQALLOWRANGE) {
+    jlog("Error: adin_oss: failed to set sampling rate to near %dHz. (%d)\n", srate, samplerate);
     return FALSE;
   }
-  if (samplerate != sfreq) {
-    jlog("Warning: adin_oss: specified sampling rate was %dHz but set to %dHz, \n", sfreq, samplerate);
+  if (samplerate != srate) {
+    jlog("Warning: adin_oss: specified sampling rate was %dHz but set to %dHz, \n", srate, samplerate);
   }
   jlog("Stat: adin_oss: sampling rate = %dHz\n", samplerate);
 
@@ -333,7 +340,7 @@ adin_oss_standby(int sfreq, void *dummy)
   } else {
     jlog("Stat: adin_oss: going to set latency to %d msec (from env LATENCY_MSEC)\n", frag_msec);
   }
-  jlog("Stat: adin_oss: audio I/O Latency = %d msec (fragment size = %d samples)\n", frag_size * 1000/ (sfreq * sizeof(SP16)), frag_size / sizeof(SP16));
+  jlog("Stat: adin_oss: audio I/O Latency = %d msec (fragment size = %d samples)\n", frag_size * 1000/ (srate * sizeof(SP16)), frag_size / sizeof(SP16));
 
   return TRUE;
 
@@ -343,12 +350,31 @@ adin_oss_standby(int sfreq, void *dummy)
 /** 
  * Start recording.
  * 
+ * @param pathname [in] path name to open or NULL for default
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_oss_begin()
+adin_oss_begin(char *pathname)
 {
   char buf[4];
+  char *p;
+
+  /* set device name */
+  if (pathname != NULL) {
+    strncpy(devname, pathname, MAXPATHLEN);
+    jlog("Stat: adin_oss: device name = %s (from argument)\n", devname);
+  } else if ((p = getenv("AUDIODEV")) != NULL) {
+    strncpy(devname, p, MAXPATHLEN);
+    jlog("Stat: adin_oss: device name = %s (from AUDIODEV)\n", devname);
+  } else {
+    strncpy(devname, defaultdev, MAXPATHLEN);
+    jlog("Stat: adin_oss: device name = %s (application default)\n", devname);
+  }
+
+  /* open the device */
+  if (adin_oss_open(devname) == FALSE) return FALSE;
+
   /* Read 1 sample (and ignore it) to tell the audio device start recording.
      (If you knows better way, teach me...) */
   if (stereo_rec) {
@@ -367,12 +393,7 @@ adin_oss_begin()
 boolean
 adin_oss_end()
 {
-  /*
-   * Not reset device on each end of speech, just let the buffer overrun...
-   * Resetting and restarting of recording device sometimes causes
-   * hawling noises at the next recording.
-   * I don't now why, so take the easy way... :-(
-   */
+  if (close(audio_fd) != 0) return FALSE;
   return TRUE;
 }
 

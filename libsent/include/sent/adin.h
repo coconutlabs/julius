@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.5 $ 
+ * $Revision: 1.6 $ 
  */
 /*
  * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
@@ -146,31 +146,31 @@ typedef struct {
 
 /* adin/adin_mic_*.c */
 boolean adin_mic_standby(int freq, void *arg);
-boolean adin_mic_begin();
+boolean adin_mic_begin(char *pathname);
 boolean adin_mic_end();
 int adin_mic_read(SP16 *buf, int sampnum);
 char *adin_mic_input_name();
 /* adin/adin_mic_linux_alsa.c */
 boolean adin_alsa_standby(int freq, void *arg);
-boolean adin_alsa_begin();
+boolean adin_alsa_begin(char *pathname);
 boolean adin_alsa_end();
 int adin_alsa_read(SP16 *buf, int sampnum);
 char *adin_alsa_input_name();
 /* adin/adin_mic_linux_oss.c */
 boolean adin_oss_standby(int freq, void *arg);
-boolean adin_oss_begin();
+boolean adin_oss_begin(char *pathname);
 boolean adin_oss_end();
 int adin_oss_read(SP16 *buf, int sampnum);
 char *adin_oss_input_name();
 /* adin/adin_esd.c */
 boolean adin_esd_standby(int freq, void *arg);
-boolean adin_esd_begin();
+boolean adin_esd_begin(char *pathname);
 boolean adin_esd_end();
 int adin_esd_read(SP16 *buf, int sampnum);
 char *adin_esd_input_name();
 /* adin/adin_netaudio.c  and adin/adin_na.c */
 boolean adin_netaudio_standby(int freq, void *arg);
-boolean adin_netaudio_begin();
+boolean adin_netaudio_begin(char *pathname);
 boolean adin_netaudio_end();
 int adin_netaudio_read(SP16 *buf, int sampnum);
 char *adin_netaudio_input_name();
@@ -181,11 +181,11 @@ int NA_read(SP16 *buf, int sampnum);
 
 /* adin/adin_file.c */
 boolean adin_file_standby(int freq, void *arg);
-boolean adin_file_begin();
+boolean adin_file_begin(char *pathname);
 int adin_file_read(SP16 *buf, int sampnum);
 boolean adin_file_end();
 boolean adin_stdin_standby(int freq, void *arg);
-boolean adin_stdin_begin();
+boolean adin_stdin_begin(char *pathname);
 int adin_stdin_read(SP16 *buf, int sampnum);
 char *adin_file_get_current_filename();
 char *adin_stdin_input_name();
@@ -193,7 +193,7 @@ char *adin_stdin_input_name();
 /* adin/adin_sndfile.c */
 #ifdef HAVE_LIBSNDFILE
 boolean adin_sndfile_standby(int freq, void *arg);
-boolean adin_sndfile_begin();
+boolean adin_sndfile_begin(char *pathname);
 int adin_sndfile_read(SP16 *buf, int sampnum);
 boolean adin_sndfile_end();
 char *adin_sndfile_get_current_filename();
@@ -201,7 +201,7 @@ char *adin_sndfile_get_current_filename();
 
 /* adin/adin_tcpip.c */
 boolean adin_tcpip_standby(int freq, void *arg);
-boolean adin_tcpip_begin();
+boolean adin_tcpip_begin(char *pathname);
 boolean adin_tcpip_end();
 int adin_tcpip_read(SP16 *buf, int sampnum);
 boolean adin_tcpip_send_pause();

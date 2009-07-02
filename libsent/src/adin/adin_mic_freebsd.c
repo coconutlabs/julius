@@ -39,7 +39,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -71,6 +71,7 @@
 /// Default device name, can be overridden by AUDIODEV environment variable
 #define DEFAULT_DEVICE "/dev/dsp"
 
+static int srate;		///< Required sampling rate
 static int audio_fd;		///< Audio descriptor
 static boolean need_swap;	///< Whether input samples need byte-swapping
 struct pollfd fds[1];		///< Workarea for polling device
@@ -82,7 +83,7 @@ static char *defaultdev = DEFAULT_DEVICE; ///< Default device name
 static char devname[MAXPATHLEN];		///< Current device name
 
 /** 
- * Device initialization: check device capability and open for recording.
+ * Device initialization: check machine capability
  * 
  * @param sfreq [in] required sampling frequency.
  * @param arg [in] a dummy data
@@ -92,24 +93,29 @@ static char devname[MAXPATHLEN];		///< Current device name
 boolean
 adin_mic_standby(int sfreq, void *arg)
 {
+  /* store required sampling rate for checking after opening device */
+  srate = sfreq;
+  return TRUE;
+}
+
+/** 
+ * Open the specified device and check capability of the opening device.
+ * 
+ * @param devstr [in] device string to open
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+static boolean
+adin_mic_open(char *devstr)
+{
   int fmt, fmt_can, fmt1, fmt2, rfmt; /* sampling format */
   int samplerate;		/* actual sampling rate */
   int stereo;		/* mono */
   char *p;
 
-  /* set device name */
-  if ((p = getenv("AUDIODEV")) == NULL) {
-    strncpy(devname, defaultdev, MAXPATHLEN);
-    jlog("Stat: adin_freebsd: device name = %s\n", devname);
-  } else {
-    jlog("Stat: adin_freebsd: device name obtained from AUDIODEV: %s\n", p);
-  } else {
-    strncpy(devname, p, MAXPATHLEN);
-  }
-
   /* open device */
-  if ((audio_fd = open(devname, O_RDONLY)) == -1) {
-    jlog("Error: adin_freebsd: failed to open %s\n", devname);
+  if ((audio_fd = open(devstr, O_RDONLY)) == -1) {
+    jlog("Error: adin_freebsd: failed to open %s\n", devstr);
     return(FALSE);
   }
 
@@ -149,8 +155,8 @@ adin_mic_standby(int sfreq, void *arg)
 
   /* re-open for recording */
   /* open device */
-  if ((audio_fd = open(devname, O_RDONLY)) == -1) {
-    jlog("Error: adin_freebsd: failed to open %s", devname);
+  if ((audio_fd = open(devstr, O_RDONLY)) == -1) {
+    jlog("Error: adin_freebsd: failed to open %s", devstr);
     return(FALSE);
   }
   /* set format, samplerate, channels */
@@ -174,17 +180,17 @@ adin_mic_standby(int sfreq, void *arg)
     return FALSE;
   }
 
-  samplerate = sfreq;
+  samplerate = srate;
   if (ioctl(audio_fd, SNDCTL_DSP_SPEED, &samplerate) == -1) {
-    jlog("Erorr: adin_freebsd: failed to set sample rate to %dHz\n", sfreq);
+    jlog("Erorr: adin_freebsd: failed to set sample rate to %dHz\n", srate);
     return(FALSE);
   }
-  if (samplerate < sfreq - FREQALLOWRANGE || samplerate > sfreq + FREQALLOWRANGE) {
-    jlog("Error: adin_freebsd: failed to set sampling rate to near %dHz. (%d)\n", sfreq, samplerate);
+  if (samplerate < srate - FREQALLOWRANGE || samplerate > srate + FREQALLOWRANGE) {
+    jlog("Error: adin_freebsd: failed to set sampling rate to near %dHz. (%d)\n", srate, samplerate);
     return FALSE;
   }
-  if (samplerate != sfreq) {
-    jlog("Warning: adin_freebsd: specified sampling rate was %dHz but set to %dHz, \n", sfreq, samplerate);
+  if (samplerate != srate) {
+    jlog("Warning: adin_freebsd: specified sampling rate was %dHz but set to %dHz, \n", srate, samplerate);
   }
 
   /* set polling status */
@@ -193,16 +199,32 @@ adin_mic_standby(int sfreq, void *arg)
   
   return TRUE;
 }
- 
+
+
 /** 
  * Start recording.
+ *
+ * @param pathname [in] path name to open or NULL for default
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_mic_begin(char *pathname)
 {
-  return(TRUE);
+  /* set device name */
+  if (pathname != NULL) {
+    strncpy(devname, pathname, MAXPATHLEN);
+    jlog("Stat: adin_freebsd: device name = %s (from argument)\n", devname);
+  } else if ((p = getenv("AUDIODEV")) != NULL) {
+    strncpy(devname, p, MAXPATHLEN);
+    jlog("Stat: adin_freebsd: device name = %s (from AUDIODEV)\n", devname);
+  } else {
+    strncpy(devname, defaultdev, MAXPATHLEN);
+    jlog("Stat: adin_freebsd: device name = %s (application default)\n", devname);
+  }
+
+  /* open the device */
+  return(adin_mic_open(devname));
 }
 
 /** 
@@ -213,12 +235,7 @@ adin_mic_begin()
 boolean
 adin_mic_end()
 {
-  /*
-   * Not reset device on each end of speech, just let the buffer overrun...
-   * Resetting and restarting of recording device sometimes causes
-   * hawling noises at the next recording.
-   * I don't now why, so take the easy way... :-(
-   */
+  if (close(audio_fd) != 0) return FALSE;
   return TRUE;
 }
 

@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 18:56:13 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -64,6 +64,7 @@ static int volume = J_DEF_VOLUME;
 /* sound header */
 #include <multimedia/libaudio.h>/* see man audio_device(3) */
 #include <multimedia/audio_device.h>
+static int srate;		///< Required sampling rate
 static int afd;			///< Audio file descriptor
 static struct pollfd pfd;	///< File descriptor for polling
 static audio_info_t ainfo;	///< Audio info
@@ -81,26 +82,31 @@ static char devname[MAXPATHLEN];
 boolean
 adin_mic_standby(int sfreq, void *dummy)
 {
+  /* store required sampling rate for checking after opening device */
+  srate = sfreq;
+  return TRUE;
+}
+
+/** 
+ * Open the specified device and check capability of the opening device.
+ * 
+ * @param devstr [in] device string to open
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+static boolean
+adin_mic_open(char *devstr)
+{
   Audio_hdr Dev_hdr, old_hdr;
   double vol;
-  char *p;
-
-  /* get device name if specified in $AUDIODEV */
-  if ((p = getenv("AUDIODEV")) == NULL) {
-    strncpy(devname, defaultdev, MAXPATHLEN);
-    jlog("Stat: adin_sun4: device name = %s\n", devname);
-  } else {
-    strncpy(devname, p, MAXPATHLEN);
-    jlog("Stat: adin_sun4: device name obtained from AUDIODEV: %s\n", devname);
-  }
 
   /* open the device */
-  if ((afd = open(devname, O_RDONLY)) == -1) {
+  if ((afd = open(devstr, O_RDONLY)) == -1) {
     if (errno == EBUSY) {
-      jlog("Error: adin_sun4: audio device %s is busy\n", devname);
+      jlog("Error: adin_sun4: audio device %s is busy\n", devstr);
       return(FALSE);
     } else {
-      jlog("Error: adin_sun4: unable to open %s\n",devname);
+      jlog("Error: adin_sun4: unable to open %s\n",devstr);
       return(FALSE);
     }
   }
@@ -117,7 +123,7 @@ adin_mic_standby(int sfreq, void *dummy)
   if (audio_get_record_config(afd, &Dev_hdr) != AUDIO_SUCCESS) {
     jlog("Error: adin_sun4: failed to get recording config\n"); return(FALSE);
   }
-  Dev_hdr.sample_rate = sfreq;
+  Dev_hdr.sample_rate = srate;
   Dev_hdr.samples_per_unit = 1; /* ? I don't know this param. ? */
   Dev_hdr.bytes_per_unit = 2;
   Dev_hdr.channels = 1;
@@ -143,11 +149,13 @@ adin_mic_standby(int sfreq, void *dummy)
   pfd.fd = afd;
   pfd.events = POLLIN;
 
+#if 0
   /* pause transfer */
   if (audio_pause_record(afd) == AUDIO_ERR_NOEFFECT) {
     jlog("Error: adin_sun4: cannot pause audio\n");
     return(FALSE);
   }
+#endif
 
   return(TRUE);
 }
@@ -155,16 +163,38 @@ adin_mic_standby(int sfreq, void *dummy)
 /** 
  * Start recording.
  * 
+ * @param pathname [in] path name to open or NULL for default
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_mic_begin(char *pathname)
 {
+  char *p;
+
+  /* set device name */
+  if (pathname != NULL) {
+    strncpy(devname, pathname, MAXPATHLEN);
+    jlog("Stat: adin_sun4: device name = %s (from argument)\n", devname);
+  } else if ((p = getenv("AUDIODEV")) != NULL) {
+    strncpy(devname, p, MAXPATHLEN);
+    jlog("Stat: adin_sun4: device name = %s (from AUDIODEV)\n", devname);
+  } else {    
+    strncpy(devname, defaultdev, MAXPATHLEN);
+    jlog("Stat: adin_sun4: device name = %s (application default)\n", devname);
+  }
+
+  /* open the device */
+  if (adin_mic_open(devname) == FALSE) return FALSE;
+
+#if 0
   /* resume input */
   if (audio_resume_record(afd) == AUDIO_ERR_NOEFFECT) {
     jlog("Error: adin_sun4: cannot resume audio\n");
     return(FALSE);
   }
+#endif
+
   return(TRUE);
 }
 
@@ -176,11 +206,15 @@ adin_mic_begin()
 boolean
 adin_mic_end()
 {
+#if 1
+  close(afd);
+#else
   /* pause input */
   if (audio_pause_record(afd) == AUDIO_ERR_NOEFFECT) {
     jlog("Error: adin_sun4: cannot pause audio\n");
     return(FALSE);
   }
+#endif
   return(TRUE);
 }
 

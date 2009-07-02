@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -263,7 +263,7 @@ adin_initialize(Recog *recog)
     adin->enable_thread = (*func)(2);
 
     adin->ad_standby 	   = (boolean (*)(int, void *)) plugin_get_func(sid, "adin_standby");
-    adin->ad_begin 	   = (boolean (*)()) plugin_get_func(sid, "adin_open");
+    adin->ad_begin 	   = (boolean (*)(char *)) plugin_get_func(sid, "adin_open");
     adin->ad_end 	   = (boolean (*)()) plugin_get_func(sid, "adin_close");
     adin->ad_resume 	   = (boolean (*)()) plugin_get_func(sid, "adin_resume");
     adin->ad_pause 	   = (boolean (*)()) plugin_get_func(sid, "adin_pause");

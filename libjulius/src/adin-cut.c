@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -1277,6 +1277,7 @@ adin_standby(ADIn *a, int freq, void *arg)
  * </JA>
  * 
  * @param a [in] A/D-in work area
+ * @param file_or_dev_name [in] device / file path to open or NULL for default
  * 
  * @return TRUE on success, FALSE on failure.
  * 
@@ -1285,12 +1286,12 @@ adin_standby(ADIn *a, int freq, void *arg)
  * 
  */
 boolean
-adin_begin(ADIn *a)
+adin_begin(ADIn *a, char *file_or_dev_name)
 {
   if (debug2_flag && a->input_side_segment) jlog("Stat: adin_begin: skip\n");
   if (a->input_side_segment == FALSE) {
     if (a->need_zmean) zmean_reset();
-    if (a->ad_begin != NULL) return(a->ad_begin());
+    if (a->ad_begin != NULL) return(a->ad_begin(file_or_dev_name));
   }
   return TRUE;
 }

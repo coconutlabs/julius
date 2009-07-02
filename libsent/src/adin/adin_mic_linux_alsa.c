@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -69,6 +69,7 @@
 #include <sys/asoundlib.h>
 #endif
 
+static int srate;		///< Required sampling rate
 static snd_pcm_t *handle;	///< Audio handler
 static char pcm_name[MAXPATHLEN]; ///< Name of the PCM device
 static int latency = 32;	///< Lantency time in msec.  You can override this value by specifying environment valuable "LATENCY_MSEC".
@@ -152,7 +153,7 @@ output_card_info(char *pcm_name, snd_pcm_t *handle)
 #endif /* HAS_ALSA */
 
 /** 
- * Device initialization: check device capability and open for recording.
+ * Device initialization: check machine capability
  * 
  * @param sfreq [in] required sampling frequency.
  * @param dummy [in] a dummy data
@@ -166,6 +167,27 @@ adin_alsa_standby(int sfreq, void *dummy)
   jlog("Error: ALSA not compiled in\n");
   return FALSE;
 #else
+  /* store required sampling rate for checking after opening device */
+  srate = sfreq;
+  return TRUE;
+#endif
+}
+
+
+/** 
+ * Open the specified device and check capability of the opening device.
+ * 
+ * @param devstr [in] device string to open
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+static boolean
+adin_alsa_open(char *devstr)
+{
+#ifndef HAS_ALSA
+  jlog("Error: ALSA not compiled in\n");
+  return FALSE;
+#else
   int err;
   snd_pcm_hw_params_t *hwparams; ///< Pointer to device hardware parameters
 #if (SND_LIB_MAJOR == 0)
@@ -174,19 +196,10 @@ adin_alsa_standby(int sfreq, void *dummy)
   unsigned int actual_rate;		/* sample rate returned by hardware */
 #endif
   int dir = 0;			/* comparison result of exact rate and given rate */
-  char *p;
 
-  /* check $ALSADEV for device name */
-  if ((p = getenv("ALSADEV")) != NULL) {
-    strncpy(pcm_name, p, MAXPATHLEN);
-    jlog("Stat: adin_alsa: device name from ALSADEV: \"%s\"\n", pcm_name);
-  } else {
-    strcpy(pcm_name, "default");
-  }
-
-  /* open device in non-block mode) */
-  if ((err = snd_pcm_open(&handle, pcm_name, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
-    jlog("Error: adin_alsa: cannot open PCM device \"%s\" (%s)\n", pcm_name, snd_strerror(err));
+  /* open the device in non-block mode) */
+  if ((err = snd_pcm_open(&handle, devstr, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK)) < 0) {
+    jlog("Error: adin_alsa: cannot open PCM device \"%s\" (%s)\n", devstr, snd_strerror(err));
     return(FALSE);
   }
   /* set device to non-block mode */
@@ -240,21 +253,21 @@ adin_alsa_standby(int sfreq, void *dummy)
   
   /* set sample rate (if the exact rate is not supported by the hardware, use nearest possible rate */
 #if (SND_LIB_MAJOR == 0)
-  actual_rate = snd_pcm_hw_params_set_rate_near(handle, hwparams, sfreq, &dir);
+  actual_rate = snd_pcm_hw_params_set_rate_near(handle, hwparams, srate, &dir);
   if (actual_rate < 0) {
-    jlog("Error: adin_alsa: cannot set PCM device sample rate to %d (%s)\n", sfreq, snd_strerror(actual_rate));
+    jlog("Error: adin_alsa: cannot set PCM device sample rate to %d (%s)\n", srate, snd_strerror(actual_rate));
     return(FALSE);
   }
 #else
-  actual_rate = sfreq;
+  actual_rate = srate;
   err = snd_pcm_hw_params_set_rate_near(handle, hwparams, &actual_rate, &dir);
   if (err < 0) {
-    jlog("Error: adin_alsa: cannot set PCM device sample rate to %d (%s)\n", sfreq, snd_strerror(err));
+    jlog("Error: adin_alsa: cannot set PCM device sample rate to %d (%s)\n", srate, snd_strerror(err));
     return(FALSE);
   }
 #endif
-  if (actual_rate != sfreq) {
-    jlog("Warning: adin_alsa: the exact rate %d Hz is not available by your PCM hardware.\n", sfreq);
+  if (actual_rate != srate) {
+    jlog("Warning: adin_alsa: the exact rate %d Hz is not available by your PCM hardware.\n", srate);
     jlog("Warning: adin_alsa: using %d Hz instead.\n", actual_rate);
   }
   jlog("Stat: capture audio at %dHz\n", actual_rate);
@@ -271,6 +284,7 @@ adin_alsa_standby(int sfreq, void *dummy)
     boolean has_current_period;
 #endif
     boolean force = FALSE;
+    char *p;
     
     /* set apropriate period size */
     if ((p = getenv("LATENCY_MSEC")) != NULL) {
@@ -368,7 +382,7 @@ adin_alsa_standby(int sfreq, void *dummy)
 #endif
 
   /* output status */
-  output_card_info(pcm_name, handle);
+  output_card_info(devstr, handle);
 
   return(TRUE);
 #endif /* HAS_ALSA */
@@ -407,17 +421,35 @@ xrun_recovery(snd_pcm_t *handle, int err)
 
 /** 
  * Start recording.
+ *
+ * @param pathname [in] device name to open or NULL for default
  * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_alsa_begin()
+adin_alsa_begin(char *pathname)
 {
 #ifndef HAS_ALSA
   return FALSE;
 #else
   int err;
   snd_pcm_state_t status;
+  char *p;
+
+  /* set device name to open to pcm_name */
+  if (pathname != NULL) {
+    strncpy(pcm_name, pathname, MAXPATHLEN);
+    jlog("Stat: adin_alsa: device name from argument: \"%s\"\n", pcm_name);
+  } else if ((p = getenv("ALSADEV")) != NULL) {
+    strncpy(pcm_name, p, MAXPATHLEN);
+    jlog("Stat: adin_alsa: device name from ALSADEV: \"%s\"\n", pcm_name);
+  } else {
+    strcpy(pcm_name, "default");
+  }
+  /* open the device */
+  if (adin_alsa_open(pcm_name) == FALSE) {
+    return FALSE;
+  }
 
   /* check hardware status */
   while(1) {			/* wait till prepared */
@@ -466,6 +498,12 @@ adin_alsa_begin()
 boolean
 adin_alsa_end()
 {
+  int err;
+
+  if ((err = snd_pcm_close(handle)) < 0) {
+    jlog("Error: adin_alsa: cannot close PCM device (%s)\n", snd_strerror(err));
+    return(FALSE);
+  }
   return(TRUE);
 }
 

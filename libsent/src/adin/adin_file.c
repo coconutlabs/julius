@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 13:31:20 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -350,12 +350,25 @@ adin_file_standby(int freq, void *arg)
  * will be read from the listfile.  Otherwise, the
  * filename will be obtained from stdin.  Then the file will be opened here.
  * 
+ * @param filename [in] file name to open or NULL for prompt
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_file_begin()
+adin_file_begin(char *filename)
 {
   boolean readp;
+
+  if (filename != NULL) {
+    /* open the file and exit with its status */
+    if (adin_file_open(filename) == FALSE) {
+      jlog("Error: adin_file: failed to read speech data: \"%s\"\n", filename);
+      return FALSE;
+    }
+    jlog("Stat: adin_file: input speechfile: %s\n", filename);
+    strcpy(speechfilename, filename);
+    return TRUE;
+  }
 
   /* ready to read next input */
   readp = FALSE;
@@ -483,10 +496,12 @@ adin_stdin_standby(int freq, void *arg)
 /** 
  * @brief  Begin reading audio data from stdin
  *
+ * @param pathname [in] dummy
+ *
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_stdin_begin()
+adin_stdin_begin(char *pathname)
 {
   if (feof(stdin)) {		/* already reached the end of input stream */
     jlog("Error: adin_stdin: stdin reached EOF\n");

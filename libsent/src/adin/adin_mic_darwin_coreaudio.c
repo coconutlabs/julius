@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.3 2009/03/18 07:05:30 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.4 2009/07/02 17:05:20 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -569,7 +569,7 @@ boolean adin_mic_standby(int sfreq, void* dummy) {
   return TRUE;
 }
 
-boolean adin_mic_begin(){ return TRUE; }
+boolean adin_mic_begin(char *pathname){ return TRUE; }
 boolean adin_mic_end(){ return TRUE; }
 
 int adin_mic_read(void *buffer, int nsamples) {

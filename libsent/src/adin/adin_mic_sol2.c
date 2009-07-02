@@ -38,7 +38,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:06:46 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -59,6 +59,8 @@
 
 /* sound header */
 #include <sys/audioio.h>
+
+static int srate;		///< Required sampling rate
 static int afd;			///< Audio file descriptor
 static struct audio_info ainfo;	///< Audio format information
 static char *defaultdev = DEFAULT_DEVICE;
@@ -69,7 +71,7 @@ static char devname[MAXPATHLEN];
 
 
 /** 
- * Device initialization: check device capability and open for recording.
+ * Device initialization: check device capability
  * 
  * @param sfreq [in] required sampling frequency.
  * @param arg [in] a dummy data
@@ -79,19 +81,24 @@ static char devname[MAXPATHLEN];
 boolean
 adin_mic_standby(int sfreq, void *arg)
 {
-  char *p;
-  /* get device name if specified in $AUDIODEV */
-  if ((p = getenv("AUDIODEV")) == NULL) {
-    strncpy(devname, defaultdev, MAXPATHLEN);
-    jlog("Stat: adin_sol2: device name = %s\n", devname);
-  } else {
-    strncpy(devname, p, MAXPATHLEN);
-    jlog("Stat: adin_sol2: device name obtained from AUDIODEV: %s\n", devname);
-  }
+  /* store required sampling rate for checking after opening device */
+  srate = sfreq;
+  return TRUE;
+}
 
+/** 
+ * Open the specified device and check capability of the opening device.
+ * 
+ * @param devstr [in] device string to open
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+static boolean
+adin_mic_open(char *devstr)
+{
   /* open the device */
-  if ((afd = open(devname, O_RDONLY)) == -1) {
-    jlog("Error: adin_sol2: failed to open audio device %s\n", devname);
+  if ((afd = open(devstr, O_RDONLY)) == -1) {
+    jlog("Error: adin_sol2: failed to open audio device %s\n", devstr);
     return(FALSE);
   }
 
@@ -126,7 +133,7 @@ adin_mic_standby(int sfreq, void *arg)
     return(FALSE);
   }
   /* set record setting */
-  ainfo.record.sample_rate = sfreq;
+  ainfo.record.sample_rate = srate;
   ainfo.record.channels = 1;
   ainfo.record.precision = 16;
   ainfo.record.encoding = AUDIO_ENCODING_LINEAR;
@@ -142,17 +149,35 @@ adin_mic_standby(int sfreq, void *arg)
   }
 
   return(TRUE);
-
 }
 
 /** 
  * Start recording.
  * 
+ * @param pathname [in] path name to open or NULL for default
+ * 
  * @return TRUE on success, FALSE on failure.
  */
 boolean
-adin_mic_begin()
+adin_mic_begin(char *pathname)
 {
+  char *p;
+
+  /* set device name */
+  if (pathname != NULL) {
+    strncpy(devname, pathname, MAXPATHLEN);
+    jlog("Stat: adin_sol2: device name = %s (from argument)\n", devname);
+  } else if ((p = getenv("AUDIODEV")) != NULL) {
+    strncpy(devname, p, MAXPATHLEN);
+    jlog("Stat: adin_sol2: device name = %s (from AUDIODEV)\n", devname);
+  } else {    
+    strncpy(devname, defaultdev, MAXPATHLEN);
+    jlog("Stat: adin_sol2: device name = %s (application default)\n", devname);
+  }
+
+  /* open the device */
+  if (adin_mic_open(devname) == FALSE) return FALSE;
+
   if (ioctl(afd, AUDIO_GETINFO, &ainfo) == -1) {
     jlog("Error: adin_sol2: failed to get audio status\n");
     return(FALSE);
@@ -174,6 +199,9 @@ adin_mic_begin()
 boolean
 adin_mic_end()
 {
+#if 1
+  close(afd);
+#else
   if (ioctl(afd, AUDIO_GETINFO, &ainfo) == -1) {
     jlog("Error: adin_sol2: failed to get audio status\n");
     return(FALSE);
@@ -183,6 +211,7 @@ adin_mic_end()
     jlog("Error: adin_sol2: failed to set audio status\n");
     return(FALSE);
   }
+#endif
   return(TRUE);
 }
 

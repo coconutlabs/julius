@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:48:56 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -36,6 +36,8 @@ ngram_info_new()
   NGRAM_INFO *new;
 
   new = (NGRAM_INFO *)mymalloc(sizeof(NGRAM_INFO));
+  new->n = 0;
+  new->d = NULL;
   new->bo_wt_1 = NULL;
   new->p_2 = NULL;
   new->bos_eos_swap = FALSE;
@@ -84,8 +86,11 @@ ngram_info_free(NGRAM_INFO *ndata)
   if (ndata->bo_wt_1) free(ndata->bo_wt_1);
   if (ndata->p_2) free(ndata->p_2);
   /* free n-gram */
-  for(i=0;i<ndata->n;i++) {
-    free_ngram_tuple(&(ndata->d[i]));
+  if (ndata->d) {
+    for(i=0;i<ndata->n;i++) {
+      free_ngram_tuple(&(ndata->d[i]));
+    }
+    free(ndata->d);
   }
   /* free name index tree */
   free_ptree(ndata->root);

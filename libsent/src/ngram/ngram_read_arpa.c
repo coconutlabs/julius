@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.15 2009/02/10 08:15:48 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.16 2009/07/04 14:11:43 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -45,33 +45,32 @@ static char pbuf[800];			///< Local buffer for error string
  * Set number of N-gram entries, for reading the first LR 2-gram.
  * 
  * @param fp [in] file pointer
- * @param num [out] set the values to this buffer
+ * @param numlist [out] set the values to this buffer (malloc)
  *
  * @return the value of N, or -1 on error.
  */
 static int
-get_total_info(FILE *fp, NNID num[])
+get_total_info(FILE *fp, NNID **numlist)
 {
   char *p;
   int n;
   int maxn;
   unsigned long entry_num;
+  int numnum;
 
   maxn = 0;
 
+  numnum = 10;
+  *numlist = (NNID *)mymalloc(sizeof(NNID) * numnum);
+
   while (getl(buf, sizeof(buf), fp) != NULL && buf[0] != '\\') {
     if (strnmatch(buf, "ngram", 5)) { /* n-gram num */
-      p = strtok(buf, "=");
-      n = p[strlen(p)-1] - '0';
-      if (n > MAX_N) {
-	jlog("Error: too long N-gram (N=%d)\n", n);
-	jlog("Error: current maximum length of N-gram is set to %d\n", MAX_N);
-	jlog("Error: you can expand the limit by setting MAX_N in \"sent/ngram.h\"\n");
-	return -1;
-      }
-      p = strtok(NULL, "=");
+      //p = strtok(buf, " =");
+      //n = atoi(p);
+      //p = strtok(NULL, " =");
       //entry_num = atol(p);
-      sscanf(p, "%lu", &entry_num);
+      //sscanf(p, "%lu", &entry_num);
+      sscanf(buf, "ngram %d = %lu", &n, &entry_num);
       /* check maximum number */
       if (entry_num > NNID_MAX) {
 	jlog("Error: too big %d-gram (exceeds %d bit)\n", n, sizeof(NNID) * 8);
@@ -81,8 +80,12 @@ get_total_info(FILE *fp, NNID num[])
       if (entry_num == 0) {
 	jlog("Warning: empty %d-gram, skipped\n", n);
       } else {
-	num[n-1] = entry_num;
 	if (maxn < n) maxn = n;
+	if (n >= numnum) {
+	  numnum *= 2;
+	  *numlist = (NNID *)myrealloc(*numlist, sizeof(NNID) * numnum);
+	}
+	(*numlist)[n-1] = entry_num;
       }
     }
   }
@@ -330,8 +333,8 @@ static boolean
 set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
 {
   NNID i;
-  WORD_ID w[MAX_N];
-  WORD_ID w_last[MAX_N];
+  WORD_ID *w;
+  WORD_ID *w_last;
   LOGPROB p, bowt;
   NNID nnid;
   NNID cid, cid_last;
@@ -345,6 +348,9 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
     jlog("Error: ngram_read_arpa: unable to process 1-gram\n");
     return FALSE;
   }
+
+  w = (WORD_ID *)mymalloc(sizeof(WORD_ID) * n);
+  w_last = (WORD_ID *)mymalloc(sizeof(WORD_ID) * n);
 
   t = &(ndata->d[n-1]);
   tprev = &(ndata->d[n-2]);
@@ -391,6 +397,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
     /* N-gram probability */
     if ((s = strtok(buf, DELM)) == NULL) {
       jlog("Error: ngram_read_arpa: %d-gram: failed to parse, corrupted or invalid data?\n", n);
+      free(w_last); free(w);
       return FALSE;
     }
     p = (LOGPROB)atof(s);
@@ -398,6 +405,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
     for(i=0;i<n;i++) {
       if ((s = strtok(NULL, DELM)) == NULL) {
 	jlog("Error: ngram_read_arpa: %d-gram: failed to parse, corrupted or invalid data?\n", n);
+	free(w_last); free(w);
 	return FALSE;
       }
       if ((w[i] = ngram_lookup_word(ndata, s)) == WORD_INVALID) {
@@ -440,6 +448,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
       if (t->is24bit) {
 	if (t->bgn_upper[cid] != NNID_INVALID_UPPER) {
 	  jlog("Error: ngram_read_arpa: %d-gram #%d: \"%s\": word order is not the same as 1-gram\n", n, nnid+1, pbuf);
+	  free(w_last); free(w);
 	  return FALSE;
 	}
 	ntmp = nnid & 0xffff;
@@ -449,6 +458,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
       } else {
 	if (t->bgn[cid] != NNID_INVALID) {
 	  jlog("Error: ngram_read_arpa: %d-gram #%d: \"%s\": word order is not the same as 1-gram\n", n, nnid+1, pbuf);
+	  free(w_last); free(w);
 	  return FALSE;
 	}
 	t->bgn[cid] = nnid;
@@ -465,6 +475,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
       continue;
     } else if (w_last[n-1] != WORD_INVALID && w[n-1] < w_last[n-1]) {
       jlog("Error: ngram_read_arpa: %d-gram #%d: \"%s\": word order is not the same as 1-gram\n", n, nnid+1, pbuf);
+      free(w_last); free(w);
       return FALSE;
     }
 
@@ -490,6 +501,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
     /* check total num */
     if (nnid > t->totalnum) {
       jlog("Error: ngram_read_arpa: %d-gram: read num (%d) not match the header value (%d)\n", n, nnid, t->totalnum);
+      free(w_last); free(w);
       return FALSE;
     }
   }
@@ -508,6 +520,7 @@ set_ngram(FILE *fp, NGRAM_INFO *ndata, int n)
     jlog("Stat: ngram_read_arpa: %d-gram read %d end\n", n, nnid);
   }
 
+  free(w_last); free(w);
   return ok_p;
 }
 
@@ -525,7 +538,7 @@ boolean
 ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 {
   int i, n;
-  NNID num[MAX_N];
+  NNID *num;
 
   /* source file is not a binary N-gram */
   ndata->from_bin = FALSE;
@@ -537,15 +550,23 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 
   if (addition) {
     /* reading additional forward 2-gram for the 1st pass */
+
+    if (ndata->n < 2) {
+      jlog("Error: base N-gram should be longer than 2-gram\n");
+      return FALSE;
+    }
+
     /* read n-gram total info */
-    n = get_total_info(fp, num);
+    n = get_total_info(fp, &num);
     if (n == -1) {		/* error */
+      free(num);
       return FALSE;
     }
 
     /* check N limit */
     if (n < 2) {
       jlog("Error: forward N-gram for pass1 is does not contain 2-gram\n");
+      free(num);
       return FALSE;
     }
     if (n > 2) {
@@ -558,6 +579,9 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 	jlog("Warning: ngram_read_arpa: %d-gram total num differ between forward N-gram and backward N-gram, may cause some error\n", i+1);
       }
     }
+
+    free(num);
+
     /* read additional 1-gram data */
     if (!strnmatch(buf,"\\1-grams",8)) {
       jlog("Error: ngram_read_arpa: 1-gram not found for additional LR 2-gram\n");
@@ -581,14 +605,18 @@ ngram_read_arpa(FILE *fp, NGRAM_INFO *ndata, boolean addition)
 
   } else {
     /* read n-gram total info */
-    n = get_total_info(fp, num);
+    n = get_total_info(fp, &num);
     if (n == -1) {		/* error */
+      free(num);
       return FALSE;
     }
     jlog("Stat: ngram_read_arpa: this is %d-gram file\n", n);
+    ndata->d = (NGRAM_TUPLE_INFO *)mymalloc(sizeof(NGRAM_TUPLE_INFO) * n);
+    memset(ndata->d, 0, sizeof(NGRAM_TUPLE_INFO) * n);
     for(i=0;i<n;i++) {
       ndata->d[i].totalnum = num[i];
     }
+    free(num);
     
     /* set word num */
     if (ndata->d[0].totalnum > MAX_WORD_NUM) {

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  * 
  */
 /*
@@ -102,6 +102,8 @@ boolean dfa_look_around(NEXTWORD *nword, NODE *hypo, RecogProcess *r);
 void segment_set_last_nword(NODE *hypo, RecogProcess *r);
 void pass2_finalize_on_no_result(RecogProcess *r, boolean use_1pass_as_final);
 void wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num);
+void wchmm_fbs_prepare(RecogProcess *r);
+void wchmm_fbs_free(RecogProcess *r);
 
 /* search_bestfirst_v?.c */
 void clear_stocker(StackDecode *s);

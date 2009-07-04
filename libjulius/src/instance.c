@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -299,15 +299,7 @@ j_recogprocess_free(RecogProcess *process)
 {
   /* not free jconf, am, lm here */
   /* free part of StackDecode work area */
-#ifdef CONFIDENVE_MEASURE
-#ifdef CM_MULTIPLE_ALPHA
-  free(process->pass2.cmsumlist);
-#endif
-#ifdef CM_NBEST;
-  free(process->pass2.sentcm);
-  free(process->pass2.wordcm);
-#endif
-#endif
+  wchmm_fbs_free(process);
   /* free wchmm */
   if (process->wchmm) wchmm_free(process->wchmm);
   /* free backtrellis */

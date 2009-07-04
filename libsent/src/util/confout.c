@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -80,7 +80,6 @@ void
 confout_lm(FILE *strm)
 {
   fprintf(strm, " - Language Model\n");
-  fprintf(strm, "    Max. # of N for N-gram  : %d\n", MAX_N);
 #ifdef CLASS_NGRAM
   fprintf(strm, "    class N-gram support    : yes\n");
 #else

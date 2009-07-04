@@ -48,7 +48,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:12:08 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -253,14 +253,9 @@ ngram_read_bin_v5(FILE *fp, NGRAM_INFO *ndata)
 
   jlog("Stat: ngram_read_bin_v5: this is %s %d-gram file\n", (ndata->dir == DIR_LR) ? "forward" : "backward", ndata->n);
 
-  if (ndata->n > MAX_N) {
-    jlog("Error: ngram_read_bin_v5: too long N-gram (N=%d)\n", n);
-    jlog("Error: ngram_read_bin_v5: current maximum length of N-gram is set to %d\n", MAX_N);
-    jlog("Error: ngram_read_bin_v5: you can expand the limit by setting MAX_N in \"sent/ngram.h\"\n");
-    return FALSE;
-  }
-
   /* read total info and set max_word_num */
+  ndata->d = (NGRAM_TUPLE_INFO *)mymalloc(sizeof(NGRAM_TUPLE_INFO) * ndata->n);
+  memset(ndata->d, 0, sizeof(NGRAM_TUPLE_INFO) * ndata->n);
   for(n=0;n<ndata->n;n++) {
     rdn(fp, &(ndata->d[n].totalnum), sizeof(NNID), 1);
   }
@@ -374,6 +369,8 @@ ngram_read_bin_compat(FILE *fp, NGRAM_INFO *ndata, int *retry_ret)
   ndata->dir = DIR_RL;
 
   /* read total info and set max_word_num */
+  ndata->d = (NGRAM_TUPLE_INFO *)mymalloc(sizeof(NGRAM_TUPLE_INFO) * ndata->n);
+  memset(ndata->d, 0, sizeof(NGRAM_TUPLE_INFO) * ndata->n);
   for(n=0;n<ndata->n;n++) {
     rdn(fp, &(ndata->d[n].totalnum), sizeof(NNID), 1);
   }

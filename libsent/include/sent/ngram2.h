@@ -5,8 +5,7 @@
  * @brief Definitions for word N-gram
  *
  * This file defines a structure for word N-gram language model.
- * Julius now support N-gram for arbitrary N (maximum number of N is defined
- * as MAX_N, and N should be >= 2).
+ * Julius now support N-gram for arbitrary N.
  *
  * Both direction of forward (left-to-right) N-gram and backward
  * (right-to-left) N-gram is supported.  Since the final recognition
@@ -57,7 +56,6 @@
  *
  * このファイルには単語N-gram言語モデルを格納するための構造体定義が
  * 含まれています．Julius はN-gramにおいて任意の N をサポートしました．
- * （N の上限値は MAX_N で定義されています）
  *
  * 通常の前向き (left-to-right) と後向き (right-to-left) の N-gram が
  * サポートされています．認識の最終パス（第2パス）は後向きに行われるので，
@@ -97,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 15:04:02 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -112,8 +110,6 @@
 
 #include <sent/stddefs.h>
 #include <sent/ptree.h>
-
-#define MAX_N 10		///< Maximum number of N for N-gram
 
 typedef unsigned int NNID;	      ///< Type definition for N-gram entry ID (full)
 #define NNID_INVALID 0xffffffff  ///< Value to indicate no id (full)
@@ -180,7 +176,7 @@ typedef struct __ngram_info__ {
   LOGPROB unk_num_log;		///< Log10 value of @a unk_num, used for calculating probability of unknown words
   boolean isopen;		///< TRUE if dictionary has unknown words, which does not appear in this N-gram
 
-  NGRAM_TUPLE_INFO d[MAX_N];	///< Main body of N-gram info
+  NGRAM_TUPLE_INFO *d;	///< Main body of N-gram info
 
   /* for pass1 */
   LOGPROB *bo_wt_1;		///< back-off weights for 2-gram on 1st pass

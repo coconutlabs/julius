@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -2262,6 +2262,96 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
 #endif
   //result_sentence_free(r);
   clear_stocker(dwrk);
+}
+
+/** 
+ * <JA>
+ * 第2パス用のワークエリアを確保・初期化する.
+ *
+ * ここで確保されるのは認識・パラメータに依らない値のみ．
+ * 
+ * @param r [i/o] 認識処理インスタンス
+ * </JA>
+ * <EN>
+ * Initialize and allocate work area for 2nd pass.
+ *
+ * This function only contains input / parameter dependent initialization.
+ * 
+ * @param r [in] recognition process instance
+ * </EN>
+ */
+void
+wchmm_fbs_prepare(RecogProcess *r)
+{
+  StackDecode *dwrk;
+  dwrk = &(r->pass2);
+  
+  /* N-gram 用ワークエリアを確保 */
+  /* malloc work area for N-gram */
+  if (r->lmtype == LM_PROB && r->lm->ngram) {
+    dwrk->cnword = (WORD_ID *)mymalloc(sizeof(WORD_ID) * r->lm->ngram->n);
+    dwrk->cnwordrev = (WORD_ID *)mymalloc(sizeof(WORD_ID) * r->lm->ngram->n);
+  } else {
+    dwrk->cnword = dwrk->cnwordrev = NULL;
+  }
+  dwrk->stocker_root = NULL;
+#ifdef CONFIDENVE_MEASURE
+#ifdef CM_MULTIPLE_ALPHA
+  dwrk->cmsumlist = NULL;
+#endif
+#ifdef CM_NBEST;
+  dwrk->sentcm = NULL;
+  dwrk->wordcm = NULL;
+#endif
+#endif
+}
+
+/** 
+ * <JA>
+ * 第2パス用のワークエリアを解放する.
+ *
+ * ここで解放されるのは認識・パラメータに依らない値のみ．
+ * 
+ * @param r [i/o] 認識処理インスタンス
+ * </JA>
+ * <EN>
+ * Free the work area for 2nd pass.
+ *
+ * This function only concerns input / parameter dependent work area.
+ * 
+ * @param r [in] recognition process instance
+ * </EN>
+ */
+void
+wchmm_fbs_free(RecogProcess *r)
+{
+  StackDecode *dwrk;
+  dwrk = &(r->pass2);
+
+  if (r->lmtype == LM_PROB && r->lm->ngram) {
+    free(dwrk->cnword);
+    free(dwrk->cnwordrev);
+    dwrk->cnword = dwrk->cnwordrev = NULL;
+  }
+
+#ifdef CONFIDENVE_MEASURE
+#ifdef CM_MULTIPLE_ALPHA
+  if (dwrk->cmsumlist) {
+    free(dwrk->cmsumlist);
+    dwrk->cmsumlist = NULL;
+  }
+#endif
+#ifdef CM_NBEST;
+  if (dwrk->sentcm) {
+    free(dwrk->sentcm);
+    dwrk->sentcm = NULL;
+  }
+  if (dwrk->wordcm) {
+    free(dwrk->wordcm);
+    dwrk->wordcm = NULL;
+  }
+#endif
+#endif
 }
 
 /* end of file */

@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -1114,6 +1114,9 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
   /* backtrellis initialization */
   p->backtrellis = (BACKTRELLIS *)mymalloc(sizeof(BACKTRELLIS));
   bt_init(p->backtrellis);
+
+  /* prepare work area for 2nd pass */
+  wchmm_fbs_prepare(p);
 
   jlog("STAT: SR%02d %s composed\n", sconf->id, sconf->name);
 

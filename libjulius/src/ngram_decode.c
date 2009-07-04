@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Fri Jul  8 14:57:51 2005
  *
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -198,10 +198,9 @@ pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, s
   int w_old = WORD_INVALID;
 #endif
   int num;
-  WORD_ID cnword[MAX_N];	///< Last two non-transparent words
-  WORD_ID cnwordrev[MAX_N];	///< Last two non-transparent words
   int cnnum;		///< Num of found non-transparent words (<=2)
   int last_trans;		///< Num of skipped transparent words
+  StackDecode *dwrk;
 
   BACKTRELLIS *bt;
   WORD_INFO *winfo;
@@ -215,6 +214,7 @@ pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, s
   lm_weight2 = r->config->lmp.lm_weight2;
   lm_penalty2 = r->config->lmp.lm_penalty2;
   lm_penalty_trans = r->config->lmp.lm_penalty_trans;
+  dwrk = &(r->pass2);
 
   /* set word contexts to cnword[] from 1 considering transparent words */
   if (ngram) {
@@ -222,7 +222,7 @@ pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, s
     last_trans = 0;
     for(i=hypo->seqnum-1;i>=0;i--) {
       if (! winfo->is_transparent[hypo->seq[i]]) {
-	cnword[cnnum+1] = hypo->seq[i];
+	dwrk->cnword[cnnum+1] = hypo->seq[i];
 	cnnum++;
 	if (cnnum >= ngram->n - 1) break;
       } else {
@@ -231,14 +231,14 @@ pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, s
     }
     if (ngram->dir == DIR_RL) {
       for(i=0;i<cnnum;i++) {
-	cnwordrev[cnnum-1-i] = cnword[i+1];
+	dwrk->cnwordrev[cnnum-1-i] = dwrk->cnword[i+1];
       }
     }
     /* use ngram id */
     if (ngram->dir == DIR_RL) {
-      for(i=0;i<cnnum;i++) cnwordrev[i] = winfo->wton[cnwordrev[i]];
+      for(i=0;i<cnnum;i++) dwrk->cnwordrev[i] = winfo->wton[dwrk->cnwordrev[i]];
     } else {
-      for(i=0;i<cnnum;i++) cnword[i+1] = winfo->wton[cnword[i+1]];
+      for(i=0;i<cnnum;i++) dwrk->cnword[i+1] = winfo->wton[dwrk->cnword[i+1]];
     }
   }
 
@@ -264,11 +264,11 @@ pick_backtrellis_words(RecogProcess *r, NEXTWORD **nw, int oldnum, NODE *hypo, s
       /* compute N-gram probability */
       if (ngram->dir == DIR_RL) {
 	/* just compute N-gram prob of the word candidate */
-	cnwordrev[cnnum] = winfo->wton[w];
-	rawscore = ngram_prob(ngram, cnnum + 1, cnwordrev);
+	dwrk->cnwordrev[cnnum] = winfo->wton[w];
+	rawscore = ngram_prob(ngram, cnnum + 1, dwrk->cnwordrev);
       } else {
-	cnword[0] = winfo->wton[w];
-	rawscore = ngram_forw2back(ngram, cnword, cnnum + 1);
+	dwrk->cnword[0] = winfo->wton[w];
+	rawscore = ngram_forw2back(ngram, dwrk->cnword, cnnum + 1);
       }
 #ifdef CLASS_NGRAM
       rawscore += winfo->cprob[w];

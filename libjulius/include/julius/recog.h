@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -238,6 +238,8 @@ typedef struct __StackDecode__ {
   short *wef;           ///< Work area for word-end frame tokens for v2
   LOGPROB *wes;         ///< Work area for word-end score tokens for v2
 #endif
+  WORD_ID *cnword;		///< Work area for N-gram computation
+  WORD_ID *cnwordrev;		///< Work area for N-gram computation
 
 } StackDecode;
 

@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -424,10 +424,10 @@ typedef struct __adin__ {
 
   boolean input_side_segment;   ///< TRUE if segmentation requested by ad_read
 
-  unsigned int total_captured_len;
-  unsigned int last_trigger_sample;
+  unsigned int total_captured_len; ///< Total number of recorded samples from start until now
+  unsigned int last_trigger_sample; ///< Last speech area was triggeed at this sample
 
-  char current_input_name[MAXPATHLEN];
+  char current_input_name[MAXPATHLEN]; ///< File or device name of current input
 
 } ADIn;
 

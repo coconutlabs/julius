@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -193,8 +193,6 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   adin->need_init = TRUE;
 
   adin->rehash = FALSE;
-
-  adin->total_captured_len = 0;
 
   return TRUE;
 
@@ -1290,6 +1288,7 @@ adin_begin(ADIn *a, char *file_or_dev_name)
 {
   if (debug2_flag && a->input_side_segment) jlog("Stat: adin_begin: skip\n");
   if (a->input_side_segment == FALSE) {
+    a->total_captured_len = 0;
     if (a->need_zmean) zmean_reset();
     if (a->ad_begin != NULL) return(a->ad_begin(file_or_dev_name));
   }

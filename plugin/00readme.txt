@@ -26,9 +26,18 @@ How to compile
 
 The source should be compiled into a dynamic shared object.
 The object file should have a suffix of ".jpi".
-For example, you can compile "adin_oss.c" using gcc like this:
 
-	 % gcc -shared -o adin_oss.jpi adin_oss.c
+On Linux and cygwin, you can compile with gcc like this:
+
+    % gcc -shared -o result.jpi result.c
+
+If you compile on cygwin and want it to run without cygwin, you can do
+
+    % gcc -shared -mno-cygwin -o result.jpi result.c
+
+On Mac OS X:
+
+    % gcc -bundle -flat_namespace -undefined suppress -o result.jpi result.c
 
 
 How to use

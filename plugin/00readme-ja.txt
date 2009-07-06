@@ -25,11 +25,19 @@ Juliusbook をご覧ください．
 
 ◆ プラグインの仕様とコンパイルについて
 
-プラグインファイルの拡張子は .jpi です．
-ファイルの実態は，単なる共有オブジェクトです．
-gcc であれば以下のようにしてコンパイルしてください．
+プラグインファイルの拡張子は .jpi です．実態は，共有オブジェクトファイ
+ルです．Linux や cygwin ですと，以下のようにしてコンパイルできます．
 
-	 % gcc -shared -o adin_oss.jpi adin_oss.c
+    % gcc -shared -o result.jpi result.c
+
+cygwin でコンパイルしたプラグインを，cygwin 環境無しでも動作させるには，
+-mno-cygwin をつけます．
+
+    % gcc -shared -mno-cygwin -o result.jpi result.c
+
+Mac OS X (darwin) では以下のようにコンパイルします．
+
+    % gcc -bundle -flat_namespace -undefined suppress -o result.jpi result.c
 
 
 ◆ Julius にプラグインを読み込ませる方法
@@ -42,11 +50,25 @@ Julius のオプション "-plugindir dirname" を使います．dirname にはプラ
 設定のできるだけ最初のほうで指定した方がよいでしょう．
 
 
-◆ 動作テスト
+◆ 動作テストその１（result.jpi）
 
-付属の adin_oss.c は，OSS API を使った入力プラグインのサンプルです．
+result.c は，認識結果の文字列を受け取って出力する簡単なプラグインです．
+Julius をコンパイル後，以下のようにして試してみましょう．
+
+	% cd plugin (このディレクトリ)
+	% make result.jpi
+	% cd ..
+	% ./julius/julius ... -plugindir plugin
+
+なお，Mac OS X では以下のように Makefile.darwin をお使い下さい．
+
+        % make -f Makefile.darwin result.jpi
+
+
+◆ 動作テストその２（オーディオ入力プラグイン）
+
+adin_oss.c は，OSS API を使った入力の拡張を行うプラグインです．
 Julius 本体からは "-input myadin" で選択できます．
-
 Julius をコンパイル後，以下のようにして試してみましょう．
 
 	% cd plugin (このディレクトリ)
@@ -57,3 +79,5 @@ Julius をコンパイル後，以下のようにして試してみましょう．
 また，音声入力プラグインは adintool や adinrec からも呼び出せます．
 
 	% ./adinrec/adinrec -plugindir plugin -input myadin
+
+

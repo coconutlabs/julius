@@ -8,7 +8,7 @@
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.3 2009/05/15 03:22:53 sumomo Exp $
+ * $Id: mkss.c,v 1.4 2009/07/07 15:15:24 sumomo Exp $
  *
  */
 
@@ -126,13 +126,16 @@ main(int argc, char *argv[])
     filename = argv[argc-1];
   }
 
+  /* set default as same as "-input mic" */
+  jconf->input.type = INPUT_WAVEFORM;
+  jconf->input.speech_input = SP_MIC;
+  jconf->input.device = SP_INPUT_DEFAULT;
   /* process config and load them */
   if (j_config_load_args(jconf, argc-1, argv) == -1) {
     fprintf(stderr, "Error reading arguments\n");
     return -1;
   }
   /* force some default values */
-  jconf->input.speech_input = SP_MIC; /* mic input */
   jconf->detect.silence_cut  = 0; /* disable silence cut */
   jconf->preprocess.strip_zero_sample = TRUE; /* strip zero samples */
   jconf->detect.level_thres = 0;	/* no VAD, record all */

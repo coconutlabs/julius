@@ -47,7 +47,7 @@
  * @author Akinobu Lee
  * @date   Sat Jun 18 23:45:18 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -244,7 +244,7 @@ multigram_append_to_global(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
  * <JA>
  * 新たな文法を，文法リストに追加する.
  * 現在インスタンスが保持している文法のリストは lm->grammars に保存される. 
- * 追加した文法には，newbie, active のフラグがセットされ，次回の
+ * 追加した文法には，newbie と inactive のフラグがセットされ，次回の
  * 文法更新チェック時に更新対象となる. 
  * 
  * @param dfa [in] 追加登録する文法のDFA情報
@@ -258,7 +258,7 @@ multigram_append_to_global(DFA_INFO *gdfa, WORD_INFO *gwinfo, MULTIGRAM *m)
  * Add a new grammar to the current list of grammars.
  * The list of grammars which the LM instance keeps currently is
  * at lm->grammars.
- * The new grammar is flaged at "newbie" and "active", to be treated
+ * The new grammar is flagged at "newbie" and "inactive", to be treated
  * properly at the next grammar update check.
  * 
  * @param dfa [in] DFA information of the new grammar.
@@ -289,9 +289,10 @@ multigram_add(DFA_INFO *dfa, WORD_INFO *winfo, char *name, PROCESS_LM *lm)
   new->id = lm->gram_maxid;
   new->dfa = dfa;
   new->winfo = winfo;
-  new->hook = MULTIGRAM_DEFAULT;
+  /* will be setup and activated after multigram_update() is called once */
+  new->hook = MULTIGRAM_DEFAULT | MULTIGRAM_ACTIVATE;
   new->newbie = TRUE;		/* need to setup */
-  new->active = TRUE;		/* default: active */
+  new->active = FALSE;		/* default: inactive */
 
   /* the new grammar is now added to gramlist */
   new->next = lm->grammars;

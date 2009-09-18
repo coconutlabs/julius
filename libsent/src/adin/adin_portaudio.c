@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -60,6 +60,9 @@
 /* sound header */
 #include "pa/portaudio.h"
 
+#ifdef PortAudioStream
+#define OLDVER
+#endif
 
 #undef DDEBUG
 
@@ -91,10 +94,19 @@ static int cycle_buffer_len;	///< length of cycle buffer based on INPUT_DELAY_SE
  * @return 0 when no error, or 1 to terminate recording.
  */
 static int
+#ifdef OLDVER
 Callback(void *inbuf, void *outbuf, unsigned long len, PaTimestamp outTime, void *userdata)
+#else
+Callback(const void *inbuf, void *outbuf, unsigned long len, const PaStreamCallbackTimeInfo *outTime, PaStreamCallbackFlags statusFlags, void *userdata)
+#endif
 {
+#ifdef OLDVER
   SP16 *now;
   int avail;
+#else
+  const SP16 *now;
+  unsigned long avail;
+#endif
   int processed_local;
   int written;
 
@@ -146,7 +158,11 @@ Callback(void *inbuf, void *outbuf, unsigned long len, PaTimestamp outTime, void
   return(0);
 }
 
+#ifdef OLDVER
 static PortAudioStream *stream;		///< Stream information
+#else
+static PaStream *stream;		///< Stream information
+#endif
 
 /** 
  * Device initialization: check device capability and open for recording.
@@ -169,11 +185,13 @@ adin_mic_standby(int sfreq, void *dummy)
   jlog("Stat: adin_portaudio: INPUT_DELAY_SEC = %d\n", INPUT_DELAY_SEC);
   jlog("Stat: adin_portaudio: audio cycle buffer length = %d bytes\n", cycle_buffer_len * sizeof(SP16));
 
+#ifdef OLDVER
   /* for safety... */
   if (sizeof(SP16) != paInt16) {
     jlog("Error: adin_portaudio: SP16 != paInt16 !!\n");
     return FALSE;
   }
+#endif
 
   /* allocate and init */
   current = processed = 0;
@@ -190,9 +208,8 @@ adin_mic_standby(int sfreq, void *dummy)
   }
   frames_per_buffer = 256;
   num_buffer = sfreq * latency / (frames_per_buffer * 1000);
-  jlog("Stat: adin_portaudio: framesPerBuffer=%d, NumBuffers(guess)=%d (%d)\n",
-	   frames_per_buffer, num_buffer, 
-	   Pa_GetMinNumBuffers(frames_per_buffer, sfreq));
+  jlog("Stat: adin_portaudio: framesPerBuffer=%d, NumBuffers(guess)=%d\n",
+       frames_per_buffer, num_buffer);
   jlog("Stat: adin_portaudio: audio I/O Latency = %d msec (data fragment = %d frames)\n",
 	   (frames_per_buffer * num_buffer) * 1000 / sfreq, 
 	   (frames_per_buffer * num_buffer));
@@ -205,7 +222,10 @@ adin_mic_standby(int sfreq, void *dummy)
   }
 
   err = Pa_OpenDefaultStream(&stream, 1, 0, paInt16, sfreq, 
-			     frames_per_buffer, num_buffer, 
+			     frames_per_buffer,
+#ifdef OLDVER
+			     num_buffer, 
+#endif
 			     Callback, NULL);
   if (err != paNoError) {
     jlog("Error: adin_portaudio: error in opening stream: %s\n", Pa_GetErrorText(err));

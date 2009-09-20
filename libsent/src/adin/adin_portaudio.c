@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -65,6 +65,21 @@
 #endif
 
 #undef DDEBUG
+
+/**
+ * Define this to choose which audio device to open by querying the
+ * device API type in the following order:
+ *  
+ *  ASIO -> DirectSound -> MME -> Others (OSS,...)
+ *  
+ * This will be effective when using portaudio library with multiple
+ * Host API support, in which case Pa_OpenDefaultStream() will open
+ * the first found one (not the one with the optimal performance)
+ *
+ * (may not work on OLDVER)
+ * 
+ */
+#undef CHOOSE_HOST_API
 
 /**
  * Maximum Data fragment Length in msec.  Input can be delayed to this time.
@@ -221,6 +236,57 @@ adin_mic_standby(int sfreq, void *dummy)
     return(FALSE);
   }
 
+#ifdef CHOOSE_HOST_API
+
+  {
+    // choose a device to open
+    // preference order is: ASIO > DirectSound > MME > other
+    // On the selected API, the first device will be opened.
+    int i, devId;
+    PaDeviceIndex numDevice = Pa_GetDeviceCount();
+    PaDeviceInfo *deviceInfo;
+    PaHostApiInfo *apiInfo;
+    PaStreamParameters param;
+    int iMME = -1, iDS = -1, iASIO = -1, iOther = -1;
+
+    for(i=0;i<numDevice;i++) {
+      deviceInfo = Pa_GetDeviceInfo(i);
+      if (deviceInfo->maxInputChannels <= 0) continue;
+      apiInfo = Pa_GetHostApiInfo(deviceInfo->hostApi);
+      switch(apiInfo->type) {
+      case paMME:if (iMME   < 0) iMME   = i; break;
+      case paDirectSound:if (iDS    < 0) iDS    = i; break;
+      case paASIO:if (iASIO  < 0) iASIO  = i; break;
+      default:if (iOther < 0) iOther = i; break;
+      }
+    }
+    if (iASIO >= 0) devId = iASIO;
+    else if (iDS >= 0) devId = iDS;
+    else if (iMME >= 0) devId = iMME;
+    else devId = iOther;
+
+    memset( &param, 0, sizeof(param));
+    param.channelCount = 1;
+    param.device = devId;
+    param.sampleFormat = paInt16;
+    param.suggestedLatency = Pa_GetDeviceInfo(devId)->defaultLowInputLatency;
+    err = Pa_OpenStream(&stream, &param, NULL, sfreq, 
+			frames_per_buffer, paNoFlag,
+			Callback, NULL);
+    if (err != paNoError) {
+      // When failed, fallback to default device
+      err = Pa_OpenDefaultStream(&stream, 1, 0, paInt16, sfreq, 
+				 frames_per_buffer,
+				 Callback, NULL);
+      if (err != paNoError) {
+	jlog("Error: adin_portaudio: error in opening stream: %s\n", Pa_GetErrorText(err));
+	return(FALSE);
+      }
+    }
+  }
+
+#else
+
   err = Pa_OpenDefaultStream(&stream, 1, 0, paInt16, sfreq, 
 			     frames_per_buffer,
 #ifdef OLDVER
@@ -231,6 +297,8 @@ adin_mic_standby(int sfreq, void *dummy)
     jlog("Error: adin_portaudio: error in opening stream: %s\n", Pa_GetErrorText(err));
     return(FALSE);
   }
+
+#endif /* CHOOSE_HOST_API */
 
   return(TRUE);
 }

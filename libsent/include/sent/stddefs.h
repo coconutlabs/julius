@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 11:49:37 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -113,7 +113,6 @@ typedef unsigned char boolean;
 #define close _close
 #define eof _eof
 #define filelength _filelength
-#define isatty _isatty
 #define lseek _lseek
 #define open _open
 #define read _read

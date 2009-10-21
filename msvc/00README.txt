@@ -23,6 +23,9 @@ Julius also uses these two open-source libraries:
 The pre-compiled win32 libraries and header files are already
 included under the "zlib" and "portaudio" directory.
 
+You need an acoustic model and a language model to run Julius as speech recognizer.
+See the Julius Web for more details.
+
 
 2. Compile
 ===========
@@ -41,12 +44,13 @@ into the "Release" and "Debug" directories.
 3. Test
 ========
 
-"julius.exe" is a console application, which runs as the same as the
-normally distributed version.
+! You need an acoustic model and a language model to run Julius as speech recognizer.
+! See the Julius Web for more details.
 
-The "SampleApp.exe" is a GUI application sample that uses JuliusLib.
-When executed, Julius will be started and the engine events will be output
-in the main window.  You can test it as below:
+"julius.exe" is a console application, which just runs as the same as the normal win32 version.
+
+The "SampleApp.exe" is a sample GUI application.  Julius will start and the engine events will
+be output to the main window.  You can test it by the procedure below:
 
    a) Prepare an acoustic model, language model and jconf file for them.
    b) Place a Jconf file as "fast.jconf" at the same directory as the exe.
@@ -95,8 +99,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 -----------------------------------------------------------------
 
-For more details, see SampleApp.cpp and Julius.cpp.
-
+See SampleApp.cpp and Julius.cpp for details.
 
 
 5.  About the character codes in the sources

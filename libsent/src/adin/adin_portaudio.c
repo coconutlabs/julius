@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -58,9 +58,9 @@
 #include <sent/adin.h>
 
 /* sound header */
-#include "pa/portaudio.h"
+#include <portaudio.h>
 
-#ifdef PortAudioStream
+#ifndef paNonInterleaved
 #define OLDVER
 #endif
 
@@ -79,7 +79,9 @@
  * (may not work on OLDVER)
  * 
  */
-#undef CHOOSE_HOST_API
+#ifndef OLDVER
+#define CHOOSE_HOST_API
+#endif
 
 /**
  * Maximum Data fragment Length in msec.  Input can be delayed to this time.

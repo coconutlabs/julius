@@ -246,10 +246,6 @@
 				RelativePath=".\SampleApp.rc"
 				>
 			</File>
-			<File
-				RelativePath=".\small.ico"
-				>
-			</File>
 		</Filter>
 		<File
 			RelativePath=".\ReadMe.txt"

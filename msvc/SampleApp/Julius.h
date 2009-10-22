@@ -1,25 +1,15 @@
-//
-// ・Julius 初期化：ロードして以下の関数をコールバックに仕込む
-// 　認識開始
-// 　トリガ検知
-//　　結果取得
-//    各関数は対応するメッセージをウィンドウズイベントへ issue する
-// ・音声認識開始
-// ・音声認識中断・再開
-// ・音声認識終了
-
 #ifndef		_JULIUSCLASS_H_
 #define		_JULIUSCLASS_H_
 
 #include	"julius/juliuslib.h"
 
-// 開発用定義
+// for development codes: do not define this
 #undef APP_ADIN
 
-// ユーザ定義イベント
+// Julius event identifier
 #define WM_JULIUS			(WM_USER + 1)
 
-// イベントID
+// Event ID
 enum {
 	JEVENT_ENGINE_ACTIVE,
 	JEVENT_ENGINE_INACTIVE,

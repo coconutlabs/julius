@@ -1,25 +1,24 @@
 #include	<julius/juliuslib.h>
 #include	"Julius.h"
 
-///// コールバック関数
-#define JCALLBACK(A, B) \
-static void A ( Recog *recog, void *data) \
-{\
-	cJulius *j = (cJulius *) data;\
-	SendMessage(j->getWindow(), WM_JULIUS, B, 0L);\
-}
+// -----------------------------------------------------------------------------
+// JuliusLib callback functions
+//
 
-JCALLBACK(callback_engine_active,	JEVENT_ENGINE_ACTIVE);
-JCALLBACK(callback_engine_inactive,	JEVENT_ENGINE_INACTIVE);
-JCALLBACK(callback_audio_ready,		JEVENT_AUDIO_READY);
-JCALLBACK(callback_audio_begin,		JEVENT_AUDIO_BEGIN);
-JCALLBACK(callback_audio_end,		JEVENT_AUDIO_END);
-JCALLBACK(callback_recog_begin,		JEVENT_RECOG_BEGIN);
-JCALLBACK(callback_recog_end,		JEVENT_RECOG_END);
-JCALLBACK(callback_recog_frame,		JEVENT_RECOG_FRAME);
-JCALLBACK(callback_engine_pause,	JEVENT_ENGINE_PAUSE);
-JCALLBACK(callback_engine_resume,	JEVENT_ENGINE_RESUME);
+#define JCALLBACK(A, B) static void A (Recog *recog, void *data) { cJulius *j = (cJulius *) data; SendMessage(j->getWindow(), WM_JULIUS, B, 0L);}
 
+JCALLBACK(callback_engine_active,	JEVENT_ENGINE_ACTIVE)
+JCALLBACK(callback_engine_inactive,	JEVENT_ENGINE_INACTIVE)
+JCALLBACK(callback_audio_ready,		JEVENT_AUDIO_READY)
+JCALLBACK(callback_audio_begin,		JEVENT_AUDIO_BEGIN)
+JCALLBACK(callback_audio_end,		JEVENT_AUDIO_END)
+JCALLBACK(callback_recog_begin,		JEVENT_RECOG_BEGIN)
+JCALLBACK(callback_recog_end,		JEVENT_RECOG_END)
+JCALLBACK(callback_recog_frame,		JEVENT_RECOG_FRAME)
+JCALLBACK(callback_engine_pause,	JEVENT_ENGINE_PAUSE)
+JCALLBACK(callback_engine_resume,	JEVENT_ENGINE_RESUME)
+
+// callback to get result
 static void callback_result_final(Recog *recog, void *data)
 {
 	cJulius *j = (cJulius *)data;
@@ -68,36 +67,34 @@ static void callback_result_final(Recog *recog, void *data)
 	str[0] = '\0';
 	for(i=0;i<seqnum;i++) strcat(str, winfo->woutput[seq[i]]);
 
+	// convert to wide char
 	mbstowcs_s( &size, wstr, str, strlen(str)+1);
 
+	// set status parameter
 	wparam = (r->result.status << 16) + JEVENT_RESULT_FINAL;
 
+	// send message
 	SendMessage(j->getWindow(), WM_JULIUS, wparam, (LPARAM)wstr);
 }
 
-// ポーズ用停止関数
-
+// callbackk for pause
 static void callback_wait_for_resume(Recog *recog, void *data)
 {
 	cJulius *j = (cJulius *)data;
-	// このスレッド（認識スレッド）の実行を中断
+	// Stop running the engine thread
 	SuspendThread( j->getThreadHandle() );
-	// 別スレッドからResumeThread()が呼ばれるまで待機
+	// the engine thread will wait until the main thread calls ResumeThread() for it
 }
-
-//-----------------------------------------------------------------------------------------
 
 #ifdef APP_ADIN
 static int callback_adin_fetch_input(SP16 *sampleBuffer, int reqlen)
 {
-	// 共有バッファに新たな書き込みがあるか、あるいは前回の残りがあるかチェック
-	// あればそれを最大 reqlen だけ sampleBuffer に書き込む
+	// If shared audio buffer has some new data, or some data remains from the last call,
+	// get the samples into sampleBuffer at most reqlen length.
 }
 #endif
 
-//-----------------------------------------------------------------------------------------
-
-// 認識スレッドのメイン関数
+// main function for the engine thread
 DWORD WINAPI recogThreadMain(LPVOID vdParam)
 {
 	int ret;
@@ -108,12 +105,12 @@ DWORD WINAPI recogThreadMain(LPVOID vdParam)
 }
 
 //-----------------------------------------------------------------------------------------
+// Julius class definition
 //-----------------------------------------------------------------------------------------
 
-
-//================
-// コンストラクタ
-//================
+//=============
+// Constructor
+//=============
 cJulius::cJulius( void ) : m_jconf( NULL ), m_recog( NULL ), m_opened( false ), m_threadHandle( NULL ), m_fpLogFile( NULL )
 {
 #ifdef APP_ADIN
@@ -122,9 +119,9 @@ cJulius::cJulius( void ) : m_jconf( NULL ), m_recog( NULL ), m_opened( false ), 
 	setLogFile( "juliuslog.txt" );
 }
 
-//==============
-// デストラクタ
-//==============
+//============
+// Destructor
+//============
 cJulius::~cJulius( void )
 {
 	release();
@@ -134,9 +131,9 @@ cJulius::~cJulius( void )
 	}
 }
 
-//=========
-// 初期化1
-//=========
+//=================================
+// Initialize, with argument array
+//=================================
 bool cJulius::initialize( int argnum, char *argarray[])
 {
 	bool ret;
@@ -154,9 +151,9 @@ bool cJulius::initialize( int argnum, char *argarray[])
 	return ret;
 }
 
-//=========
-// 初期化2
-//=========
+//===============================
+// Initialize, with a Jconf file
+//===============================
 bool cJulius::initialize( char *filename )
 {
 	bool ret;
@@ -170,9 +167,9 @@ bool cJulius::initialize( char *filename )
 	return ret;
 }
 
-//=========
-// 初期化2
-//=========
+//===================
+// Load a Jconf file
+//===================
 bool cJulius::loadJconf( char *filename )
 {
 	if (m_jconf) {
@@ -188,9 +185,9 @@ bool cJulius::loadJconf( char *filename )
 	return true;
 }
 
-//==================
-// ログファイル出力
-//==================
+//==============================================
+// Set a log file to save Julius engine outputs
+//==============================================
 void cJulius::setLogFile( const char *filename )
 {
 	if (m_fpLogFile) {
@@ -202,9 +199,9 @@ void cJulius::setLogFile( const char *filename )
 	}
 }
 
-//================
-// エンジン初期化
-//================
+//========================
+// Create engine instance
+//========================
 bool cJulius::createEngine( void )
 {
 #ifdef APP_ADIN
@@ -216,7 +213,6 @@ bool cJulius::createEngine( void )
 
 #ifdef APP_ADIN
 	if (m_appsource != 0) {
-		// アプリ自身の入力のためにjconf設定を変更
 		switch(m_appsource) {
 			case 1: // buffer input, batch
 				m_recog->jconf->input.type = INPUT_WAVEFORM;
@@ -232,13 +228,13 @@ bool cJulius::createEngine( void )
 	}
 #endif
 
-	// エンジンを起動
+	// Create engine instance
 	m_recog = j_create_instance_from_jconf(m_jconf);
 	if (m_recog == NULL) {
 		return false;
 	}
 
-	// コールバックを登録
+	// Register callbacks
 	callback_add(m_recog, CALLBACK_EVENT_PROCESS_ONLINE,		::callback_engine_active, this);
 	callback_add(m_recog, CALLBACK_EVENT_PROCESS_OFFLINE,		::callback_engine_inactive, this);
 	callback_add(m_recog, CALLBACK_EVENT_SPEECH_READY,			::callback_audio_ready, this);
@@ -253,9 +249,8 @@ bool cJulius::createEngine( void )
 	callback_add(m_recog, CALLBACK_PAUSE_FUNCTION,				::callback_wait_for_resume, this);
 
 #ifdef APP_ADIN
-	// 音声入力デバイスを初期化
+	// Initialize application side audio input
 	if (m_appsource != 0) {
-		// アプリ入力用に自前で初期化
 		a = m_recog->adin;
 		switch(m_appsource) {
 			case 1: // buffer input, batch
@@ -289,7 +284,7 @@ bool cJulius::createEngine( void )
 		if (adin_setup_param(a, m_recog->jconf) == FALSE) return false;
 		a->input_side_segment = FALSE;
 	} else {
-		// JuliusLib に初期化を任せる
+		// Let JuliusLib get audio input
 		if (! j_adin_init( m_recog ) ) return false;
 	}
 #else
@@ -299,9 +294,9 @@ bool cJulius::createEngine( void )
 	return true;
 }
 
-//====================
-// 処理を開始する
-//====================
+//==============================================
+// Open stream and start the recognition thread
+//==============================================
 bool cJulius::startProcess( HWND hWnd )
 {
 
@@ -336,42 +331,43 @@ bool cJulius::startProcess( HWND hWnd )
 	return true;
 }
 
-//================
-// 処理を終了する
-//================
+//==================================================
+// Close audio stream and detach recognition thread
+//==================================================
 void cJulius::stopProcess( void )
 {
 	if (m_opened) {
-		// ストリームを閉じる（スレッドは終了するはず）
+		// recognition thread will exit when audio input is closed
 		j_close_stream(m_recog);
 		m_opened = false;
 	}
 }
 
-//==========
-// 一時停止
-//==========
+//===================
+// Pause recognition
+//===================
 void cJulius::pause( void )
 {
-	// 停止を要求
-	// 止まったら、認識スレッドは pause イベント発効後 PAUSE_FUNCTION コールバックを実行
+	// request library to pause
+	// After pause, the recognition thread will issue pause event
+	// and then enter callback_wait_for_resume(), where thread will pause.
 	j_request_terminate(m_recog);
 }
 
-//==========
-// 動作再開
-//==========
+//====================
+// Resume recognition
+//====================
 void cJulius::resume( void )
 {
-	// 再開要求を先にセット
+	// request library to resume
 	j_request_resume(m_recog);
-	// 認識スレッドの動作を再開。認識スレッドは resume イベント発効後認識処理を再開する
+	// resume the recognition thread
 	ResumeThread( m_threadHandle );
 }
 
-//==============
-// 文法読み込み
-//==============
+//==================
+// Load DFA grammar
+//==================
 bool cJulius::loadGrammar( WORD_INFO *winfo, DFA_INFO *dfa, char *dictfile, char *dfafile, RecogProcess *r )
 {
 	boolean ret;
@@ -403,9 +399,9 @@ bool cJulius::loadGrammar( WORD_INFO *winfo, DFA_INFO *dfa, char *dictfile, char
 	return true;
 }
 
-//==============
-// 文法追加
-//==============
+//=================
+// Add DFA grammar
+//=================
 bool cJulius::addGrammar( char *name, char *dictfile, char *dfafile, bool deleteAll )
 {
 	WORD_INFO *winfo;
@@ -452,16 +448,16 @@ bool cJulius::addGrammar( char *name, char *dictfile, char *dfafile, bool delete
 }
 
 //==============
-// 文法入れ替え
+// Swap grammar
 //==============
 bool cJulius::changeGrammar( char *name, char *dictfile, char *dfafile )
 {
 	return addGrammar(name, dictfile, dfafile, true);
 }
 
-//==============
-// 文法削除
-//==============
+//============================
+// Delete grammar by its name
+//============================
 bool cJulius::deleteGrammar( char *name )
 {
 	RecogProcess *r = m_recog->process_list;
@@ -482,9 +478,9 @@ bool cJulius::deleteGrammar( char *name )
 	return true;
 }
 
-//==============
-// 文法一時無効
-//==============
+//================================
+// Deactivate grammar by its name
+//================================
 bool cJulius::deactivateGrammar( char *name )
 {
 	RecogProcess *r = m_recog->process_list;
@@ -508,9 +504,10 @@ bool cJulius::deactivateGrammar( char *name )
 
 	return true;
 }
-//====================
-// 文法一時無効を解除
-//====================
+
+//=================================
+// Re-activate grammar by its name
+//=================================
 bool cJulius::activateGrammar( char *name )
 {
 	RecogProcess *r = m_recog->process_list;
@@ -535,9 +532,9 @@ bool cJulius::activateGrammar( char *name )
 	return true;
 }
 
-//=========
-// 解放
-//=========
+//=====================================
+// Stop processes and release all data
+//=====================================
 void cJulius::release( void )
 {
 	stopProcess();

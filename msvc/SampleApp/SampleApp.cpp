@@ -5,6 +5,9 @@
 #include "SampleApp.h"
 #include "Julius.h"
 
+// The jconf file name to load
+#define JCONFFILE "default.jconf"
+
 // Use a Julius class
 cJulius julius;
 
@@ -129,10 +132,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_CREATE:
-		if (! julius.initialize("fast.jconf") ) {
-			MessageBox(hWnd, L"failed to initialize", L"Error", MB_OK);
+		// initialize Julius engine to prepare for recognition
+		if (! julius.initialize( JCONFFILE ) ) {
+			MessageBox(hWnd, L"Error while loading Julius engine.\n\"default.jconf\" is missing or some configurations are wrong\n", L"Error", MB_OK);
 			break;
 		}
+		// start recognition
 		if (! julius.startProcess(hWnd)) {
 			MessageBox(hWnd, L"failed to start process", L"Error", MB_OK);
 		}

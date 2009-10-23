@@ -5,6 +5,10 @@
 
 #pragma once
 
+// Windows XP を最低限必要なターゲットとする
+#define WINVER 0x0500
+#define _WIN32_WINNT 0x0500
+
 #include "targetver.h"
 
 #define WIN32_LEAN_AND_MEAN             // Windows ヘッダーから使用されていない部分を除外します。

@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 11:49:37 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -123,6 +123,7 @@ typedef unsigned char boolean;
 #define getpid _getpid
 #define vsnprintf _vsnprintf
 #define snprintf _snprintf
+#define strdup _strdup
 #endif
 
 #ifndef R_OK

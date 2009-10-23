@@ -40,12 +40,15 @@ IDC_SAMPLEAPP MENU
 BEGIN
     POPUP "File (&F)"
     BEGIN
+	MENUITEM "Open Jconf... (&O)",       IDM_OPENJCONF
         MENUITEM "Quit (&X)",                IDM_EXIT
     END
     POPUP "Command (&M)"
     BEGIN
-        MENUITEM "Pause recognition",                IDM_PAUSE
-        MENUITEM "Resume recognition",               IDM_RESUME
+	MENUITEM "Start",               IDM_STARTPROCESS
+        MENUITEM "Finish",              IDM_STOPPROCESS
+        MENUITEM "Pause",               IDM_PAUSE
+        MENUITEM "Resume",              IDM_RESUME
     END
     POPUP "Help (&H)"
     BEGIN

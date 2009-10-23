@@ -5,9 +5,6 @@
 #include "SampleApp.h"
 #include "Julius.h"
 
-// The jconf file name to load
-#define JCONFFILE "default.jconf"
-
 // Use a Julius class
 cJulius julius;
 
@@ -117,6 +114,40 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 }
 
 //
+//  Function: GetJconfFileName( char *, int )
+//
+//  Open file dialog to get jconf file name
+//
+#include "CommDlg.h"
+bool GetJconfFileName( char *buf, int buflen )
+{
+	wchar_t	wszFileName[MAX_PATH];
+	bool ret;
+	static OPENFILENAME ofn;
+
+	ZeroMemory( &wszFileName, sizeof(wchar_t) * MAX_PATH );
+	ZeroMemory( &ofn, sizeof(OPENFILENAME) );
+	ofn.lStructSize = sizeof(OPENFILENAME);
+	ofn.hwndOwner = NULL;
+	ofn.lpstrFilter = L"Jconf File(*.jconf)\0*.jconf\0\0";
+	ofn.lpstrFile = wszFileName;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+	ofn.lpstrDefExt = L"jconf";
+	ofn.lpstrTitle = L"Open Jconf";
+
+	if( GetOpenFileName( &ofn ) ) {
+		// convert wide-char to multi-byte char (limitation of JuliusLib...)
+		size_t converted = 0;
+		wcstombs_s(&converted, buf, buflen, wszFileName, _TRUNCATE);
+		ret = true;
+	} else {
+		ret = false;
+	}
+	return ret;
+}
+
+//
 //  Function: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
 //  Process messages received at the main window
@@ -128,19 +159,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	HDC hdc;
 	int jEventId;
 	int jResultId;
+	static char conffile[1024];
 
 	switch (message)
 	{
 	case WM_CREATE:
-		// initialize Julius engine to prepare for recognition
-		if (! julius.initialize( JCONFFILE ) ) {
-			MessageBox(hWnd, L"Error while loading Julius engine.\n\"default.jconf\" is missing or some configurations are wrong\n", L"Error", MB_OK);
-			break;
-		}
-		// start recognition
-		if (! julius.startProcess(hWnd)) {
-			MessageBox(hWnd, L"failed to start process", L"Error", MB_OK);
-		}
 		break;
 	case WM_JULIUS:
 		jEventId = LOWORD(wParam);
@@ -175,17 +198,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		wmEvent = HIWORD(wParam);
 		switch (wmId)
 		{
+		case IDM_OPENJCONF:
+			// (re-)open jconf file and prepare for recognition
+			if (GetJconfFileName( conffile, 1024 )) {
+				// initialize Julius engine to prepare for recognition
+				DebugOut(hWnd, L"Loading Julius Engine...");
+				if (! julius.initialize( conffile ) ) {
+					MessageBox(hWnd, L"Error while loading Julius engine.\n", L"Error", MB_OK);
+					break;
+				}
+				DebugOut(hWnd, L"Done.");
+				DebugOut(hWnd, L"Do [Command]-[Start] to start recognition.");
+			}
+			break;
+		case IDM_STARTPROCESS:
+			// open audio stream and start recognition thread
+			if (! julius.startProcess(hWnd)) {
+				MessageBox(hWnd, L"failed to start process", L"Error", MB_OK);
+			}
+			break;
+		case IDM_STOPPROCESS:
+			// close audio stream and finish recognition thread
+			julius.stopProcess();
+			break;
+		case IDM_PAUSE:
+			// pause engine
+			julius.pause();
+			break;
+		case IDM_RESUME:
+			// resume paused engine
+			julius.resume();
+			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
 		case IDM_EXIT:
 			DestroyWindow(hWnd);
-			break;
-		case IDM_PAUSE:
-			julius.pause();
-			break;
-		case IDM_RESUME:
-			julius.resume();
 			break;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
@@ -196,7 +244,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
-		julius.stopProcess();
 		PostQuitMessage(0);
 		break;
 	default:

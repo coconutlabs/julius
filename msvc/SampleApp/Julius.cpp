@@ -336,6 +336,9 @@ bool cJulius::startProcess( HWND hWnd )
 //==================================================
 void cJulius::stopProcess( void )
 {
+
+	if ( ! m_recog ) return;
+
 	if (m_opened) {
 		// recognition thread will exit when audio input is closed
 		j_close_stream(m_recog);
@@ -348,6 +351,7 @@ void cJulius::stopProcess( void )
 //===================
 void cJulius::pause( void )
 {
+	if ( ! m_recog ) return;
 	// request library to pause
 	// After pause, the recognition thread will issue pause event
 	// and then enter callback_wait_for_resume(), where thread will pause.
@@ -359,6 +363,7 @@ void cJulius::pause( void )
 //====================
 void cJulius::resume( void )
 {
+	if ( ! m_recog ) return;
 	// request library to resume
 	j_request_resume(m_recog);
 	// resume the recognition thread
@@ -371,6 +376,8 @@ void cJulius::resume( void )
 bool cJulius::loadGrammar( WORD_INFO *winfo, DFA_INFO *dfa, char *dictfile, char *dfafile, RecogProcess *r )
 {
 	boolean ret;
+
+	if ( ! m_recog ) return false;
 
 	// load grammar
 	switch( r->lmvar ) {
@@ -406,8 +413,12 @@ bool cJulius::addGrammar( char *name, char *dictfile, char *dfafile, bool delete
 {
 	WORD_INFO *winfo;
 	DFA_INFO *dfa;
-	RecogProcess *r = m_recog->process_list;
+	RecogProcess *r;
 	boolean ret;
+
+	if ( ! m_recog ) return false;
+
+	r = m_recog->process_list;
 
 	// load grammar
 	switch( r->lmvar ) {
@@ -452,6 +463,7 @@ bool cJulius::addGrammar( char *name, char *dictfile, char *dfafile, bool delete
 //==============
 bool cJulius::changeGrammar( char *name, char *dictfile, char *dfafile )
 {
+	if ( ! m_recog ) return false;
 	return addGrammar(name, dictfile, dfafile, true);
 }
 
@@ -460,8 +472,12 @@ bool cJulius::changeGrammar( char *name, char *dictfile, char *dfafile )
 //============================
 bool cJulius::deleteGrammar( char *name )
 {
-	RecogProcess *r = m_recog->process_list;
+	RecogProcess *r;
 	int gid;
+
+	if ( ! m_recog ) return false;
+
+	r = m_recog->process_list;
 
 	gid = multigram_get_id_by_name(r->lm, name);
 	if (gid == -1) return false;
@@ -483,9 +499,13 @@ bool cJulius::deleteGrammar( char *name )
 //================================
 bool cJulius::deactivateGrammar( char *name )
 {
-	RecogProcess *r = m_recog->process_list;
+	RecogProcess *r;
 	int gid;
 	int ret;
+
+	if ( ! m_recog ) return false;
+
+	r = m_recog->process_list;
 
 	gid = multigram_get_id_by_name(r->lm, name);
 	if (gid == -1) return false;
@@ -510,9 +530,13 @@ bool cJulius::deactivateGrammar( char *name )
 //=================================
 bool cJulius::activateGrammar( char *name )
 {
-	RecogProcess *r = m_recog->process_list;
+	RecogProcess *r;
 	int gid;
 	int ret;
+
+	if ( ! m_recog ) return false;
+
+	r = m_recog->process_list;
 
 	gid = multigram_get_id_by_name(r->lm, name);
 	if (gid == -1) return false;
@@ -537,6 +561,9 @@ bool cJulius::activateGrammar( char *name )
 //=====================================
 void cJulius::release( void )
 {
+
+	if ( ! m_recog ) return;
+
 	stopProcess();
 
 	if (m_threadHandle) {

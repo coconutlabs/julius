@@ -1,83 +1,75 @@
 HOW TO COMPILE JULIUS ON MSVC / THE JULIUS CLASS
 =================================================
 
-This file explains how to compile Julius on Microsoft Visual C++ 2008.
-A sample application "SampleApp" and the Julius wrapper class is also
-described here.  See below to see how to compile Julius and test them.
+This file describes how to compile Julius on Microsoft Visual C++
+2008.  A sample application "SampleApp" and the Julius wrapper class
+is also included.  See below to see how to compile and test it.
 
-This package has been developed and tested on Visual C++ 2008 Express
-Edition on Windows Vista 32bit/64bit, and Visual C++ 2008 Professional
-on Windows XP.
+The MSVC support has been developed and tested for MS Visual C++ 2008
+on both Professional and Express Edition, on Windows Vista
+32bit/64bit and XP.
 
-
-You need an acoustic model and a language model to run Julius as
-speech recognizer.  You should also have a jconf configuration file.
-Julius is not distirbuted with models.  If you don't know what to do,
-see the Julius Web for details.
+If you are totally new to Julius, please note that an acoustic model
+and a language model is needed to run Julius as speech recognizer.
+You should also have a jconf configuration file to specify Julius
+models and other option values.  If you don't know what to do, learn
+from the Julius Web for details.
 
 
 1. Preparation
 ===============
 
 "Microsoft DirectX SDK" is required to compile Julius.
-You can get it from the Microsoft Web.
+You can get it from the Microsoft Web site.
 
-Julius also uses these two open-source libraries:
+Also, Julius uses these two open-source libraries:
 
    - zlib
    - portaudio (V19)
 
-The pre-compiled win32 libraries and header files are already
-included under the "zlib" and "portaudio" directory.
-
-"SampleApp" requires acoustic model, language model and jconf file
-that also works with Julius.  The jconf file should be placed as
-"default.jconf" in the same directory as "SampleApp.exe".
+The pre-compiled win32 libraries and header files are already included
+under the "zlib" and "portaudio" directory.  If they don't work on
+your environment, compile them by yourself and replace the headers and
+libraries under each directory.  Also, please place the compiled
+portaudio DLL to both "Release" and "Debug" directories.
 
 
 2. Compile
 ===========
 
-Simply open the "JuliusLib.sln" file, and build it!  You will get
-"julius.exe" and "SampleApp.exe" under "Debug" or "Release" directory.
+Open "JuliusLib.sln" with MS VC++, and build it!  You will get
+libraries, "julius.exe" and "SampleApp.exe" under "Debug" or "Release"
+directory.
 
-If you got an error when linking "zlib" or "portaudio", try compiling
-them by your own.  Get the sources, compile it, and then place all the
-.h and generated .lib files under the corresponding directories, and
-rebuild Julius.  If you have re-compiled portaudio library, you may
-have to copy the generated portaudio DLL file into the "Release" and
-"Debug" directories.
+If you got an error when linking "zlib" or "portaudio", compile them
+by yourself and replace the headers and libraries under each
+directory.  Also, please place the compiled portaudio DLL to both
+"Release" and "Debug" directories.
 
 
 3. Test
 ========
-
-You need an acoustic model and a language model to run Julius as
-speech recognizer.  You should also have a jconf configuration file.
-Julius is not distirbuted with models.  If you don't know what to do,
-see the Julius Web for details.
 
 3.1  julius.exe
 -----------------
 
 "julius.exe" is a console application, which runs as the same as the
 distributed win32 version of Julius.  You can run it from command
-prompt with a working jconf file:
+prompt with a working jconf file, just the same way as the
+pre-compiled win32 version:
 
     % julius.exe -C xxx.jconf
 
 3.2  SampleApp.exe
 -------------------
 
-"SampleApp.exe" is a sample GUI application which runs Julius engine
-and dump each speech event to a main window.
+"SampleApp.exe" is a sample GUI version of Julius which uses a simple
+Julius wrapper class and JuliusLib libraries.
 
-Before start, you should place a working jconf file as "default.jconf"
-at the same directory as "SampleApp.exe".
-
-When SampleApp is run, the Julius engine will start inside as a
-separate thread, and will send messages to the main window at each
-speech event (trigger, recognition result, etc.).
+At SampleApp main window, open the jconf file you want to run.  Then
+the Julius engine will start inside as a separate thread, and will
+send messages to the main window at each speech event (trigger,
+recognition result, etc.).
 
 If you have some trouble displaying the results, try modifying the
 locale setting at line 98 of SampleApp.cpp to match your language

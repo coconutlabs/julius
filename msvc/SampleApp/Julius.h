@@ -60,6 +60,9 @@ class cJulius
 
 		void setLogFile( const char *filename );
 
+		void setModelLocale( const char *locale );
+		_locale_t getModelLocale( void );
+
 		bool initialize( int argnum, char *argarray[] );
 		bool initialize( char *jconffile );
 		bool loadJconf( char *jconffile );

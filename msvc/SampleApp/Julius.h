@@ -1,7 +1,18 @@
+/**
+ * 
+ * cJulius: JuliusLib wrapper class for C++
+ *
+ * Copyright (c) 2009 Julius project team, Nagoya Institute of Technology
+ * All rights reserved
+ *
+ * This is a part of the Julius software. 
+ */
+
 #ifndef		_JULIUSCLASS_H_
 #define		_JULIUSCLASS_H_
 
 #include	"julius/juliuslib.h"
+#include	"locale.h"
 
 // for development codes: do not define this
 #undef APP_ADIN
@@ -38,6 +49,7 @@ class cJulius
 		HANDLE			m_threadHandle;
 		DWORD			m_threadId;
 		HWND			m_hWnd;
+		_locale_t		m_modelLocale;
 #ifdef APP_ADIN
 		int				m_appsource
 #endif

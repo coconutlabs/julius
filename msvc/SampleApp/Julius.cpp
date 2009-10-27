@@ -1,3 +1,13 @@
+/**
+ * 
+ * cJulius: JuliusLib wrapper class for C++
+ *
+ * Copyright (c) 2009 Julius project team, Nagoya Institute of Technology
+ * All rights reserved
+ *
+ * This is a part of the Julius software. 
+ */
+
 #include	<julius/juliuslib.h>
 #include	"Julius.h"
 
@@ -33,6 +43,7 @@ static void callback_result_final(Recog *recog, void *data)
 	static wchar_t wstr[2048];
 	size_t size = 0;
 	WPARAM wparam = 0;
+	_locale_t locale;
 
 	r = j->getRecog()->process_list;
 	if (! r->live) return;
@@ -68,7 +79,11 @@ static void callback_result_final(Recog *recog, void *data)
 	for(i=0;i<seqnum;i++) strcat(str, winfo->woutput[seq[i]]);
 
 	// convert to wide char
-	mbstowcs_s( &size, wstr, str, strlen(str)+1);
+	//mbstowcs_s( &size, wstr, str, strlen(str)+1);
+	locale = j->getModelLocale();
+	if (locale) _mbstowcs_s_l( &size, wstr, str, strlen(str)+1, locale);
+	else mbstowcs_s( &size, wstr, str, strlen(str)+1);
+
 
 	// set status parameter
 	wparam = (r->result.status << 16) + JEVENT_RESULT_FINAL;
@@ -111,7 +126,7 @@ DWORD WINAPI recogThreadMain(LPVOID vdParam)
 //=============
 // Constructor
 //=============
-cJulius::cJulius( void ) : m_jconf( NULL ), m_recog( NULL ), m_opened( false ), m_threadHandle( NULL ), m_fpLogFile( NULL )
+cJulius::cJulius( void ) : m_jconf( NULL ), m_recog( NULL ), m_opened( false ), m_threadHandle( NULL ), m_fpLogFile( NULL ), m_modelLocale( NULL )
 {
 #ifdef APP_ADIN
 	m_appsource = 0;
@@ -197,6 +212,22 @@ void cJulius::setLogFile( const char *filename )
 	if (m_fpLogFile) {
 		jlog_set_output( m_fpLogFile );
 	}
+}
+
+//======================
+// set locale of the LM
+//======================
+void cJulius::setModelLocale( const char *locale )
+{
+	m_modelLocale = _create_locale( LC_CTYPE, locale);
+}
+
+//========================================
+// return current model locale for output
+//========================================
+_locale_t cJulius::getModelLocale( void )
+{
+	return( m_modelLocale );
 }
 
 //========================
@@ -302,11 +333,11 @@ bool cJulius::startProcess( HWND hWnd )
 
 	if ( ! m_recog ) return false;
 
-	// メッセージ送信先を保存
+	// store window hanlder to send event message
 	m_hWnd = hWnd;
 
 	if (m_opened == false) {
-		// デバイスを開く
+		// open device
 		switch(j_open_stream(m_recog, NULL)) {
 		case 0:			/* succeeded */
 			break;
@@ -317,7 +348,7 @@ bool cJulius::startProcess( HWND hWnd )
 			//fprintf(stderr, "failed to begin input stream\n");
 			return false;
 		}
-		// スレッドを開く
+		// create recognition thread
 		m_threadHandle = CreateThread(NULL, 0, ::recogThreadMain, (LPVOID)m_recog, 0, &m_threadId);
 		if (m_threadHandle == NULL) {
 			j_close_stream(m_recog);

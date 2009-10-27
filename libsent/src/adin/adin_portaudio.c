@@ -44,7 +44,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -193,7 +193,10 @@ boolean
 adin_mic_standby(int sfreq, void *dummy)
 {
   PaError err;
-  int frames_per_buffer, num_buffer;
+  int frames_per_buffer;
+#ifdef OLDVER
+  int num_buffer;
+#endif
   int latency;
   char *p;
 
@@ -218,14 +221,14 @@ adin_mic_standby(int sfreq, void *dummy)
   /* set buffer parameter*/
   frames_per_buffer = 256;
 
-#ifdef OLDVER
   if ((p = getenv("LATENCY_MSEC")) != NULL) {
     latency = atoi(p);
-    jlog("Stat: adin_portaudio: set latency to %d msec (obtained from LATENCY_MSEC)\n", latency);
+    jlog("Stat: adin_portaudio: setting latency to %d msec (obtained from LATENCY_MSEC)\n", latency);
   } else {
     latency = MAX_FRAGMENT_MSEC;
-    jlog("Stat: adin_portaudio: set latency to %d msec\n", latency);
+    jlog("Stat: adin_portaudio: setting latency to %d msec\n", latency);
   }
+#ifdef OLDVER
   num_buffer = sfreq * latency / (frames_per_buffer * 1000);
   jlog("Stat: adin_portaudio: framesPerBuffer=%d, NumBuffers(guess)=%d\n",
        frames_per_buffer, num_buffer);
@@ -262,7 +265,7 @@ adin_mic_standby(int sfreq, void *dummy)
     devname = getenv("PORTAUDIO_DEV");
     devId = -1;
 
-    jlog("Stat: adin_portaudio: input devices:\n");
+    jlog("Stat: adin_portaudio: available capture devices:\n");
     for(i=0;i<numDevice;i++) {
       deviceInfo = Pa_GetDeviceInfo(i);
       if (!deviceInfo) continue;
@@ -301,8 +304,8 @@ adin_mic_standby(int sfreq, void *dummy)
     apiInfo = Pa_GetHostApiInfo(deviceInfo->hostApi);
     snprintf(buf, 255, "%s: %s", apiInfo->name, deviceInfo->name);
     buf[255] = '\0';
-    jlog("Stat: adin_portaudio: selected: [%s]\n", buf);
-    jlog("Stat: adin_portaudio: set \"PORTAUDIO_DEV\" to the string in \"[]\" above to change\n");
+    jlog("Stat: adin_portaudio: get input from: [%s]\n", buf);
+    jlog("Info: adin_portaudio: set \"PORTAUDIO_DEV\" to the string in \"[]\" above to change\n");
 
     if (devId == -1) {
       err = Pa_OpenDefaultStream(&stream, 1, 0, paInt16, sfreq, 
@@ -317,8 +320,8 @@ adin_mic_standby(int sfreq, void *dummy)
       param.channelCount = 1;
       param.device = devId;
       param.sampleFormat = paInt16;
-      param.suggestedLatency = Pa_GetDeviceInfo(devId)->defaultLowInputLatency;
-      jlog("Stat: adin_portaudio: setting the lowest latency: %.0f ms\n", param.suggestedLatency * 1000.0);
+      //param.suggestedLatency = Pa_GetDeviceInfo(devId)->defaultLowInputLatency;
+      param.suggestedLatency = latency / 1000.0;
       err = Pa_OpenStream(&stream, &param, NULL, sfreq, 
 			  frames_per_buffer, paNoFlag,
 			  Callback, NULL);
@@ -326,6 +329,11 @@ adin_mic_standby(int sfreq, void *dummy)
 	jlog("Error: adin_portaudio: error in opening stream: %s\n", Pa_GetErrorText(err));
 	return(FALSE);
       }
+    }
+    {
+      const PaStreamInfo *stinfo;
+      stinfo = Pa_GetStreamInfo(stream);
+      jlog("Stat: adin_portaudio: latency was set to %.0f msec\n", stinfo->inputLatency * 1000.0);
     }
   }
 

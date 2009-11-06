@@ -182,7 +182,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case JEVENT_RESULT_PASS1:	DebugOut(hWnd, L"Result Pass1"); break;
 		case JEVENT_RESULT_FINAL:	DebugOut(hWnd, L"Result Final");
 			jResultId = HIWORD(wParam);
-			if (jResultId < 0) {
+			if (jResultId != 0) {
 				DebugOut(hWnd, L"No result");
 			} else {
 				DebugOut(hWnd, (wchar_t *)lParam);

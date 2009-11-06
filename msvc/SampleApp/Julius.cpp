@@ -44,10 +44,13 @@ static void callback_result_final(Recog *recog, void *data)
 	size_t size = 0;
 	WPARAM wparam = 0;
 	_locale_t locale;
+	unsigned int code;
 
 	r = j->getRecog()->process_list;
 	if (! r->live) return;
+
 	if (r->result.status < 0) {      /* no results obtained */
+
 		switch(r->result.status) {
 		case J_RESULT_STATUS_REJECT_POWER:
 			strcpy(str, "<input rejected by power>");
@@ -68,15 +71,18 @@ static void callback_result_final(Recog *recog, void *data)
 			strcpy(str, "<search failed>");
 			break;
 		}
-		return;
-    }
+		code = (- r->result.status);
 
-    winfo = r->lm->winfo;
-	s = &(r->result.sent[0]);
-	seq = s->word;
-	seqnum = s->word_num;
-	str[0] = '\0';
-	for(i=0;i<seqnum;i++) strcat(str, winfo->woutput[seq[i]]);
+	} else {
+
+	    winfo = r->lm->winfo;
+		s = &(r->result.sent[0]);
+		seq = s->word;
+		seqnum = s->word_num;
+		str[0] = '\0';
+		for(i=0;i<seqnum;i++) strcat(str, winfo->woutput[seq[i]]);
+		code = 0;
+	}
 
 	// convert to wide char
 	//mbstowcs_s( &size, wstr, str, strlen(str)+1);
@@ -86,7 +92,7 @@ static void callback_result_final(Recog *recog, void *data)
 
 
 	// set status parameter
-	wparam = (r->result.status << 16) + JEVENT_RESULT_FINAL;
+	wparam = (code << 16) + JEVENT_RESULT_FINAL;
 
 	// send message
 	SendMessage(j->getWindow(), WM_JULIUS, wparam, (LPARAM)wstr);

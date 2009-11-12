@@ -47,7 +47,6 @@ class cJulius
 		bool			m_opened;
 		FILE			*m_fpLogFile;
 		HANDLE			m_threadHandle;
-		DWORD			m_threadId;
 		HWND			m_hWnd;
 		_locale_t		m_modelLocale;
 #ifdef APP_ADIN

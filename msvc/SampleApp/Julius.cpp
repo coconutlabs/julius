@@ -10,12 +10,13 @@
 
 #include	<julius/juliuslib.h>
 #include	"Julius.h"
+#include	"process.h"
 
 // -----------------------------------------------------------------------------
 // JuliusLib callback functions
 //
 
-#define JCALLBACK(A, B) static void A (Recog *recog, void *data) { cJulius *j = (cJulius *) data; SendMessage(j->getWindow(), WM_JULIUS, B, 0L);}
+#define JCALLBACK(A, B) static void A (Recog *recog, void *data) { cJulius *j = (cJulius *) data; PostMessage(j->getWindow(), WM_JULIUS, B, 0L);}
 
 JCALLBACK(callback_engine_active,	JEVENT_ENGINE_ACTIVE)
 JCALLBACK(callback_engine_inactive,	JEVENT_ENGINE_INACTIVE)
@@ -95,7 +96,7 @@ static void callback_result_final(Recog *recog, void *data)
 	wparam = (code << 16) + JEVENT_RESULT_FINAL;
 
 	// send message
-	SendMessage(j->getWindow(), WM_JULIUS, wparam, (LPARAM)wstr);
+	PostMessage(j->getWindow(), WM_JULIUS, wparam, (LPARAM)wstr);
 }
 
 // callbackk for pause
@@ -116,13 +117,13 @@ static int callback_adin_fetch_input(SP16 *sampleBuffer, int reqlen)
 #endif
 
 // main function for the engine thread
-DWORD WINAPI recogThreadMain(LPVOID vdParam)
+unsigned __stdcall recogThreadMain( void *param )
 {
 	int ret;
-	Recog *recog = (Recog *)vdParam;
+	Recog *recog = (Recog *)param;
 	ret = j_recognize_stream(recog);
-	if (ret == -1) ExitThread(FALSE);
-	ExitThread(TRUE);
+	_endthreadex(ret);
+	return(ret);
 }
 
 //-----------------------------------------------------------------------------------------
@@ -355,8 +356,8 @@ bool cJulius::startProcess( HWND hWnd )
 			return false;
 		}
 		// create recognition thread
-		m_threadHandle = CreateThread(NULL, 0, ::recogThreadMain, (LPVOID)m_recog, 0, &m_threadId);
-		if (m_threadHandle == NULL) {
+		m_threadHandle = (HANDLE)_beginthreadex(NULL, 0, ::recogThreadMain, m_recog, 0, NULL);
+		if (m_threadHandle == 0) {
 			j_close_stream(m_recog);
 			return false;
 		}
@@ -490,7 +491,7 @@ bool cJulius::addGrammar( char *name, char *dictfile, char *dfafile, bool delete
 	/* make sure this process will be activated */
 	r->active = 1;
 
-	SendMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
+	PostMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
 
 	return true;
 }
@@ -526,7 +527,7 @@ bool cJulius::deleteGrammar( char *name )
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(m_recog);
 
-	SendMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
+	PostMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
 
 	return true;
 }
@@ -557,7 +558,7 @@ bool cJulius::deactivateGrammar( char *name )
 	}
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(m_recog);
-	SendMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
+	PostMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
 
 	return true;
 }
@@ -588,7 +589,7 @@ bool cJulius::activateGrammar( char *name )
 	}
 	/* tell engine to update at requested timing */
 	schedule_grammar_update(m_recog);
-	SendMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
+	PostMessage(getWindow(), WM_JULIUS, JEVENT_GRAM_UPDATE, 0L);
 
 	return true;
 }

@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 
@@ -44,12 +44,13 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.4 2009/07/02 17:05:20 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.5 2009/11/14 05:09:44 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
 #include <AudioUnit/AudioOutputUnit.h>
 #include <AudioToolbox/AudioConverter.h>
+#include <CoreServices/CoreServices.h>
 #include <pthread.h>
 #include <stdio.h>
 

@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.5 2009/11/14 05:09:44 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.6 2009/12/08 01:49:21 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -296,9 +296,14 @@ boolean adin_mic_standby(int sfreq, void* dummy) {
   if (CoreAudioInit) 
     return TRUE;
 
+#ifdef MAC_OS_X_VERSION_10_6
+  AudioComponent halout;
+  AudioComponentDescription haloutDesc;
+#else
   Component halout;
   ComponentDescription haloutDesc;
-
+#endif
+   
   haloutDesc.componentType = kAudioUnitType_Output;
   haloutDesc.componentSubType = kAudioUnitSubType_HALOutput;
   haloutDesc.componentManufacturer = kAudioUnitManufacturer_Apple;

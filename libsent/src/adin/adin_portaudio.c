@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -316,7 +316,7 @@ adin_mic_standby(int sfreq, void *dummy)
     }
     if (devId == -1) {
       if (getenv("PORTAUDIO_DEV_NUM")) {
-	devId = atoi(getenv("PORTAUDIO_DEV_NUM") - 1);
+	devId = atoi(getenv("PORTAUDIO_DEV_NUM")) - 1;
 	jlog("  --> use #%d, specified by PORTAUDIO_DEV_NUM\n", devId + 1);
       }
     }

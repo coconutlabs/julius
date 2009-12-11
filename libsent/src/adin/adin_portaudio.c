@@ -9,6 +9,11 @@
  * Linux および Win32 で使用可能です．Win32モードではこれが
  * デフォルトとなります．
  *
+ * 録音デバイスは WASAPI -> ASIO -> DirectSound -> MME の順で選択されます。
+ * 使用するデバイスを指定したい場合は、環境変数 PORTAUDIO_DEV でデバイス名
+ * （先頭から部分マッチ）を指定するか、PORTAUDIO_DEV_NUM でデバイス番号を
+ * 指定してください。使用可能なデバイス名とデバイス番号は起動時に出力されます。
+ *
  * Juliusはミキサーデバイスの設定を一切行いません．録音デバイスの
  * 選択（マイク/ライン）や録音ボリュームの調節はWindowsの
  * 「ボリュームコントロール」 や Linux の xmixer など，他のツールで
@@ -29,6 +34,13 @@
  * to configure script.  This function is currently available for Linux and
  * Win32.  On Windows, this is default.
  *
+ * The audio API will be chosen in the following order: WASAPI, ASIO,
+ * DirectSound and MME.  You can specify which audio capture device to use
+ * by setting the name (entire, or just the first part) to the
+ * environment variable "PORTAUDIO_DEV", or the ID number to 
+ * "PORTAUDIO_DEV_NUM".  The names and ID numbers of available devices will
+ * be scanned and listed at the initialization.
+ *
  * Julius does not alter any mixer device setting at all.  You should
  * configure the mixer for recording source (mic/line) and recording volume
  * correctly using other audio tool such as xmixer on Linux, or
@@ -44,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -302,6 +314,12 @@ adin_mic_standby(int sfreq, void *dummy)
     if (devId != -1) {
       jlog("  --> #%d matches PORTAUDIO_DEV, use it\n", devId + 1);
     }
+    if (devId == -1) {
+      if (getenv("PORTAUDIO_DEV_NUM")) {
+	devId = atoi(getenv("PORTAUDIO_DEV_NUM") - 1);
+	jlog("  --> use #%d, specified by PORTAUDIO_DEV_NUM\n", devId + 1);
+      }
+    }
 #ifdef _WIN32
     if (devId == -1) {
       // if PORTAUDIO_DEV not specified or not matched, use device in the preference order.
@@ -444,7 +462,7 @@ adin_mic_read(SP16 *buf, int sampnum)
 #ifdef DDEBUG
     printf("process  : current == processed: %d: wait\n", current);
 #endif
-    Pa_Sleep(30); /* wait till some input comes */
+    Pa_Sleep(20); /* wait till some input comes */
   }
 
   current_local = current;

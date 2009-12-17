@@ -4,6 +4,7 @@
 
                                 Julius
 
+                                                (Rev 4.1.4 2009/12/25)
                                                 (Rev 4.1.3 2009/11/02)
                                                 (Rev 4.1.2 2009/02/12)
                                                 (Rev 4.1.1 2008/12/13)
@@ -47,22 +48,17 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.1.3
+What's new in Julius-4.1.4
 ===========================
 
-This release has a new support for building Julius on Microsoft Visual
-C++ 2008.  A sample wrapper class that handles Julius engine is also
-included, with a sample application.  See "msvc/00README.txt" for
-details.
-
-It also support N-gram of arbitrary N, portaudio extension (V19 and
-external library support) and many bug fixes.
-
-see "Release.txt" for details of the changes.
+This release contains minor fixes: improved Julius class definition
+on Microsoft Visual C++ 2008, fixes for audio input on Windows, and 
+support for Mac OS X 10.6 SDK.  Now you can select the audio device
+to use on Windows.  See "Release.txt" for details of the changes.
 
 
-Contents of Julius-4.1.3
-========================
+Contents of Julius-4.1.4
+=========================
 
 	(Documents with suffix "ja" are written in Japanese)
 

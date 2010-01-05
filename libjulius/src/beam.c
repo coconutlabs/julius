@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -1703,11 +1703,15 @@ init_nodescore(HTK_Param *param, RecogProcess *r)
 	      newid = create_token(d);
 	      new = &(d->tlist[d->tn][newid]);
 	      new->last_tre = &(d->bos);
+#ifdef FIX_PENALTY
 	      new->last_lscore = 0.0;
+#else
+	      new->last_lscore = d->penalty1;
+#endif
 	      if (wchmm->hmminfo->multipath) {
-		new->score = 0.0;
+		new->score = new->last_lscore;
 	      } else {
-		new->score = outprob_style(wchmm, node, d->bos.wid, 0, param);
+		new->score = outprob_style(wchmm, node, d->bos.wid, 0, param) + new->last_lscore;
 	      }
 	      node_assign_token(d, node, newid);
 	    }

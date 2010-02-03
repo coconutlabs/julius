@@ -5,7 +5,7 @@
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.6 2009/06/20 14:06:54 sumomo Exp $
+# $Id: Makefile.in,v 1.7 2010/02/03 10:11:58 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -37,7 +37,7 @@ INSTALL_PROGRAM=@INSTALL_PROGRAM@
 ############################################################
 
 TARGET = julius
-INSTALLTARGET = julius
+INSTALLTARGET = julius@EXEEXT@
 
 OBJ = \
 main.o \

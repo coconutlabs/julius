@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -898,6 +898,7 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       continue;
     } else if (strmatch(argv[i],"-mapunk")) { /* unknown word */
       if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
+      GET_TMPARG;
       strncpy(jconf->lmnow->unknown_name, tmparg, UNK_WORD_MAXLEN);
       continue;
     } else if (strmatch(argv[i],"-iwspword")) { /* add short pause word */

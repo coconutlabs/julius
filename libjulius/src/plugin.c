@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug  2 09:46:09 2008
  * 
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -255,6 +255,7 @@ plugin_load_dir(char *dir)
   cnt = 0;
   do {
     jlog("STAT: file: %-23s ", FindFileData.cFileName);
+    sprintf_s(buf, 512, "%s\\%s", dir, FindFileData.cFileName);
     if (plugin_load_file(buf)) cnt++;
   } while (FindNextFile(hFind, &FindFileData));
 

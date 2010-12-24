@@ -58,7 +58,7 @@
  * @author Akinobu Lee
  * @date   Wed Oct 17 12:47:29 2007
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
@@ -840,8 +840,8 @@ spsegment_need_restart(Recog *recog, int *rf_ret, boolean *repro_ret)
   RecogProcess *p;
 #endif
   boolean ok_p;
-  int rewind_frame;
-  boolean reprocess;
+  int rewind_frame = 0;
+  boolean reprocess = FALSE;
 
   ok_p = FALSE;
   if (recog->jconf->decodeopt.segment) {

@@ -2,8 +2,8 @@
  * @file   version.c
  * 
  * <JA>
- * @brief  ¥Ğ¡¼¥¸¥ç¥ó¤ª¤è¤Ó¥³¥ó¥Ñ¥¤¥EşÀßÄê¤Î½ĞÎÏ
- *
+ * @brief  ¥Ğ¡¼¥¸¥ç¥ó¤ª¤è¤Ó¥³¥ó¥Ñ¥¤¥ë»şÀßÄê¤Î½ĞÎÏ
+ * 
  * </JA>
  * 
  * <EN>
@@ -14,7 +14,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 12 01:34:15 2005
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
@@ -33,9 +33,10 @@
 
 /** 
  * <JA>
- * ¥Ø¥Ã¥À¤ò½ĞÎÏ¤¹¤E 
+ * ¥Ø¥Ã¥À¤ò½ĞÎÏ¤¹¤ë
  * 
- * @param strm [in] ½ĞÎÏ¥¹¥È¥ê¡¼¥E * </JA>
+ * @param strm [in] ½ĞÎÏ¥¹¥È¥ê¡¼¥à
+ * </JA>
  * <EN>
  * Output application header.
  * 
@@ -50,8 +51,10 @@ j_put_header(FILE *strm){
 
 /** 
  * <JA>
- * ¥Ğ¡¼¥¸¥ç¥ó¾ğÊó¤ò½ĞÎÏ¤¹¤E * 
- * @param strm [in] ½ĞÎÏ¥¹¥È¥ê¡¼¥E * </JA>
+ * ¥Ğ¡¼¥¸¥ç¥ó¾ğÊó¤ò½ĞÎÏ¤¹¤ë
+ * 
+ * @param strm [in] ½ĞÎÏ¥¹¥È¥ê¡¼¥à
+ * </JA>
  * <EN>
  * Output version information.
  * 
@@ -71,9 +74,10 @@ j_put_version(FILE *strm){
 
 /** 
  * <JA>
- * ¥³¥ó¥Ñ¥¤¥Eş¤ÎÀßÄê¤ò½ĞÎÏ¤¹¤E 
+ * ¥³¥ó¥Ñ¥¤¥ë»ş¤ÎÀßÄê¤ò½ĞÎÏ¤¹¤ë¡¥
  * 
- * @param strm [in] ÆşÎÏ¥¹¥È¥ê¡¼¥E * </JA>
+ * @param strm [in] ÆşÎÏ¥¹¥È¥ê¡¼¥à
+ * </JA>
  * <EN>
  * Output compile-time settings.
  * 
@@ -233,8 +237,10 @@ j_put_compile_defs(FILE *strm){
 
 /** 
  * <JA>
- * ¥é¥¤¥Ö¥é¥ê¤ÎÀßÄê¤ò½ĞÎÏ¤¹¤E * 
- * @param strm [in] ½ĞÎÏ¥¹¥È¥ê¡¼¥E * </JA>
+ * ¥é¥¤¥Ö¥é¥ê¤ÎÀßÄê¤ò½ĞÎÏ¤¹¤ë
+ * 
+ * @param strm [in] ½ĞÎÏ¥¹¥È¥ê¡¼¥à
+ * </JA>
  * <EN>
  * Output library configuration.
  * 

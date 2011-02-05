@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -651,12 +651,28 @@ voca_append(WORD_INFO *dstinfo, WORD_INFO *srcinfo, int coffset, int woffset)
   for(w=0;w<srcinfo->num;w++) {
     /* copy data */
     dstinfo->wlen[n] = srcinfo->wlen[w];
-    if (srcinfo->wname[w]) dstinfo->wname[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->wname[w])+1, &(dstinfo->mroot)), srcinfo->wname[w]);
-    if (srcinfo->woutput[w]) dstinfo->woutput[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->woutput[w])+1, &(dstinfo->mroot)), srcinfo->woutput[w]);
-    if (srcinfo->wlen[w] > 0) dstinfo->wseq[n] = (HMM_Logical **)mybmalloc2(sizeof(HMM_Logical *) * srcinfo->wlen[w], &(dstinfo->mroot));
-    for(i=0;i<srcinfo->wlen[w];i++) {
-      dstinfo->wseq[n][i] = srcinfo->wseq[w][i];
+    if (srcinfo->wname[w]) {
+      dstinfo->wname[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->wname[w])+1, &(dstinfo->mroot)), srcinfo->wname[w]);
+    } else {
+      dstinfo->wname[n] = NULL;
     }
+    if (srcinfo->woutput[w]) {
+      dstinfo->woutput[n] = strcpy((char *)mybmalloc2(strlen(srcinfo->woutput[w])+1, &(dstinfo->mroot)), srcinfo->woutput[w]);
+    } else {
+      dstinfo->woutput[n] = NULL;
+    }
+    if (srcinfo->wlen[w] > 0) {
+      dstinfo->wseq[n] = (HMM_Logical **)mybmalloc2(sizeof(HMM_Logical *) * srcinfo->wlen[w], &(dstinfo->mroot));
+      for(i=0;i<srcinfo->wlen[w];i++) {
+	dstinfo->wseq[n][i] = srcinfo->wseq[w][i];
+      }
+    } else {
+      dstinfo->wseq[n] = NULL;
+    }
+#ifdef CLASS_NGRAM
+    dstinfo->cprob[n] = srcinfo->cprob[w];
+    if (dstinfo->cprob[n] != 0.0) dstinfo->cwnum++;
+#endif
     dstinfo->is_transparent[n] = srcinfo->is_transparent[w];
     /* offset category ID by coffset */
     dstinfo->wton[n] = srcinfo->wton[w] + coffset;

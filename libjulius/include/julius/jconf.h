@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -220,6 +220,22 @@ typedef struct __jconf_am__ {
 } JCONF_AM;
 
 /**
+ * Name lister for language model configurations
+ * 
+ */
+typedef struct __jconf_lm_namelist__ {
+  /**
+   * Entry name
+   */
+  char *name;
+  /**
+   * Pointer to next object
+   */
+  struct __jconf_lm_namelist__ *next;
+
+} JCONF_LM_NAMELIST;
+
+/**
  * Language models (N-gram / DFA), dictionary, and related parameters.
  * 
  */
@@ -338,6 +354,16 @@ typedef struct __jconf_lm__ {
    * Name string of Unknown word for N-gram
    */
   char unknown_name[UNK_WORD_MAXLEN];
+
+  /**
+   * List of additional dictionary files
+   */
+  JCONF_LM_NAMELIST *additional_dict_files;
+
+  /**
+   * List of additional dictionary entries
+   */
+  JCONF_LM_NAMELIST *additional_dict_entries;
 
   /**
    * Pointer to next instance

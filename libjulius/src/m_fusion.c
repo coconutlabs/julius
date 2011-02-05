@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  * 
  */
 /*
@@ -300,6 +300,49 @@ initialize_dict(JCONF_LM *lmconf, HTK_HMM_INFO *hmminfo)
     jlog("ERROR: m_fusion: failed to read dictionary, terminated\n");
     word_info_free(winfo);
     return NULL;
+  }
+
+  /* load additional entries */
+  JCONF_LM_NAMELIST *nl;
+  char buf[MAXLINELEN];
+  int n;
+  for (nl = lmconf->additional_dict_files; nl; nl=nl->next) {
+    FILE *fp;
+    if ((fp = fopen(nl->name, "rb")) == NULL) {
+      jlog("ERROR: m_fusion: failed to open %s\n",nl->name);
+      word_info_free(winfo);
+      return NULL;
+    }
+    n = winfo->num;
+    while (getl_fp(buf, MAXLINELEN, fp) != NULL) {
+      if (voca_load_line(buf, winfo, hmminfo) == FALSE) break;
+    }
+    if (voca_load_end(winfo) == FALSE) {
+      jlog("ERROR: m_fusion: failed to read dictionary %s\n", nl->name);
+      fclose(fp);
+      word_info_free(winfo);
+      return NULL;
+    }
+    if (fclose(fp) == -1) {
+      jlog("ERROR: m_fusion: failed to close %s\n", nl->name);
+      word_info_free(winfo);
+      return NULL;
+    }
+    jlog("STAT: + additional dictionary: %s (%d words)\n", nl->name, winfo->num - n);
+  }
+  n = winfo->num;
+  for (nl = lmconf->additional_dict_entries; nl; nl=nl->next) {
+    if (voca_load_line(nl->name, winfo, hmminfo) == FALSE) {
+      jlog("ERROR: m_fusion: failed to set entry: %s\n", nl->name);
+    }
+  }
+  if (lmconf->additional_dict_entries) {
+    if (voca_load_end(winfo) == FALSE) {
+      jlog("ERROR: m_fusion: failed to read additinoal word entry\n");
+      word_info_free(winfo);
+      return NULL;
+    }
+    jlog("STAT: + additional entries: %d words\n", winfo->num - n);
   }
 
   if (lmconf->lmtype == LM_PROB) {

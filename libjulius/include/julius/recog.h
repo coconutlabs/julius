@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -224,6 +224,7 @@ typedef struct __StackDecode__ {
   LOGPROB *sentcm = NULL;       ///< Confidence score of each sentence
   LOGPROB *wordcm = NULL;       ///< Confidence score of each word voted from @a sentcm
   int sentnum;          ///< Allocated length of @a sentcm
+  int wordnum;          ///< Allocated length of @a wordcm
 # endif
 #endif /* CONFIDENCE_MEASURE */
 

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -457,6 +457,21 @@ j_jconf_lm_new()
 void
 j_jconf_lm_free(JCONF_LM *lmconf)
 {
+  JCONF_LM_NAMELIST *nl, *nltmp;
+  nl = lmconf->additional_dict_files;
+  while (nl) {
+    nltmp = nl->next;
+    free(nl->name);
+    free(nl);
+    nl = nltmp;
+  }
+  nl = lmconf->additional_dict_entries;
+  while (nl) {
+    nltmp = nl->next;
+    free(nl->name);
+    free(nl);
+    nl = nltmp;
+  }
   free(lmconf);
 }
 

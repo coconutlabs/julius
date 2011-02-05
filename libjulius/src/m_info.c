@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -433,6 +433,24 @@ print_engine_info(Recog *recog)
     if (lm->lmtype == LM_PROB) {
       if (lm->config->enable_iwspword) {
 	jlog("\tIW-sp word added to dict= \"%s\"\n", lm->config->iwspentry);
+      }
+      if (lm->config->additional_dict_files) {
+	JCONF_LM_NAMELIST *nl;
+	jlog("\tadditional dictionaries:\n");
+	for(nl=lm->config->additional_dict_files;nl;nl=nl->next) {
+	  jlog("\t\t\t%s\n", nl->name);
+	}
+	jlog("\n");
+      }
+      if (lm->config->additional_dict_entries) {
+	JCONF_LM_NAMELIST *nl;
+	int n = 0;
+	jlog("\tadditional dict entries:\n");
+	for(nl=lm->config->additional_dict_entries;nl;nl=nl->next) {
+	  jlog("\t\t\t%s\n", nl->name);
+	  n++;
+	}
+	jlog("--- total %d entries\n", n);
       }
     }
 

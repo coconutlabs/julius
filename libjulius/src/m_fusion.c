@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -1019,7 +1019,9 @@ j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf)
       }
       p->am->hmminfo->iwsp_penalty = p->am->config->iwsp_penalty;
     } else {
-      jlog("Warning: \"-iwsp\" is supported on multi-path mode, ignored\n");
+      jlog("ERROR: \"-iwsp\" needs multi-path mode\n");
+      jlog("ERROR: you should use multi-path AM, or specify \"-multipath\" with \"-iwsp\"\n");
+      return FALSE;
     }
   }
 

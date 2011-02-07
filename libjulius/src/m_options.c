@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 /*
@@ -1273,9 +1273,9 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
     } else if (strmatch(argv[i],"-adddict")) {
 	if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 
 	GET_TMPARG;
-	char *arg = filepath(tmparg, cwd);
-	j_add_dict(jconf->lmnow, arg);
-	free(arg);
+	tmparg = filepath(tmparg, cwd);
+	j_add_dict(jconf->lmnow, tmparg);
+	free(tmparg);
 	continue;
     } else if (strmatch(argv[i],"-addentry")) {
 	if (!check_section(jconf, argv[i], JCONF_OPT_LM)) return FALSE; 

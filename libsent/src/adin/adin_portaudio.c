@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -469,24 +469,26 @@ adin_mic_open(char *arg)
   }
   
   // open the device
-  PaStreamParameters param;
-  memset( &param, 0, sizeof(param));
-  param.channelCount = 1;
-  param.device = devId;
-  param.sampleFormat = paInt16;
-  if (latency == 0) {
-    param.suggestedLatency = Pa_GetDeviceInfo(devId)->defaultLowInputLatency;
-    jlog("Stat: adin_portaudio: try to set default low latency from portaudio: %d msec\n", param.suggestedLatency * 1000.0);
-  } else {
-    param.suggestedLatency = latency / 1000.0;
-    jlog("Stat: adin_portaudio: try to set latency to %d msec\n", param.suggestedLatency * 1000.0);
-  }
-  err = Pa_OpenStream(&stream, &param, NULL, sfreq, 
-		      0, paNoFlag,
-		      Callback, NULL);
-  if (err != paNoError) {
-    jlog("Error: adin_portaudio: error in opening stream: %s\n", Pa_GetErrorText(err));
-    return(FALSE);
+  {
+    PaStreamParameters param;
+    memset( &param, 0, sizeof(param));
+    param.channelCount = 1;
+    param.device = devId;
+    param.sampleFormat = paInt16;
+    if (latency == 0) {
+      param.suggestedLatency = Pa_GetDeviceInfo(devId)->defaultLowInputLatency;
+      jlog("Stat: adin_portaudio: try to set default low latency from portaudio: %d msec\n", param.suggestedLatency * 1000.0);
+    } else {
+      param.suggestedLatency = latency / 1000.0;
+      jlog("Stat: adin_portaudio: try to set latency to %d msec\n", param.suggestedLatency * 1000.0);
+    }
+    err = Pa_OpenStream(&stream, &param, NULL, sfreq, 
+			0, paNoFlag,
+			Callback, NULL);
+    if (err != paNoError) {
+      jlog("Error: adin_portaudio: error in opening stream: %s\n", Pa_GetErrorText(err));
+      return(FALSE);
+    }
   }
   {
     const PaStreamInfo *stinfo;

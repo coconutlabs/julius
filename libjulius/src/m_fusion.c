@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  * 
  */
 /*
@@ -285,6 +285,9 @@ static WORD_INFO *
 initialize_dict(JCONF_LM *lmconf, HTK_HMM_INFO *hmminfo)
 {
   WORD_INFO *winfo;
+  JCONF_LM_NAMELIST *nl;
+  char buf[MAXLINELEN];
+  int n;
 
   /* allocate new word dictionary */
   winfo = word_info_new();
@@ -303,9 +306,6 @@ initialize_dict(JCONF_LM *lmconf, HTK_HMM_INFO *hmminfo)
   }
 
   /* load additional entries */
-  JCONF_LM_NAMELIST *nl;
-  char buf[MAXLINELEN];
-  int n;
   for (nl = lmconf->additional_dict_files; nl; nl=nl->next) {
     FILE *fp;
     if ((fp = fopen(nl->name, "rb")) == NULL) {

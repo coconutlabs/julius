@@ -56,7 +56,7 @@
  * @author Akinobu LEE
  * @date   Mon Feb 14 12:03:48 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -554,17 +554,25 @@ boolean
 adin_mic_end()
 {
   PaError err;
+#ifdef OLDVER
+  PortAudioStream *stream_local;
+#else
+  PaStream *stream_local;
+#endif
 
   if (stream == NULL) return(TRUE);
 
+  stream_local = stream;
+  stream = NULL;
+
   /* stop stream (do not wait callback and buffer flush, stop immediately) */
-  err = Pa_AbortStream(stream);
+  err = Pa_AbortStream(stream_local);
   if (err != paNoError) {
     jlog("Error: adin_portaudio: failed to stop stream: %s\n", Pa_GetErrorText(err));
     return(FALSE);
   }
   /* close stream */
-  err = Pa_CloseStream(stream);
+  err = Pa_CloseStream(stream_local);
   if (err != paNoError) {
     jlog("Error: adin_portaudio: failed to close stream: %s\n", Pa_GetErrorText(err));
     return(FALSE);
@@ -575,8 +583,6 @@ adin_mic_end()
     jlog("Error: adin_portaudio: failed to terminate library: %s\n", Pa_GetErrorText(err));
     return(FALSE);
   }
-  
-  stream = NULL;
   
   return TRUE;
 }
@@ -600,11 +606,6 @@ adin_mic_read(SP16 *buf, int sampnum)
   int avail;
   int len;
 
-  if (stream == NULL) {
-    // stream closed, return error
-    return(-2);
-  }
-
   if (buffer_overflowed) {
     jlog("Error: adin_portaudio: input buffer OVERFLOW, increase INPUT_DELAY_SEC in sent/speech.h\n");
     buffer_overflowed = FALSE;
@@ -615,6 +616,7 @@ adin_mic_read(SP16 *buf, int sampnum)
     printf("process  : current == processed: %d: wait\n", current);
 #endif
     Pa_Sleep(20); /* wait till some input comes */
+    if (stream == NULL) return(-1);
   }
 
   current_local = current;

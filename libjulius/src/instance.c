@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -160,11 +160,11 @@ j_process_am_new(Recog *recog, JCONF_AM *amconf)
 void
 j_process_am_free(PROCESS_AM *am)
 {
+  /* HMMWork hmmwrk */
+  outprob_free(&(am->hmmwrk));
   if (am->hmminfo) hmminfo_free(am->hmminfo);
   if (am->hmm_gs) hmminfo_free(am->hmm_gs);
   /* not free am->jconf  */
-  /* HMMWork hmmwrk */
-  outprob_free(&(am->hmmwrk));
   free(am);
 }
 
@@ -300,6 +300,10 @@ j_recogprocess_free(RecogProcess *process)
   /* not free jconf, am, lm here */
   /* free part of StackDecode work area */
   wchmm_fbs_free(process);
+  /* free cache */
+  if (process->lmtype == LM_PROB) {
+    max_successor_cache_free(process->wchmm);
+  }
   /* free wchmm */
   if (process->wchmm) wchmm_free(process->wchmm);
   /* free backtrellis */

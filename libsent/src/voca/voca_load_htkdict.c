@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -375,8 +375,7 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
 {
   char *ptmp, *lp = NULL, *p;
   static char cbuf[MAX_HMMNAME_LEN];
-  static HMM_Logical **tmpwseq = NULL;
-  static int tmpmaxlen;
+  HMM_Logical **tmpwseq;
   int len;
   HMM_Logical *tmplg;
   boolean pok;
@@ -387,10 +386,11 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
   if (strmatch(buf, "DICEND")) return FALSE;
 
   /* allocate temporal work area for the first call */
-  if (tmpwseq == NULL) {
-    tmpmaxlen = PHONEMELEN_STEP;
-    tmpwseq = (HMM_Logical **)mymalloc(sizeof(HMM_Logical *) * tmpmaxlen);
+  if (winfo->work == NULL) {
+    winfo->work_num = PHONEMELEN_STEP;
+    winfo->work = (void *)mybmalloc2(sizeof(HMM_Logical *) * winfo->work_num, &(winfo->mroot));
   }
+  tmpwseq = (HMM_Logical **)winfo->work;
 
   /* backup whole line for debug output */
   strcpy(bufbak, buf);
@@ -551,10 +551,12 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
 	pok = FALSE;
       } else {
 	/* found */
-	if (len >= tmpmaxlen) {
+	if (len >= winfo->work_num) {
 	  /* expand wseq area by PHONEMELEN_STEP */
-	  tmpmaxlen += PHONEMELEN_STEP;
-	  tmpwseq = (HMM_Logical **)myrealloc(tmpwseq, sizeof(HMM_Logical *) * tmpmaxlen);
+	  winfo->work_num += PHONEMELEN_STEP;
+	  winfo->work = (void *)mybmalloc2(sizeof(HMM_Logical *) * winfo->work_num, &(winfo->mroot));
+	  memcpy(winfo->work, tmpwseq, sizeof(HMM_Logical *) * (winfo->work_num - PHONEMELEN_STEP));
+	  tmpwseq = (HMM_Logical **)winfo->work;
 	}
 	/* store to temporal buffer */
 	tmpwseq[len] = tmplg;

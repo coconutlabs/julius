@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -470,11 +470,20 @@ typedef struct __jconf_search__ {
    */
   struct {
     /**
-     * Beam width of 1st pass. If value is -1 (not specified), system
-     * will guess the value from dictionary size.  If 0, a possible
-     * maximum value will be assigned to do full search.
+     * Beam width of rank pruning for the 1st pass. If value is -1
+     * (not specified), system will guess the value from dictionary
+     * size.  If 0, a possible maximum value will be assigned to do
+     * full search.
      */
     int specified_trellis_beam_width;
+
+#ifdef SCORE_PRUNING
+    /**
+     * Another beam width for score pruning at the 1st pass. If value
+     * is -1, or not specified, score pruning will be disabled.
+     */
+#endif
+    LOGPROB score_pruning_width;
     
 #if defined(WPAIR) && defined(WPAIR_KEEP_NLIMIT)
     /**

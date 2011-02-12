@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -575,6 +575,13 @@ print_engine_info(Recog *recog)
     } else {
       jlog("\n");
     }
+#ifdef SCORE_PRUNING
+    if (r->config->pass1.score_pruning_width < 0.0) {
+      jlog("\t(-bs)score pruning thres= disabled\n");
+    } else {
+      jlog("\t(-bs)score pruning thres= %f\n", r->config->pass1.score_pruning_width);
+    }
+#endif
     jlog("\t(-n)search candidate num= %d\n", r->config->pass2.nbest);
     jlog("\t(-s)  search stack size = %d\n", r->config->pass2.stack_size);
     jlog("\t(-m)    search overflow = after %d hypothesis poped\n", r->config->pass2.hypo_overflow);

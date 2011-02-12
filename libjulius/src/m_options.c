@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.21 $
+ * $Revision: 1.22 $
  * 
  */
 /*
@@ -559,6 +559,13 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jlog("WARNING: m_options: SCAN_BEAM disabled, \"-sb\" ignored\n");
 #endif
       continue;
+#ifdef SCORE_PRUNING
+    } else if (strmatch(argv[i],"-bs")) { /* score beam width for 1st pass */
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE;
+      GET_TMPARG;
+      jconf->searchnow->pass1.score_pruning_width = atof(tmparg);
+      continue;
+#endif
     } else if (strmatch(argv[i],"-discount")) {	/* (bogus) */
       jlog("WARNING: m_options: option \"-discount\" is now bogus, ignored\n");
       continue;

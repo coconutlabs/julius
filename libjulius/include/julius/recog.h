@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -123,6 +123,11 @@ typedef struct __FSBeam__ {
   int n_end;            ///< end index of in-beam nodes on @a tindex
   int tl;               ///< Current work area id (0 or 1, swapped for each frame)
   int tn;               ///< Next work area id (0 or 1, swapped for each frame)
+#ifdef SCORE_PRUNING
+  LOGPROB score_pruning_max;	  ///< Maximum score at current frame
+  LOGPROB score_pruning_threshold;///< Score threshold for score pruning
+  int score_pruning_count;	  ///< Number of tokens pruned by score (debug)
+#endif
     
   /* Active token list */
   TOKENID *token;       ///< Active token list that holds currently assigned tokens for each tree node

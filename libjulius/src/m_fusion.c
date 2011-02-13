@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -122,12 +122,17 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
 #ifdef PASS1_IWCD
   /* make state clusters of same context for inter-word triphone approx. */
   if (hmminfo->is_triphone) {
-    jlog("STAT: making pseudo bi/mono-phone for IW-triphone\n");
-    if (make_cdset(hmminfo) == FALSE) {
-      jlog("ERROR: m_fusion: failed to make context-dependent state set\n");
-      hmminfo_free(hmminfo);
-      return NULL;
+    if (hmminfo->cdset_root == NULL) {
+      jlog("STAT: making pseudo bi/mono-phone for IW-triphone\n");
+      if (make_cdset(hmminfo) == FALSE) {
+	jlog("ERROR: m_fusion: failed to make context-dependent state set\n");
+	hmminfo_free(hmminfo);
+	return NULL;
+      }
+    } else {
+      jlog("STAT: pseudo phones are loaded from binary hmmlist file\n");
     }
+
     /* add those `pseudo' biphone and monophone to the logical HMM names */
     /* they points not to the defined HMM, but to the CD_Set structure */
     hmm_add_pseudo_phones(hmminfo);

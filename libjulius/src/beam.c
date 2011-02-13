@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -3029,8 +3029,7 @@ get_back_trellis_end(HTK_Param *param, RecogProcess *r)
 
   }
 #ifdef SCORE_PRUNING
-  printf("--- %d tokens pruned by score beam\n", d->score_pruning_count);
-  d->score_pruning_threshold = d->score_pruning_max - 100.0;
+  if (debug2_flag) jlog("STAT: %d tokens pruned by score beam\n", d->score_pruning_count);
 #endif
     
 }

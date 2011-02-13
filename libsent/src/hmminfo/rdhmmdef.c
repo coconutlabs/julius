@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 00:17:18 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -348,6 +348,15 @@ rdhmmdef(FILE *fp, HTK_HMM_INFO *hmm)
       n++;
     }
     hmm->totalpdfnum = n;
+  }
+  /* assign ID number for all HTK_HMM_Trans */
+  {
+    HTK_HMM_Trans *ttmp;
+    int n = 0;
+    for (ttmp = hmm->trstart; ttmp; ttmp = ttmp->next) {
+      ttmp->id = n++;
+    }
+    hmm->totaltransnum = n;
   }
 #ifdef ENABLE_MSD
   /* check if MSD-HMM */

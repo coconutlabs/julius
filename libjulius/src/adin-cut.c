@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -1084,6 +1084,7 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 #ifdef THREAD_DEBUG
   jlog("DEBUG: process: reset, speechlen = %d, online=%d\n", a->speechlen, a->transfer_online);
 #endif
+  a->adinthread_buffer_overflowed = FALSE;
   pthread_mutex_unlock(&(a->mutex));
 
   /* main processing loop */
@@ -1106,7 +1107,6 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
       jlog("WARNING: adin_thread_process: too long input (> %d samples), segmented now\n", MAXSPEECHLEN);
       /* segment input here */
       pthread_mutex_lock(&(a->mutex));
-      a->adinthread_buffer_overflowed = FALSE;
       a->speechlen = 0;
       a->transfer_online = transfer_online_local = FALSE;
       pthread_mutex_unlock(&(a->mutex));

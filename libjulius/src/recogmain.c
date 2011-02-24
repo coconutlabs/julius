@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 
@@ -595,10 +595,6 @@ j_close_stream(Recog *recog)
       recog->adin->end_of_stream = TRUE;
     }
 #endif
-    /* end A/D input */
-    if (adin_end(recog->adin) == FALSE) {
-      return -2;
-    }
   } else {
     switch(jconf->input.speech_input) {
     case SP_MFCMODULE:

@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.8 $ 
+ * $Revision: 1.9 $ 
  */
 /*
  * Copyright (c) 1991-2007 Kawahara Lab., Kyoto University
@@ -33,21 +33,6 @@
 
 #include <sent/stddefs.h>
 #include <sent/speech.h>
-
-#if defined(HAVE_ALSA_ASOUNDLIB_H) || defined(HAVE_SYS_ASOUNDLIB_H)
-#define HAS_ALSA
-#endif
-#ifdef __linux__
-#if defined(HAVE_SYS_SOUNDCARD_H) || defined(HAVE_MACHINE_SOUNDCARD_H)
-#define HAS_OSS
-#endif
-#endif /* __linux__ */
-#ifdef HAVE_ESD_H
-#define HAS_ESD
-#endif
-#ifdef HAVE_PULSE_SIMPLE_H
-#define HAS_PULSEAUDIO
-#endif
 
 /// Speech input type
 enum {

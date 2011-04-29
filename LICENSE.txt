@@ -79,8 +79,8 @@ Julius開発チームで開発されています。1997年度から3年間、情報処理振興事
      Large Vocabulary Continuous Speech Recognition Engine Julius
 
 
- Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 1991-2011 Kawahara Lab., Kyoto University
+ Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
  Copyright (c) 2005-2011 Julius project team, Nagoya Institute of Technology
 
@@ -129,8 +129,8 @@ whatsoever.
 
                       Form of copyright notice:
 
- Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 1991-2011 Kawahara Lab., Kyoto University
+ Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
  Copyright (c) 2005-2011 Julius project team, Nagoya Institute of Technology
 

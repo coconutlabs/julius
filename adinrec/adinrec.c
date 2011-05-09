@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:33:01 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -280,8 +280,17 @@ main(int argc, char *argv[])
       }
     }
   }
-  /* set interrupt signal handler to properly close output file */
+  /* set signal handlers to properly close output file */
   if (signal(SIGINT, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+  }
+  if (signal(SIGTERM, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+  }
+  if (signal(SIGPIPE, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+  }
+  if (signal(SIGQUIT, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal intterupt may collapse output\n");
   }
 

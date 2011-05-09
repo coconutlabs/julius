@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -1112,6 +1112,15 @@ main(int argc, char *argv[])
   /* interrupt handling */
   /**********************/
   if (signal(SIGINT, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+  }
+  if (signal(SIGTERM, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+  }
+  if (signal(SIGPIPE, interrupt_record) == SIG_ERR) {
+    fprintf(stderr, "Warning: signal intterupt may collapse output\n");
+  }
+  if (signal(SIGQUIT, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal intterupt may collapse output\n");
   }
 

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 
@@ -955,20 +955,18 @@ j_recognize_stream_core(Recog *recog)
       /******************************************************************/
       if (ret == 1 || ret == 2) {		/* segmented */
 #ifdef HAVE_PTHREAD
-	if (recog->adin->adinthread_buffer_overflowed) {
-	  jlog("Warning: input buffer overflow, disgard the input\n");
+	/* check for audio overflow */
+	if (recog->adin->enable_thread && recog->adin->adinthread_buffer_overflowed) {
+	  jlog("Warning: input buffer overflow: some input may be dropped, so disgard the input\n");
 	  result_error(recog, J_RESULT_STATUS_BUFFER_OVERFLOW);
 	  /* skip 2nd pass */
 	  goto end_recog;
 	}
 #endif
-	/* check for audio overflow */
+	/* check for long input */
 	for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
 	  if (mfcc->f >= recog->real.maxframelen) {
-	    jlog("Warning: input buffer overflow, disgard the input\n");
-	    result_error(recog, J_RESULT_STATUS_BUFFER_OVERFLOW);
-	    /* skip 2nd pass */
-	    goto end_recog;
+	    jlog("Warning: too long input (> %d frames), segment it now\n", recog->real.maxframelen);
 	  }
 	}
       }

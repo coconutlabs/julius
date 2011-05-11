@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -119,7 +119,9 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "    -startid id     (file-out) recording start id (%04d)\n", startid);
 
   fprintf(stderr, "Recording and Pause segmentation options:\n");
+  fprintf(stderr, "(input segmentation: on for file/mic/stdin, off for adinnet)\n");
   fprintf(stderr, "  [-nosegment]          not segment input speech\n");
+  fprintf(stderr, "  [-segment]            force segmentation of input speech\n");
   fprintf(stderr, "  [-oneshot]            record only the first segment\n");
   fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "  [-48]                 48000Hz recording with down sampling (16kHz only)\n");
@@ -162,6 +164,7 @@ opt_in(Jconf *jconf, char *arg[], int argnum)
     break;
   case 's':
     jconf->input.speech_input = SP_STDIN;
+    jconf->detect.silence_cut = 1;
     break;
   case 'a':
     jconf->input.speech_input = SP_ADINNET;
@@ -286,6 +289,12 @@ static boolean
 opt_nosegment(Jconf *jconf, char *arg[], int argnum)
 {
   jconf->detect.silence_cut = 0;
+  return TRUE;
+}
+static boolean
+opt_segment(Jconf *jconf, char *arg[], int argnum)
+{
+  jconf->detect.silence_cut = 1;
   return TRUE;
 }
 static boolean
@@ -1007,6 +1016,7 @@ main(int argc, char *argv[])
   j_add_option("-startid", 1, 1, "recording start id (-out file)", opt_startid);
   j_add_option("-freq", 1, 1, "sampling frequency in Hz", opt_freq);
   j_add_option("-nosegment", 0, 0, "not segment input speech, record all", opt_nosegment);
+  j_add_option("-segment", 0, 0, "force segment input speech", opt_segment);
   j_add_option("-oneshot", 0, 0, "exit after the first input", opt_oneshot);
   j_add_option("-raw", 0, 0, "save in raw (BE) format", opt_raw);
   j_add_option("-autopause", 0, 0, "automatically pause at each input end", opt_autopause);

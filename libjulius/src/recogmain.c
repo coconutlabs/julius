@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.18 $
+ * $Revision: 1.19 $
  * 
  */
 
@@ -982,6 +982,12 @@ j_recognize_stream_core(Recog *recog)
 	goto end_recog;
       }
 #endif
+
+      /* output segment status */
+      if (recog->adin->adin_cut_on && (jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_STDIN)) {
+	seclen = (float)recog->adin->last_trigger_sample / (float)jconf->input.sfreq;
+	jlog("STAT: triggered: [%d..%d] %.2fs from %02d:%02d:%02.2f\n", recog->adin->last_trigger_sample, recog->adin->last_trigger_sample + recog->adin->last_trigger_len, (float)(recog->adin->last_trigger_len) / (float)jconf->input.sfreq, (int)(seclen / 3600), (int)(seclen / 60), seclen - (int)(seclen / 60) * 60);
+      }
 
       /* execute callback for 1st pass result */
       /* result.status <0 must be skipped inside callback */

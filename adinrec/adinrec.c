@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:33:01 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -288,12 +288,16 @@ main(int argc, char *argv[])
   if (signal(SIGTERM, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal intterupt may collapse output\n");
   }
+#ifdef SIGPIPE
   if (signal(SIGPIPE, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal intterupt may collapse output\n");
   }
+#endif
+#ifdef SIGQUIT
   if (signal(SIGQUIT, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal intterupt may collapse output\n");
   }
+#endif
 
   recog = j_recog_new();
   recog->jconf = jconf;

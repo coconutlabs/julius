@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -1132,12 +1132,16 @@ main(int argc, char *argv[])
   if (signal(SIGTERM, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal interruption may collapse output\n");
   }
+#ifdef SIGPIPE
   if (signal(SIGPIPE, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal interruption may collapse output\n");
   }
+#endif
+#ifdef SIGQUIT
   if (signal(SIGQUIT, interrupt_record) == SIG_ERR) {
     fprintf(stderr, "Warning: signal interruption may collapse output\n");
   }
+#endif
 
   /***************************/
   /* initialize input device */

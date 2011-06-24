@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 17:18:55 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -90,7 +90,9 @@ print_ngram_info(FILE *fp, NGRAM_INFO *ndata)
   }
   if (ndata->isopen) {
     fprintf(fp, "\t        OOV word = %s(id=%d)\n", ndata->wname[ndata->unk_id],ndata->unk_id);
-    fprintf(fp, "\t        OOV size = %d words in dict\n", ndata->unk_num);
+    if (ndata->unk_num != 0) {
+      fprintf(fp, "\t        OOV size = %d words in dict\n", ndata->unk_num);
+    }
   } else {
     fprintf(fp, "\t        OOV word = none (assume close vocabulary)\n");
   }

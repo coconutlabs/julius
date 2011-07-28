@@ -42,7 +42,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 22 17:00:45 2005
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -219,6 +219,7 @@ link_lattice_by_time(WordGraph *root)
 static void
 re_compute_lattice_lm(WordGraph *root, WCHMM_INFO *wchmm)
 {
+  WordGraph *wg;
   int i;
   
   for(wg=root;wg;wg=wg->next) {

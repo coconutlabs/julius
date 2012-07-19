@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 21:33:29 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -40,14 +40,14 @@ word_info_new()
   new->mroot = NULL;
   new->work = NULL;
 
-  winfo->wname = NULL;
-  winfo->woutput = NULL;
-  winfo->wlen = NULL;
-  winfo->wton = NULL;
+  new->wname = NULL;
+  new->woutput = NULL;
+  new->wlen = NULL;
+  new->wton = NULL;
 #ifdef CLASS_NGRAM
-  winfo->cprob = NULL;
+  new->cprob = NULL;
 #endif
-  winfo->is_transparent = NULL;
+  new->is_transparent = NULL;
 
   return(new);
 }

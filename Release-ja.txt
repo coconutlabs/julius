@@ -1,3 +1,17 @@
+4.2.1.1
+
+
+Fix error on reading binary N-gram when compiled with "--enable-words-int"
+
+Fix occasional segfault caused by a memory leak in search handling.
+
+Fix incorrect handling of backslash character in Win32 file path.
+
+Fix segfault when reading an errorous word dictionary.
+
+
+
+
 4.2.1 (2011.12.25)
 ===================
 

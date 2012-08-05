@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 06:03:36 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -31,7 +31,7 @@
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.6 2012/07/27 08:44:50 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.7 2012/08/05 01:26:54 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
@@ -146,8 +146,8 @@ wt_para(FILE *fp, Value *para)
   version = VALUE_VERSION;
   wrt(fp, &version, sizeof(short), 1);
 
-  wrt(fp, &(para->smp_period), sizeof(long), 1);      
-  wrt(fp, &(para->smp_freq), sizeof(long), 1);	
+  wrt(fp, &(para->smp_period), sizeof(int), 1);      
+  wrt(fp, &(para->smp_freq), sizeof(int), 1);	
   wrt(fp, &(para->framesize), sizeof(int), 1);        
   wrt(fp, &(para->frameshift), sizeof(int), 1);       
   wrt(fp, &(para->preEmph), sizeof(float), 1);        

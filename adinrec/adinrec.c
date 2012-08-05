@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:33:01 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -45,7 +45,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "adinrec --- record one sentence input to a file\n");
   fprintf(stderr, "Usage: adinrec [options..] filename\n");
   fprintf(stderr, "    [-input mic|pulseaudio|alsa|oss|esd|...]  input source       (mic)\n");
-  fprintf(stderr, "    [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(stderr, "    [-freq frequency]     sampling frequency in Hz    (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "    [-48]                 48000Hz recording with down sampling (16kHz only)\n");
   fprintf(stderr, "    [-lv unsignedshort]   silence cut level threshold (%d)\n", jconf->detect.level_thres);
   fprintf(stderr, "    [-zc zerocrossnum]    silence cut zerocross num   (%d)\n", jconf->detect.zero_cross_num);

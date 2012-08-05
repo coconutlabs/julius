@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -167,8 +167,8 @@ j_output_argument_help(FILE *fp)
 
   fprintf(fp, "\n Acoustic analysis:\n");
   fprintf(fp, "    [-htkconf file]     load parameters from the HTK Config file\n");
-  fprintf(fp, "    [-smpFreq freq]     sample period (Hz)                    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
-  fprintf(fp, "    [-smpPeriod period] sample period (100ns)                 (%ld)\n", jconf->am_root->analysis.para_default.smp_period);
+  fprintf(fp, "    [-smpFreq freq]     sample period (Hz)                    (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(fp, "    [-smpPeriod period] sample period (100ns)                 (%d)\n", jconf->am_root->analysis.para_default.smp_period);
   fprintf(fp, "    [-fsize sample]     window size (sample)                  (%d)\n", jconf->am_root->analysis.para_default.framesize);
   fprintf(fp, "    [-fshift sample]    frame shift (sample)                  (%d)\n", jconf->am_root->analysis.para_default.frameshift);
   fprintf(fp, "    [-preemph]          pre-emphasis coef.                    (%.2f)\n", jconf->am_root->analysis.para_default.preEmph);

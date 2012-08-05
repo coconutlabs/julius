@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -125,7 +125,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
   fprintf(stderr, "  [-segment]            force segmentation of input speech\n");
   fprintf(stderr, "  [-cutsilence]         (same as \"-segment\")\n");
   fprintf(stderr, "  [-oneshot]            record only the first segment\n");
-  fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(stderr, "  [-freq frequency]     sampling frequency in Hz    (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "  [-48]                 48000Hz recording with down sampling (16kHz only)\n");
   fprintf(stderr, "  [-lv unsignedshort]   silence cut level threshold (%d)\n", jconf->detect.level_thres);
   fprintf(stderr, "  [-zc zerocrossnum]    silence cut zerocross num   (%d)\n", jconf->detect.zero_cross_num);

@@ -16,7 +16,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 27 14:55:00 2006
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -369,8 +369,8 @@ put_para(FILE *fp, Value *para)
   if (para->absesup) fprintf(fp, ", abs energy supressed");
   if (para->cmn) fprintf(fp, " with CMN");
   fprintf(fp, ")\n");
-  fprintf(fp, "\tsample frequency = %5ld Hz\n", para->smp_freq);
-  fprintf(fp, "\t   sample period = %4ld  (1 = 100ns)\n", para->smp_period);
+  fprintf(fp, "\tsample frequency = %5d Hz\n", para->smp_freq);
+  fprintf(fp, "\t   sample period = %4d  (1 = 100ns)\n", para->smp_period);
   fprintf(fp, "\t     window size = %4d samples (%.1f ms)\n", para->framesize,
            (float)para->smp_period * (float)para->framesize / 10000.0);
   fprintf(fp, "\t     frame shift = %4d samples (%.1f ms)\n", para->frameshift,

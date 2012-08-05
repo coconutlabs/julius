@@ -8,7 +8,7 @@
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.6 2012/07/27 08:44:57 sumomo Exp $
+ * $Id: mkss.c,v 1.7 2012/08/05 01:26:54 sumomo Exp $
  *
  */
 
@@ -32,7 +32,7 @@ opt_help(Jconf *jconf, char *arg[], int argnum)
 {
   fprintf(stderr, "mkss --- compute averate spectrum of mic input for SS\n");
   fprintf(stderr, "Usage: mkss [options..] filename\n");
-  fprintf(stderr, "    [-freq frequency]    sampling freq in Hz   (%ld)\n", jconf->am_root->analysis.para_default.smp_freq);
+  fprintf(stderr, "    [-freq frequency]    sampling freq in Hz   (%d)\n", jconf->am_root->analysis.para_default.smp_freq);
   fprintf(stderr, "    [-len msec]          record length in msec (%d)\n", slen);
   fprintf(stderr, "    [-fsize samplenum]   window size           (%d)\n", jconf->am_root->analysis.para_default.framesize);
   fprintf(stderr, "    [-fshift samplenum]  frame shift           (%d)\n", jconf->am_root->analysis.para_default.frameshift);

@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 03:40:52 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 
@@ -74,8 +74,8 @@
 
 /// mfcc configuration parameter values
 typedef struct {
-  long smp_period;      ///< Sampling period in 100ns units
-  long smp_freq;	///< Sampling frequency
+  int smp_period;       ///< Sampling period in 100ns units
+  int smp_freq;	        ///< Sampling frequency
   int framesize;        ///< Window size in samples, similar to WINDOWSIZE in HTK (unit is different)
   int frameshift;       ///< Frame shift length in samples
   float preEmph;        ///< Pre-emphasis coefficient, corresponds to PREEMCOEF in HTK

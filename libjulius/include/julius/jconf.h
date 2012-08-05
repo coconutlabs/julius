@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -835,12 +835,12 @@ typedef struct __Jconf__ {
      * Sampling frequency
      * 
      */
-    long sfreq;
+    int sfreq;
     /**
      * Sampling period in 100ns units
      * 
      */
-    long period;
+    int period;
     /**
      * Window size in samples, similar to WINDOWSIZE in HTK (unit is different)
      * 

@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.18 $
+ * $Revision: 1.19 $
  * 
  */
 /*
@@ -347,6 +347,9 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
   /* main loop */
   /*************/
   for (;;) {
+
+    /* check end of input by end of stream */
+    if (a->end_of_stream && a->bp == 0) break;
 
     /****************************/
     /* read in new speech input */
@@ -874,8 +877,6 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
     /* purge processed samples and update queue */
     adin_purge(a, i);
 
-    /* end of input by end of stream */
-    if (a->end_of_stream && a->bp == 0) break;
   }
 
 break_input:

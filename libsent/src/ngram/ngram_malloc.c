@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:48:56 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -37,6 +37,7 @@ ngram_info_new()
 
   new = (NGRAM_INFO *)mymalloc(sizeof(NGRAM_INFO));
   new->n = 0;
+  new->wname = NULL;
   new->d = NULL;
   new->bo_wt_1 = NULL;
   new->p_2 = NULL;
@@ -71,17 +72,22 @@ void
 ngram_info_free(NGRAM_INFO *ndata)
 {
   int i;
+  WORD_ID w;
+
   /* bin test only */
   /* free word names */
   if (ndata->from_bin) {
-    free(ndata->wname[0]);
-    free(ndata->wname);
-  } else {
-    WORD_ID w;
-    for(w=0;w<ndata->max_word_num;w++) {
-      free(ndata->wname[w]);
+    if (ndata->wname) {
+      if (ndata->wname[0]) free(ndata->wname[0]);
+      free(ndata->wname);
     }
-    free(ndata->wname);
+  } else {
+    if (ndata->wname) {
+      for(w=0;w<ndata->max_word_num;w++) {
+	if (ndata->wname[w]) free(ndata->wname[w]);
+      }
+      free(ndata->wname);
+    }
   }
   /* free 2-gram for the 1st pass */
   if (ndata->bo_wt_1) free(ndata->bo_wt_1);

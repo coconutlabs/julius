@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 16:52:24 2005
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -30,7 +30,7 @@
  * All rights reserved
  */
 
-/* $Id: ngram_read_arpa.c,v 1.19 2012/07/27 08:44:57 sumomo Exp $ */
+/* $Id: ngram_read_arpa.c,v 1.20 2012/08/31 05:17:28 sumomo Exp $ */
 
 /* words should be alphabetically sorted */
 
@@ -113,6 +113,9 @@ set_unigram(FILE *fp, NGRAM_INFO *ndata)
 
   /* malloc name area */
   ndata->wname = (char **)mymalloc(sizeof(char *) * ndata->max_word_num);
+  for (nid = 0; nid < ndata->max_word_num; nid++) {
+    ndata->wname[nid] = NULL;
+  }
 
   /* malloc data area */
   //t->bgn_upper = t->bgn_lower = t->bgn = t->num = NULL;

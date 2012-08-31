@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug  2 13:04:15 2008
  * 
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 /*
@@ -47,6 +47,7 @@
  "fvin_get_configuration", "fvin_standby", \
  "fvin_open", "fvin_read", "fvin_close", \
  "fvin_resume", "fvin_pause", "fvin_terminate", \
+ "fvin_input_name",\
  "fvin_postprocess", \
  "calcmix_get_optname", "calcmix", "calcmix_init", "calcmix_free", \
  "result_best_str", \

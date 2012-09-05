@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.6 2009/12/08 01:49:21 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.7 2012/09/05 08:18:24 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -216,7 +216,7 @@ ConvInputProc(AudioConverterRef inConv,
       ioData->mBuffers[i].mDataByteSize = nBytesProvided;
       
       BufList->mBuffers[i].mData = BufListBackup.mBuffers[i].mData;
-
+      BufList->mBuffers[i].mDataByteSize = BufListBackup.mBuffers[i].mDataByteSize;
     }
 
   }

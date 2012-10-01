@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -1161,6 +1161,12 @@ RealTimeParam(Recog *recog)
   /* loop until all data has been flushed */
   while (1) {
 
+    /* check frame overflow */
+    for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+      if (! mfcc->valid) continue;
+      if (mfcc->f >= r->maxframelen) mfcc->valid = FALSE;
+    }
+
     /* if all mfcc became invalid, exit loop here */
     ok_p = FALSE;
     for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
@@ -1321,7 +1327,6 @@ RealTimeParam(Recog *recog)
     for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
       if (! mfcc->valid) continue;
       mfcc->f++;
-      if (mfcc->f > r->maxframelen) mfcc->valid = FALSE;
     }
   }
 

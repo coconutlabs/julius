@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -191,6 +191,7 @@ boolean j_load_all(Recog *recog, Jconf *jconf);
 boolean j_launch_recognition_instance(Recog *recog, JCONF_SEARCH *sconf);
 boolean j_final_fusion(Recog *recog);
 void create_mfcc_calc_instances(Recog *recog);
+boolean j_reload_adddict(Recog *recog, PROCESS_LM *lm);
 
 /* hmm_check.c */
 void hmm_check(RecogProcess *r);

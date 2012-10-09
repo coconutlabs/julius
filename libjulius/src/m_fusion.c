@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.22 $
+ * $Revision: 1.23 $
  * 
  */
 /*
@@ -1376,6 +1376,104 @@ j_final_fusion(Recog *recog)
     return FALSE;
   }
 #endif
+
+  return TRUE;
+}
+
+/** 
+ * <EN>
+ * @brief  Reload dictionaries.
+ *
+ * This function reload dictionaries from file.
+ *
+ * This function works only for N-gram LM.
+ * It also re-create all the recognition process, even if it is grammar-based.
+ *
+ * @param recog [i/o] engine instance
+ * @param lm [i/o] LM instance to reload
+ * 
+ * @return TRUE on success, or FALSE on error.
+ * 
+ */
+boolean
+j_reload_adddict(Recog *recog, PROCESS_LM *lm)
+{
+  RecogProcess *p, *ptmp;
+  JCONF_SEARCH *sh;
+  PROCESS_AM *am, *atmp;
+  
+  jlog("STAT: *** reloading (additional) dictionary of LM%02d %s\n", lm->config->id, lm->config->name);
+
+  /* free current dictionary */
+  if (lm->winfo) word_info_free(lm->winfo);
+  if (lm->grammars) multigram_free_all(lm->grammars);
+  if (lm->dfa) dfa_info_free(lm->dfa);
+
+  /* free all current process instanfces */
+  p = recog->process_list;
+  while(p) {
+    ptmp = p->next;
+    j_recogprocess_free(p);
+    p = ptmp;
+  }
+  recog->process_list = NULL;
+
+  /* reload dictionary */
+  if (lm->lmtype == LM_PROB) {
+
+    if ((lm->winfo = initialize_dict(lm->config, lm->am->hmminfo)) == NULL) {
+      jlog("ERROR: m_fusion: failed to reload dictionary\n");
+      return FALSE;
+    }
+    if (lm->config->ngram_filename_lr_arpa || lm->config->ngram_filename_rl_arpa || lm->config->ngram_filename) {
+      /* re-map dict item to N-gram entry */
+      if (make_voca_ref(lm->ngram, lm->winfo) == FALSE) {
+	jlog("ERROR: m_fusion: failed to map words in additional dictionary to N-gram\n");
+	return FALSE;
+      }
+#if 0
+      /* post-fix EOS / BOS uni prob for SRILM */
+      fix_uniprob_srilm(ngram, winfo);
+#endif
+    }
+  }
+
+#if 0
+  /* grammar case: not tested */
+  if (lm->lmtype == LM_DFA) {
+    if (lm->config->dfa_filename != NULL && lm->config->dictfilename != NULL) {
+      /* here add grammar specified by "-dfa" and "-v" to grammar list */
+      multigram_add_gramlist(lm->config->dfa_filename, lm->config->dictfilename, lm->config, LM_DFA_GRAMMAR);
+    }
+    /* load all the specified grammars */
+    if (multigram_load_all_gramlist(lm) == FALSE) {
+      jlog("ERROR: m_fusion: some error occured in reading grammars\n");
+      return FALSE;
+    }
+    /* setup for later wchmm building */
+    multigram_update(lm);
+    /* the whole lexicon will be forced to built in the boot sequence,
+       so reset the global modification flag here */
+    lm->global_modified = FALSE;
+  }
+#endif
+
+  /* re-create all recognition process instance */
+  for(sh=recog->jconf->search_root;sh;sh=sh->next) {
+    if (j_launch_recognition_instance(recog, sh) == FALSE) {
+      jlog("ERROR: m_fusion: failed to re-start recognizer instance \"%s\"\n", sh->name);
+      return FALSE;
+    }
+  }
+
+  /* the created process will be live=FALSE, active = 1, so
+     the new recognition instance is dead now but
+     will be made live at next session */
+
+  /* tell engine to update */
+  recog->process_want_reload = TRUE;
+
+  jlog("STAT: *** LM%02d %s additional dictionary reloaded\n", lm->config->id, lm->config->name);
 
   return TRUE;
 }

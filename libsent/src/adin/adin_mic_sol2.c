@@ -38,7 +38,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 19:06:46 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -60,15 +60,14 @@
 /* sound header */
 #include <sys/audioio.h>
 
+/// Default device name, can be overridden by AUDIODEV environment variable
+#define DEFAULT_DEVICE "/dev/audio"
+
 static int srate;		///< Required sampling rate
 static int afd;			///< Audio file descriptor
 static struct audio_info ainfo;	///< Audio format information
 static char *defaultdev = DEFAULT_DEVICE;
 static char devname[MAXPATHLEN];
-
-/// Default device name, can be overridden by AUDIODEV environment variable
-#define DEFAULT_DEVICE "/dev/audio"
-
 
 /** 
  * Device initialization: check device capability

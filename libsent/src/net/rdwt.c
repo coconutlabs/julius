@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 07:09:25 2005
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 /*
@@ -61,6 +61,9 @@ rd(int fd, char *data, int *len, int maxlen)
     toread -= ret;
     off += ret;
   }
+#ifdef WORDS_BIGENDIAN
+  swap_bytes((char *)len, sizeof(int), 1);
+#endif
   if (*len > maxlen) {
     jlog("Error: rdwt: transfer data length exceeded: %d (>%d)\n", len, maxlen);
     return(-1);
@@ -98,6 +101,9 @@ wt(int fd, char *data, int len)
 {
   int tmpbytes;
 
+#ifdef WORDS_BIGENDIAN
+  swap_bytes((char *)&len, sizeof(int), 1);
+#endif
   /* len == 0 is used to tell end of segment ack */
   if ((tmpbytes=
 #ifdef WINSOCK
@@ -109,6 +115,9 @@ wt(int fd, char *data, int len)
     /*jlog( "failed to write num\n");*/
     return(-1);
   }
+#ifdef WORDS_BIGENDIAN
+  swap_bytes((char *)&len, sizeof(int), 1);
+#endif
   if (len > 0) {
     if ((tmpbytes=
 #ifdef WINSOCK

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -892,6 +892,12 @@ print_engine_info(Recog *recog)
       }
     } else {
       jlog("\t    long-term DC removal = off\n");
+    }
+    jlog("\t    long-term DC removal = off\n");
+    if (jconf->preprocess.level_coef != 1.0) {
+      jlog("\t    level scaling factor = %.2f\n", jconf->preprocess.level_coef);
+    } else {
+      jlog("\t    level scaling factor = %.2f (disabled)\n", jconf->preprocess.level_coef);
     }
   }
   jlog("\t      reject short input = ");

@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.26 $
+ * $Revision: 1.27 $
  * 
  */
 /*
@@ -978,6 +978,11 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
     } else if (strmatch(argv[i],"-nozmean")) { /* disable DC offset by zero mean */
       if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       jconf->preprocess.use_zmean = FALSE;
+      continue;
+    } else if (strmatch(argv[i],"-lvscale")) { /* input level scaling factor */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
+      GET_TMPARG;
+      jconf->preprocess.level_coef = (float)atof(tmparg);
       continue;
     } else if (strmatch(argv[i],"-zmeanframe")) { /* enable frame-wise DC offset by zero mean */
       if (!check_section(jconf, argv[i], JCONF_OPT_AM)) return FALSE; 

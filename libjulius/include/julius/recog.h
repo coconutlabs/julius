@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  * 
  */
 /*
@@ -368,6 +368,7 @@ typedef struct __adin__ {
   boolean strip_flag;   ///< TRUE if skip invalid zero samples
   boolean enable_thread;        ///< TRUE if input device needs threading
   boolean need_zmean;   ///< TRUE if perform zmeansource
+  float level_coef;     ///< Input level scaling factor
 
   /* work area */
   int c_length; ///< Computed length of cycle buffer for zero-cross, actually equals to head margin length

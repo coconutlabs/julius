@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Nov  6 22:41:00 2007
  * 
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -88,6 +88,9 @@ boolean j_remove_am(Recog *recog, JCONF_AM *amconf);
 #ifdef DEBUG_VTLN_ALPHA_TEST
 void vtln_alpha(Recog *recog, RecogProcess *r);
 #endif
+
+void j_adin_change_input_scaling_factor(Recog *recog, float factor);
+
 
 /* instance.c */
 MFCCCalc *j_mfcccalc_new(JCONF_AM *amconf);

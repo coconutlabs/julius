@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.14 $
+ * $Revision: 1.15 $
  * 
  */
 /*
@@ -954,6 +954,11 @@ typedef struct __Jconf__ {
      * Remove DC offset by zero mean (-zmean / -nozmean)
      */
     boolean use_zmean;
+
+    /**
+     * Input level scaling factor (-lvscale)
+     */
+    float level_coef;
 
   } preprocess;
 

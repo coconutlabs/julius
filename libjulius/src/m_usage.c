@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.18 $
+ * $Revision: 1.19 $
  * 
  */
 /*
@@ -111,6 +111,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-adport portnum]   adinnet port number to listen         (%d)\n", jconf->input.adinnet_port);
   fprintf(fp, "    [-48]               enable 48kHz sampling with internal down sampler (OFF)\n");
   fprintf(fp, "    [-zmean/-nozmean]   enable/disable DC offset removal      (OFF)\n");
+  fprintf(fp, "    [-lvscale]          input level scaling factor (1.0: OFF) (%.1f)\n", jconf->preprocess.level_coef);
   fprintf(fp, "    [-nostrip]          disable stripping off zero samples\n");
   fprintf(fp, "    [-record dir]       record triggered speech data to dir\n");
   fprintf(fp, "    [-rejectshort msec] reject an input shorter than specified\n");

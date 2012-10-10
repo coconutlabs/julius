@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -159,6 +159,7 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
   }
 #endif
   adin->need_zmean = jconf->preprocess.use_zmean;
+  adin->level_coef = jconf->preprocess.level_coef;
   /* calc & set internal parameter from configuration */
   freq = jconf->input.sfreq;
   samples_in_msec = (float) freq / (float)1000.0;
@@ -412,6 +413,12 @@ adin_cut(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Recog *), Reco
 	  a->end_of_stream = TRUE;
 	  cnt = 0;
 	  if (a->bp == 0) break;
+	}
+      }
+      if (cnt > 0 && a->level_coef != 1.0) {
+	/* scale the level of incoming input */
+	for (i = a->bp; i < a->bp + cnt; i++) {
+	  a->buffer[i] = (SP16) ((float)a->buffer[i] * a->level_coef);
 	}
       }
 

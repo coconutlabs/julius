@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -86,6 +86,7 @@ jconf_set_default_values(Jconf *j)
 
   j->preprocess.strip_zero_sample	= TRUE;
   j->preprocess.use_zmean		= FALSE;
+  j->preprocess.level_coef		= 1.0;
 
   j->reject.gmm_filename		= NULL;
   j->reject.gmm_gprune_num		= 10;

@@ -19,7 +19,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 15:04:28 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -1638,5 +1638,22 @@ vtln_alpha(Recog *recog, RecogProcess *r)
 }
 #endif
 
+
+/** 
+ * Change the scaling factor of input audio level.  Set to 1.0 to disable.
+ * 
+ * @param recog [i/o] engine instance
+ * @param factor [in] factor value (1.0 to disable scaling)
+ * 
+ * @callgraph
+ * @callergraph
+ * @ingroup engine
+ */
+void
+j_adin_change_input_scaling_factor(Recog *recog, float factor)
+{
+  recog->adin->level_coef = factor;
+  recog->jconf->preprocess.level_coef = factor;
+}
 
 /* end of file */

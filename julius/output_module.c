@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -412,6 +412,9 @@ result_pass2(Recog *recog, void *dummy)
 	break;
       case J_RESULT_STATUS_REJECT_SHORT:
 	module_send(module_sd, "<REJECTED REASON=\"too short input\"");
+	break;
+      case J_RESULT_STATUS_REJECT_LONG:
+	module_send(module_sd, "<REJECTED REASON=\"too long input\"");
 	break;
       case J_RESULT_STATUS_FAIL:
 	module_send(module_sd, "<RECOGFAIL");

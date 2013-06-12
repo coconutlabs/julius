@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  * 
  */
 /*
@@ -903,6 +903,12 @@ print_engine_info(Recog *recog)
   jlog("\t      reject short input = ");
   if (jconf->reject.rejectshortlen > 0) {
     jlog("< %d msec\n", jconf->reject.rejectshortlen);
+  } else {
+    jlog("off\n");
+  }
+  jlog("\t      reject  long input = ");
+  if (jconf->reject.rejectlonglen >= 0) {
+    jlog("longer than %d msec\n", jconf->reject.rejectlonglen);
   } else {
     jlog("off\n");
   }

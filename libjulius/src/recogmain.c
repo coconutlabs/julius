@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 14:53:53 2007
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 
@@ -1087,6 +1087,14 @@ j_recognize_stream_core(Recog *recog)
 	      goto end_recog;
 	    }
 	  }
+	  /* when using "-rejectlong", and input was longer than specified,
+	     terminate the input here */
+	  if (recog->jconf->reject.rejectlonglen >= 0) {
+	    if (seclen * 1000.0 >= recog->jconf->reject.rejectlonglen) {
+	      result_error(recog, J_RESULT_STATUS_REJECT_LONG);
+	      goto end_recog;
+	    }
+	  }
 	
 	  /**********************************************/
 	  /* acoustic analysis and encoding of speech[] */
@@ -1176,6 +1184,13 @@ j_recognize_stream_core(Recog *recog)
       mseclen = (float)recog->mfcclist->param->samplenum * (float)jconf->input.period * (float)jconf->input.frameshift / 10000.0;
       if (mseclen < jconf->reject.rejectshortlen) {
 	result_error(recog, J_RESULT_STATUS_REJECT_SHORT);
+	goto end_recog;
+      }
+    }
+    if (jconf->reject.rejectlonglen >= 0) {
+      mseclen = (float)recog->mfcclist->param->samplenum * (float)jconf->input.period * (float)jconf->input.frameshift / 10000.0;
+      if (mseclen >= jconf->reject.rejectlonglen) {
+	result_error(recog, J_RESULT_STATUS_REJECT_LONG);
 	goto end_recog;
       }
     }

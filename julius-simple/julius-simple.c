@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Tue Dec 11 14:40:04 2007
  * 
- * $Revision: 1.3 $
+ * $Revision: 1.4 $
  * 
  */
 
@@ -123,6 +123,9 @@ output_result(Recog *recog, void *dummy)
 	break;
       case J_RESULT_STATUS_REJECT_SHORT:
 	printf("<input rejected by short input>\n");
+	break;
+      case J_RESULT_STATUS_REJECT_LONG:
+	printf("<input rejected by long input>\n");
 	break;
       case J_RESULT_STATUS_FAIL:
 	printf("<search failed>\n");

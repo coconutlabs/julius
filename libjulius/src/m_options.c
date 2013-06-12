@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.27 $
+ * $Revision: 1.28 $
  * 
  */
 /*
@@ -422,6 +422,11 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
       GET_TMPARG;
       jconf->reject.rejectshortlen = atoi(tmparg);
+      continue;
+    } else if (strmatch(argv[i],"-rejectlong")) { /* long input rejection */
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
+      GET_TMPARG;
+      jconf->reject.rejectlonglen = atoi(tmparg);
       continue;
 #ifdef POWER_REJECT
     } else if (strmatch(argv[i],"-powerthres")) { /* short input rejection */

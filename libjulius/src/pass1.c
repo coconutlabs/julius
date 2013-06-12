@@ -36,7 +36,7 @@
  * @author Akinobu Lee
  * @date   Fri Oct 12 23:14:13 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -386,6 +386,13 @@ decode_end_segmented(Recog *recog)
       ok_p = FALSE;
     }
   }
+  if (recog->jconf->reject.rejectlonglen >= 0) {
+    mseclen = (float)recog->mfcclist->last_time * (float)recog->jconf->input.period * (float)recog->jconf->input.frameshift / 10000.0;
+    if (mseclen >= recog->jconf->reject.rejectlonglen) {
+      last_status = J_RESULT_STATUS_REJECT_LONG;
+      ok_p = FALSE;
+    }
+  }
 
 #ifdef POWER_REJECT
   if (ok_p) {
@@ -521,6 +528,13 @@ decode_end(Recog *recog)
 	mseclen = (float)mfcc->param->samplenum * (float)recog->jconf->input.period * (float)recog->jconf->input.frameshift / 10000.0;
 	if (mseclen < recog->jconf->reject.rejectshortlen) {
 	  last_status = J_RESULT_STATUS_REJECT_SHORT;
+	  ok_p = FALSE;
+	}
+      }
+      if (recog->jconf->reject.rejectlonglen >= 0) {
+	mseclen = (float)mfcc->param->samplenum * (float)recog->jconf->input.period * (float)recog->jconf->input.frameshift / 10000.0;
+	if (mseclen >= recog->jconf->reject.rejectlonglen) {
+	  last_status = J_RESULT_STATUS_REJECT_LONG;
 	  ok_p = FALSE;
 	}
       }

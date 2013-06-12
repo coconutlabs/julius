@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.23 $
+ * $Revision: 1.24 $
  * 
  */
 /*
@@ -1431,32 +1431,8 @@ j_reload_adddict(Recog *recog, PROCESS_LM *lm)
 	jlog("ERROR: m_fusion: failed to map words in additional dictionary to N-gram\n");
 	return FALSE;
       }
-#if 0
-      /* post-fix EOS / BOS uni prob for SRILM */
-      fix_uniprob_srilm(ngram, winfo);
-#endif
     }
   }
-
-#if 0
-  /* grammar case: not tested */
-  if (lm->lmtype == LM_DFA) {
-    if (lm->config->dfa_filename != NULL && lm->config->dictfilename != NULL) {
-      /* here add grammar specified by "-dfa" and "-v" to grammar list */
-      multigram_add_gramlist(lm->config->dfa_filename, lm->config->dictfilename, lm->config, LM_DFA_GRAMMAR);
-    }
-    /* load all the specified grammars */
-    if (multigram_load_all_gramlist(lm) == FALSE) {
-      jlog("ERROR: m_fusion: some error occured in reading grammars\n");
-      return FALSE;
-    }
-    /* setup for later wchmm building */
-    multigram_update(lm);
-    /* the whole lexicon will be forced to built in the boot sequence,
-       so reset the global modification flag here */
-    lm->global_modified = FALSE;
-  }
-#endif
 
   /* re-create all recognition process instance */
   for(sh=recog->jconf->search_root;sh;sh=sh->next) {

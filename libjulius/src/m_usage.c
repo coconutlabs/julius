@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -115,6 +115,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-nostrip]          disable stripping off zero samples\n");
   fprintf(fp, "    [-record dir]       record triggered speech data to dir\n");
   fprintf(fp, "    [-rejectshort msec] reject an input shorter than specified\n");
+  fprintf(fp, "    [-rejectlong msec]  reject an input longer than specified\n");
 #ifdef POWER_REJECT
   fprintf(fp, "    [-powerthres value] rejection threshold of average power  (%.1f)\n", jconf->reject.powerthres);
 #endif

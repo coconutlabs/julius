@@ -95,7 +95,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 13:20:53 2005
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 /*
@@ -180,6 +180,11 @@ adin_setup_param(ADIn *adin, Jconf *jconf)
 #ifdef HAVE_PTHREAD
   adin->transfer_online = FALSE;
   adin->speech = NULL;
+  if (jconf->reject.rejectlonglen >= 0) {
+    adin->freezelen = (jconf->reject.rejectlonglen + 500.0) * jconf->input.sfreq / 1000.0;
+  } else {
+    adin->freezelen = MAXSPEECHLEN;
+  }
 #endif
 
   /**********************/
@@ -1174,7 +1179,7 @@ adin_thread_process(int (*ad_process)(SP16 *, int, Recog *), int (*ad_check)(Rec
 	}
       }
     }
-    if (prev_len < nowlen) {
+    if (prev_len < nowlen && nowlen <= a->freezelen) {
 #ifdef THREAD_DEBUG
       jlog("DEBUG: process: proceed [%d-%d]\n",prev_len, nowlen);
 #endif

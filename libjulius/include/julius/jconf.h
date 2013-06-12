@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -983,6 +983,10 @@ typedef struct __Jconf__ {
      * Length threshold to reject input (-rejectshort)
      */
     int rejectshortlen;
+    /**
+     * Length threshold to reject input (-rejectlong)
+     */
+    int rejectlonglen;
 #ifdef POWER_REJECT
     /**
      * Rejection power threshold

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Dec 12 11:07:46 2007
  * 
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -103,6 +103,9 @@ outfile_sentence(Recog *recog, void *dummy)
 	break;
       case J_RESULT_STATUS_REJECT_SHORT:
 	fprintf(fp, "<input rejected by short input>\n");
+	break;
+      case J_RESULT_STATUS_REJECT_LONG:
+	fprintf(fp, "<input rejected by long input>\n");
 	break;
       case J_RESULT_STATUS_FAIL:
 	fprintf(fp, "<search failed>\n");

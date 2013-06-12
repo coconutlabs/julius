@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -386,6 +386,7 @@ typedef struct __adin__ {
   pthread_mutex_t mutex;        ///< Lock primitive
   SP16 *speech;         ///< Unprocessed samples recorded by A/D-in thread
   int speechlen;                ///< Current length of @a speech
+  int freezelen;        ///< Number of samples to abondon processing
 /*
  * Semaphore to start/stop recognition.
  * 

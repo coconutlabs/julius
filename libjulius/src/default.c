@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  * 
  */
 /*
@@ -92,6 +92,7 @@ jconf_set_default_values(Jconf *j)
   j->reject.gmm_gprune_num		= 10;
   j->reject.gmm_reject_cmn_string	= NULL;
   j->reject.rejectshortlen		= 0;
+  j->reject.rejectlonglen		= -1;
 #ifdef POWER_REJECT
   j->reject.powerthres			= POWER_REJECT_DEFAULT_THRES;
 #endif

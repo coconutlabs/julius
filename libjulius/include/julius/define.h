@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 15:17:26 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -57,6 +57,7 @@
 #define LM_NGRAM_USER 3		///< User-defined statistical LM
 
 /* recognition status */
+#define J_RESULT_STATUS_REJECT_LONG -8 ///< Input rejected by long input
 #define J_RESULT_STATUS_BUFFER_OVERFLOW -7 ///< Input buffer overflow
 #define J_RESULT_STATUS_REJECT_POWER -6 ///< Input rejected by power
 #define J_RESULT_STATUS_TERMINATE -5 ///< Input was terminated by app. request

@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.28 $
+ * $Revision: 1.29 $
  * 
  */
 /*
@@ -1372,6 +1372,57 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	//return FALSE;
 	unknown_opt = TRUE;
       }
+
+#ifdef USE_MBR
+      /**
+       *
+       * Update 7 March 2011
+       *
+       * MBR Expansion Hiroaki NANJO
+       *               Ryo FURUTANI
+       *
+       **/
+
+    } else if (strmatch(argv[i],"-mbr")) {
+
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE;
+      jconf->searchnow->mbr.use_mbr = TRUE;
+      jconf->searchnow->mbr.use_word_weight = FALSE;
+
+      continue;
+
+    } else if (strmatch(argv[i],"-mbr_wwer")) {
+
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE;
+      jconf->searchnow->mbr.use_mbr = TRUE;
+      jconf->searchnow->mbr.use_word_weight = TRUE;
+
+      continue;
+
+    } else if (strmatch(argv[i],"-nombr")) {
+
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE;
+      jconf->searchnow->mbr.use_mbr = FALSE;
+      jconf->searchnow->mbr.use_word_weight = FALSE;
+
+      continue;
+
+    } else if (strmatch(argv[i],"-mbr_weight")) {
+
+      if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE;
+      GET_TMPARG;
+      jconf->searchnow->mbr.score_weight = (LOGPROB)atof(tmparg);
+      GET_TMPARG;
+      jconf->searchnow->mbr.loss_weight = (LOGPROB)atof(tmparg);
+
+      continue;
+      /**
+       *
+       * MBR Expansion End
+       *
+       **/
+#endif
+
     } else {			/* error */
       //jlog("ERROR: m_options: wrong argument: %s\n", argv[0], argv[i]);
       //return FALSE;

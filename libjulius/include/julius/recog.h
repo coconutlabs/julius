@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.18 $
+ * $Revision: 1.19 $
  * 
  */
 /*
@@ -332,6 +332,27 @@ typedef struct __sentence__ {
   LOGPROB score_am;             ///< Acoustic model likelihood for N-gram
   int gram_id;                  ///< The grammar ID this sentence belongs to for DFA
   SentenceAlign *align;
+
+#ifdef USE_MBR
+ 
+  /**
+   *
+   * Update 19 October 2010
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  LOGPROB score_mbr; ///< MBR score
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+
+#endif 
 
 } Sentence;
 

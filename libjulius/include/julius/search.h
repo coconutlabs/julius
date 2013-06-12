@@ -29,7 +29,7 @@
  * @author Akinobu Lee
  * @date   Wed Sep 07 07:40:11 2005
  *
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 /*
@@ -130,6 +130,26 @@ typedef struct __node__ {
 
   struct __recogprocess__ *region;		///> Where this node belongs to
 
+#ifdef USE_MBR
+ 
+  /**
+   *
+   * Update 19 October 2010
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  float score_mbr; ///< MBR score
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+
+#endif
 } NODE;
 
 /*
@@ -163,5 +183,37 @@ seq[seqnum-3] |                      \______             |<--g_prev[0..T-1]
               |                                        \_|
 ===============================================================	      
 */
+
+#ifdef USE_MBR
+ 
+/**
+ *
+ * Update 21 October 2010
+ *
+ * MBR Expansion Hiroaki NANJO
+ *               Ryo FURUTANI
+ *
+ **/
+
+/**
+ * <JA>
+ * DPマッチングで使うノード
+ * </JA>
+ */
+typedef struct {
+
+  int d; // 最短距離
+  int r; // 遷移元 1=Ins. 2=Del. 3=Sub. or Cor.
+  int c; // r=3とした場合の遷移コスト 1=Sub. 0=Cor.
+} DP;
+
+
+/**
+ *
+ * MBR Expansion End
+ *
+ **/
+
+#endif
 
 #endif /* __J_SEARCH_H__ */

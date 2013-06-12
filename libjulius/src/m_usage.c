@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 /*
@@ -361,6 +361,30 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-walign]           optionally output word alignments\n");
   fprintf(fp, "    [-palign]           optionally output phoneme alignments\n");
   fprintf(fp, "    [-salign]           optionally output state alignments\n");
+
+#ifdef USE_MBR
+  /**
+   *
+   * Update 7 September 2010
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  fprintf(fp, "\n Minimum Bayes Risk Decoding:\n");
+  fprintf(fp, "    [-mbr]              enable rescoring sentence on MBR(WER)\n");
+  fprintf(fp, "    [-mbr_wwer]         enable rescoring sentence on MBR(WWER)\n");
+  fprintf(fp, "    [-nombr]            disable rescoring sentence on MBR\n");
+  fprintf(fp, "    [-mbr_weight float float] score and loss func. weight on MBR (%.1f %.1f)\n", jconf->search_root->mbr.score_weight, jconf->search_root->mbr.loss_weight);
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+#endif
+
 #ifdef CONFIDENCE_MEASURE
   fprintf(fp, "\n Confidence Score:\n");
 #ifdef CM_MULTIPLE_ALPHA

@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Sun Jul 22 13:29:32 2007
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -306,6 +306,59 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
     return TRUE;
   }
   winfo->woutput[vnum] = strcpy((char *)mybmalloc2(strlen(ptmp)+1, &(winfo->mroot)), ptmp);
+
+#ifdef USE_MBR
+
+  /**
+   *
+   * Update 7 March 2011
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  /* just move pointer to next token */
+  if ((ptmp = mystrtok_movetonext(NULL, " \t\n")) == NULL) {
+    jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    winfo->errnum++;
+    *ok_flag = FALSE;
+    return TRUE;
+  }
+
+  if (ptmp[0] == ':') {        /* Word weight (use minimization WWER on MBR) */
+
+    /* Word weight (use minimization WWER on MBR) */
+    /* format: (classname @classprob) wordname [output] :weight phoneseq */
+    /* format: :%f (linear scale) */
+    /* if ":" not found, it means weight == 1.0 (same minimization WER) */
+
+    if ((ptmp = mystrtok(NULL, " \t\n")) == NULL) {
+      jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+      winfo->errnum++;
+      *ok_flag = FALSE;
+      return TRUE;
+    }
+    if (ptmp[1] == '\0') {     /* space between ':' and figures */
+      jlog("Error: voca_load_htkdict: line %d: value after ':' missing, maybe wrong space?\n> %s\n", linenum, bufbak);
+      winfo->errnum++;
+      *ok_flag = FALSE;
+      return TRUE;
+    }
+    winfo->weight[vnum] = atof(&(ptmp[1]));
+  }
+  else{
+    winfo->weight[vnum] = 1.0; /* default, same minimization WER */
+  }
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+
+#endif
+
     
   /* phoneme sequence */
   if (hmminfo == NULL) {

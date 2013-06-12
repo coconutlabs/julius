@@ -5,7 +5,7 @@
 # All rights reserved
 
 #
-# $Id: Makefile.in,v 1.8 2012/07/27 08:44:49 sumomo Exp $
+# $Id: Makefile.in,v 1.9 2013/06/12 09:48:26 sumomo Exp $
 #
 SHELL=/bin/sh
 .SUFFIXES:
@@ -72,6 +72,7 @@ src/ngram_decode.o \
 src/dfa_decode.o \
 src/graphout.o \
 src/confnet.o \
+src/mbr.o \
 src/gmm.o \
 src/word_align.o \
 src/plugin.o \

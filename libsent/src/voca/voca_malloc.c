@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 21:33:29 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -48,6 +48,9 @@ word_info_new()
   new->cprob = NULL;
 #endif
   new->is_transparent = NULL;
+#ifdef USE_MBR
+  new->weight = NULL;
+#endif
 
   return(new);
 }
@@ -72,6 +75,26 @@ word_info_free(WORD_INFO *winfo)
 #endif
   if (winfo->is_transparent != NULL) free(winfo->is_transparent);
   /* free whole */
+#ifdef USE_MBR
+
+  /**
+   *
+   * Update 4 March 2011
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  if (winfo->weight != NULL) free(winfo->weight);
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+
+#endif
   free(winfo);
 }
 
@@ -103,6 +126,28 @@ winfo_init(WORD_INFO *winfo)
   winfo->maxwlen = 0;
   winfo->errnum = 0;
   winfo->errph_root = NULL;
+
+#ifdef USE_MBR
+
+  /**
+   *
+   * Update 4 March 2011
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  winfo->weight = (LOGPROB *)mymalloc(sizeof(LOGPROB)*n);
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+
+#endif
+
 }
 
 /** 
@@ -132,6 +177,26 @@ winfo_expand(WORD_INFO *winfo)
   winfo->cprob = (LOGPROB *)myrealloc(winfo->cprob, sizeof(LOGPROB)*n);
 #endif
   winfo->is_transparent = (boolean *)myrealloc(winfo->is_transparent, sizeof(boolean)*n);
+
+#ifdef USE_MBR
+  /**
+   *
+   * Update 4 March 2011
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  winfo->weight = (LOGPROB *)myrealloc(winfo->weight, sizeof(LOGPROB)*n);
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+#endif
+
   winfo->maxnum = n;
 
   return TRUE;

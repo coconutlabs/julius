@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  * 
  */
 /*
@@ -790,6 +790,41 @@ typedef struct __jconf_search__ {
     boolean fallback_pass1_flag;
     
   } sw;
+
+#ifdef USE_MBR
+ 
+  /**
+   *
+   * Update 7 March 2011
+   *
+   * MBR Expansion Hiroaki NANJO
+   *               Ryo FURUTANI
+   *
+   **/
+
+  struct {
+
+    /* Rescoring sentence on MBR (-mbr) */
+    boolean use_mbr;
+
+    /* Use word weight on MBR (-mbr_wwer) */
+    boolean use_word_weight;
+
+    /* Likelihood weight */
+    float score_weight;
+
+    /* Loss function weight */
+    float loss_weight;
+
+  } mbr;
+
+  /**
+   *
+   * MBR Expansion End
+   *
+   **/
+
+#endif
 
   /* pointer to next instance */
   struct __jconf_search__ *next;

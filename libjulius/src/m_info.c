@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -740,7 +740,31 @@ print_engine_info(Recog *recog)
     } else {
       jlog("off, returns search failure\n");
     }
+#ifdef USE_MBR
+    /**
+     *
+     * Update 7 March 2011
+     *
+     * MBR Expansion Hiroaki NANJO
+     *               Ryo FURUTANI
+     *
+     **/
 
+    if (r->config->mbr.use_mbr) {
+      jlog("\n");
+      jlog("Minimum Bayes Risk Decoding:\n");
+      jlog("\t(-mbr)        sentence rescoring on MBR = %s\n", r->config->mbr.use_mbr ? "yes" : "no");
+      jlog("\t(-mbr_wwer)   use word weight on MBR = %s\n", r->config->mbr.use_word_weight ? "yes" : "no");
+      jlog("\t(-mbr_weight) score weight = %2.1f  loss func. weight  = %2.1f\n", r->config->mbr.score_weight, r->config->mbr.loss_weight);
+    }
+
+    /**
+     *
+     * MBR Expansion End
+     *
+     **/
+
+#endif
     jlog("\n");
   }
 

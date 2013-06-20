@@ -4,6 +4,7 @@
 
                                 Julius
 
+                                                (Rev 4.2.3 2013/06/30)
                                                 (Rev 4.2.2 2012/08/01)
                                                 (Rev 4.2.1 2011/12/25)
                                                 (Rev 4.2   2011/05/01)
@@ -16,10 +17,10 @@
                                                 (Rev 2.0   1999/02/20)
                                                 (Rev 1.0   1998/02/20)
 
- Copyright (c) 1991-2012 Kawahara Lab., Kyoto University
+ Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
  Copyright (c) 1997-2000 Information-technology Promotion Agency, Japan
  Copyright (c) 2000-2005 Shikano Lab., Nara Institute of Science and Technology
- Copyright (c) 2005-2012 Julius project team, Nagoya Institute of Technology
+ Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  All rights reserved
 ======================================================================
 
@@ -48,17 +49,16 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.2.2
+What's new in Julius-4.2.3
 ===========================
 
-Version 4.2.2 is a bug fix release.  Several bugs has been fixed.  The
-grammar compiler (mkfa) now does not link flex library, so you can
-compile without flex.
+Version 4.2.3 includes several new features: dictionary reloading, audio
+scaling, and binary N-gram charset conversion.  Bugs has been also fixed.
 
 See the "Release.txt" file for the full list of updates.
 
 
-Contents of Julius-4.2.2
+Contents of Julius-4.2.3
 =========================
 
 	(Documents with suffix "ja" are written in Japanese)
@@ -102,6 +102,15 @@ License
 Julius is an open-source software provided as is.  For more
 information about the license, please refer to the "LICENSE.txt" file
 included in this archive.
+
+Also see the copyrights in the files:
+
+  libjulius/src/mbr.c
+  gqramtools/gram2sapixml/gram2sapixml.pl.in
+  libsent/src/wav2mfcc/wav2mfcc-*.c
+  libsent/src/adin/pa/
+  msvc/portaudio/
+  msvc/zlib/
 
 
 Contact Us

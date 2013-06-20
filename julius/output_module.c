@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:46:49 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -445,27 +445,10 @@ result_pass2(Recog *recog, void *dummy)
       module_send(module_sd, "  <SHYPO RANK=\"%d\"", n+1);
       if (out2_score) {
 #ifdef USE_MBR
-
-	/**
-	 *
-	 * Update 2 September 2010
-	 *
-	 * MBR Expansion Hiroaki NANJO
-	 *               Ryo FURUTANI
-	 *
-	 **/
-
 	if(r->config->mbr.use_mbr == TRUE){
 
 	  module_send(module_sd, " MBRSCORE=\"%f\"", s->score_mbr);
 	}
-
-	/**
-	 *
-	 * MBR Expansion End
-	 *
-	 **/
-
 #endif
 	module_send(module_sd, " SCORE=\"%f\"", s->score);
 	if (r->lmtype == LM_PROB) {

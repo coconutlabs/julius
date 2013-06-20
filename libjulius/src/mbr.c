@@ -6,15 +6,19 @@
  *
  * 認識された文をMBRの枠組みでリスコアする．
  * </JA>
+ *
+ * <EN>
+ * @brief  Rescoring N-best sentences using MBR framework
+ * </EN>
  * 
  * @author Hiroaki NANJO, Ryo FURUTANI
  * @date   28 March 2011
  *
- * $Revision: 1.1 $
+ * $Revision: 1.2 $
  * 
  */
 /*
- * Copyright (c) 2010-2011 NANJO lab. Ryukoku University
+ * Copyright (c) 2010-2013 NANJO lab. Ryukoku University
  * All rights reserved
  */
 

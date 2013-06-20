@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.29 $
+ * $Revision: 1.30 $
  * 
  */
 /*
@@ -1374,15 +1374,6 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       }
 
 #ifdef USE_MBR
-      /**
-       *
-       * Update 7 March 2011
-       *
-       * MBR Expansion Hiroaki NANJO
-       *               Ryo FURUTANI
-       *
-       **/
-
     } else if (strmatch(argv[i],"-mbr")) {
 
       if (!check_section(jconf, argv[i], JCONF_OPT_SR)) return FALSE;
@@ -1416,11 +1407,6 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
       jconf->searchnow->mbr.loss_weight = (LOGPROB)atof(tmparg);
 
       continue;
-      /**
-       *
-       * MBR Expansion End
-       *
-       **/
 #endif
 
     } else {			/* error */

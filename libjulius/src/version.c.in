@@ -14,7 +14,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 12 01:34:15 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -232,26 +232,8 @@ j_put_compile_defs(FILE *strm){
 #endif
 
 #ifdef USE_MBR
-
-  /**
-   *
-   * Update 21 February 2011
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   fprintf(strm," MBR");
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
-
 #endif
-
 
   fprintf(strm, "\n");
   fprintf(strm," -  Compiled by  : %s %s\n", CC, CFLAGS);

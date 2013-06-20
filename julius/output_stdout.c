@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 17:18:46 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -908,27 +908,9 @@ result_pass2(Recog *recog, void *dummy)
       }
       if (verbose_flag) {
 #ifdef USE_MBR
-
-	/**
-	 *
-	 * Update 7 September 2010
-	 *
-	 * MBR Expansion Hiroaki NANJO
-	 *               Ryo FURUTANI
-	 *
-	 **/
-
 	if(r->config->mbr.use_mbr == TRUE){
-
 	  printf("MBRscore%d: %f\n", n+1, s->score_mbr);
 	}
-
-	/**
-	 *
-	 * MBR Expansion End
-	 *
-	 **/
-
 #endif
 	printf("score%d: %f", n+1, s->score);
 	if (r->lmtype == LM_PROB) {

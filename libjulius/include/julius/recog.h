@@ -70,7 +70,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -334,24 +334,7 @@ typedef struct __sentence__ {
   SentenceAlign *align;
 
 #ifdef USE_MBR
- 
-  /**
-   *
-   * Update 19 October 2010
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   LOGPROB score_mbr; ///< MBR score
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
-
 #endif 
 
 } Sentence;

@@ -92,7 +92,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 11 23:54:53 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -399,24 +399,7 @@ newnode(RecogProcess *r)
   tmp->region = r;
 
 #ifdef USE_MBR
-
-  /**
-   *
-   * Update 19 October 2010
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   tmp->score_mbr = 0.0;
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
-
 #endif
 
   return(tmp);

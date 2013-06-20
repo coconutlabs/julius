@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -491,16 +491,6 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
   winfo->woutput[vnum] = strcpy((char *)mybmalloc2(strlen(ptmp)+1, &(winfo->mroot)), ptmp);
 
 #ifdef USE_MBR
-
-  /**
-   *
-   * Update 7 March 2011
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   /* just move pointer to next token */
   if ((ptmp = mystrtok_movetonext(NULL, " \t\n")) == NULL) {
     jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
@@ -533,13 +523,6 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
   else{
     winfo->weight[vnum] = 1.0; /* default, same minimization WER */
   }
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
-
 #endif
 
     

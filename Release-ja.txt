@@ -1,3 +1,26 @@
+4.2.3 (2013.06.30)
+==================
+
+○新機能
+- 辞書のリロード: j_reload_adddict()
+- 音声入力の振幅のスケーリング："-lvscale factor" および 
+  "j_adin_change_input_scaling_factor()"
+- 長い入力の棄却："-rejectlong msec"
+- バイナリN-gramの文字コード変換をサポート: "mkbingram"
+- ベイズリスク最小化(MBR)探索の実装
+  MBR Extension by Hiroaki Nanjo and Ryo Furutani (Ryukoku University)
+
+○修正されたバグ
+- ビッグエンディアンマシンでadinnetで音声をネットワーク送信するときに
+  エンディアンが異なっていた問題
+- j_close_stream() で音声デバイスのクローズにたまに失敗する
+- 64bit環境で変換されたパラメータ埋め込み付きバイナリHMMが読み込めない問題
+- N-gram ファイル読み込み失敗時のメモリリーク
+- 入力長オーバーフロー時のメモリリーク
+- 特徴ベクトル呼び込みプラグインが動作しない
+- 最新のMacOSXでコンパイルに失敗する
+
+
 4.2.2 (2012.08.01)
 ==================
 

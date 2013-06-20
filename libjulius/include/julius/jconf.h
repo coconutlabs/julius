@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.17 $
+ * $Revision: 1.18 $
  * 
  */
 /*
@@ -792,16 +792,6 @@ typedef struct __jconf_search__ {
   } sw;
 
 #ifdef USE_MBR
- 
-  /**
-   *
-   * Update 7 March 2011
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   struct {
 
     /* Rescoring sentence on MBR (-mbr) */
@@ -817,13 +807,6 @@ typedef struct __jconf_search__ {
     float loss_weight;
 
   } mbr;
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
-
 #endif
 
   /* pointer to next instance */

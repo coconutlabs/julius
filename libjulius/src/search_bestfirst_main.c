@@ -35,7 +35,7 @@
  * @author Akinobu Lee
  * @date   Thu Sep 08 11:51:12 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -1025,22 +1025,7 @@ store_result_pass2(NODE *hypo, RecogProcess *r)
   s->score_am = hypo->score - hypo->totallscore;
 
 #ifdef USE_MBR
-  /**
-   *
-   * Update 19 October 2010
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   s->score_mbr = hypo->score_mbr;
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
 #endif
 
   if (r->lmtype == LM_DFA) {
@@ -2171,26 +2156,9 @@ wchmm_fbs(HTK_Param *param, RecogProcess *r, int cate_bgn, int cate_num)
     }
 
 #ifdef USE_MBR
-
-      /**
-       *
-       * Update 7 March 2011
-       *
-       * MBR Expansion Hiroaki NANJO
-       *               Ryo FURUTANI
-       *
-       **/
-
       if(r->config->mbr.use_mbr){
        candidate_mbr(&r_start, &r_bottom, r_stacknum, r);
       }
-
-      /**
-       *
-       * MBR Expansion End
-       *
-       **/
-
 #endif
 
       /* 結果はまだ出力されていないので，文候補用スタック内をソートして

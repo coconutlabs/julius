@@ -65,6 +65,11 @@
 #-nozmean			# disable "-zmean" specified before
 
 ####
+#### Audio Input Scaling
+####
+#-lvscale 1.0			# input level scaling factor (1.0 = disable)
+
+####
 #### Speech segment detection by level and zero-cross
 ####
 #### default: on for microphone, off for other sources
@@ -76,6 +81,7 @@
 #-headmargin 300		# head silence margin (msec)
 #-tailmargin 400		# tail silence margin (msec)
 #-rejectshort 0			# reject shorter input (msec)
+#-rejectlong -1			# reject longer input (msec) -1 to disable
 
 ####
 #### Input rejection by average power (EXPERIMENTAL)

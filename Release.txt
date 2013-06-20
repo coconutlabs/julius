@@ -1,3 +1,26 @@
+4.2.3 (2013.06.30)
+==================
+
+New features:
+- Add function "j_reload_adddict()" to reload dictionaries.
+- Add option "-lvscale factor" and func "j_adin_change_input_scaling_factor()"
+  to scale the amplitude of captured audio by the factor.
+- Add option "-rejectlong msec" to reject too long input.
+- Add minimum bayes risk decoding (by Nanjo and ...)
+  MBR Extension contributed by Hiroaki Nanjo and Ryo Furutani (Ryukoku University)
+- Support binary N-gram symbol charset conversion by "mkbingram".
+
+Fixes:
+- Fix sending audio stream via network with incorrect byte order at
+  big-endian machines.
+- Fix occasional failure of closing audio device at j_close_stream().
+- Fix segfault when reading binary hmm created at 64bit env. with embedded parameters.
+- Fix memory leak when failed to read an N-gram file.
+- Fix memory leak when input length overflow is detected.
+- Fix unable to load feature vector plugin.
+- Update microphone input code for recent MacOSX.
+
+
 4.2.2 (2012.08.01)
 ==================
 

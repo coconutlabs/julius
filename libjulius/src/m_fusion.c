@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.24 $
+ * $Revision: 1.25 $
  * 
  */
 /*
@@ -1384,10 +1384,8 @@ j_final_fusion(Recog *recog)
  * <EN>
  * @brief  Reload dictionaries.
  *
- * This function reload dictionaries from file.
- *
- * This function works only for N-gram LM.
- * It also re-create all the recognition process, even if it is grammar-based.
+ * This function reload dictionaries and re-create all the recognition
+ * process.
  *
  * @param recog [i/o] engine instance
  * @param lm [i/o] LM instance to reload
@@ -1432,6 +1430,23 @@ j_reload_adddict(Recog *recog, PROCESS_LM *lm)
 	return FALSE;
       }
     }
+  }
+  if (lm->lmtype == LM_DFA) {
+    /* DFA */
+    if (lm->config->dfa_filename != NULL && lm->config->dictfilename != NULL) {
+      /* here add grammar specified by "-dfa" and "-v" to grammar list */
+      multigram_add_gramlist(lm->config->dfa_filename, lm->config->dictfilename, lm->config, LM_DFA_GRAMMAR);
+    }
+    /* load all the specified grammars */
+    if (multigram_load_all_gramlist(lm) == FALSE) {
+      jlog("ERROR: m_fusion: some error occured in reading grammars\n");
+      return FALSE;
+    }
+    /* setup for later wchmm building */
+    multigram_update(lm);
+    /* the whole lexicon will be forced to built in the boot sequence,
+       so reset the global modification flag here */
+    lm->global_modified = FALSE;
   }
 
   /* re-create all recognition process instance */

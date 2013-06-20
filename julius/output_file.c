@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed Dec 12 11:07:46 2007
  * 
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -152,26 +152,10 @@ outfile_sentence(Recog *recog, void *dummy)
       fprintf(fp, "\n");  
 #endif
 #ifdef USE_MBR
-      /**
-       *
-       * Update 2 September 2010
-       *
-       * MBR Expansion Hiroaki NANJO
-       *               Ryo FURUTANI
-       *
-       **/
-
       if(r->config->mbr.use_mbr == TRUE){
 
 	fprintf(fp, "MBRscore%d: %f\n", n+1, s->score_mbr);
       }
-
-      /**
-       *
-       * MBR Expansion End
-       *
-       **/
-
 #endif
 
       fprintf(fp, "score%d: %f", n+1, s->score);

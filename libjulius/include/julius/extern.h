@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.21 $
+ * $Revision: 1.22 $
  * 
  */
 /*
@@ -328,25 +328,8 @@ boolean mfc_module_end(MFCCCalc *mfcc);
 int mfc_module_read(MFCCCalc *mfcc, int *new_t);
 char *mfc_module_input_name(MFCCCalc *mfcc);
 #ifdef USE_MBR
- 
-/**
- *
- * Update 21 October 2010
- *
- * MBR Expansion Hiroaki NANJO
- *               Ryo FURUTANI
- *
- **/
-
 /* mbr.c */
 void candidate_mbr(NODE **r_start, NODE **r_bottom, int r_stacknum, RecogProcess *r);
-
-/**
- *
- * MBR Expansion End
- *
- **/
-
 #endif
 #ifdef __cplusplus
 }

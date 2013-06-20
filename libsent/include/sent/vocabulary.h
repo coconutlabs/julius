@@ -30,7 +30,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:38:13 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -77,22 +77,7 @@ typedef struct {
   int		totaltransnum;  ///< Total number of state transitions
   boolean	*is_transparent; ///< TRUE if the word can be treated as transparent [wid]
 #ifdef USE_MBR
-  /**
-    *
-    * Update 7 March 2011
-    *
-    * MBR Expansion Hiroaki NANJO
-    *               Ryo FURUTANI
-    *
-    **/
-  
   float *weight; ///< Word weight (use minimization WWER on MBR)
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
 #endif
   APATNODE	*errph_root; ///< Root node of index tree for gathering error %HMM name appeared when reading the dictionary 
   BMALLOC_BASE *mroot;		///< Pointer for block memory allocation

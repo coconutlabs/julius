@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.18 $
+ * $Revision: 1.19 $
  * 
  */
 /*
@@ -318,25 +318,10 @@ jconf_set_default_values_search(JCONF_SEARCH *j)
   j->sw.fallback_pass1_flag		= FALSE;
 
 #ifdef USE_MBR
-  /**
-   *
-   * Update 7 March 2011
-   *
-   * MBR Expansion Hiroaki NANJO
-   *               Ryo FURUTANI
-   *
-   **/
-
   j->mbr.use_mbr = FALSE;
   j->mbr.use_word_weight = FALSE;
   j->mbr.score_weight = 0.1;
   j->mbr.loss_weight = 1.0;
-
-  /**
-   *
-   * MBR Expansion End
-   *
-   **/
 #endif
 }
 

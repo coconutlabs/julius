@@ -1,14 +1,14 @@
 /*
- * Copyright (c) 2002-2012 Kawahara Lab., Kyoto University
+ * Copyright (c) 2002-2013 Kawahara Lab., Kyoto University
  * Copyright (c) 2002-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2012 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.7 2012/08/05 01:26:54 sumomo Exp $
+ * $Id: mkss.c,v 1.8 2013/06/20 17:14:28 sumomo Exp $
  *
  */
 

@@ -22,16 +22,16 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 06:03:36 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
  * Copyright (c) 2003-2005 Shikano Lab., Nara Institute of Science and Technology
- * Copyright (c) 2005-2012 Julius project team, Nagoya Institute of Technology
+ * Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.7 2012/08/05 01:26:54 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.8 2013/06/20 17:14:21 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>

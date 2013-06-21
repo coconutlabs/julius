@@ -13,7 +13,7 @@
  * @author Akinobu LEE
  * @date   Sun Jul 22 13:29:32 2007
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -202,7 +202,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
   static char cbuf[MAX_HMMNAME_LEN];
   static HMM_Logical **tmpwseq = NULL;
   static int tmpmaxlen;
-  int len;
+  int i, len;
   HMM_Logical *tmplg;
   boolean pok, first;
   int vnum;
@@ -300,7 +300,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
     ptmp = winfo->wname[vnum];
   }
   if (ptmp == NULL) {
-    jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    jlog("Error: voca_load_wordlist: line %d: corrupted data:\n> %s\n", linenum, bufbak);
     winfo->errnum++;
     *ok_flag = FALSE;
     return TRUE;
@@ -310,7 +310,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 #ifdef USE_MBR
   /* just move pointer to next token */
   if ((ptmp = mystrtok_movetonext(NULL, " \t\n")) == NULL) {
-    jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+    jlog("Error: voca_load_wordlist: line %d: corrupted data:\n> %s\n", linenum, bufbak);
     winfo->errnum++;
     *ok_flag = FALSE;
     return TRUE;
@@ -324,21 +324,31 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
     /* if ":" not found, it means weight == 1.0 (same minimization WER) */
 
     if ((ptmp = mystrtok(NULL, " \t\n")) == NULL) {
-      jlog("Error: voca_load_htkdict: line %d: corrupted data:\n> %s\n", linenum, bufbak);
+      jlog("Error: voca_load_wordlist: line %d: corrupted data:\n> %s\n", linenum, bufbak);
       winfo->errnum++;
       *ok_flag = FALSE;
       return TRUE;
     }
-    if (ptmp[1] == '\0') {     /* space between ':' and figures */
-      jlog("Error: voca_load_htkdict: line %d: value after ':' missing, maybe wrong space?\n> %s\n", linenum, bufbak);
+    if ((ptmp[1] < '0' || ptmp[1] > '9') && ptmp[1] != '.') {     /* not figure after ':' */
+      jlog("Error: voca_load_wordlist: line %d: value after ':' missing, maybe wrong space?\n> %s\n", linenum, bufbak);
       winfo->errnum++;
       *ok_flag = FALSE;
       return TRUE;
     }
+
+    /* allocate if not yet */
+    if (winfo->weight == NULL) {
+      winfo->weight = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->maxnum);
+      for (i = 0; i < vnum; i++) {
+	winfo->weight[i] = 1.0;
+      }
+    }
+
     winfo->weight[vnum] = atof(&(ptmp[1]));
   }
   else{
-    winfo->weight[vnum] = 1.0; /* default, same minimization WER */
+    if (winfo->weight) 
+      winfo->weight[vnum] = 1.0; /* default, same minimization WER */
   }
 #endif
 
@@ -362,7 +372,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 	  /* insert head phone at beginning of word */
 	  if (contextphone) {
 	    if (strlen(contextphone) >= MAX_HMMNAME_LEN) {
-	      jlog("Error: voca_load_htkdict: line %d: too long phone name: %s\n", linenum, contextphone);
+	      jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, contextphone);
 	      winfo->errnum++;
 	      *ok_flag = FALSE;
 	      return TRUE;
@@ -378,7 +388,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 	    return TRUE;
 	  }
 	  if (strlen(lp) >= MAX_HMMNAME_LEN) {
-	    jlog("Error: voca_load_htkdict: line %d: too long phone name: %s\n", linenum, lp);
+	    jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, lp);
 	    winfo->errnum++;
 	    *ok_flag = FALSE;
 	    return TRUE;
@@ -391,7 +401,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 	    if (lp != NULL) {
 	      /* token exist */
 	      if (strlen(lp) >= MAX_HMMNAME_LEN) {
-		jlog("Error: voca_load_htkdict: line %d: too long phone name: %s\n", linenum, lp);
+		jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, lp);
 		winfo->errnum++;
 		*ok_flag = FALSE;
 		return TRUE;
@@ -401,7 +411,7 @@ voca_load_wordlist_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winf
 	      /* no more token, insert tail phone at end of word */
 	      if (contextphone) {
 		if (strlen(contextphone) >= MAX_HMMNAME_LEN) {
-		  jlog("Error: voca_load_htkdict: line %d: too long phone name: %s\n", linenum, contextphone);
+		  jlog("Error: voca_load_wordlist: line %d: too long phone name: %s\n", linenum, contextphone);
 		  winfo->errnum++;
 		  *ok_flag = FALSE;
 		  return TRUE;

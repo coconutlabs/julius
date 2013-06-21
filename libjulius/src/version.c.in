@@ -14,7 +14,7 @@
  * @author Akinobu Lee
  * @date   Mon Sep 12 01:34:15 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -231,8 +231,8 @@ j_put_compile_defs(FILE *strm){
   fprintf(strm, " PowerReject");
 #endif
 
-#ifdef USE_MBR
-  fprintf(strm," MBR");
+#ifndef USE_MBR
+  fprintf(strm," NoMBR");
 #endif
 
   fprintf(strm, "\n");

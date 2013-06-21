@@ -14,11 +14,11 @@
  * @author Hiroaki NANJO, Ryo FURUTANI
  * @date   28 March 2011
  *
- * $Revision: 1.2 $
+ * $Revision: 1.3 $
  * 
  */
 /*
- * Copyright (c) 2010-2013 NANJO lab. Ryukoku University
+ * Copyright (c) 2011-2013 Julius project team, Nagoya Institute of Technology
  * All rights reserved
  */
 
@@ -207,6 +207,21 @@ dpmatch(NODE *a, NODE *b, WORD_INFO *winfo)
   return d;
 }
 
+static float
+get_weight(WORD_INFO *winfo, WORD_ID id)
+{
+  float val;
+
+  if (winfo->weight) {
+    /* word-level weight exist, return the value */
+    val = winfo->weight[id];
+  } else {
+    /* no word-level weight, return default value */
+    val = 1.0;
+  }
+  return val;
+}
+
 
 /** 
  * <JA>
@@ -246,19 +261,19 @@ calc_wld(NODE *a, NODE *b, WORD_INFO *winfo)
 
       if(d[now].r == 1){
 	/* Deletion error */
-	error1 += winfo->weight[a->seq[i - 1]];
+	error1 += get_weight(winfo, a->seq[i - 1]);
 	i--;
       }
       else if(d[now].r == 2){
 	/* Insertion error */
-	error2 += winfo->weight[b->seq[j - 1]];
+	error2 += get_weight(winfo, b->seq[j - 1]);
 	j--;
       }
       else if(d[now].r == 3){
 	if(d[now].c == 1){
 	  /* Substitution error */
-	  error1 += winfo->weight[a->seq[i - 1]];
-	  error2 += winfo->weight[b->seq[j - 1]];
+	  error1 += get_weight(winfo, a->seq[i - 1]);
+	  error2 += get_weight(winfo, b->seq[j - 1]);
 	}
 	else if(d[now].c == 0){
 	  /* Correct word */

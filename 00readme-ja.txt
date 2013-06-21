@@ -40,12 +40,18 @@ Julius は，音声認識システムの開発・研究のためのオープンソースの高性能
 Julius-4.2.3
 =============
 
-バージョン 4.2.3 では、辞書の再読み込み、入力音声波形のスケーリング、
-および mkbingram でのバイナリN-gramの文字コード変換機能が追加されまし
-た。またいくつかの不具合が修正されました。
+バージョン 4.2.3 で追加された新機能は、辞書の再読み込み、入力音声波形の
+スケーリング、長時間入力の棄却、ベイズリスク最小化探索（龍谷大南條先生
+より提供）、およびバイナリN-gramの文字コード変換機能です。
+またいくつかの不具合が修正されました。
 
+新オプション：
+    -lvscale
+    -rejectlong
+    -mbr, -nombr, -mbr_wwer, -mbr_weight
 
 変更点の詳細な一覧は Release-ja.txt をご覧ください．
+また "-help" をつけて実行することでオプションの全リストが出力されます。
 
 
 ファイルの構成
@@ -106,11 +112,11 @@ Julius はオープンソースソフトウェアです．
 
 また以下のファイルやディレクトリ内の Copyright もご参照下さい。
 
-  libjulius/src/mbr.c
+  gramtools/gram2sapixml/gram2sapixml.pl.in
+  libsent/src/wav2mfcc/wav2mfcc-*.c
   libsent/src/adin/pa/
   msvc/portaudio/
   msvc/zlib/
-
 
 
 連絡先

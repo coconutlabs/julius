@@ -6,8 +6,7 @@ New features:
 - Add option "-lvscale factor" and func "j_adin_change_input_scaling_factor()"
   to scale the amplitude of captured audio by the factor.
 - Add option "-rejectlong msec" to reject too long input.
-- Add minimum bayes risk decoding (by Nanjo and ...)
-  MBR Extension contributed by Hiroaki Nanjo and Ryo Furutani (Ryukoku University)
+- Add minimum bayes risk decoding, contributed by H. Nanjo and R. Furutani
 - Support binary N-gram symbol charset conversion by "mkbingram".
 
 Fixes:

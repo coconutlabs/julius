@@ -29,7 +29,7 @@ ac_help="$ac_help
 ac_help="$ac_help
   --enable-msd            enable MSD model support"
 ac_help="$ac_help
-  --enable-mbr            enable MBR support"
+  --disable-mbr           disable MBR support"
 ac_help="$ac_help
   --disable-zlib          disable zlib library"
 ac_help="$ac_help
@@ -653,7 +653,7 @@ if test "${enable_mbr+set}" = set; then
   want_mbr=$enableval
 
 else
-  want_mbr=no
+  want_mbr=yes
 fi
 
 

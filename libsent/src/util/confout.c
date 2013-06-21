@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 15:34:39 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -88,13 +88,15 @@ confout_lm(FILE *strm)
 #else
   fprintf(strm, "    class N-gram support    : no\n");
 #endif
+#ifdef USE_MBR
+  fprintf(strm, "    MBR weight support      : yes\n");
+#else
+  fprintf(strm, "    MBR weight support      : no\n");
+#endif
 #ifdef WORDS_INT
   fprintf(strm, "    word id unit            : integer (%d bytes)\n", sizeof(WORD_ID));
 #else
   fprintf(strm, "    word id unit            : short (%d bytes)\n", sizeof(WORD_ID));
-#endif
-#ifdef USE_MBR
-  fprintf(strm, "    MBR weight support      : yes\n");
 #endif
 }
 

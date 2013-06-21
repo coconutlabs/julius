@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 21:33:29 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -109,11 +109,6 @@ winfo_init(WORD_INFO *winfo)
   winfo->maxwlen = 0;
   winfo->errnum = 0;
   winfo->errph_root = NULL;
-
-#ifdef USE_MBR
-  winfo->weight = (LOGPROB *)mymalloc(sizeof(LOGPROB)*n);
-#endif
-
 }
 
 /** 
@@ -145,7 +140,8 @@ winfo_expand(WORD_INFO *winfo)
   winfo->is_transparent = (boolean *)myrealloc(winfo->is_transparent, sizeof(boolean)*n);
 
 #ifdef USE_MBR
-  winfo->weight = (LOGPROB *)myrealloc(winfo->weight, sizeof(LOGPROB)*n);
+  if (winfo->weight)
+    winfo->weight = (LOGPROB *)myrealloc(winfo->weight, sizeof(LOGPROB)*n);
 #endif
 
   winfo->maxnum = n;

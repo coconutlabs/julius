@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 18 19:43:06 2005
  *
- * $Revision: 1.15 $
+ * $Revision: 1.16 $
  * 
  */
 /*
@@ -376,7 +376,7 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
   char *ptmp, *lp = NULL, *p;
   static char cbuf[MAX_HMMNAME_LEN];
   HMM_Logical **tmpwseq;
-  int len;
+  int i, len;
   HMM_Logical *tmplg;
   boolean pok;
   int vnum;
@@ -512,19 +512,27 @@ voca_load_htkdict_line(char *buf, WORD_ID *vnum_p, int linenum, WORD_INFO *winfo
       *ok_flag = FALSE;
       return TRUE;
     }
-    if (ptmp[1] == '\0') {     /* space between ':' and figures */
+    if ((ptmp[1] < '0' || ptmp[1] > '9') && ptmp[1] != '.') {     /* not figure after ':' */
       jlog("Error: voca_load_htkdict: line %d: value after ':' missing, maybe wrong space?\n> %s\n", linenum, bufbak);
       winfo->errnum++;
       *ok_flag = FALSE;
       return TRUE;
     }
+
+    /* allocate if not yet */
+    if (winfo->weight == NULL) {
+      winfo->weight = (LOGPROB *)mymalloc(sizeof(LOGPROB) * winfo->maxnum);
+      for (i = 0; i < vnum; i++) {
+	winfo->weight[i] = 1.0;
+      }
+    }
     winfo->weight[vnum] = atof(&(ptmp[1]));
   }
   else{
-    winfo->weight[vnum] = 1.0; /* default, same minimization WER */
+    if (winfo->weight) 
+      winfo->weight[vnum] = 1.0; /* default, same minimization WER */
   }
 #endif
-
     
   /* phoneme sequence */
   if (hmminfo == NULL) {

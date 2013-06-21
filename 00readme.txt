@@ -52,10 +52,18 @@ together with source codes.
 What's new in Julius-4.2.3
 ===========================
 
-Version 4.2.3 includes several new features: dictionary reloading, audio
-scaling, and binary N-gram charset conversion.  Bugs has been also fixed.
+Version 4.2.3 includes new features: dictionary reloading, audio input
+scaling, long input rejection, minimum bayes risk decoding, and
+character set conversion of binary N-gram.  Several bugs has also been
+fixed.
+
+New options:
+    -lvscale
+    -rejectlong
+    -mbr, -nombr, -mbr_wwer, -mbr_weight
 
 See the "Release.txt" file for the full list of updates.
+Run with "-help" to see full list of options.
 
 
 Contents of Julius-4.2.3
@@ -105,8 +113,7 @@ included in this archive.
 
 Also see the copyrights in the files:
 
-  libjulius/src/mbr.c
-  gqramtools/gram2sapixml/gram2sapixml.pl.in
+  gramtools/gram2sapixml/gram2sapixml.pl.in
   libsent/src/wav2mfcc/wav2mfcc-*.c
   libsent/src/adin/pa/
   msvc/portaudio/

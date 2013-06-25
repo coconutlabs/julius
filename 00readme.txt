@@ -53,9 +53,9 @@ What's new in Julius-4.2.3
 ===========================
 
 Version 4.2.3 includes new features: dictionary reloading, audio input
-scaling, long input rejection, minimum bayes risk decoding, and
-character set conversion of binary N-gram.  Several bugs has also been
-fixed.
+scaling, long input rejection, minimum bayes risk decoding
+(contributed by Hiroaki Nanjo and Ryo Furutani), and character set
+conversion of binary N-gram.  Several bugs has also been fixed.
 
 New options:
     -lvscale

@@ -7,8 +7,7 @@
   "j_adin_change_input_scaling_factor()"
 - 長い入力の棄却："-rejectlong msec"
 - バイナリN-gramの文字コード変換をサポート: "mkbingram"
-- ベイズリスク最小化(MBR)探索の実装：龍谷大の南條先生による実装
-  MBR Extension contributed by Hiroaki Nanjo and Ryo Furutani.
+- ベイズリスク最小化(MBR)探索の実装（南條浩輝氏，古谷遼氏より提供）
 
 ○修正されたバグ
 - ビッグエンディアンマシンでadinnetで音声をネットワーク送信するときに

@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.26 $
+ * $Revision: 1.27 $
  * 
  */
 /*
@@ -104,8 +104,13 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
   if (jconf->input.type == INPUT_WAVEFORM) {
     /* Decode parameter extraction type according to the training
        parameter type in the header of the given acoustic HMM */
-    if ((hmminfo->opt.param_type & F_BASEMASK) != F_MFCC) {
-      jlog("ERROR: m_fusion: for direct speech input, only HMM trained by MFCC is supported\n");
+    switch(hmminfo->opt.param_type & F_BASEMASK) {
+    case F_MFCC:
+    case F_FBANK:
+    case F_MELSPEC:
+      break;
+    default:
+      jlog("ERROR: m_fusion: for direct speech input, only HMM trained by MFCC ior filterbank is supported\n");
       hmminfo_free(hmminfo);
       return NULL;
     }
@@ -236,8 +241,13 @@ initialize_GMM(Jconf *jconf)
   if (jconf->input.type == INPUT_WAVEFORM) {
     /* Decode parameter extraction type according to the training
        parameter type in the header of the given acoustic HMM */
-    if ((gmm->opt.param_type & F_BASEMASK) != F_MFCC) {
-      jlog("ERROR: m_fusion: for direct speech input, only GMM trained by MFCC is supported\n");
+    switch(gmm->opt.param_type & F_BASEMASK) {
+    case F_MFCC:
+    case F_FBANK:
+    case F_MELSPEC:
+      break;
+    default:
+      jlog("ERROR: m_fusion: for direct speech input, only GMM trained by MFCC ior filterbank is supported\n");
       hmminfo_free(gmm);
       return NULL;
     }

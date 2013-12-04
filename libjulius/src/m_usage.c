@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.23 $
+ * $Revision: 1.24 $
  * 
  */
 /*
@@ -62,7 +62,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "\n--- Global Options -----------------------------------------------\n");
 
   fprintf(fp, "\n Speech Input:\n");
-  fprintf(fp, "    (Can extract only MFCC based features from waveform)\n");
+  fprintf(fp, "    (Can extract MFCC/FBANK/MELSPEC features from waveform)\n");
   fprintf(fp, "    [-input devname]    input source  (default = htkparam)\n");
   fprintf(fp, "         htkparam/mfcfile  HTK parameter file\n");
   fprintf(fp, "         file/rawfile      waveform file (%s)\n", SUPPORTED_WAVEFILE_FORMAT);

@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -164,7 +164,7 @@ init_param(MFCCCalc *mfcc)
 
   /* これから計算されるパラメータの型をヘッダに設定 */
   /* set header types */
-  mfcc->param->header.samptype = F_MFCC;
+  mfcc->param->header.samptype = para->basetype;
   if (para->delta) mfcc->param->header.samptype |= F_DELTA;
   if (para->acc) mfcc->param->header.samptype |= F_ACCL;
   if (para->energy) mfcc->param->header.samptype |= F_ENERGY;

@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sun Oct 28 18:06:20 2007
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -58,7 +58,7 @@ j_mfcccalc_new(JCONF_AM *amconf)
     mfcc->htk_loaded = (amconf->analysis.para_htk.loaded == 1) ? TRUE : FALSE;
     mfcc->wrk = WMP_work_new(mfcc->para);
     if (mfcc->wrk == NULL) {
-      jlog("ERROR: j_mfcccalc_new: failed to initialize MFCC computation\n");
+      jlog("ERROR: j_mfcccalc_new: failed to initialize feature computation\n");
       return NULL;
     }
     mfcc->cmn.load_filename = amconf->analysis.cmnload_filename;

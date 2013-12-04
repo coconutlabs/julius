@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 03:40:52 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 
@@ -74,6 +74,7 @@
 
 /// mfcc configuration parameter values
 typedef struct {
+  short basetype;       ///< Parameter basetype (F_MFCC/F_FBANK/F_MELSPEC)/
   int smp_period;       ///< Sampling period in 100ns units
   int smp_freq;	        ///< Sampling frequency
   int framesize;        ///< Window size in samples, similar to WINDOWSIZE in HTK (unit is different)
@@ -145,6 +146,8 @@ typedef struct {
   double *fbank;   ///< Local buffer to hold filterbank
   FBankInfo fb;	///< Local buffer to hold filterbank information
   int bflen;			///< Length of above
+  boolean fbank_only;		///< True if output is filterbank
+  boolean log_fbank;		///< True if use log filterbank
 #ifdef MFCC_SINCOS_TABLE
   double *costbl_hamming; ///< Cos table for hamming window
   int costbl_hamming_len; ///< Length of above

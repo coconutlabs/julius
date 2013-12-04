@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.13 $ 
+ * $Revision: 1.14 $ 
  */
 /*
  * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
@@ -140,6 +140,9 @@ boolean adin_mic_standby(int freq, void *arg);
 boolean adin_mic_begin(char *pathname);
 boolean adin_mic_end();
 int adin_mic_read(SP16 *buf, int sampnum);
+boolean adin_mic_pause();
+boolean adin_mic_terminate();
+boolean adin_mic_resume();
 char *adin_mic_input_name();
 /* adin/adin_mic_linux_alsa.c */
 boolean adin_alsa_standby(int freq, void *arg);

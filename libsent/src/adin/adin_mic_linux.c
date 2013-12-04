@@ -23,7 +23,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.9 $
+ * $Revision: 1.10 $
  * 
  */
 /*
@@ -134,6 +134,38 @@ adin_mic_read(SP16 *buf, int sampnum)
   jlog("Error: neither of pulseaudio/alsa/oss/esd device is available\n");
   return -2;
 #endif
+}
+
+/** 
+ * Function to pause audio input (wait for buffer flush)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_pause()
+{
+  return TRUE;
+}
+
+/** 
+ * Function to terminate audio input (disgard buffer)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_terminate()
+{
+  return TRUE;
+}
+/** 
+ * Function to resume the paused / terminated audio input
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_resume()
+{
+  return TRUE;
 }
 
 /** 

@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.7 2012/09/05 08:18:24 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.8 2013/12/04 10:13:00 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -662,6 +662,38 @@ void adin_mic_pause() {
     CoreAudioRecordStarted = FALSE;
   }
   return;
+}
+
+/** 
+ * Function to pause audio input (wait for buffer flush)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_pause()
+{
+  return TRUE;
+}
+
+/** 
+ * Function to terminate audio input (disgard buffer)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_terminate()
+{
+  return TRUE;
+}
+/** 
+ * Function to resume the paused / terminated audio input
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_resume()
+{
+  return TRUE;
 }
 
 /** 

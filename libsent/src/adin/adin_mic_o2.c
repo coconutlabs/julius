@@ -29,7 +29,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 18:42:22 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -173,6 +173,38 @@ adin_mic_read(SP16 *buf, int sampnum)
     return(-2);			/* return negative on error */
   }
   return cnt;
+}
+
+/** 
+ * Function to pause audio input (wait for buffer flush)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_pause()
+{
+  return TRUE;
+}
+
+/** 
+ * Function to terminate audio input (disgard buffer)
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_terminate()
+{
+  return TRUE;
+}
+/** 
+ * Function to resume the paused / terminated audio input
+ * 
+ * @return TRUE on success, FALSE on failure.
+ */
+boolean
+adin_mic_resume()
+{
+  return TRUE;
 }
 
 /** 

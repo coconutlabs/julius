@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.27 $
+ * $Revision: 1.28 $
  * 
  */
 /*
@@ -1372,6 +1372,25 @@ j_final_fusion(Recog *recog)
       if (RealTimeInit(recog) == FALSE) {
 	jlog("ERROR: m_fusion: failed to initialize recognition process\n");
 	return FALSE;
+      }
+    }
+  }
+
+  /* initialize CMN and CVN calculation work area for batch computation */
+  if (! recog->jconf->decodeopt.realtime_flag) {
+    if (recog->jconf->input.type == INPUT_WAVEFORM) {
+      for(mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
+	if (mfcc->cmn.load_filename) {
+	  if (mfcc->para->cmn || mfcc->para->cvn) {
+	    mfcc->cmn.wrk = CMN_realtime_new(mfcc->para, mfcc->cmn.map_weight);
+	    if ((mfcc->cmn.loaded = CMN_load_from_file(mfcc->cmn.wrk, mfcc->cmn.load_filename))== FALSE) {
+	      jlog("ERROR: m_fusion: failed to read initial cepstral mean from \"%s\"\n", mfcc->cmn.load_filename);
+	      return FALSE;
+	    }
+	  } else {
+	    jlog("WARNING: m_fusion: CMN load file specified but AM not require it, ignored\n");
+	  }
+	}
       }
     }
   }

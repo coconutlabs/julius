@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 /*
@@ -208,26 +208,42 @@ print_engine_info(Recog *recog)
 	  jlog("off\n");
 	}
       }
-      jlog("  cepstral normalization = ");
-      if (mfcc->para->cmn || mfcc->para->cvn) {
+      jlog(" cep. mean normalization = ");
+      if (mfcc->para->cmn) {
+	jlog("yes, ");
 	if (jconf->decodeopt.realtime_flag) {
-	  jlog("real-time MAP-");
+	  jlog("real-time MAP-CMN, ");
+	  if (mfcc->cmn.loaded) {
+	    jlog("updating initial mean with last %.1f sec. utterances, first mean loaded from file\n", (float)CPMAX / 100.0);
+	  } else {
+	    jlog("updating initial mean with last %.1f sec utterances (no first mean)\n", (float)CPMAX / 100.0);
+	  }
 	} else {
-	  jlog("sentence ");
+	  if (mfcc->cmn.loaded) {
+	    jlog("applying a static mean loaded from file (no update)\n");
+	  } else {
+	    jlog("applying self mean calculated per utterance\n");
+	  }
 	}
-	if (mfcc->para->cmn) {
-	  jlog("CMN");
-	}
-	if (mfcc->para->cmn && mfcc->para->cvn) {
-	  jlog("+");
-	}
-	if (mfcc->para->cvn) {
-	  jlog("CVN");
-	}
-	jlog("\n");
       } else {
 	jlog("no\n");
       }
+      jlog(" cep. var. normalization = ");
+      if (mfcc->para->cvn) {
+	jlog("yes, ");
+	if (mfcc->cmn.loaded) {
+	  jlog("applying a static variance loaded from file (no update)\n");
+	} else {
+	  if (jconf->decodeopt.realtime_flag) {
+	    jlog("estimating long-term variance from all speech input from start\n");
+	  } else {
+	    jlog("applying self variance calculated per utterance\n");
+	  }
+	}
+      } else {
+	jlog("no\n");
+      }
+
       jlog("\t base setup from =");
       if (mfcc->htk_loaded == 1 || mfcc->hmm_loaded == 1) {
 	if (mfcc->hmm_loaded == 1) {
@@ -927,71 +943,99 @@ print_engine_info(Recog *recog)
   jlog("\n");
 
   jlog("----------------------- System Information end -----------------------\n");
+  jlog("\n");
 
-#ifdef USE_MIC
-  if (jconf->decodeopt.realtime_flag) {
-    boolean flag;
-    flag = FALSE;
-    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-      if (mfcc->para->cmn && mfcc->cmn.loaded) {
-	flag = TRUE;
-	break;
-      }
-    }
-    if (flag) {
-      jlog("\n");
-      jlog("initial CMN parameter loaded from file\nfor");
-      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-	if (mfcc->para->cmn && mfcc->cmn.loaded) {
-	  jlog(" MFCC%02d", mfcc->id);
+  for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+
+    if (jconf->decodeopt.realtime_flag) {
+
+      /* warning for real-time decoding */
+      if (mfcc->para->cmn || mfcc->para->cvn) {
+	jlog("Notice for feature extraction (%02d),\n", mfcc->id);
+	jlog("\t*************************************************************\n");
+	if (mfcc->para->cmn && mfcc->para->cvn) {
+	  jlog("\t* Cepstral mean and variance norm. for real-time decoding:  *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* initial mean loaded from file, updating per utterance.    *\n");
+	    jlog("\t* static variance loaded from file, apply it constantly.    *\n");
+	    jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
+	    jlog("\t*         cepstral mean is unstable on startup.             *\n");
+	  } else {
+	    jlog("\t* no static variance was given by file.                     *\n");
+	    jlog("\t* estimating long-term variance from all speech from start. *\n");
+	    jlog("\t* NOTICE: May not work on the first several minutes, since  *\n");
+	    jlog("\t*         no cepstral variance is given on startup.         *\n");
+	  }
+	} else if (mfcc->para->cmn) {
+	  jlog("\t* Cepstral mean normalization for real-time decoding:       *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* initial mean loaded from file, updating per utterance.    *\n");
+	    jlog("\t* NOTICE: The first input may not good, since               *\n");
+	    jlog("\t*         cepstral mean is unstable on startup.             *\n");
+	  } else {
+	    jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
+	    jlog("\t*         no initial mean is available on startup.          *\n");
+	  }
+	} else if (mfcc->para->cvn) {
+	  jlog("\t* Cepstral variance normalization for real-time decoding:   *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* static variance loaded from file, apply it constantly.    *\n");
+	  } else {
+	    jlog("\t* no static variance is given by file.                      *\n");
+	    jlog("\t* estimating long-term variance from all speech from start. *\n");
+	    jlog("\t* NOTICE: The first minutes may not work well, since        *\n");
+	    jlog("\t*         no cepstral variance is given on startup.         *\n");
+	  }
 	}
+	jlog("\t*************************************************************\n");
       }
-      jlog("\n");
-    }
-    flag = FALSE;
-    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-      if (mfcc->para->cmn && !mfcc->cmn.loaded) {
-	flag = TRUE;
-	break;
-      }
-    }
-    if (flag) {
-      jlog("\n");
-      jlog("\t*************************************************************\n");
-      jlog("\t* NOTICE: The first input may not be recognized, since      *\n");
-      jlog("\t*         no initial CMN parameter is available on startup. *\n");
-      jlog("\t* for");
-      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-	if (mfcc->para->cmn && !mfcc->cmn.loaded) {
-	  jlog(" MFCC%02d", mfcc->id);
-	}
-      }
-      jlog("*\n");
-      jlog("\t*************************************************************\n");
-    }
-    flag = FALSE;
-    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
       if (mfcc->para->energy && mfcc->para->enormal) {
-	flag = TRUE;
-	break;
+	jlog("Notice for energy computation (%02d),\n", mfcc->id);
+	jlog("\t*************************************************************\n");
+	jlog("\t* NOTICE: Energy normalization is activated on live input:  *\n");
+	jlog("\t*         maximum energy of LAST INPUT will be used for it. *\n");
+	jlog("\t*         So, the first input will not be recognized.       *\n");
+	jlog("\t*************************************************************\n");
       }
-    }
-    if (flag) {
-      jlog("\t*************************************************************\n");
-      jlog("\t* NOTICE: Energy normalization is activated on live input:  *\n");
-      jlog("\t*         maximum energy of LAST INPUT will be used for it. *\n");
-      jlog("\t*         So, the first input will not be recognized.       *\n");
-      jlog("\t* for");
-      for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
-	if (mfcc->para->energy && mfcc->para->enormal) {
-	  jlog(" MFCC%02d", mfcc->id);
+
+    } else {
+
+      /* warning for batch decoding */
+      if (mfcc->para->cmn || mfcc->para->cvn) {
+	jlog("Notice for feature extraction (%02d),\n", mfcc->id);
+	jlog("\t*************************************************************\n");
+	if (mfcc->para->cmn && mfcc->para->cvn) {
+	  jlog("\t* Cepstral mean and variance norm. for batch decoding:      *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* constant mean and variance was loaded from file.          *\n");
+	    jlog("\t* they will be applied constantly for all input.            *\n");
+	  } else {
+	    jlog("\t* per-utterance mean and variance will be computed and      *\n");
+	    jlog("\t* applied for each input.                                   *\n");
+	  }
+	} else if (mfcc->para->cmn) {
+	  jlog("\t* Cepstral mean normalization for batch decoding:           *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* constant mean was loaded from file.                       *\n");
+	    jlog("\t* they will be constantly applied for all input.            *\n");
+	  } else {
+	    jlog("\t* per-utterance mean will be computed and applied.          *\n");
+	  }
+	} else if (mfcc->para->cvn) {
+	  jlog("\t* Cepstral variance normalization for batch decoding:       *\n");
+	  if (mfcc->cmn.loaded) {
+	    jlog("\t* constant variance was loaded from file.                   *\n");
+	    jlog("\t* they will be constantly applied for all input.            *\n");
+	  } else {
+	    jlog("\t* per-utterance variance will be computed and applied.      *\n");
+	  }
 	}
+	jlog("\t*************************************************************\n");
       }
-      jlog("*\n");
-      jlog("\t*************************************************************\n");
+
     }
+
   }
-#endif
 }
 
 /* end of file */

@@ -40,7 +40,7 @@
  * @author Akinobu Lee
  * @date   Sun Sep 18 19:40:34 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -142,7 +142,7 @@ wav2mfcc(SP16 speech[], int speechlen, Recog *recog)
     }
   
     /* make MFCC from speech data */
-    if (Wav2MFCC(speech, mfcc->param->parvec, para, speechlen, mfcc->wrk) == FALSE) {
+    if (Wav2MFCC(speech, mfcc->param->parvec, para, speechlen, mfcc->wrk, mfcc->cmn.wrk) == FALSE) {
       jlog("ERROR: failed to compute features from input speech\n");
       if (mfcc->frontend.sscalc) {
 	free(mfcc->frontend.ssbuf);

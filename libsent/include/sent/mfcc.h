@@ -27,7 +27,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 03:40:52 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 
@@ -195,7 +195,9 @@ typedef struct {
   boolean mean;			///< TRUE if CMN is enabled
   boolean var;			///< TRUE if CVN is enabled
   boolean cmean_init_set;	///< TRUE if cmean_init (and cvar_init) was set
-  CMEAN now;		///< Work area to hold current cepstral mean
+  CMEAN now;		///< Work area to hold current cepstral mean and variance
+  CMEAN all;		///< Work area to hold all cepstral mean and variance
+  boolean loaded_from_file;	///< TRUE if loaded from file
 } CMNWork;
 
 /**
@@ -243,7 +245,7 @@ void WeightCepstrum (float *mfcc, Value *para, MFCCWork *w);
 
 /**** wav2mfcc-buffer.c ****/
 /* Convert wave -> MFCC_E_D_(Z) (batch) */
-int Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w);
+int Wav2MFCC(SP16 *wave, float **mfcc, Value *para, int nSamples, MFCCWork *w, CMNWork *c);
 /* Calculate delta coefficients (batch) */
 void Delta(float **c, int frame, Value *para);
 /* Calculate acceleration coefficients (batch) */
@@ -251,8 +253,8 @@ void Accel(float **c, int frame, Value *para);
 /* Normalise log energy (batch) */
 void NormaliseLogE(float **c, int frame_num, Value *para);
 /* Cepstrum Mean Normalization (batch) */
-void CMN(float **mfcc, int frame_num, int dim);
-void MVN(float **mfcc, int frame_num, Value *para);
+void CMN(float **mfcc, int frame_num, int dim, CMNWork *c);
+void MVN(float **mfcc, int frame_num, Value *para, CMNWork *c);
 
 /**** wav2mfcc-pipe.c ****/
 DeltaBuf *WMP_deltabuf_new(int veclen, int windowlen);

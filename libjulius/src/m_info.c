@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.21 $
+ * $Revision: 1.22 $
  * 
  */
 /*
@@ -945,11 +945,12 @@ print_engine_info(Recog *recog)
   jlog("----------------------- System Information end -----------------------\n");
   jlog("\n");
 
-  for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
+  if (jconf->input.type == INPUT_WAVEFORM) {
 
-    if (jconf->decodeopt.realtime_flag) {
+   if (jconf->decodeopt.realtime_flag) {
 
-      /* warning for real-time decoding */
+    /* warning for real-time decoding */
+    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
       if (mfcc->para->cmn || mfcc->para->cvn) {
 	jlog("Notice for feature extraction (%02d),\n", mfcc->id);
 	jlog("\t*************************************************************\n");
@@ -997,10 +998,12 @@ print_engine_info(Recog *recog)
 	jlog("\t*         So, the first input will not be recognized.       *\n");
 	jlog("\t*************************************************************\n");
       }
+    }
 
-    } else {
+   } else {
 
-      /* warning for batch decoding */
+    /* warning for batch decoding */
+    for(mfcc=recog->mfcclist; mfcc; mfcc=mfcc->next) {
       if (mfcc->para->cmn || mfcc->para->cvn) {
 	jlog("Notice for feature extraction (%02d),\n", mfcc->id);
 	jlog("\t*************************************************************\n");
@@ -1032,10 +1035,12 @@ print_engine_info(Recog *recog)
 	}
 	jlog("\t*************************************************************\n");
       }
-
     }
 
+   }
+
   }
+
 }
 
 /* end of file */

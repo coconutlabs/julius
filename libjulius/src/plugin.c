@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug  2 09:46:09 2008
  * 
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -81,6 +81,8 @@ plugin_free_all()
   PLUGIN_ENTRY *p, *ptmp;
   int i, num;
 
+  if (global_plugin_list == NULL) return;
+
   num = plugin_namelist_num();
   for(i=0;i<num;i++) {
     p = global_plugin_list[i];
@@ -91,6 +93,7 @@ plugin_free_all()
     }
   }
   free(global_plugin_list);
+  global_plugin_list = NULL;
 }    
 
 
@@ -98,6 +101,7 @@ int
 plugin_get_id(char *name)
 {
   int i, num;
+
   num = plugin_namelist_num();
   for(i=0;i<num;i++) {
     if (strmatch(plugin_function_namelist[i], name)) {
@@ -336,8 +340,9 @@ plugin_find_optname(char *optfuncname, char *str)
   PLUGIN_ENTRY *p;
   FUNC_VOID func;
 
-  if ((id = plugin_get_id(optfuncname)) < 0) return -1;
+  if (global_plugin_list == NULL) return -1;
 
+  if ((id = plugin_get_id(optfuncname)) < 0) return -1;
   for(p=global_plugin_list[id];p;p=p->next) {
     func = (FUNC_VOID) p->func;
     (*func)(buf, (int)64);
@@ -354,6 +359,8 @@ plugin_get_func(int sid, char *name)
   int id;
   PLUGIN_ENTRY *p;
   FUNC_VOID func;
+
+  if (global_plugin_list == NULL) return NULL;
 
   if ((id = plugin_get_id(name)) < 0) return NULL;
 

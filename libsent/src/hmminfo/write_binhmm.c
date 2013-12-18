@@ -22,7 +22,7 @@
  * @author Akinobu LEE
  * @date   Wed Feb 16 06:03:36 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -31,7 +31,7 @@
  * All rights reserved
  */
 
-/* $Id: write_binhmm.c,v 1.8 2013/06/20 17:14:21 sumomo Exp $ */
+/* $Id: write_binhmm.c,v 1.9 2013/12/18 03:55:21 sumomo Exp $ */
 
 #include <sent/stddefs.h>
 #include <sent/htk_param.h>
@@ -823,8 +823,9 @@ static unsigned int st_num;	///< Length of above
 static int
 qsort_st_index(HTK_HMM_State **s1, HTK_HMM_State **s2)
 {
-  if (*s1 > *s2) return 1;
-  else if (*s1 < *s2) return -1;
+  /* keep ID order */
+  if ((*s1)->id > (*s2)->id) return 1;
+  else if ((*s1)->id < (*s2)->id) return -1;
   else return 0;
 }
 
@@ -918,7 +919,8 @@ search_stid(HTK_HMM_State *s)
 
   while (left < right) {
     mid = (left + right) / 2;
-    if (st_index[mid] < s) {
+    /* search by id */
+    if (st_index[mid]->id < s->id) {
       left = mid + 1;
     } else {
       right = mid;

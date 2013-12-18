@@ -11,7 +11,7 @@
  * @author Akinobu LEE
  * @date   Sat Feb 12 12:26:15 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -45,6 +45,9 @@
 /// Default port number of A/D-in server (adinnet)
 #define         ADINNET_PORT 5530
 
+/// Default port number of feature server (vecin_net)
+#define         VECINNET_PORT 5531
+
 /// Default Host/unit name for NetAudio/DatLink input
 #define         NETAUDIO_DEVNAME "localhost:0"
 
@@ -68,6 +71,17 @@ int make_connection(char *hostname, int port_num);
 int make_connection_unix(char *address);
 int close_socket(int sd);
 void cleanup_socket();
+
+/* vecin_net.c */
+boolean vecin_standby();
+boolean vecin_open();
+int vecin_get_configuration(int opcode);
+int vecin_read(float *vecbuf, int veclen);
+boolean vecin_close();
+boolean vecin_terminate();
+boolean vecin_pause();
+boolean vecin_resume();
+char *vecin_input_name();
 
 #ifdef __cplusplus
 }

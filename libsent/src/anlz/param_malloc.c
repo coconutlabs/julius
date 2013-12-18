@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri Aug  3 14:09:39 2007
  *
- * $Revision: 1.5 $
+ * $Revision: 1.6 $
  * 
  */
 
@@ -125,6 +125,7 @@ new_param()
   new->mroot = NULL;
   new->parvec = NULL;
   new->samplenum_alloc = 0;
+  new->is_outprob = FALSE;
   param_init_content(new);
   return(new);
 }

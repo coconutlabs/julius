@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Tue Dec 11 14:40:04 2007
  * 
- * $Revision: 1.4 $
+ * $Revision: 1.5 $
  * 
  */
 
@@ -325,7 +325,7 @@ main(int argc, char *argv[])
   /* Open input stream and recognize */
   /***********************************/
 
-  if (jconf->input.speech_input == SP_MFCFILE) {
+  if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_OUTPROBFILE) {
     /* MFCC file input */
 
     while (get_line_from_stdin(speechfilename, MAXPATHLEN, "enter MFCC filename->") != NULL) {

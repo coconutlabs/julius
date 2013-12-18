@@ -17,7 +17,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 15:05:43 2007
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 /*
@@ -103,6 +103,10 @@ jconf_set_default_values(Jconf *j)
 
   j->optsection				= JCONF_OPT_DEFAULT;
   j->optsectioning			= TRUE;
+  if (j->outprob_outfile != NULL) {
+    free(j->outprob_outfile);
+  }
+  j->outprob_outfile			= NULL;
 }
 
 /** 

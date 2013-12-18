@@ -19,7 +19,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 17:22:36 2005
  *
- * $Revision: 1.14 $ 
+ * $Revision: 1.15 $ 
  */
 /*
  * Copyright (c) 1991-2013 Kawahara Lab., Kyoto University
@@ -48,7 +48,8 @@ enum {
   SP_MFCFILE,			///< HTK parameter file
   SP_NETAUDIO,			///< Live NetAudio/DatLink input
   SP_STDIN,			///< Standard input
-  SP_MFCMODULE			///< parameter module
+  SP_MFCMODULE,			///< parameter module
+  SP_OUTPROBFILE
 };
 
 /// Input device

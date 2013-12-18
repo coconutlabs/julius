@@ -48,7 +48,7 @@
  * @author Akinobu LEE
  * @date   Fri Feb 11 02:52:52 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -81,6 +81,7 @@ typedef struct {
   short veclen_alloc;		///< Allocated vector length of a sample
   unsigned int samplenum_alloc;	///< Alllocated number of samples
   BMALLOC_BASE *mroot;		///< Pointer for block memory allocation
+  boolean is_outprob;		///< TRUE if this is outprob vector
 } HTK_Param;
 
 /**

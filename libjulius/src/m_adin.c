@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:17:23 2005
  *
- * $Revision: 1.16 $
+ * $Revision: 1.17 $
  * 
  */
 /*
@@ -175,6 +175,7 @@ adin_select(ADIn *a, int source, int dev)
     a->enable_thread 	   = FALSE;
     break;
   case SP_MFCFILE:
+  case SP_OUTPROBFILE:
     /* MFC_FILE is not waveform, so special handling on main routine should be done */
     break;
   default:

@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Mon Mar  7 23:19:14 2005
  *
- * $Revision: 1.23 $
+ * $Revision: 1.24 $
  * 
  */
 /*
@@ -179,6 +179,7 @@ boolean j_jconf_finalize(Jconf *jconf);
 int set_beam_width(WCHMM_INFO *wchmm, int specified);
 /* m_info.c */
 void print_jconf_overview(Jconf *jconf);
+void print_mfcc_info(FILE *fp, MFCCCalc *mfcc, Jconf *jconf);
 void print_engine_info(Recog *recog);
 /* m_bootup.c */
 void system_bootup(Recog *recog);

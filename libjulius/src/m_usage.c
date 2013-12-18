@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Fri May 13 15:04:34 2005
  *
- * $Revision: 1.24 $
+ * $Revision: 1.25 $
  * 
  */
 /*
@@ -61,10 +61,27 @@ j_output_argument_help(FILE *fp)
 
   fprintf(fp, "\n--- Global Options -----------------------------------------------\n");
 
+  fprintf(fp, "\n Feature Vector Input:\n");
+  fprintf(fp, "    [-input devname]       input source  (default = htkparam)\n");
+  fprintf(fp, "         htkparam/mfcfile  feature vectors in HTK parameter file format\n");
+  fprintf(fp, "         outprob           outprob vectors in HTK parameter file format\n");
+  fprintf(fp, "         vecnet            receive vectors from client (TCP/IP)\n");
+#ifdef ENABLE_PLUGIN
+  if (global_plugin_list) {
+    if ((id = plugin_get_id("fvin_get_optname")) >= 0) {
+      for(p=global_plugin_list[id];p;p=p->next) {
+	func = (FUNC_VOID) p->func;
+	(*func)(buf, (int)64);
+	fprintf(fp, "         %-18s(feature vector input plugin #%d)\n", buf, p->source_id);
+      }
+    }
+  }
+#endif
+  fprintf(fp, "    [-filelist file]    filename of input file list\n");
+
   fprintf(fp, "\n Speech Input:\n");
   fprintf(fp, "    (Can extract MFCC/FBANK/MELSPEC features from waveform)\n");
   fprintf(fp, "    [-input devname]    input source  (default = htkparam)\n");
-  fprintf(fp, "         htkparam/mfcfile  HTK parameter file\n");
   fprintf(fp, "         file/rawfile      waveform file (%s)\n", SUPPORTED_WAVEFILE_FORMAT);
 #ifdef USE_MIC
   fprintf(fp, "         mic               default microphone device\n");
@@ -93,13 +110,6 @@ j_output_argument_help(FILE *fp)
 	func = (FUNC_VOID) p->func;
 	(*func)(buf, (int)64);
 	fprintf(fp, "         %-18s(adin plugin #%d)\n", buf, p->source_id);
-      }
-    }
-    if ((id = plugin_get_id("fvin_get_optname")) >= 0) {
-      for(p=global_plugin_list[id];p;p=p->next) {
-	func = (FUNC_VOID) p->func;
-	(*func)(buf, (int)64);
-	fprintf(fp, "         %-18s(feature vector input plugin #%d)\n", buf, p->source_id);
       }
     }
   }
@@ -154,6 +164,7 @@ j_output_argument_help(FILE *fp)
   fprintf(fp, "    [-callbackdebug]    (for debug) output message per callback\n");
   fprintf(fp, "    [-check (wchmm|trellis)] (for debug) check internal structure\n");
   fprintf(fp, "    [-check triphone]   triphone mapping check\n");
+  fprintf(fp, "    [-outprobout file]  Output state probabilities to file\n");
   fprintf(fp, "    [-setting]          print engine configuration and exit\n");
   fprintf(fp, "    [-help]             print this message and exit\n");
 

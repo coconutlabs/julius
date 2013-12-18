@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.12 $
+ * $Revision: 1.13 $
  * 
  */
 /*
@@ -817,7 +817,10 @@ RealTimePipeLine(SP16 *Speech, int nowlen, Recog *recog) /* Speech[0...nowlen] =
     /* 入力長が maxframelen に達したらここで強制終了 */
     /* if input length reaches maximum buffer size, terminate 1st pass here */
     for (mfcc = recog->mfcclist; mfcc; mfcc = mfcc->next) {
-      if (mfcc->f >= r->maxframelen) return(1);
+      if (mfcc->f >= r->maxframelen) {
+	jlog("Warning: too long input (> %d frames), segment it now\n", r->maxframelen);
+	return(1);
+      }
     }
     /* 窓バッファを埋められるだけ埋める */
     /* fill window buffer as many as possible */

@@ -3,7 +3,7 @@
 # Copyright (c) 2005-2013 Julius project team, Nagoya Institute of Technology
 # All rights reserved
 #
-# $Id: Makefile.in,v 1.13 2013/06/20 17:14:20 sumomo Exp $
+# $Id: Makefile.in,v 1.14 2013/12/18 03:55:21 sumomo Exp $
 #
 
 SHELL=/bin/sh
@@ -48,6 +48,7 @@ src/anlz/strip.o \
 src/anlz/strip_mfcc.o \
 src/anlz/wrsamp.o \
 src/anlz/wrwav.o \
+src/anlz/vecin_net.o \
 src/dfa/init_dfa.o \
 src/dfa/rddfa.o \
 src/dfa/dfa_lookup.o \

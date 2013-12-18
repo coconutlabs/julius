@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Wed May 18 15:02:55 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  * 
  */
 /*
@@ -178,7 +178,7 @@ main(int argc, char *argv[])
   /* if -outfile option specified, callbacks for file output will be
      regitered */
   if (outfile_enabled) {
-    if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_RAWFILE) {
+    if (jconf->input.speech_input == SP_MFCFILE || jconf->input.speech_input == SP_RAWFILE || jconf->input.speech_input == SP_OUTPROBFILE) {
       setup_output_file(recog, NULL);
     } else {
       fprintf(stderr, "Warning: -outfile works only for file input, disabled now\n");

@@ -18,7 +18,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 18:52:07 2005
  *
- * $Revision: 1.31 $
+ * $Revision: 1.32 $
  * 
  */
 /*
@@ -327,6 +327,10 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	jconf->input.type = INPUT_VECTOR;
 	jconf->input.speech_input = SP_MFCFILE;
 	jconf->decodeopt.realtime_flag = FALSE;
+      } else if (strmatch(tmparg,"outprob")) {
+	jconf->input.type = INPUT_VECTOR;
+	jconf->input.speech_input = SP_OUTPROBFILE;
+	jconf->decodeopt.realtime_flag = FALSE;
       } else if (strmatch(tmparg,"stdin")) {
 	jconf->input.type = INPUT_WAVEFORM;
 	jconf->input.speech_input = SP_STDIN;
@@ -388,6 +392,11 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	return FALSE;
 #endif
 #endif
+      } else if (strmatch(tmparg,"vecnet")) {
+	jconf->input.plugin_source = -1;
+	jconf->input.type = INPUT_VECTOR;
+	jconf->input.speech_input = SP_MFCMODULE;
+	jconf->decodeopt.realtime_flag = FALSE;
 #ifdef ENABLE_PLUGIN
       } else if ((sid = plugin_find_optname("adin_get_optname", tmparg)) != -1) { /* adin plugin */
 	jconf->input.plugin_source = sid;
@@ -1314,6 +1323,12 @@ opt_parse(int argc, char *argv[], char *cwd, Jconf *jconf)
 	GET_TMPARG;
 	j_add_word(jconf->lmnow, tmparg);
 	continue;
+    } else if (strmatch(argv[i],"-outprobout")) {
+      if (!check_section(jconf, argv[i], JCONF_OPT_GLOBAL)) return FALSE; 
+      FREE_MEMORY(jconf->outprob_outfile);
+      GET_TMPARG;
+      jconf->outprob_outfile = filepath(tmparg, cwd);
+      continue;
     }
     if (argv[i][0] == '-' && strlen(argv[i]) == 2) {
       /* 1-letter options */
@@ -1484,6 +1499,7 @@ opt_release(Jconf *jconf)
 #endif	/* USE_NETAUDIO */
   FREE_MEMORY(jconf->reject.gmm_filename);
   FREE_MEMORY(jconf->reject.gmm_reject_cmn_string);
+  FREE_MEMORY(jconf->outprob_outfile);
 
   for(am=jconf->am_root;am;am=am->next) {
     FREE_MEMORY(am->hmmfilename);

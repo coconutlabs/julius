@@ -12,7 +12,7 @@
  * @author Akinobu LEE
  * @date   Tue Feb 15 23:36:00 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -148,6 +148,7 @@ put_htk_state(FILE *fp, HTK_HMM_State *s)
     fprintf(fp, "no output state\n");
   } else {
     if (s->name != NULL) fprintf(fp, "[~s \"%s\"]\n", s->name);
+    fprintf(fp, "id: %d\n", s->id);
     for (st=0;st<s->nstream;st++) {
       fprintf(fp, "stream %d:", st + 1);
       if (s->w != NULL) {

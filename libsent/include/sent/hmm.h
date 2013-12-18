@@ -21,7 +21,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 14:54:06 2005
  *
- * $Revision: 1.6 $
+ * $Revision: 1.7 $
  *
  */
 /*
@@ -111,6 +111,7 @@ LOGPROB viterbi_segment(HMM *hmm, HTK_Param *param, HMMWork *wrk, boolean multip
 
 /* hmminfo/outprob.c */
 LOGPROB outprob(HMMWork *wrk, int t, HMM_STATE *hmmstate, HTK_Param *param);
+
 /* hmminfo/put_htkdata_info */
 void put_hmm_arc(FILE *fp, HMM *d);
 void put_hmm_outprob(FILE *fp, HMM *d);

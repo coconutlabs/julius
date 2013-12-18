@@ -19,7 +19,7 @@
  * @author Akinobu Lee
  * @date   Wed Aug  8 15:04:28 2007
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -685,6 +685,7 @@ j_get_current_filename(Recog *recog)
       p = mfc_module_input_name(recog->mfcclist);
       break;
     case SP_MFCFILE:
+    case SP_OUTPROBFILE:
       /* already assigned */
       p = recog->adin->current_input_name;
       break;

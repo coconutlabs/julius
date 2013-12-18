@@ -20,7 +20,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 13:31:47 2005
  *
- * $Revision: 1.28 $
+ * $Revision: 1.29 $
  * 
  */
 /*
@@ -88,6 +88,17 @@ initialize_HMM(JCONF_AM *amconf, Jconf *jconf)
   if (init_hmminfo(hmminfo, amconf->hmmfilename, amconf->mapfilename, &(amconf->analysis.para_hmm)) == FALSE) {
     hmminfo_free(hmminfo);
     return NULL;
+  }
+  if (debug2_flag) {
+    HTK_HMM_Data *dtmp;
+    int i;
+    for (dtmp = hmminfo->start; dtmp; dtmp = dtmp->next) {
+      printf("***\nname: %s\n", dtmp->name);
+      for (i=0;i<dtmp->state_num;i++) {
+	if (dtmp->s[i] == NULL) continue;
+	printf("state %d: id=%d   %s\n", i + 1, dtmp->s[i]->id, (dtmp->s[i]->name) ? dtmp->s[i]->name : "");
+      }
+    }
   }
 
   /* set multipath mode flag */
@@ -1327,6 +1338,11 @@ j_final_fusion(Recog *recog)
 	return FALSE;
       }
     }
+    /* when "-outprobout" is specified, ask the state computation
+       module to force calculatation of ALL the states at each
+       frame */
+    outprob_set_batch_computation(&(am->hmmwrk), (recog->jconf->outprob_outfile != NULL) ? TRUE : FALSE);
+
   }
 
   /* stage 5: initialize work area for input and realtime decoding */

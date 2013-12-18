@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Fri Mar 18 16:31:45 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 /*
@@ -214,7 +214,7 @@ j_jconf_finalize(Jconf *jconf)
   if (jconf->reject.gmm_filename != NULL) 
     if (!checkpath(jconf->reject.gmm_filename)) ok_p = FALSE;
   if (jconf->input.inputlist_filename != NULL) {
-    if (jconf->input.speech_input != SP_RAWFILE && jconf->input.speech_input != SP_MFCFILE) {
+    if (jconf->input.speech_input != SP_RAWFILE && jconf->input.speech_input != SP_MFCFILE && jconf->input.speech_input != SP_OUTPROBFILE) {
       jlog("WARNING: m_chkparam: not file input, \"-filelist %s\" ignored\n", jconf->input.inputlist_filename);
     } else {
       if (!checkpath(jconf->input.inputlist_filename)) ok_p = FALSE;

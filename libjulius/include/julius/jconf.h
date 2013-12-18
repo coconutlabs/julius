@@ -23,7 +23,7 @@
  * @author Akinobu Lee
  * @date   Fri Feb 16 13:42:28 2007
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -1101,6 +1101,11 @@ typedef struct __Jconf__ {
    */
   boolean optsectioning;
 
+  /*
+   * Filename to save state probability output
+   *
+   */
+  char *outprob_outfile;
 
 } Jconf;
 

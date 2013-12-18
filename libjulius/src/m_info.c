@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Thu May 12 14:14:01 2005
  *
- * $Revision: 1.22 $
+ * $Revision: 1.23 $
  * 
  */
 /*
@@ -131,6 +131,100 @@ print_jconf_overview(Jconf *jconf)
 }
 
 
+/**
+ * Output feature parameter processing information to log.
+ *
+ * @param mfcc [in] MFCC instance
+ *
+ * @callgraph
+ * @callergraph
+ */
+void
+print_mfcc_info(FILE *fp, MFCCCalc *mfcc, Jconf *jconf)
+{
+  put_para(fp, mfcc->para);
+
+  jlog("\n");
+
+  if (jconf->input.type == INPUT_WAVEFORM) {
+    jlog("    spectral subtraction = ");
+    if (mfcc->frontend.ssload_filename || mfcc->frontend.sscalc) {
+      if (mfcc->frontend.sscalc) {
+	jlog("use head silence of each input\n");
+	jlog("\t     head sil length = %d msec\n", mfcc->frontend.sscalc_len);
+      } else {			/* ssload_filename != NULL */
+	jlog("use a constant value from file\n");
+	jlog("         noise spectrum file = \"%s\"\n", mfcc->frontend.ssload_filename);
+      }
+      jlog("\t         alpha coef. = %f\n", mfcc->frontend.ss_alpha);
+      jlog("\t      spectral floor = %f\n", mfcc->frontend.ss_floor);
+    } else {
+      jlog("off\n");
+    }
+  }
+  jlog("\n");
+  jlog(" cep. mean normalization = ");
+  if (mfcc->para->cmn) {
+    jlog("yes, ");
+    if (jconf->decodeopt.realtime_flag) {
+      jlog("real-time MAP-CMN, updating mean with last %.1f sec. input\n");
+      jlog("  initial mean from file = ");
+      if (mfcc->cmn.loaded) {
+	jlog("%s\n", mfcc->cmn.load_filename);
+      } else {
+	jlog("N/A\n");
+      }
+      jlog("   beginning data weight = %6.2f\n", mfcc->cmn.map_weight);
+    } else {
+      if (mfcc->cmn.loaded) {
+	jlog("with a static mean\n");
+	jlog("   static mean from file = %s\n", mfcc->cmn.load_filename);
+      } else {
+	jlog("with per-utterance self mean\n");
+      }
+    }
+  } else {
+    jlog("no\n");
+  }
+  jlog(" cep. var. normalization = ");
+  if (mfcc->para->cvn) {
+    jlog("yes, ");
+    if (mfcc->cmn.loaded) {
+      jlog("with a static variance\n");
+      jlog("static variance from file = %s\n", mfcc->cmn.load_filename);
+    } else {
+      if (jconf->decodeopt.realtime_flag) {
+	jlog("estimating long-term variance from all speech input from start\n");
+      } else {
+	jlog("with per-utterance self variance\n");
+      }
+    }
+  } else {
+    jlog("no\n");
+  }
+  if (mfcc->cmn.save_filename) {
+    jlog("        save cep. data to = \"%s\", update at the end of each input\n", mfcc->cmn.save_filename);
+  }
+  jlog("\n");
+  
+  jlog("\t base setup from =");
+  if (mfcc->htk_loaded == 1 || mfcc->hmm_loaded == 1) {
+    if (mfcc->hmm_loaded == 1) {
+      jlog(" binhmm-embedded");
+      if (mfcc->htk_loaded == 1) {
+	jlog(", then overridden by HTK Config and defaults");
+      }
+    } else {
+      if (mfcc->htk_loaded == 1) {
+	jlog(" HTK Config (and HTK defaults)");
+      }
+    }
+  } else {
+    jlog(" Julius defaults");
+  }
+  jlog("\n");
+}
+
 
 /** 
  * <JA>
@@ -190,102 +284,10 @@ print_engine_info(Recog *recog)
       }
       jlog("\n\n");
 
-      put_para(fp, mfcc->para);
-
-      if (jconf->input.type == INPUT_WAVEFORM) {
-	jlog("    spectral subtraction = ");
-	if (mfcc->frontend.ssload_filename || mfcc->frontend.sscalc) {
-	  if (mfcc->frontend.sscalc) {
-	    jlog("use head silence of each input\n");
-	    jlog("\t     head sil length = %d msec\n", mfcc->frontend.sscalc_len);
-	  } else {			/* ssload_filename != NULL */
-	    jlog("use a constant value from file\n");
-	    jlog("         noise spectrum file = \"%s\"\n", mfcc->frontend.ssload_filename);
-	  }
-	  jlog("\t         alpha coef. = %f\n", mfcc->frontend.ss_alpha);
-	  jlog("\t      spectral floor = %f\n", mfcc->frontend.ss_floor);
-	} else {
-	  jlog("off\n");
-	}
-      }
-      jlog(" cep. mean normalization = ");
-      if (mfcc->para->cmn) {
-	jlog("yes, ");
-	if (jconf->decodeopt.realtime_flag) {
-	  jlog("real-time MAP-CMN, ");
-	  if (mfcc->cmn.loaded) {
-	    jlog("updating initial mean with last %.1f sec. utterances, first mean loaded from file\n", (float)CPMAX / 100.0);
-	  } else {
-	    jlog("updating initial mean with last %.1f sec utterances (no first mean)\n", (float)CPMAX / 100.0);
-	  }
-	} else {
-	  if (mfcc->cmn.loaded) {
-	    jlog("applying a static mean loaded from file (no update)\n");
-	  } else {
-	    jlog("applying self mean calculated per utterance\n");
-	  }
-	}
-      } else {
-	jlog("no\n");
-      }
-      jlog(" cep. var. normalization = ");
-      if (mfcc->para->cvn) {
-	jlog("yes, ");
-	if (mfcc->cmn.loaded) {
-	  jlog("applying a static variance loaded from file (no update)\n");
-	} else {
-	  if (jconf->decodeopt.realtime_flag) {
-	    jlog("estimating long-term variance from all speech input from start\n");
-	  } else {
-	    jlog("applying self variance calculated per utterance\n");
-	  }
-	}
-      } else {
-	jlog("no\n");
-      }
-
-      jlog("\t base setup from =");
-      if (mfcc->htk_loaded == 1 || mfcc->hmm_loaded == 1) {
-	if (mfcc->hmm_loaded == 1) {
-	  jlog(" binhmm-embedded");
-	  if (mfcc->htk_loaded == 1) {
-	    jlog(", then overridden by HTK Config and defaults");
-	  }
-	} else {
-	  if (mfcc->htk_loaded == 1) {
-	    jlog(" HTK Config (and HTK defaults)");
-	  }
-	}
-      } else {
-	jlog(" Julius defaults");
-      }
-      jlog("\n");
+      print_mfcc_info(fp, mfcc, jconf);
 
       jlog("\n");
 
-      if (jconf->decodeopt.realtime_flag && (mfcc->para->cmn || mfcc->para->cvn)) {
-	jlog(" MAP-");
-	if (mfcc->para->cmn) jlog("CMN");
-	if (mfcc->para->cmn && mfcc->para->cvn) jlog("+");
-	if (mfcc->para->cvn) jlog("CVN");
-	jlog(":\n");
-	jlog("      initial cep. data   = ");
-	if (mfcc->cmn.load_filename) {
-	  jlog("load from \"%s\"\n", mfcc->cmn.load_filename);
-	} else {
-	  jlog("none\n");
-	}
-	jlog("      beginning data weight = %6.2f\n", mfcc->cmn.map_weight);
-	if (mfcc->cmn.update) {
-	  jlog("    beginning data update = yes, from last inputs at each input\n");
-	} else {
-	  jlog("    beginning data update = no, use default as initial at each input\n");
-	}
-	if (mfcc->cmn.save_filename) {
-	  jlog("        save cep. data to = file \"%s\" at end of each input\n", mfcc->cmn.save_filename);
-	}
-	jlog("\n");
-      }
     }
   }
 
@@ -836,6 +838,16 @@ print_engine_info(Recog *recog)
     } else {
       jlog("%s\n", jconf->input.inputlist_filename);
     }
+  } else if (jconf->input.speech_input == SP_OUTPROBFILE) {
+    jlog("output probability vector file (HTK format)\n");
+    jlog("\t                filelist = ");
+    if (jconf->input.inputlist_filename == NULL) {
+      jlog("(none, get file name from stdin)\n");
+    } else {
+      jlog("%s\n", jconf->input.inputlist_filename);
+    }
+  } else if (jconf->input.speech_input == SP_MFCMODULE) {
+    jlog("vector input module (feature or outprob)\n");
   } else if (jconf->input.speech_input == SP_STDIN) {
     jlog("standard input\n");
   } else if (jconf->input.speech_input == SP_ADINNET) {
@@ -890,10 +902,14 @@ print_engine_info(Recog *recog)
     jlog("not supported (live input may be dropped)\n");
 #endif
   }
-  if (jconf->preprocess.strip_zero_sample) {
-    jlog("\t   zero frames stripping = on\n");
+  if (jconf->input.speech_input == SP_OUTPROBFILE) {
+    jlog("\t   zero frames stripping = disabled for outprob input\n");
   } else {
-    jlog("\t   zero frames stripping = off\n");
+    if (jconf->preprocess.strip_zero_sample) {
+      jlog("\t   zero frames stripping = on\n");
+    } else {
+      jlog("\t   zero frames stripping = off\n");
+    }
   }
   if (jconf->input.type == INPUT_WAVEFORM) {
     if (recog->adin->adin_cut_on) {

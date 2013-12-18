@@ -34,7 +34,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 13:35:37 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -186,7 +186,15 @@ outprob_init(HMMWork *wrk, HTK_HMM_INFO *hmminfo,
     outprob_cd_nbest_init(wrk, hmminfo->cdmax_num);
   }
 
+  wrk->batch_computation = FALSE;
+
   return TRUE;
+}
+
+void
+outprob_set_batch_computation(HMMWork *wrk, boolean flag)
+{
+  wrk->batch_computation = flag;
 }
 
 /** 

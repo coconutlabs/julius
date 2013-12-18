@@ -16,7 +16,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 10 19:36:47 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -40,7 +40,7 @@
 #define NoTokErr(S)      if (!rdhmmdef_token) rderr(S)
 
 /// Delimiter string for parsing %HMM definition file
-#define HMMDEF_DELM " \t\n<>"
+#define HMMDEF_DELM " \t\r\n<>"
 
 /**
  * @defgroup hmminfo HTK HMM definition
@@ -433,6 +433,7 @@ void htk_hmm_inverse_variances(HTK_HMM_INFO *hmm);
 #ifdef ENABLE_MSD
 void htk_hmm_check_msd(HTK_HMM_INFO *hmm);
 #endif
+boolean htk_hmm_check_sid(HTK_HMM_INFO *hmm);
 /* rdhmmdef_options.c */
 boolean set_global_opt(FILE *fp, HTK_HMM_INFO *hmm);
 char *get_cov_str(short covtype);

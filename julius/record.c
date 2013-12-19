@@ -29,7 +29,7 @@
  * @author Akinobu Lee
  * @date   Tue Sep 06 14:13:54 2005
  *
- * $Revision: 1.7 $
+ * $Revision: 1.8 $
  * 
  */
 /*
@@ -242,7 +242,7 @@ record_sample_close(Recog *recog, void *dummy)
     return;
   }
   if (verbose_flag) {
-    fprintf(stderr, "recorded to \"%s\" (%d bytes, %.2f sec.)\n", recordfilename, recordlen * sizeof(SP16), (float)recordlen / (float) recog->jconf->input.sfreq);
+    fprintf(stderr, "recorded to \"%s\" (%lu bytes, %.2f sec.)\n", recordfilename, recordlen * sizeof(SP16), (float)recordlen / (float) recog->jconf->input.sfreq);
   }
 }
 

@@ -8,7 +8,7 @@
 /*
  * mkss --- compute average spectrum of mic input for SS in Julius
  *
- * $Id: mkss.c,v 1.8 2013/06/20 17:14:28 sumomo Exp $
+ * $Id: mkss.c,v 1.9 2013/12/19 16:26:22 sumomo Exp $
  *
  */
 
@@ -190,7 +190,7 @@ main(int argc, char *argv[])
 
   /* close device */
   adin_end(recog->adin);
-  fprintf(stderr, "\n%d samples (%d bytes, %.1f sec) recorded\n", samples, samples * sizeof(SP16), (float)samples / (float)sfreq);
+  fprintf(stderr, "\n%d samples (%lu bytes, %.1f sec) recorded\n", samples, samples * sizeof(SP16), (float)samples / (float)sfreq);
 
   /* compute SS */
   fprintf(stderr, "compute SS:\n");

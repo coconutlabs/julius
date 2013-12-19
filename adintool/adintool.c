@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.18 $
+ * $Revision: 1.19 $
  * 
  */
 /*
@@ -655,7 +655,7 @@ adin_callback_file(SP16 *now, int len, Recog *recog)
       return -1;
     }
     if (count < len * sizeof(SP16)) {
-      fprintf(stderr, "adinrec: cannot write more %d bytes\ncurrent length = %d\n", count, speechlen * sizeof(SP16));
+      fprintf(stderr, "adinrec: cannot write more %d bytes\ncurrent length = %lu\n", count, speechlen * sizeof(SP16));
       return -1;
     }
   } else {

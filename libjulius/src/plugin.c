@@ -12,7 +12,7 @@
  * @author Akinobu Lee
  * @date   Sat Aug  2 09:46:09 2008
  * 
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -531,7 +531,7 @@ mfc_module_init(MFCCCalc *mfcc, Recog *recog)
   mfcc->func.fv_resume     = (boolean (*)()) vecin_resume;
   mfcc->func.fv_pause      = (boolean (*)()) vecin_pause;
   mfcc->func.fv_terminate  = (boolean (*)()) vecin_terminate;
-  mfcc->func.fv_input_name = (boolean (*)()) vecin_input_name;
+  mfcc->func.fv_input_name = (char * (*)()) vecin_input_name;
 
 #ifdef ENABLE_PLUGIN
   mfcc->plugin_source = recog->jconf->input.plugin_source;

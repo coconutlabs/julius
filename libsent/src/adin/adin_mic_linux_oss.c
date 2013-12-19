@@ -51,7 +51,7 @@
  * @author Akinobu LEE
  * @date   Sun Feb 13 16:18:26 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -359,6 +359,7 @@ adin_oss_begin(char *pathname)
 {
   char buf[4];
   char *p;
+  size_t ret;
 
   /* set device name */
   if (pathname != NULL) {
@@ -378,9 +379,9 @@ adin_oss_begin(char *pathname)
   /* Read 1 sample (and ignore it) to tell the audio device start recording.
      (If you knows better way, teach me...) */
   if (stereo_rec) {
-    read(audio_fd, buf, 4);
+    ret = read(audio_fd, buf, 4);
   } else {
-    read(audio_fd, buf, 2);
+    ret = read(audio_fd, buf, 2);
   }
   return(TRUE);
 }

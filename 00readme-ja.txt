@@ -4,6 +4,7 @@
 
                                 Julius
 
+                                                (Rev 4.3   2013/12/25)
                                                 (Rev 4.2.3 2013/06/30)
                                                 (Rev 4.2.2 2012/08/01)
                                                 (Rev 4.2.1 2011/12/25)
@@ -37,18 +38,36 @@ Julius は，音声認識システムの開発・研究のためのオープンソースの高性能
     http://julius.sourceforge.jp/
 
 
-Julius-4.2.3
+Julius-4.3
 =============
 
-バージョン 4.2.3 で追加された新機能は、辞書の再読み込み、入力音声波形の
-スケーリング、長時間入力の棄却、ベイズリスク最小化探索（南條浩輝氏，古
-谷遼氏より提供）、およびバイナリN-gramの文字コード変換機能です。またい
-くつかの不具合が修正されました。
+バージョン 4.3 では、DNN-HMM (Deep Neural-Network HMM) を用いたオンライ
+ンデコーディングのための機能が追加されました。具体的には、状態出力確率
+ベクトル"outprob vector" を入力としたデコーディング、ネットワーク経由の
+特徴量ベクトル（および状態出力確率ベクトル）入力のサポート、リアルタイ
+ムのための CVN (cepstral variance normalization), フィルタバンクベース
+の特徴量(FBANK/MELSPEC)のサポートです。また、ツール adintool に特徴量
+を抽出してネットワークへリアルタイム送信する機能が追加されました。
 
 新オプション：
-    -lvscale
-    -rejectlong
-    -mbr, -nombr, -mbr_wwer, -mbr_weight
+  [-input vecnet]       ネットワークから特徴量/出力確率ベクトルを読み込む
+  [-input outprob]      HTKパラメータファイルを出力確率ベクトルとして読み込む
+  [-outprobout [file]]  計算された出力確率行列をHTK形式ファイルに保存(debug)
+
+ネットワークの特徴量ベクトル送受信は、例えば以下のように試すことができます：
+
+  [サーバ]
+  % julius -C file.jconf -input vecnet
+
+  [クライアント（マイク付き）]
+  % adintool -in mic -out vecnet -paramtype MFCC_E_D_N_Z -veclen 25 -C file.jconf
+
+adintool には、特徴量ベクトルのタイプ ("-paramtype TYPE") と総次元数
+（"-veclen length"）を必ず指定する必要があります。また、特徴量抽出条件
+は Julius使用時と同様にJuliusと同じオプションを用いて指定します。
+adintool は Julius のライブラリを用いており Jconf ファイルを読み込めま
+すので、Julius 単体で認識が動作するときの Jconf ファイルをそのまま
+adintool に "-C" で与えるのがよいでしょう。（上記の例）
 
 変更点の詳細な一覧は Release-ja.txt をご覧ください．
 また "-help" をつけて実行することでオプションの全リストが出力されます。
@@ -79,6 +98,8 @@ Julius-4.2.3
 	plugin/			プラグインソースコードのサンプルと仕様文書
 	man/			マニュアル類
 	support/		開発用スクリプト
+ (new)  dnntools/		Sample programs for dnn and vecnet client
+
 
 
 使用方法・ドキュメント

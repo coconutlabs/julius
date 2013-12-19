@@ -4,6 +4,7 @@
 
                                 Julius
 
+                                                (Rev 4.3   2013/12/25)
                                                 (Rev 4.2.3 2013/06/30)
                                                 (Rev 4.2.2 2012/08/01)
                                                 (Rev 4.2.1 2011/12/25)
@@ -49,24 +50,42 @@ on Windows (SAPI/console). Julius is distributed with open license
 together with source codes.
 
 
-What's new in Julius-4.2.3
+What's new in Julius-4.3
 ===========================
 
-Version 4.2.3 includes new features: dictionary reloading, audio input
-scaling, long input rejection, minimum bayes risk decoding
-(contributed by Hiroaki Nanjo and Ryo Furutani), and character set
-conversion of binary N-gram.  Several bugs has also been fixed.
+Version 4.3 includes several new features to support on-line DNN-HMM
+decoding: decoding with state output probability vectors ("outprob
+vectors") as input, network-based feature / outprob vector input,
+improved cepstral variance normalization (CVN) for real-time
+recognition, FBANK/MELSPEC feature support and so on.  Also the tool
+"adintool" is now capable of extracting and sending feature vectors in
+real-time via network.
 
 New options:
-    -lvscale
-    -rejectlong
-    -mbr, -nombr, -mbr_wwer, -mbr_weight
+  [-input vecnet]       read feature / outprob vectors from network
+  [-input outprob]      read outprob vectors from HTK parameter file
+  [-outprobout [file]]  save computed outprob vectors to HTK file (for debug)
+
+A short test of network-based feature transmission:
+
+  [server]
+  % julius -C file.jconf -input vecnet
+
+  [client with microphone]
+  % adintool -in mic -out vecnet -paramtype MFCC_E_D_N_Z -veclen 25 -C file.jconf
+
+You should set appropriate feature vector's type and length to
+adintool with "-paramtype TYPE", "-veclen length".  You should also
+set feature extraction parameters as the same as Julius.  Since
+adintool uses JuliusLib for the extraction, it accepts Jconf file and
+setting options as same as Julis.  So the easier way is to apply the
+same Jconf file to adintool with "-C" option as shown above.
 
 See the "Release.txt" file for the full list of updates.
 Run with "-help" to see full list of options.
 
 
-Contents of Julius-4.2.3
+Contents of Julius-4.3
 =========================
 
 	(Documents with suffix "ja" are written in Japanese)
@@ -94,6 +113,7 @@ Contents of Julius-4.2.3
 	plugin/			Several plugin source codes and documentation
 	man/			Unix online manuals
 	msvc/			Files to compile on Microsoft VC++ 2008
+ (new)  dnntools/		Sample programs for dnn and vecnet client
 
 
 Documentation

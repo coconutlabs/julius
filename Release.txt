@@ -1,3 +1,24 @@
+4.3 (2013.12.25)
+=================
+New features:
+- FBANK and MELSPEC support.
+- Network-based feature vector and outprob vector input.
+- Static mean/variance for cepstral mean/variance normalization.
+- State output probability (i.e. outprob) vector input for DNN-HMM decoding.
+- State ID "<SID>" extension of hmmdefs for DNN-HMM decoding.
+- Real-time feature extraction and network transmittion by 'adintool'.
+
+Modified:
+- "mkbinhmm" now keeps the state order and id of the original hmmdefs.
+- For portaudio, pause / resume operation synced between engine and audio I/O
+- Load / save cepstral mean/variance of CMN/CVN in HTK text format.
+
+New options:
+  [-input vecnet]       read feature / outprob vectors from network
+  [-input outprob]      read outprob vectors from HTK parameter file
+  [-outprobout [file]]  save computed outprob vectors to HTK file (for debug)
+
+
 4.2.3 (2013.06.30)
 ==================
 

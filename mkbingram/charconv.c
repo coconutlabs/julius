@@ -42,7 +42,7 @@ str2code(char *codestr, unsigned int *code)
       || strmatch(codestr, "euc")
       || strmatch(codestr, "eucjp")) {
     /* input = Shift_jis (codepage 932) */
-    *code = CODE_JPN_EUC;
+    *code = 20932;
   } else if (strmatch(codestr, "ansi")) {
     /* ANSI codepage (MBCS) ex. shift-jis in Windows XP Japanese edition.*/
     *code = CP_ACP;
@@ -102,11 +102,11 @@ charconv_setup(char *fromcode, char *tocode)
 
 #if defined(_WIN32)
   if (str2code(fromcode, &from_cp) == -1) {
-    fpritnf(stderr, "Error: charconv_setup: unknown codepage specified\n");
+    fprintf(stderr, "Error: charconv_setup: unknown codepage specified\n");
     return -1;
   }
   if (str2code(tocode, &to_cp) == -1) {
-    fpritnf(stderr, "Error: charconv_setup: unknown codepage specified\n");
+    fprintf(stderr, "Error: charconv_setup: unknown codepage specified\n");
     return -1;
   }
 #else

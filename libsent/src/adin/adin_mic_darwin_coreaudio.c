@@ -29,7 +29,7 @@
  * @author Masatomo Hashimoto
  * @date   Wed Oct 12 11:31:27 2005
  *
- * $Revision: 1.8 $
+ * $Revision: 1.9 $
  * 
  */
 
@@ -44,7 +44,7 @@
  *
  */
 
-/* $Id: adin_mic_darwin_coreaudio.c,v 1.8 2013/12/04 10:13:00 sumomo Exp $ */
+/* $Id: adin_mic_darwin_coreaudio.c,v 1.9 2014/01/05 07:01:01 sumomo Exp $ */
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
@@ -654,16 +654,6 @@ int adin_mic_read(void *buffer, int nsamples) {
   return providedSamples;
 }
 
-void adin_mic_pause() {
-  OSStatus status;
-
-  if (CoreAudioHasInputDevice && CoreAudioRecordStarted) {
-    status = AudioOutputUnitStop(InputUnit);
-    CoreAudioRecordStarted = FALSE;
-  }
-  return;
-}
-
 /** 
  * Function to pause audio input (wait for buffer flush)
  * 
@@ -672,7 +662,13 @@ void adin_mic_pause() {
 boolean
 adin_mic_pause()
 {
-  return TRUE;
+  OSStatus status = 0;
+
+  if (CoreAudioHasInputDevice && CoreAudioRecordStarted) {
+    status = AudioOutputUnitStop(InputUnit);
+    CoreAudioRecordStarted = FALSE;
+  }
+  return (status == 0) ? TRUE : FALSE;
 }
 
 /** 

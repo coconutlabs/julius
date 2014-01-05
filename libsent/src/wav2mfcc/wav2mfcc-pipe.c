@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 18:12:30 2005
  *
- * $Revision: 1.10 $
+ * $Revision: 1.11 $
  * 
  */
 /*
@@ -547,12 +547,13 @@ CMN_load_from_file(CMNWork *c, char *filename)
 	  break;
 	case 1:
 	  len = atof(p);
-	  if (len != c->veclen) {
+	  if (len != c->veclen && len != c->mfcc_dim) {
 	    jlog("Error: wav2mfcc-pipe: cepstral dimension mismatch\n");
-	    jlog("Error: wav2mfcc-pipe: process = %d, file = %d\n", c->veclen, len);
+	    jlog("Error: wav2mfcc-pipe: process = %d (%d), file = %d\n", c->veclen, c->mfcc_dim, len);
 	    free(buf); fclose_readfile(fp);
 	    return(FALSE);
 	  }
+	  for (d = 0; d < c->veclen; d++) c->cmean_init[d] = 0.0;
 	  d = 0;
 	  mode = 2;
 	  break;
@@ -662,6 +663,7 @@ CMN_save_to_file(CMNWork *c, char *filename)
   }
 
   fprintf(fp, "<CEPSNORM> <>\n");
+  /* unlike HTK, full mean will be written for variance estimation */
   fprintf(fp, "<MEAN> %d\n", c->veclen);
   for(d=0;d<c->veclen;d++) {
     fprintf(fp, " %e", c->cmean_init[d]);

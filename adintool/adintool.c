@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.19 $
+ * $Revision: 1.20 $
  * 
  */
 /*
@@ -886,6 +886,7 @@ vecnet_sub(SP16 *Speech, int nowlen, Recog *recog)
         mfcc->valid = TRUE;
 	param_alloc(mfcc->param, mfcc->f + 1, mfcc->param->veclen);
 	memcpy(mfcc->param->parvec[mfcc->f], mfcc->tmpmfcc, sizeof(VECT) * mfcc->param->veclen);
+#if 0
 	{
 	  int i;
 	  for (i = 0; i < vecnet_veclen; i++) {
@@ -893,6 +894,7 @@ vecnet_sub(SP16 *Speech, int nowlen, Recog *recog)
 	  }
 	  printf("\n");
 	}
+#endif
 	/* send 1 frame */
 	for (j=0;j<adinnet_servnum;j++) {
 	  vecnet_send_data(sd[j], mfcc->tmpmfcc, sizeof(VECT) * vecnet_veclen);

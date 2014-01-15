@@ -111,7 +111,7 @@
  * @author Akinobu Lee
  * @date   Tue Aug 23 11:44:14 2005
  *
- * $Revision: 1.13 $
+ * $Revision: 1.14 $
  * 
  */
 /*
@@ -274,7 +274,8 @@ RealTimeInit(Recog *recog)
     if (mfcc->cmn.load_filename) {
       if (para->cmn) {
 	if ((mfcc->cmn.loaded = CMN_load_from_file(mfcc->cmn.wrk, mfcc->cmn.load_filename))== FALSE) {
-	  jlog("WARNING: failed to read initial cepstral mean from \"%s\", do flat start\n", mfcc->cmn.load_filename);
+	  jlog("ERROR: failed to read initial cepstral mean from \"%s\", do flat start\n", mfcc->cmn.load_filename);
+	  return FALSE;
 	}
       } else {
 	jlog("WARNING: CMN not required on AM, file \"%s\" ignored\n", mfcc->cmn.load_filename);

@@ -20,7 +20,7 @@
  * @author Akinobu LEE
  * @date   Thu Feb 17 18:12:30 2005
  *
- * $Revision: 1.11 $
+ * $Revision: 1.12 $
  * 
  */
 /*
@@ -46,6 +46,8 @@
 #include <sent/stddefs.h>
 #include <sent/mfcc.h>
 #include <sent/htk_param.h>
+
+#define MAXBUFLEN  4096		///< Maximum length of a line in the input
 
 /***********************************************************************/
 /** 
@@ -533,9 +535,9 @@ CMN_load_from_file(CMNWork *c, char *filename)
     int d, dv, len;
 
     jlog("Stat: wav2mfcc-pipe: reading HTK-format cepstral vectors\n");
-    buf = (char *)mymalloc(MAXLINELEN);
+    buf = (char *)mymalloc(MAXBUFLEN);
     mode = 0;
-    while(getl(buf, MAXLINELEN, fp) != NULL) {
+    while(getl(buf, MAXBUFLEN, fp) != NULL) {
       for (p = mystrtok_quote(buf, "<> \t\r\n"); p; p = mystrtok_quote(NULL, "<> \t\r\n")) {
 	switch(mode){
 	case 0:
@@ -666,15 +668,14 @@ CMN_save_to_file(CMNWork *c, char *filename)
   /* unlike HTK, full mean will be written for variance estimation */
   fprintf(fp, "<MEAN> %d\n", c->veclen);
   for(d=0;d<c->veclen;d++) {
-    fprintf(fp, " %e", c->cmean_init[d]);
+    fprintf(fp, " %e\n", c->cmean_init[d]);
   }
   if (c->var) {
-    fprintf(fp, "\n<VARIANCE> %d\n", c->veclen);
+    fprintf(fp, "<VARIANCE> %d\n", c->veclen);
     for(d=0;d<c->veclen;d++) {
-      fprintf(fp, " %e", c->cvar_init[d]);
+      fprintf(fp, " %e\n", c->cvar_init[d]);
     }
   }
-  fprintf(fp, "\n");
 
   fclose_writefile(fp);
 

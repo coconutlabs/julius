@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.20 $
+ * $Revision: 1.21 $
  * 
  */
 /*
@@ -803,6 +803,7 @@ vecnet_init(Recog *recog)
   }
   if (recog->jconf->input.type == INPUT_WAVEFORM) {
     if (RealTimeInit(recog) == FALSE) {
+      fprintf(stderr, "Error: failed to initialize feature extraction module\n");
       return FALSE;
     }
   }
@@ -899,8 +900,8 @@ vecnet_sub(SP16 *Speech, int nowlen, Recog *recog)
 	for (j=0;j<adinnet_servnum;j++) {
 	  vecnet_send_data(sd[j], mfcc->tmpmfcc, sizeof(VECT) * vecnet_veclen);
 	}
+	mfcc->f++;
       }
-      mfcc->f++;
     }
     /* shift window */
     memmove(r->window, &(r->window[recog->jconf->input.frameshift]), sizeof(SP16) * (r->windowlen - recog->jconf->input.frameshift));

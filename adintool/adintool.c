@@ -35,7 +35,7 @@
  * @author Akinobu LEE
  * @date   Wed Mar 23 20:43:32 2005
  *
- * $Revision: 1.21 $
+ * $Revision: 1.22 $
  * 
  */
 /*
@@ -807,6 +807,8 @@ vecnet_init(Recog *recog)
       return FALSE;
     }
   }
+
+  return TRUE;
 }
 
 int vecnet_send_data(int sd, void *buf, int bytes)
